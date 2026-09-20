@@ -16,14 +16,11 @@ API = "/api/v1"
 # 开局赠送并装备的起始武器（见 auth._bootstrap_new_user）
 STARTER_BASE_ID = str(CONFIG.heroes["initialHero"]["starterWeapon"])
 
-CONFIG_REFINE_COST = {
-    "common": 200, "uncommon": 1000, "rare": 5000,
-    "epic": 25000, "legendary": 120000, "mythic": 600000,
-}
-CONFIG_ENCHANT_COST = {
-    "common": 1000, "uncommon": 5000, "rare": 25000,
-    "epic": 120000, "legendary": 600000, "mythic": 3000000,
-}
+CONFIG_REFINE_COST = {r: int(CONFIG.rarities[r]["refineCost"]) for r in CONFIG.rarity_order}
+CONFIG_ENCHANT_COST = {r: int(CONFIG.rarities[r]["enchantCost"]) for r in CONFIG.rarity_order}
+
+# 重造 / 附魔单次消耗上限（需求：控制在 5 万以内）
+MAX_REFINE_OR_ENCHANT_COST = 50_000
 
 
 async def _gold(client) -> int:

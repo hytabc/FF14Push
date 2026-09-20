@@ -347,6 +347,7 @@ npm run gen:icons
 | 等级压制 | PRD 地区 7.3 只写了「效率极低」；本项目落为可量化的命中/输出/受伤三项软惩罚，见上文「等级压制」 |
 | 出售价格 | PRD 出售 3.2 的「×(1 + 属性评分/100)」随等级线性无上限增长，而箱子价格是固定值 → 高等级「买箱卖装备」稳赚。改为**饱和封顶**的属性系数（1 → 1+`attrBonusMax`），并重定品阶系数，使各箱期望卖价仅约为箱价的 20%-60%，只有抽到高品阶（约 5% 概率）才有赚头。见 `shared/data/economy.json:sell`、`rarities.json:sellCoef` |
 | 招募资质系数 | PRD 招募 2.3 的资质系数为 1/2/5/15/50/200，神话资质在英雄 30 级时需 86 万金币，实际不可达；改为 **1/2/3/6/12/30**（`baseRecruitCost` 仍为 1000），神话资质 30 级降到 12 万。见 `shared/data/talents.json:talents.*.recruitCoef` |
+| 重造 / 附魔消耗 | PRD 重造 4.2 / 附魔 5.2 最高档为 60 万 / 300 万金币，远超实际收入；下调为**最高 3 万 / 5 万**，品阶递增且附魔始终比重造贵。见 `shared/data/rarities.json` 的 `refineCost` / `enchantCost` |
 
 ---
 

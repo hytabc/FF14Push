@@ -331,6 +331,22 @@ class TestCrafting:
         assert plan["steps"] == []
 
 
+class TestUpgradeCosts:
+    """重造 / 附魔的单次消耗：随品阶单调递增、附魔始终比重造贵、且都控制在 5 万以内。"""
+
+    CAP = 50_000
+
+    def test_costs_within_cap_and_monotonic(self) -> None:
+        refine = [int(CONFIG.rarities[r]["refineCost"]) for r in CONFIG.rarity_order]
+        enchant = [int(CONFIG.rarities[r]["enchantCost"]) for r in CONFIG.rarity_order]
+
+        assert max(refine) <= self.CAP
+        assert max(enchant) <= self.CAP
+        assert refine == sorted(refine)
+        assert enchant == sorted(enchant)
+        assert all(e > r for r, e in zip(refine, enchant))
+
+
 def _lance_base_for_level(level: int) -> BaseItem:
     """该等级可用的最高档长枪底材（统一用长枪族，使职业固定为龙骑士）。"""
     usable = [b for b in CONFIG.base_items if b.weapon_type == "lance" and b.level_req <= level]

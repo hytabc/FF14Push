@@ -1,6 +1,6 @@
 - Prefers a single shell script (e.g. `scripts/dev.sh`) to bootstrap and run local development (env setup, deps, starting servers) rather than relying on Docker locally. Confidence: 0.8
 - Prefers Docker Compose for server/production deployment, kept separate from the local dev workflow. Confidence: 0.8
-- Prefers ports and deployment configuration to be supplied via environment variables (`.env` files) rather than hardcoded in code or config. Confidence: 0.75
+- Prefers ports, deployment settings, and application-level switches/parameters (e.g. a redeem code and the gold it grants, with an empty value disabling the feature) to be supplied via environment variables (`.env` files) rather than hardcoded in code or config. Confidence: 0.75
 - Wants secrets/credentials (e.g. admin account passwords) supplied and read from environment variables rather than hardcoded in code or committed config. Confidence: 0.7
 - Prefers persistent data (e.g. database files) to be bind-mounted to a local directory path rather than kept in Docker managed volumes, so instance rebuilds/updates don't lose data. Confidence: 0.8
 - Prefers Chinese/domestic mirror endpoints for everything fetched from external sources (Docker base images, pip, npm, apt, etc.) instead of upstream registries, so the project is deployable on mainland China servers. Confidence: 0.9
