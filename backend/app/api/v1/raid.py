@@ -197,10 +197,13 @@ async def report_session(
     gold = int(reward["firstGold"]) if first_clear else int(reward["repeatGold"])
     user.gold = int(user.gold) + gold
 
-    level_info = {"levelsGained": 0, "exp": hero.exp, "level": hero.level}
+    # 通关经验：首通用 firstExp，重刷用 repeatExp（高难副本的 repeatExp 更高）
+    raw_exp = int(reward["firstExp"]) if first_clear else int(reward.get("repeatExp", 0))
+    exp_gained = apply_exp_bonus(raw_exp, stats.term_mods) if raw_exp > 0 else 0
+    level_info = apply_exp(hero, exp_gained)
+
     grant = EMPTY_GRANT
     if first_clear:
-        level_info = apply_exp(hero, apply_exp_bonus(int(reward["firstExp"]), stats.term_mods))
         chest = chest_by_id(str(reward["chestId"]))
         generated = []
         if chest is not None:
@@ -224,6 +227,7 @@ async def report_session(
         "firstClear": first_clear,
         "gold": int(user.gold),
         "goldGained": gold,
+        "expGained": exp_gained,
         "level": level_info,
         "items": grant["items"],
         "autoSold": grant["autoSold"],

@@ -183,6 +183,8 @@ export interface RaidReward {
   chestId: string
   boxCount: number
   repeatGold: number
+  /** 重刷（非首通）通关经验，高难副本更高。 */
+  repeatExp: number
 }
 
 export interface RaidListEntry {
@@ -221,6 +223,8 @@ export interface RaidReportResponse {
   firstClear: boolean
   gold: number
   goldGained: number
+  /** 本次通关获得的经验（首通用 firstExp，重刷用 repeatExp）。 */
+  expGained: number
   items: Item[]
   autoSold: Array<{ name: string; rarity: string; price: number }>
   autoGold: number

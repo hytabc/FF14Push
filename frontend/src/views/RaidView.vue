@@ -157,8 +157,9 @@ async function closeResult() {
         </ul>
 
         <p class="mt-2 text-[11px] text-ink-500">
-          首通奖励：{{ formatNumber(raid.reward.firstGold) }} 金币 + {{ raid.reward.boxCount }} 个装备箱 ·
-          重刷 {{ formatNumber(raid.reward.repeatGold) }} 金币
+          首通奖励：{{ formatNumber(raid.reward.firstGold) }} 金币 + {{ formatNumber(raid.reward.firstExp) }} 经验 +
+          {{ raid.reward.boxCount }} 个装备箱 ·
+          重刷 {{ formatNumber(raid.reward.repeatGold) }} 金币 + {{ formatNumber(raid.reward.repeatExp) }} 经验
         </p>
 
         <p v-if="raid.cleared" class="mt-2 text-[11px] text-emerald-300">
@@ -300,6 +301,12 @@ async function closeResult() {
         </p>
         <ul v-if="game.raidResult.cleared" class="space-y-1 text-xs text-ink-300">
           <li>金币：<span class="font-mono text-amber-300">+{{ formatNumber(game.raidResult.goldGained) }}</span></li>
+          <li v-if="game.raidResult.expGained" class="text-emerald-300">
+            经验：<span class="font-mono">+{{ formatNumber(game.raidResult.expGained) }}</span>
+            <span v-if="game.raidResult.level?.levelsGained" class="ml-1 text-amber-300">
+              升级 ×{{ game.raidResult.level.levelsGained }}
+            </span>
+          </li>
           <li>用时：<span class="font-mono">{{ (game.raidResult.fightMs / 1000).toFixed(1) }}s</span></li>
         </ul>
         <div v-if="game.raidResult.items.length" class="space-y-1 text-xs text-ink-300">

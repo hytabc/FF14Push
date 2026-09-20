@@ -182,6 +182,7 @@ export interface RaidDef {
     chestId: string
     boxCount: number
     repeatGold: number
+    repeatExp: number
   }
 }
 

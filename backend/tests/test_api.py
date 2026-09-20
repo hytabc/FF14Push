@@ -884,7 +884,7 @@ class TestRaid:
         )
         assert resp.status_code == 422
 
-    async def test_first_clear_full_reward_then_repeat_gold_only(self, auth_client, session_factory) -> None:
+    async def test_first_clear_full_reward_then_repeat_gold_and_exp(self, auth_client, session_factory) -> None:
         await self._gear_up(auth_client, session_factory)
         cfg = CONFIG.raid_by_id["raid_1"]
         reward = cfg["reward"]
@@ -912,12 +912,22 @@ class TestRaid:
         assert first["goldGained"] == int(reward["firstGold"])
         assert len(first["items"]) == int(reward["boxCount"])
         assert first["gold"] == before + int(reward["firstGold"])
+        assert first["expGained"] >= int(reward["firstExp"])
 
         second = await clear_once()
         assert second["firstClear"] is False
         assert second["goldGained"] == int(reward["repeatGold"])
         assert second["items"] == []
         assert second["gold"] == first["gold"] + int(reward["repeatGold"])
+        # 重刷也会获得经验（高难副本的 repeatExp 更高）
+        assert int(reward["repeatExp"]) > 0
+        assert second["expGained"] >= int(reward["repeatExp"])
+
+    async def test_hard_raid_repeat_exp_exceeds_normal(self, auth_client, session_factory) -> None:
+        """高难副本的重刷经验必须高于同等级的普通副本。"""
+        normal = CONFIG.raid_by_id["raid_4"]["reward"]["repeatExp"]  # Lv.80 普通
+        hard = CONFIG.raid_by_id["raid_h1"]["reward"]["repeatExp"]  # Lv.80 高难
+        assert int(hard) > int(normal)
 
     async def test_death_grants_nothing(self, auth_client, session_factory) -> None:
         await self._gear_up(auth_client, session_factory)

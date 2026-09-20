@@ -37,6 +37,13 @@ const attrBiasLabel: Record<string, string> = {
 
 const recommendAttr = computed(() => data.jobById[hero.value?.jobId ?? '']?.mainAttr ?? null)
 
+const ancientAttrLabel = computed(
+  () =>
+    ({ str: '力量', dex: '敏捷', int: '智力' } as Record<string, string>)[
+      hero.value?.ancientAttr ?? ''
+    ] ?? '',
+)
+
 onMounted(async () => {
   if (!game.state) await game.loadState()
 })
@@ -80,24 +87,33 @@ function castShare(skillId: string) {
               class="rounded-lg border p-2"
               :class="hero.ancientAttr === 'str' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'"
             >
-              <p class="text-[10px] text-ink-400">力量<span v-if="hero.ancientAttr === 'str'">🌟</span></p>
-              <p class="font-mono text-lg text-rose-300">{{ hero.strength }}</p>
+              <p class="text-[10px] text-ink-400">力量</p>
+              <p class="font-mono text-lg text-rose-300">
+                {{ hero.strength }}<span v-if="hero.ancientAttr === 'str'" class="ml-0.5 align-top text-xs">🌟</span>
+              </p>
             </div>
             <div
               class="rounded-lg border p-2"
               :class="hero.ancientAttr === 'dex' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'"
             >
-              <p class="text-[10px] text-ink-400">敏捷<span v-if="hero.ancientAttr === 'dex'">🌟</span></p>
-              <p class="font-mono text-lg text-emerald-300">{{ hero.agility }}</p>
+              <p class="text-[10px] text-ink-400">敏捷</p>
+              <p class="font-mono text-lg text-emerald-300">
+                {{ hero.agility }}<span v-if="hero.ancientAttr === 'dex'" class="ml-0.5 align-top text-xs">🌟</span>
+              </p>
             </div>
             <div
               class="rounded-lg border p-2"
               :class="hero.ancientAttr === 'int' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'"
             >
-              <p class="text-[10px] text-ink-400">智力<span v-if="hero.ancientAttr === 'int'">🌟</span></p>
-              <p class="font-mono text-lg text-sky-300">{{ hero.intellect }}</p>
+              <p class="text-[10px] text-ink-400">智力</p>
+              <p class="font-mono text-lg text-sky-300">
+                {{ hero.intellect }}<span v-if="hero.ancientAttr === 'int'" class="ml-0.5 align-top text-xs">🌟</span>
+              </p>
             </div>
           </div>
+          <p v-if="hero.ancientAttr" class="mt-2 text-[11px] text-term-ancient">
+            🌟 太古属性：{{ ancientAttrLabel }}（数值为三条中最高值 ×1.25）
+          </p>
           <p class="mt-2 text-[11px] text-ink-500">
             英雄主属性对应装备三维收益 100%，非主属性 50%；职业推荐主属性为
             <b class="text-ink-300">{{ recommendAttr ? attrName(recommendAttr) : '无（冒险者）' }}</b>。

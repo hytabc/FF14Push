@@ -38,7 +38,8 @@
         "firstExp": 80000,
         "chestId": "advWeaponBox",
         "boxCount": 2,
-        "repeatGold": 2000
+        "repeatGold": 2000,
+        "repeatExp": 8000
       }
     },
     {
@@ -71,7 +72,8 @@
         "firstExp": 400000,
         "chestId": "advWeaponBox",
         "boxCount": 3,
-        "repeatGold": 8000
+        "repeatGold": 8000,
+        "repeatExp": 40000
       }
     },
     {
@@ -114,7 +116,8 @@
         "firstExp": 1500000,
         "chestId": "advWeaponBox",
         "boxCount": 4,
-        "repeatGold": 25000
+        "repeatGold": 25000,
+        "repeatExp": 150000
       }
     },
     {
@@ -157,7 +160,8 @@
         "firstExp": 5000000,
         "chestId": "advWeaponBox",
         "boxCount": 5,
-        "repeatGold": 60000
+        "repeatGold": 60000,
+        "repeatExp": 500000
       }
     },
     {
@@ -190,7 +194,8 @@
         "firstExp": 5000000,
         "chestId": "advWeaponBox",
         "boxCount": 5,
-        "repeatGold": 150000
+        "repeatGold": 150000,
+        "repeatExp": 900000
       }
     },
     {
@@ -233,7 +238,8 @@
         "firstExp": 12000000,
         "chestId": "advWeaponBox",
         "boxCount": 8,
-        "repeatGold": 400000
+        "repeatGold": 400000,
+        "repeatExp": 2000000
       }
     }
   ]
