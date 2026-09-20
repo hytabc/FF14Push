@@ -8,8 +8,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, update
 
 from app.core.deps import CurrentItems, CurrentUser, DbSession, OptionalHero
-from app.models import Hero, Item, TavernState
-from app.schemas.game import TavernRecruitRequest, TavernRefreshRequest
+from app.models import Hero, Item, TavernState, User
+from app.schemas.game import TavernRecruitRequest, TavernRefreshRequest, TavernTenPullRecruitRequest
 from app.services.game_config import CONFIG
 from app.services.recruiting import generate_candidate, recruit_cost, with_recruit_cost
 from app.services.serialization import hero_to_dict
@@ -27,6 +27,40 @@ async def _tavern(db: DbSession, user_id: int) -> TavernState:
         db.add(row)
         await db.flush()
     return row
+
+
+def _hero_level(hero: Hero | None) -> int:
+    return hero.level if hero else 1
+
+
+async def _replace_hero(
+    db: DbSession, user: User, hero: Hero | None, candidate: dict, cost: int
+) -> Hero:
+    """扣费并替换当前英雄（旧英雄装备卸下回背包，等级经验不保留）。"""
+    await db.execute(update(Item).where(Item.user_id == user.id).values(equipped_slot=None))
+    user.gold = int(user.gold) - cost
+    if hero is not None:
+        await db.delete(hero)
+        await db.flush()
+
+    new_hero = Hero(
+        user_id=user.id,
+        name=candidate["name"],
+        level=1,
+        exp=0,
+        talent=candidate["talent"],
+        attr_bias=candidate["attrBias"],
+        strength=candidate["strength"],
+        agility=candidate["agility"],
+        intellect=candidate["intellect"],
+        ancient_attr=candidate.get("ancientAttr"),
+        current_region_id=1,
+        region_kill_count=0,
+        is_initial=False,
+    )
+    db.add(new_hero)
+    await db.flush()
+    return new_hero
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -58,10 +92,13 @@ async def tavern_state(db: DbSession, user: CurrentUser, hero: OptionalHero) -> 
     cost = recruit_cost(row.candidate["talent"], level) if row.candidate else 0
     interval = int(CONFIG.talents["freeRefreshIntervalSec"])
     free_available, next_at = _free_refresh_state(row, datetime.now(timezone.utc), interval)
+    multi = [with_recruit_cost(c, level) for c in (row.multi_candidates or [])]
     return {
         "candidate": candidate,
         "recruitCost": cost,
         "refreshCost": int(CONFIG.talents["refreshCost"]),
+        "tenPullCost": int(CONFIG.talents["tenPullCost"]),
+        "multiCandidates": multi,
         "freeRefreshIntervalSec": interval,
         "freeRefreshAvailable": free_available,
         "nextFreeRefreshAt": next_at.isoformat() if next_at else None,
@@ -134,36 +171,13 @@ async def recruit(
     if candidate is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有候选英雄")
 
-    current_level = hero.level if hero else 1
+    current_level = _hero_level(hero)
     cost = recruit_cost(candidate["talent"], current_level)
     if int(user.gold) < cost:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
 
-    # 旧英雄装备卸下回背包（装备归属账号，不会丢失）
-    await db.execute(update(Item).where(Item.user_id == user.id).values(equipped_slot=None))
-
     old_hero_id = hero.id if hero else None
-    user.gold = int(user.gold) - cost
-    if hero is not None:
-        await db.delete(hero)
-        await db.flush()
-
-    new_hero = Hero(
-        user_id=user.id,
-        name=candidate["name"],
-        level=1,
-        exp=0,
-        talent=candidate["talent"],
-        attr_bias=candidate["attrBias"],
-        strength=candidate["strength"],
-        agility=candidate["agility"],
-        intellect=candidate["intellect"],
-        current_region_id=1,
-        region_kill_count=0,
-        is_initial=False,
-    )
-    db.add(new_hero)
-    await db.flush()
+    new_hero = await _replace_hero(db, user, hero, candidate, cost)
 
     row.candidate = generate_candidate(new_hero.level)
     await db.commit()
@@ -176,6 +190,77 @@ async def recruit(
         "hero": hero_to_dict(new_hero, stats),
         "nextCandidate": row.candidate,
     }
+
+
+@router.post("/ten-pull")
+async def ten_pull(db: DbSession, user: CurrentUser, hero: OptionalHero) -> dict:
+    """十连抽：固定 2000 金币，一次刷出 10 个候选，可购买其中 1 个或全部放弃。"""
+    row = await _tavern(db, user.id)
+    cost = int(CONFIG.talents["tenPullCost"])
+    if int(user.gold) < cost:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
+
+    level = _hero_level(hero)
+    user.gold = int(user.gold) - cost
+    row.multi_candidates = [generate_candidate(level) for _ in range(10)]
+    row.refreshed_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {
+        "gold": int(user.gold),
+        "cost": cost,
+        "tenPullCost": cost,
+        "candidates": [with_recruit_cost(c, level) for c in row.multi_candidates],
+    }
+
+
+@router.post("/ten-pull/recruit")
+async def ten_pull_recruit(
+    payload: TavernTenPullRecruitRequest,
+    db: DbSession,
+    user: CurrentUser,
+    hero: OptionalHero,
+    items: CurrentItems,
+) -> dict:
+    """从十连候选中招募指定英雄（按该英雄 recruitCost 扣费），随后清空本批候选。"""
+    if not payload.confirm:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先确认替换")
+
+    row = await _tavern(db, user.id)
+    candidates = row.multi_candidates or []
+    if not candidates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有十连候选英雄")
+    if payload.index < 0 or payload.index >= len(candidates):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="候选序号无效")
+
+    candidate = candidates[payload.index]
+    cost = recruit_cost(candidate["talent"], _hero_level(hero))
+    if int(user.gold) < cost:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
+
+    old_hero_id = hero.id if hero else None
+    new_hero = await _replace_hero(db, user, hero, candidate, cost)
+    row.multi_candidates = None
+    row.candidate = generate_candidate(new_hero.level)
+    await db.commit()
+
+    stats = compute_stats(new_hero, [])
+    return {
+        "gold": int(user.gold),
+        "cost": cost,
+        "previousHeroId": old_hero_id,
+        "hero": hero_to_dict(new_hero, stats),
+        "nextCandidate": row.candidate,
+    }
+
+
+@router.post("/ten-pull/clear")
+async def ten_pull_clear(db: DbSession, user: CurrentUser) -> dict:
+    """放弃本批十连候选（都不购买）。"""
+    row = await _tavern(db, user.id)
+    row.multi_candidates = None
+    await db.commit()
+    return {"ok": True, "message": "已放弃本批十连候选"}
 
 
 @router.post("/dismiss")

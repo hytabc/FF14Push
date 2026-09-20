@@ -76,16 +76,25 @@ function castShare(skillId: string) {
           </div>
 
           <div class="mt-3 grid grid-cols-3 gap-3 text-center">
-            <div class="rounded-lg border border-ink-700 bg-ink-800/60 p-2">
-              <p class="text-[10px] text-ink-400">力量</p>
+            <div
+              class="rounded-lg border p-2"
+              :class="hero.ancientAttr === 'str' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'"
+            >
+              <p class="text-[10px] text-ink-400">力量<span v-if="hero.ancientAttr === 'str'">🌟</span></p>
               <p class="font-mono text-lg text-rose-300">{{ hero.strength }}</p>
             </div>
-            <div class="rounded-lg border border-ink-700 bg-ink-800/60 p-2">
-              <p class="text-[10px] text-ink-400">敏捷</p>
+            <div
+              class="rounded-lg border p-2"
+              :class="hero.ancientAttr === 'dex' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'"
+            >
+              <p class="text-[10px] text-ink-400">敏捷<span v-if="hero.ancientAttr === 'dex'">🌟</span></p>
               <p class="font-mono text-lg text-emerald-300">{{ hero.agility }}</p>
             </div>
-            <div class="rounded-lg border border-ink-700 bg-ink-800/60 p-2">
-              <p class="text-[10px] text-ink-400">智力</p>
+            <div
+              class="rounded-lg border p-2"
+              :class="hero.ancientAttr === 'int' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'"
+            >
+              <p class="text-[10px] text-ink-400">智力<span v-if="hero.ancientAttr === 'int'">🌟</span></p>
               <p class="font-mono text-lg text-sky-300">{{ hero.intellect }}</p>
             </div>
           </div>

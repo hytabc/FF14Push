@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,12 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    currentPassword: str
+    newPassword: str = Field(min_length=6, max_length=64)
+    confirmPassword: str
 
 
 class TokenResponse(BaseModel):
@@ -81,12 +87,15 @@ class CraftRequest(BaseModel):
 
 class RefineRequest(BaseModel):
     itemId: int
+    # random=彻底随机（现价，可能变差）；basedOnCurrent=在当前基础上随机（更贵，总值保底不降）
+    mode: Literal["random", "basedOnCurrent"] = "random"
 
 
 class EnchantRequest(BaseModel):
     itemId: int
     autoUntilRare: bool = False
     maxAttempts: int = 200
+    mode: Literal["random", "basedOnCurrent"] = "random"
 
 
 class RegionEnterRequest(BaseModel):
@@ -98,6 +107,11 @@ class TavernRefreshRequest(BaseModel):
 
 
 class TavernRecruitRequest(BaseModel):
+    confirm: bool = True
+
+
+class TavernTenPullRecruitRequest(BaseModel):
+    index: int
     confirm: bool = True
 
 

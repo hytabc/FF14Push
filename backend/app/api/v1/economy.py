@@ -104,13 +104,13 @@ async def refine(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
 
-    cost = refine_cost(item.rarity, int(item.refine_count))
+    cost = refine_cost(item.rarity, int(item.refine_count), payload.mode)
     if int(user.gold) < cost:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
 
     before = item_to_dict(item, sell_price_range(item))
     rng = random.Random()
-    result = regenerate_attrs(item, rng)
+    result = regenerate_attrs(item, rng, payload.mode)
     item.base_attrs = result["baseAttrs"]
     item.sub_attrs = result["subAttrs"]
     item.refine_count = int(item.refine_count) + 1
@@ -132,19 +132,21 @@ async def enchant(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
 
-    unit_cost = enchant_cost(item.rarity)
     rng = random.Random()
     before = item_to_dict(item, sell_price_range(item))
 
     if not payload.autoUntilRare:
+        unit_cost = enchant_cost(item.rarity, payload.mode)
         if int(user.gold) < unit_cost:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {unit_cost}")
-        item.terms = roll_terms_for_enchant(item, rng)
+        item.terms = roll_terms_for_enchant(item, rng, payload.mode)
         item.enchant_count = int(item.enchant_count) + 1
         user.gold = int(user.gold) - unit_cost
         await db.commit()
         return {"gold": int(user.gold), "cost": unit_cost, "attempts": 1, "before": before, "after": item_to_dict(item, sell_price_range(item))}
 
+    # 自动附魔至稀有/太古：始终按彻底随机单价逐次结算
+    unit_cost = enchant_cost(item.rarity)
     max_attempts = max(1, min(MAX_AUTO_ENCHANT_ATTEMPTS, int(payload.maxAttempts)))
     affordable = int(user.gold) // unit_cost
     if affordable < 1:

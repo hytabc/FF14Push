@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 import { useGameStore } from './game'
 import { useToastStore } from './toast'
-import type { Item } from '@/game/types'
+import type { Item, RerollMode } from '@/game/types'
 
 export type ItemActionKind = 'refine' | 'enchant' | 'sell' | 'enchantAuto'
 
@@ -11,19 +11,23 @@ export const useItemActions = defineStore('itemActions', () => {
   const game = useGameStore()
   const toast = useToastStore()
 
-  const pending = ref<{ kind: ItemActionKind; item: Item } | null>(null)
+  const pending = ref<{ kind: ItemActionKind; item: Item; mode: RerollMode } | null>(null)
   const busy = ref(false)
 
   function requestRefine(item: Item) {
-    pending.value = { kind: 'refine', item }
+    pending.value = { kind: 'refine', item, mode: 'random' }
   }
 
   function requestEnchant(item: Item, auto = false) {
-    pending.value = { kind: auto ? 'enchantAuto' : 'enchant', item }
+    pending.value = { kind: auto ? 'enchantAuto' : 'enchant', item, mode: 'random' }
   }
 
   function requestSell(item: Item) {
-    pending.value = { kind: 'sell', item }
+    pending.value = { kind: 'sell', item, mode: 'random' }
+  }
+
+  function setMode(mode: RerollMode) {
+    if (pending.value) pending.value.mode = mode
   }
 
   function cancel() {
@@ -35,8 +39,8 @@ export const useItemActions = defineStore('itemActions', () => {
     if (!current || busy.value) return
     busy.value = true
     try {
-      if (current.kind === 'refine') await game.refine(current.item.id)
-      else if (current.kind === 'enchant') await game.enchant(current.item.id, false)
+      if (current.kind === 'refine') await game.refine(current.item.id, current.mode)
+      else if (current.kind === 'enchant') await game.enchant(current.item.id, false, current.mode)
       else if (current.kind === 'enchantAuto') await game.enchant(current.item.id, true)
       else if (current.kind === 'sell') await game.sell([current.item.id])
       pending.value = null
@@ -47,5 +51,5 @@ export const useItemActions = defineStore('itemActions', () => {
     }
   }
 
-  return { pending, busy, requestRefine, requestEnchant, requestSell, cancel, confirm }
+  return { pending, busy, requestRefine, requestEnchant, requestSell, setMode, cancel, confirm }
 })

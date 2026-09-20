@@ -26,9 +26,18 @@ const title = computed(() => {
   }
 })
 
+const mode = computed(() => actions.pending?.mode ?? 'random')
+const isRerollMode = computed(() => kind.value === 'refine' || kind.value === 'enchant')
+
 // 实付价由后端按当前重造次数算好下发，避免前端与结算公式漂移
-const refineCost = computed(() => item.value?.refineCost ?? 0)
-const enchantCost = computed(() => item.value?.enchantCost ?? 0)
+const refineCost = computed(() =>
+  mode.value === 'basedOnCurrent' ? (item.value?.refineCostBasedOnCurrent ?? 0) : (item.value?.refineCost ?? 0),
+)
+const enchantCost = computed(() =>
+  mode.value === 'basedOnCurrent'
+    ? (item.value?.enchantCostBasedOnCurrent ?? 0)
+    : (item.value?.enchantCost ?? 0),
+)
 const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
 </script>
 
@@ -62,9 +71,44 @@ const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
         </div>
       </div>
 
+      <div v-if="isRerollMode" class="grid grid-cols-2 gap-2">
+        <button
+          class="rounded-md border px-2 py-2 text-xs transition"
+          :class="
+            mode === 'random'
+              ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200'
+              : 'border-ink-600 text-ink-400 hover:border-ink-400'
+          "
+          @click="actions.setMode('random')"
+        >
+          彻底随机
+          <span class="mt-0.5 block font-mono text-[10px]">
+            {{ (kind === 'refine' ? item.refineCost : item.enchantCost).toLocaleString() }} 金
+          </span>
+        </button>
+        <button
+          class="rounded-md border px-2 py-2 text-xs transition"
+          :class="
+            mode === 'basedOnCurrent'
+              ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200'
+              : 'border-ink-600 text-ink-400 hover:border-ink-400'
+          "
+          @click="actions.setMode('basedOnCurrent')"
+        >
+          基于当前
+          <span class="mt-0.5 block font-mono text-[10px]">
+            {{ (kind === 'refine' ? item.refineCostBasedOnCurrent : item.enchantCostBasedOnCurrent).toLocaleString() }} 金
+          </span>
+        </button>
+      </div>
+
       <p v-if="kind === 'refine'" class="text-xs text-ink-300">
         将重新随机<b class="text-white">基础属性浮动值</b>与<b class="text-white">副属性（种类与数值）</b>；
-        品阶、类型、等级需求与所有 Buff/Debuff <b class="text-emerald-300">保持不变</b>。重造后属性可能变好也可能变差。
+        品阶、类型、等级需求与所有 Buff/Debuff <b class="text-emerald-300">保持不变</b>。
+        <span v-if="mode === 'basedOnCurrent'" class="text-emerald-300">
+          基于当前：总属性评分<b>保底不降</b>，且现有太古副属性数量不会减少。
+        </span>
+        <span v-else>彻底随机：结果可能变好也可能变差。</span>
         <span v-if="item.refineCount" class="text-amber-300">
           该装备已重造 {{ item.refineCount }} 次，重造费用会随次数继续上涨。
         </span>
@@ -72,6 +116,9 @@ const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
       <p v-else-if="kind === 'enchant'" class="text-xs text-ink-300">
         将<b class="text-rose-300">覆盖现有全部 Buff/Debuff</b>（数量、种类、数值均会重新随机）。
         极低概率出现稀有词条，更低概率出现太古词条。附魔结果<b class="text-rose-300">不可撤销</b>。
+        <span v-if="mode === 'basedOnCurrent'" class="text-emerald-300">
+          基于当前：词条总价值<b>保底不降</b>，且现有太古词条数量不会减少。
+        </span>
       </p>
       <p v-else-if="kind === 'enchantAuto'" class="text-xs text-ink-300">
         将持续附魔直到出现<b class="text-amber-300">稀有或太古</b>词条为止，每次附魔都会消耗金币，

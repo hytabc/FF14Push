@@ -15,9 +15,12 @@ const toast = useToastStore()
 const candidate = ref<TavernCandidate | null>(null)
 const currentHero = ref<Record<string, unknown> | null>(null)
 const refreshCost = ref(200)
+const tenPullCost = ref(2000)
+const multiCandidates = ref<TavernCandidate[]>([])
 const loading = ref(false)
 const busy = ref(false)
 const confirmRecruit = ref(false)
+const confirmMultiIndex = ref<number | null>(null)
 const nextFreeAt = ref<number | null>(null)
 const nowMs = ref(Date.now())
 let timer: number | undefined
@@ -25,6 +28,10 @@ let timer: number | undefined
 const hero = computed(() => game.hero)
 const canAfford = computed(() => (candidate.value?.recruitCost ?? 0) <= game.gold)
 const shortfall = computed(() => Math.max(0, (candidate.value?.recruitCost ?? 0) - game.gold))
+const canAffordTenPull = computed(() => tenPullCost.value <= game.gold)
+const pickedMulti = computed(() =>
+  confirmMultiIndex.value === null ? null : (multiCandidates.value[confirmMultiIndex.value] ?? null),
+)
 const freeRemainingSec = computed(() =>
   nextFreeAt.value ? Math.max(0, Math.ceil((nextFreeAt.value - nowMs.value) / 1000)) : 0,
 )
@@ -43,6 +50,8 @@ async function load() {
     candidate.value = res.candidate
     currentHero.value = res.currentHero
     refreshCost.value = res.refreshCost
+    tenPullCost.value = res.tenPullCost
+    multiCandidates.value = res.multiCandidates ?? []
     nextFreeAt.value = res.nextFreeRefreshAt ? Date.parse(res.nextFreeRefreshAt) : null
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
@@ -77,6 +86,35 @@ async function refresh(useGold: boolean) {
   }
 }
 
+async function tenPull() {
+  if (busy.value) return
+  busy.value = true
+  try {
+    const res = await api.tavernTenPull()
+    multiCandidates.value = res.candidates
+    if (game.state) game.state.user.gold = res.gold
+    toast.push(`十连抽完成，消耗 ${formatNumber(res.cost)} 金币，可选择 1 名英雄招募`, 'success')
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function clearMulti() {
+  if (busy.value) return
+  busy.value = true
+  try {
+    const res = await api.tavernTenPullClear()
+    multiCandidates.value = []
+    toast.push(res.message, 'info')
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    busy.value = false
+  }
+}
+
 async function openConfirm() {
   if (busy.value) return
   // 招募按英雄「当前」等级计费：确认前先刷新一次，避免升级后价格与服务端不一致。
@@ -89,6 +127,25 @@ async function recruit() {
   busy.value = true
   try {
     const res = await api.tavernRecruit(true)
+    toast.push('招募成功！新英雄已加入，旧英雄装备已卸下保留', 'success')
+    await game.loadState()
+    if (game.isRunning) await game.startBattle()
+    void res
+    await load()
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function recruitMulti() {
+  const index = confirmMultiIndex.value
+  if (index === null) return
+  confirmMultiIndex.value = null
+  busy.value = true
+  try {
+    const res = await api.tavernTenPullRecruit(index, true)
     toast.push('招募成功！新英雄已加入，旧英雄装备已卸下保留', 'success')
     await game.loadState()
     if (game.isRunning) await game.startBattle()
@@ -140,7 +197,9 @@ function attrBar(value: number, total: number) {
             <span :class="rarityClass(hero.talent)">{{ rarityName(hero.talent) }}资质</span>
           </p>
           <p class="text-ink-400">
-            力量 {{ hero.strength }} / 敏捷 {{ hero.agility }} / 智力 {{ hero.intellect }}
+            力量 {{ hero.strength }}{{ hero.ancientAttr === 'str' ? '🌟' : '' }} /
+            敏捷 {{ hero.agility }}{{ hero.ancientAttr === 'dex' ? '🌟' : '' }} /
+            智力 {{ hero.intellect }}{{ hero.ancientAttr === 'int' ? '🌟' : '' }}
           </p>
           <p v-if="hero.isInitial" class="text-[11px] text-amber-300">
             初始英雄不可解雇，请先招募新英雄进行替换
@@ -199,7 +258,9 @@ function attrBar(value: number, total: number) {
               <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-700">
                 <div class="h-full rounded-full" :class="row.color" :style="{ width: `${Math.min(100, attrBar(row.value, 260) * 3)}%` }" />
               </div>
-              <span class="w-8 text-right font-mono text-ink-200">{{ row.value }}</span>
+              <span class="w-12 text-right font-mono text-ink-200">
+                {{ row.value }}<span v-if="candidate.ancientAttr === row.key">🌟</span>
+              </span>
             </div>
           </div>
 
@@ -227,6 +288,62 @@ function attrBar(value: number, total: number) {
       </section>
     </div>
 
+    <section class="card p-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <h3 class="text-sm font-semibold text-white">十连抽</h3>
+        <span class="text-[11px] text-ink-400">
+          一次刷出 10 名候选英雄，可从其中招募 1 名（按其招募费用结算）或全部放弃
+        </span>
+        <div class="ml-auto flex gap-2">
+          <button
+            v-if="multiCandidates.length"
+            class="rounded bg-ink-700 px-3 py-1.5 text-[11px] hover:bg-ink-600 disabled:opacity-50"
+            :disabled="busy"
+            @click="clearMulti"
+          >
+            都不购买
+          </button>
+          <button
+            class="rounded-md px-4 py-1.5 text-[11px] font-medium transition disabled:opacity-40"
+            :class="canAffordTenPull ? 'bg-indigo-500 text-white hover:bg-indigo-400' : 'bg-ink-700 text-ink-400'"
+            :disabled="busy || loading || !canAffordTenPull"
+            @click="tenPull"
+          >
+            十连抽 · {{ formatNumber(tenPullCost) }} 金币
+          </button>
+        </div>
+      </div>
+
+      <div v-if="multiCandidates.length" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div
+          v-for="(c, idx) in multiCandidates"
+          :key="idx"
+          class="rounded-lg border border-ink-700 bg-ink-800/60 p-2 text-[11px]"
+        >
+          <div class="flex items-center gap-1">
+            <span class="truncate text-ink-100">{{ c.name }}</span>
+            <span class="ml-auto rounded bg-ink-900 px-1 text-[10px]" :class="rarityClass(c.talent)">
+              {{ rarityName(c.talent) }}
+            </span>
+          </div>
+          <p class="text-[10px] text-ink-400">{{ c.attrBiasLabel }} · 总 {{ c.totalPoints }}</p>
+          <p class="font-mono text-[10px] text-ink-300">
+            力 {{ c.strength }}{{ c.ancientAttr === 'str' ? '🌟' : '' }} /
+            敏 {{ c.agility }}{{ c.ancientAttr === 'dex' ? '🌟' : '' }} /
+            智 {{ c.intellect }}{{ c.ancientAttr === 'int' ? '🌟' : '' }}
+          </p>
+          <button
+            class="mt-1.5 w-full rounded bg-amber-500 px-2 py-1 text-[10px] font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-40"
+            :disabled="busy || c.recruitCost > game.gold"
+            @click="confirmMultiIndex = idx"
+          >
+            招募 · {{ formatNumber(c.recruitCost) }}
+          </button>
+        </div>
+      </div>
+      <p v-else class="mt-3 text-xs text-ink-500">尚未十连抽，点击右上角按钮开始。</p>
+    </section>
+
     <Modal :open="confirmRecruit" title="确认招募并替换英雄" @close="confirmRecruit = false">
       <p class="text-sm text-ink-200">
         将<b class="text-rose-300">替换当前英雄</b>：当前英雄装备会自动卸下并返回背包，
@@ -244,6 +361,34 @@ function attrBar(value: number, total: number) {
           取消
         </button>
         <button class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950" @click="recruit">
+          确认招募
+        </button>
+      </template>
+    </Modal>
+
+    <Modal
+      :open="confirmMultiIndex !== null"
+      title="确认招募并替换英雄"
+      @close="confirmMultiIndex = null"
+    >
+      <p class="text-sm text-ink-200">
+        将<b class="text-rose-300">替换当前英雄</b>：当前英雄装备会自动卸下并返回背包，
+        <b class="text-rose-300">等级与经验不保留</b>。新英雄以 1 级加入。
+      </p>
+      <p v-if="pickedMulti" class="mt-3 text-xs text-ink-400">
+        新英雄：{{ pickedMulti.name }} · {{ rarityName(pickedMulti.talent) }} · {{ pickedMulti.attrBiasLabel }} ·
+        力量 {{ pickedMulti.strength }}{{ pickedMulti.ancientAttr === 'str' ? '🌟' : '' }} /
+        敏捷 {{ pickedMulti.agility }}{{ pickedMulti.ancientAttr === 'dex' ? '🌟' : '' }} /
+        智力 {{ pickedMulti.intellect }}{{ pickedMulti.ancientAttr === 'int' ? '🌟' : '' }}
+      </p>
+      <p v-if="pickedMulti" class="mt-2 text-xs text-amber-300">
+        将消耗 {{ formatNumber(pickedMulti.recruitCost) }} 金币（当前持有 💰 {{ game.gold.toLocaleString() }}）
+      </p>
+      <template #footer>
+        <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="confirmMultiIndex = null">
+          取消
+        </button>
+        <button class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950" @click="recruitMulti">
           确认招募
         </button>
       </template>

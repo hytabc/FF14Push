@@ -38,14 +38,33 @@ def hero_power(stats: HeroStats) -> int:
     return int(total)
 
 
-def item_score(item: Any) -> float:
-    """装备总属性评分 = Σ(属性值 × 权重)。"""
+def attrs_score(base_attrs: Any, sub_attrs: Any) -> float:
+    """基础属性 + 副属性的总评分 = Σ(属性值 × 权重)。"""
     score = 0.0
-    for entry in item.base_attrs or []:
+    for entry in base_attrs or []:
         score += float(entry["value"]) * POWER_WEIGHTS.get(entry["attr"], 1.0)
-    for entry in item.sub_attrs or []:
+    for entry in sub_attrs or []:
         score += float(entry["value"]) * POWER_WEIGHTS.get(entry["attr"], 1.0)
     return score
+
+
+def item_score(item: Any) -> float:
+    """装备总属性评分 = Σ(属性值 × 权重)。"""
+    return attrs_score(item.base_attrs, item.sub_attrs)
+
+
+def terms_score(terms: Any) -> float:
+    """词条总价值：Buff 取正、Debuff 取负，数值越大越好（用于「基于当前」的比较）。"""
+    total = 0.0
+    for term in terms or []:
+        magnitude = abs(float(term.get("value", 0))) * POWER_WEIGHTS.get(term.get("stat"), 1.0)
+        total += magnitude if term.get("type") == "buff" else -magnitude
+    return total
+
+
+def ancient_count(entries: Any) -> int:
+    """统计条目中的太古数量（副属性或词条通用）。"""
+    return sum(1 for entry in entries or [] if entry.get("quality") == "ancient")
 
 
 def attr_factor(item: Any) -> float:

@@ -31,7 +31,7 @@
     "mpRegen": {
       "base": 1,
       "coef": {
-        "int": 0.1
+        "int": 0.08
       }
     },
     "attack": {
@@ -142,9 +142,9 @@
     "mpCostPct": -0.1,
     "equipMainAttrPct": 0.15
   },
-  "$commentMp": "MP 系统。来源：PRD 7.2",
+  "$commentMp": "MP 系统。来源：PRD 7.2。技能 mpCost 已按威力重排，两种伤害类型统一按 1.0 结算，使面板显示与实际消耗一致；蓝量不足时只能普攻。",
   "mp": {
-    "physicalSkillCostScale": 0.6,
+    "physicalSkillCostScale": 1.0,
     "magicalSkillCostScale": 1.0,
     "regenTickSeconds": 1
   },

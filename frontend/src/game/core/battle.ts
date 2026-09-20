@@ -392,10 +392,13 @@ export class BattleSimulator {
     const ready = this.skills.filter((skill) => (this.cooldowns[skill.id] ?? 0) <= 0)
     if (ready.length === 0) return
 
+    // 蓝量不足的技能无法施放：若没有任何负担得起的技能，回退到零耗蓝普攻
     const castable = ready.filter((skill) => this.mpCost(skill) <= this.heroMp)
-    const pool = castable.length > 0 ? castable : ready.filter((s) => s.potency > 0)
-    const skill = this.pickSkill(pool)
-    this.cast(skill)
+    if (castable.length === 0) {
+      if ((this.cooldowns[ADVENTURER_SKILL.id] ?? 0) <= 0) this.cast(ADVENTURER_SKILL)
+      return
+    }
+    this.cast(this.pickSkill(castable))
   }
 
   private pickSkill(pool: SkillLike[]): SkillLike {

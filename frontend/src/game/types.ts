@@ -6,6 +6,8 @@ export type SlotId =
   | 'mainHand' | 'head' | 'body' | 'hands' | 'legs' | 'feet'
   | 'necklace' | 'earring' | 'bracelet' | 'ring1' | 'ring2'
 export type TermQuality = 'common' | 'rare' | 'ancient'
+/** 重造 / 附魔模式：彻底随机（现价）或基于当前（更贵，总值保底不降）。 */
+export type RerollMode = 'random' | 'basedOnCurrent'
 
 export interface BaseAttrEntry {
   attr: string
@@ -49,6 +51,8 @@ export interface Item {
   enchantCount: number
   refineCost: number
   enchantCost: number
+  refineCostBasedOnCurrent: number
+  enchantCostBasedOnCurrent: number
   source: string
   weaponType: string | null
   jobId: string | null
@@ -95,6 +99,8 @@ export interface Hero {
   strength: number
   agility: number
   intellect: number
+  /** 太古三维：值为 'str'|'dex'|'int'，null 表示无 */
+  ancientAttr: 'str' | 'dex' | 'int' | null
   currentRegionId: number | null
   regionKillCount: number
   isInitial: boolean
@@ -291,6 +297,8 @@ export interface TavernCandidate {
   strength: number
   agility: number
   intellect: number
+  /** 太古三维：值为 'str'|'dex'|'int'，null 表示无 */
+  ancientAttr: 'str' | 'dex' | 'int' | null
   totalPoints: number
   recruitCost: number
   recommendedJobs: string[]

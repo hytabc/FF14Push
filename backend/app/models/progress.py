@@ -76,6 +76,8 @@ class TavernState(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
     candidate: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    # 十连抽结果：一次抽出的 10 个候选（购买其中 1 个后清空）
+    multi_candidates: Mapped[list | None] = mapped_column(JsonType, nullable=True)
     refreshed_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
     free_refresh_used_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 

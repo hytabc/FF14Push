@@ -18,11 +18,12 @@ def test_rarity_order_and_tiers() -> None:
     assert multipliers == sorted(multipliers)
 
 
-def test_all_jobs_have_five_skills() -> None:
+def test_all_jobs_have_seven_skills() -> None:
     assert len(CONFIG.jobs["jobs"]) == 21
+    assert CONFIG.jobs["maxSkills"] == 7
     for job in CONFIG.jobs["jobs"]:
         assert len(job["skills"]) == CONFIG.jobs["maxSkills"], job["id"]
-        assert len({s["id"] for s in job["skills"]}) == 5
+        assert len({s["id"] for s in job["skills"]}) == 7
 
 
 def test_weapon_types_cover_jobs() -> None:

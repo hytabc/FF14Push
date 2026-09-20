@@ -12,16 +12,30 @@ from app.services.combat_model import (
     theoretical_dps,
     theoretical_kill_seconds,
 )
-from app.services.economy import REQUIRED, build_craft_plan
+from app.services.economy import REQUIRED, build_craft_plan, enchant_cost, refine_cost
 from app.services.game_config import CONFIG, BaseItem
-from app.services.item_factory import generate_item, roll_sub_attr_value
+from app.services.item_factory import (
+    generate_item,
+    regenerate_attrs,
+    roll_sub_attr_value,
+    roll_terms_for_enchant,
+)
 from app.services.loot import PityState, chest_by_id, draw_rarity, roll_rarity
 from app.services.combat_model import theoretical_dps
+from app.services.recruiting import generate_candidate
 from app.services.regions_util import apply_exp_bonus, exp_bonus_from_terms, level_penalty
 from app.services.raid_util import all_raids, boss_stats_for_raid
 from app.services.slots_util import possible_slots
 from app.services.stats import compute_stats, convert_three_attrs
-from app.services.valuation import attr_factor, hero_power, sell_price, sell_price_range
+from app.services.valuation import (
+    ancient_count,
+    attr_factor,
+    attrs_score,
+    hero_power,
+    sell_price,
+    sell_price_range,
+    terms_score,
+)
 
 from tests.fakes import FakeHero, FakeItem, GeneratedItem
 
@@ -613,3 +627,108 @@ class TestLevelPenalty:
         under = max_kills_in_seconds(stats, 23, 10.0, 1.0, 50)
         assert under < matched
         assert under <= 1.0, f"落后 20 级仍允许 {under:.1f} 杀/10s"
+
+
+class TestRecruitingAncient:
+    """英雄太古属性：0.1% 概率，随机 1 条三维 = 三条中最高值 × 1.25。"""
+
+    class _Forced(random.Random):
+        """random() 恒返回指定值，用于强制命中 / 不命中太古判定。"""
+
+        def __init__(self, value: float, seed: int = 7) -> None:
+            super().__init__(seed)
+            self._value = value
+
+        def random(self) -> float:  # type: ignore[override]
+            return self._value
+
+    def test_ancient_triggers_and_becomes_highest(self) -> None:
+        candidate = generate_candidate(1, self._Forced(0.0))
+        ancient = candidate["ancientAttr"]
+        assert ancient in ("str", "dex", "int")
+        values = {
+            "str": candidate["strength"],
+            "dex": candidate["agility"],
+            "int": candidate["intellect"],
+        }
+        others = [v for k, v in values.items() if k != ancient]
+        # 太古值 = 三条中最高值 × 1.25，因此必然是最高的一条
+        assert values[ancient] >= max(others)
+
+    def test_no_ancient_when_roll_misses(self) -> None:
+        candidate = generate_candidate(1, self._Forced(0.999))
+        assert candidate["ancientAttr"] is None
+
+
+class TestBasedOnCurrentReroll:
+    """「基于当前」的重造 / 附魔：总价值保底不降，且太古数量不减少。"""
+
+    def test_refine_total_score_never_drops(self) -> None:
+        item = FakeItem(
+            category="weapon",
+            base_id="w_sword_shield_0",
+            rarity="rare",
+            base_attrs=[{"attr": "attack", "value": 20.0}],
+            sub_attrs=[],
+        )
+        rng = random.Random(1)
+        floor = attrs_score(item.base_attrs, item.sub_attrs)
+        for _ in range(30):
+            result = regenerate_attrs(item, rng, "basedOnCurrent")
+            score = attrs_score(result["baseAttrs"], result["subAttrs"])
+            assert score >= floor
+            item.base_attrs, item.sub_attrs = result["baseAttrs"], result["subAttrs"]
+            floor = score
+
+    def test_refine_preserves_ancient_sub_attrs(self) -> None:
+        item = FakeItem(
+            category="weapon",
+            base_id="w_sword_shield_0",
+            rarity="legendary",
+            base_attrs=[{"attr": "attack", "value": 20.0}],
+            sub_attrs=[
+                {"attr": "crit", "value": 600.0, "type": "flat", "quality": "ancient"},
+            ],
+        )
+        rng = random.Random(2)
+        for _ in range(10):
+            result = regenerate_attrs(item, rng, "basedOnCurrent")
+            assert ancient_count(result["subAttrs"]) >= 1
+            item.base_attrs, item.sub_attrs = result["baseAttrs"], result["subAttrs"]
+
+    def test_enchant_total_value_never_drops_and_keeps_ancient(self) -> None:
+        item = FakeItem(
+            category="weapon",
+            base_id="w_sword_shield_0",
+            rarity="epic",
+            terms=[
+                {
+                    "id": "strBoost",
+                    "name": "力量增幅",
+                    "type": "buff",
+                    "stat": "attack",
+                    "trigger": "passive",
+                    "value": 20.0,
+                    "quality": "ancient",
+                    "desc": "",
+                }
+            ],
+        )
+        rng = random.Random(3)
+        floor = terms_score(item.terms)
+        for _ in range(20):
+            result = roll_terms_for_enchant(item, rng, "basedOnCurrent")
+            assert ancient_count(result) >= 1
+            score = terms_score(result)
+            assert score >= floor
+            item.terms = result
+            floor = score
+
+
+class TestBasedOnCurrentCost:
+    """「基于当前」比彻底随机更贵。"""
+
+    def test_premium_mode_costs_more(self) -> None:
+        for rarity in CONFIG.rarity_order:
+            assert refine_cost(rarity, 0, "basedOnCurrent") > refine_cost(rarity, 0, "random")
+            assert enchant_cost(rarity, "basedOnCurrent") > enchant_cost(rarity, "random")

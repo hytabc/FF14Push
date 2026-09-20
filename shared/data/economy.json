@@ -10,13 +10,19 @@
   },
   "refine": {
     "$comment": "重造：重新随机基础属性浮动值与副属性，保留品阶/类型/等级需求/词条",
+    "$commentMode": "mode=random：彻底随机（现价，结果可能变差）；mode=basedOnCurrent：在当前基础上随机（价格 × basedOnCurrentCostMultiplier），总属性评分保底不降、太古副属性数量不减少。",
     "baseAttrFloat": 0.20,
     "subAttrFloat": 0.20,
-    "costGrowthPerRefine": 0.25
+    "costGrowthPerRefine": 0.25,
+    "basedOnCurrentCostMultiplier": 3,
+    "basedOnCurrentMaxAttempts": 50
   },
   "enchant": {
     "$comment": "附魔：重新随机全部 Buff/Debuff，含品质判定",
-    "autoUntilRareExtraCostMultiplier": 10
+    "$commentMode": "mode=random：彻底随机（现价）；mode=basedOnCurrent：在当前基础上随机（价格 × basedOnCurrentCostMultiplier），词条总价值保底不降、太古词条数量不减少。",
+    "autoUntilRareExtraCostMultiplier": 10,
+    "basedOnCurrentCostMultiplier": 3,
+    "basedOnCurrentMaxAttempts": 50
   },
   "termQuality": {
     "common": 0.989,

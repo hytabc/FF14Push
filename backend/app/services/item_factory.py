@@ -11,6 +11,7 @@ from typing import Any
 from app.services.game_config import CONFIG, BaseItem
 from app.services.loot import RARITY_ORDER, rarity_tier
 from app.services.slots_util import possible_slots
+from app.services.valuation import ancient_count, attrs_score, terms_score
 
 SUB_ATTR_IDS = {a["id"] for a in CONFIG.attributes}
 
@@ -193,24 +194,70 @@ def generate_by_rarity(
     return item
 
 
-def regenerate_attrs(item: Any, rng: random.Random | None = None) -> dict[str, Any]:
-    """重造：重新随机基础属性浮动与副属性，保留品阶/类型/等级需求/词条。"""
+def regenerate_attrs(
+    item: Any, rng: random.Random | None = None, mode: str = "random"
+) -> dict[str, Any]:
+    """重造：重新随机基础属性浮动与副属性，保留品阶/类型/等级需求/词条。
+
+    mode="basedOnCurrent"：从多个随机结果中取「总评分不低于当前」且最优者，
+    并保证太古副属性数量不减少；若无满足者则返回当前值（保底不降）。
+    """
     rng = rng or random.Random()
     base = CONFIG.base_item_by_id[item.base_id]
     mult = float(CONFIG.rarities[item.rarity]["multiplier"])
 
-    base_attrs = [
-        {
-            "attr": entry["attr"],
-            "value": round(float(entry["base"]) * mult * _float_factor(rng, CONFIG.base_attr_float), 2),
-        }
-        for entry in base.base_attrs
-    ]
-    return {"baseAttrs": base_attrs, "subAttrs": pick_sub_attrs(base, item.rarity, rng)}
+    def _roll() -> dict[str, Any]:
+        base_attrs = [
+            {
+                "attr": entry["attr"],
+                "value": round(float(entry["base"]) * mult * _float_factor(rng, CONFIG.base_attr_float), 2),
+            }
+            for entry in base.base_attrs
+        ]
+        return {"baseAttrs": base_attrs, "subAttrs": pick_sub_attrs(base, item.rarity, rng)}
+
+    if mode != "basedOnCurrent":
+        return _roll()
+
+    current = {"baseAttrs": item.base_attrs or [], "subAttrs": item.sub_attrs or []}
+    floor_score = attrs_score(current["baseAttrs"], current["subAttrs"])
+    floor_ancient = ancient_count(current["subAttrs"])
+    best, best_score = current, floor_score
+    attempts = int(CONFIG.economy["refine"].get("basedOnCurrentMaxAttempts", 50))
+    for _ in range(max(1, attempts)):
+        candidate = _roll()
+        if ancient_count(candidate["subAttrs"]) < floor_ancient:
+            continue
+        score = attrs_score(candidate["baseAttrs"], candidate["subAttrs"])
+        if score >= floor_score and score > best_score:
+            best, best_score = candidate, score
+    return best
 
 
-def roll_terms_for_enchant(item: Any, rng: random.Random | None = None) -> list[dict[str, Any]]:
-    """附魔：重新随机全部 Buff/Debuff。"""
+def roll_terms_for_enchant(
+    item: Any, rng: random.Random | None = None, mode: str = "random"
+) -> list[dict[str, Any]]:
+    """附魔：重新随机全部 Buff/Debuff。
+
+    mode="basedOnCurrent"：取「词条总价值不低于当前」且太古词条数量不减少的最优结果，
+    若无满足者则返回当前词条（保底不降）。
+    """
     rng = rng or random.Random()
     base = CONFIG.base_item_by_id[item.base_id]
-    return roll_terms(base, item.rarity, rng)
+
+    if mode != "basedOnCurrent":
+        return roll_terms(base, item.rarity, rng)
+
+    current = item.terms or []
+    floor_score = terms_score(current)
+    floor_ancient = ancient_count(current)
+    best, best_score = current, floor_score
+    attempts = int(CONFIG.economy["enchant"].get("basedOnCurrentMaxAttempts", 50))
+    for _ in range(max(1, attempts)):
+        candidate = roll_terms(base, item.rarity, rng)
+        if ancient_count(candidate) < floor_ancient:
+            continue
+        score = terms_score(candidate)
+        if score >= floor_score and score > best_score:
+            best, best_score = candidate, score
+    return best

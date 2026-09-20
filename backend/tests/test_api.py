@@ -14,6 +14,7 @@ from app.models import BattleSession, Hero, Item, User
 from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
+from app.services.valuation import attrs_score
 
 API = "/api/v1"
 
@@ -151,6 +152,35 @@ class TestAuth:
     async def test_requires_token(self, client) -> None:
         resp = await client.get(f"{API}/game/state")
         assert resp.status_code == 401
+
+    async def test_change_password_flow(self, auth_client) -> None:
+        wrong = await auth_client.post(
+            f"{API}/auth/change-password",
+            json={"currentPassword": "nope", "newPassword": "newsecret1", "confirmPassword": "newsecret1"},
+        )
+        assert wrong.status_code == 400
+
+        mismatch = await auth_client.post(
+            f"{API}/auth/change-password",
+            json={"currentPassword": "secret123", "newPassword": "newsecret1", "confirmPassword": "newsecret2"},
+        )
+        assert mismatch.status_code == 400
+
+        ok = await auth_client.post(
+            f"{API}/auth/change-password",
+            json={"currentPassword": "secret123", "newPassword": "newsecret1", "confirmPassword": "newsecret1"},
+        )
+        assert ok.status_code == 200, ok.text
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+            old = await fresh.post(
+                f"{API}/auth/login", json={"username": "tester", "password": "secret123"}
+            )
+            assert old.status_code == 401
+            new = await fresh.post(
+                f"{API}/auth/login", json={"username": "tester", "password": "newsecret1"}
+            )
+            assert new.status_code == 200, new.text
 
 
 class TestInitialState:
@@ -539,6 +569,48 @@ class TestEconomy:
         assert body["after"]["enchantCount"] == 1
         assert 0 <= len(body["after"]["terms"]) <= 4
 
+    async def test_item_exposes_both_mode_prices(self, auth_client, session_factory) -> None:
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        assert item["refineCostBasedOnCurrent"] > item["refineCost"]
+        assert item["enchantCostBasedOnCurrent"] > item["enchantCost"]
+
+    async def test_refine_based_on_current_never_worse_and_costs_more(
+        self, auth_client, session_factory
+    ) -> None:
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        await _set_gold(auth_client, session_factory, 50_000_000)
+
+        base = CONFIG_REFINE_COST[item["rarity"]]
+        mult = float(CONFIG.economy["refine"]["basedOnCurrentCostMultiplier"])
+        score = attrs_score(item["baseAttrs"], item["subAttrs"])
+
+        for index in range(5):
+            resp = await auth_client.post(
+                f"{API}/economy/refine", json={"itemId": item["id"], "mode": "basedOnCurrent"}
+            )
+            assert resp.status_code == 200, resp.text
+            body = resp.json()
+            if index == 0:
+                assert body["cost"] == int(base * mult)
+            new_score = attrs_score(body["after"]["baseAttrs"], body["after"]["subAttrs"])
+            assert new_score >= score
+            score = new_score
+
+    async def test_enchant_based_on_current_costs_more(self, auth_client, session_factory) -> None:
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        await _set_gold(auth_client, session_factory, 50_000_000)
+
+        base = CONFIG_ENCHANT_COST[item["rarity"]]
+        mult = float(CONFIG.economy["enchant"]["basedOnCurrentCostMultiplier"])
+        resp = await auth_client.post(
+            f"{API}/economy/enchant", json={"itemId": item["id"], "mode": "basedOnCurrent"}
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["cost"] == int(base * mult)
+
 
 class TestTavern:
     async def test_refresh_and_recruit(self, auth_client) -> None:
@@ -603,6 +675,53 @@ class TestTavern:
     async def test_recruit_requires_gold(self, auth_client) -> None:
         resp = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})
         assert resp.status_code == 400
+
+    async def test_ten_pull_costs_and_recruit_one(self, auth_client, session_factory) -> None:
+        await _set_gold(auth_client, session_factory, 1_000_000)
+        cost = int(CONFIG.talents["tenPullCost"])
+
+        resp = await auth_client.post(f"{API}/tavern/ten-pull")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["cost"] == cost
+        assert len(body["candidates"]) == 10
+        assert body["gold"] == 1_000_000 - cost
+
+        # 结果落库，可在状态接口恢复
+        info = (await auth_client.get(f"{API}/tavern")).json()
+        assert len(info["multiCandidates"]) == 10
+        assert info["tenPullCost"] == cost
+
+        pick = info["multiCandidates"][4]
+        bought = await auth_client.post(
+            f"{API}/tavern/ten-pull/recruit", json={"index": 4, "confirm": True}
+        )
+        assert bought.status_code == 200, bought.text
+        assert bought.json()["cost"] == pick["recruitCost"]
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        assert me["gold"] == 1_000_000 - cost - pick["recruitCost"]
+
+        after = (await auth_client.get(f"{API}/tavern")).json()
+        assert after["multiCandidates"] == []
+
+    async def test_ten_pull_requires_gold(self, auth_client) -> None:
+        resp = await auth_client.post(f"{API}/tavern/ten-pull")
+        assert resp.status_code == 400
+
+    async def test_ten_pull_recruit_index_and_clear(self, auth_client, session_factory) -> None:
+        await _set_gold(auth_client, session_factory, 100_000)
+        await auth_client.post(f"{API}/tavern/ten-pull")
+
+        bad = await auth_client.post(
+            f"{API}/tavern/ten-pull/recruit", json={"index": 99, "confirm": True}
+        )
+        assert bad.status_code == 400
+
+        cleared = await auth_client.post(f"{API}/tavern/ten-pull/clear")
+        assert cleared.status_code == 200
+        info = (await auth_client.get(f"{API}/tavern")).json()
+        assert info["multiCandidates"] == []
 
     async def test_initial_hero_cannot_be_dismissed(self, auth_client) -> None:
         resp = await auth_client.post(f"{API}/tavern/dismiss")
@@ -895,6 +1014,20 @@ class TestAdmin:
         me = (await client.get(f"{API}/auth/me")).json()
         resp = await client.post(
             f"{API}/admin/reset-password", json={"userId": me["id"], "newPassword": "irrelevant123"}
+        )
+        assert resp.status_code == 400
+        assert "环境变量" in resp.json()["detail"]
+
+    async def test_admin_cannot_change_own_password(self, client, session_factory) -> None:
+        await self._ensure_admin(session_factory)
+        await self._login_as_admin(client)
+        resp = await client.post(
+            f"{API}/auth/change-password",
+            json={
+                "currentPassword": self.ADMIN_PASS,
+                "newPassword": "newadmin123",
+                "confirmPassword": "newadmin123",
+            },
         )
         assert resp.status_code == 400
         assert "环境变量" in resp.json()["detail"]

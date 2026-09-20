@@ -36,6 +36,8 @@ class Hero(Base, TimestampMixin):
     strength: Mapped[int] = mapped_column(sa.Integer, default=0)
     agility: Mapped[int] = mapped_column(sa.Integer, default=0)
     intellect: Mapped[int] = mapped_column(sa.Integer, default=0)
+    # 太古属性：值为 "str"|"dex"|"int"，表示该条三维为太古（最高值 ×1.25）；None 表示无
+    ancient_attr: Mapped[str | None] = mapped_column(sa.String(8), nullable=True)
     current_region_id: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=1)
     region_kill_count: Mapped[int] = mapped_column(sa.Integer, default=0)
     is_initial: Mapped[bool] = mapped_column(sa.Boolean, default=False)

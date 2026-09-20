@@ -6,6 +6,7 @@ import type {
   Item,
   RankingEntry,
   RegionListEntry,
+  RerollMode,
   SlotId,
   TutorialState,
 } from '@/game/types'
@@ -38,6 +39,14 @@ export const api = {
         isAdmin: boolean
       }>('/auth/me')
     ).data
+  },
+
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword: string) {
+    return (await http.post<{ ok: boolean; message: string }>('/auth/change-password', {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    })).data
   },
 
   async state() {
@@ -107,11 +116,11 @@ export const api = {
     ).data
   },
 
-  async refine(itemId: number) {
-    return (await http.post<{ gold: number; cost: number; before: Item; after: Item }>('/economy/refine', { itemId })).data
+  async refine(itemId: number, mode: RerollMode = 'random') {
+    return (await http.post<{ gold: number; cost: number; before: Item; after: Item }>('/economy/refine', { itemId, mode })).data
   },
 
-  async enchant(itemId: number, autoUntilRare = false, maxAttempts = 100) {
+  async enchant(itemId: number, autoUntilRare = false, maxAttempts = 100, mode: RerollMode = 'random') {
     return (
       await http.post<{
         gold: number
@@ -120,7 +129,7 @@ export const api = {
         hit?: boolean
         before: Item
         after: Item
-      }>('/economy/enchant', { itemId, autoUntilRare, maxAttempts })
+      }>('/economy/enchant', { itemId, autoUntilRare, maxAttempts, mode })
     ).data
   },
 
@@ -149,6 +158,8 @@ export const api = {
         candidate: import('@/game/types').TavernCandidate
         recruitCost: number
         refreshCost: number
+        tenPullCost: number
+        multiCandidates: import('@/game/types').TavernCandidate[]
         freeRefreshIntervalSec: number
         freeRefreshAvailable: boolean
         nextFreeRefreshAt: string | null
@@ -167,6 +178,25 @@ export const api = {
 
   async tavernDismiss() {
     return (await http.post('/tavern/dismiss', {})).data
+  },
+
+  async tavernTenPull() {
+    return (
+      await http.post<{
+        gold: number
+        cost: number
+        tenPullCost: number
+        candidates: import('@/game/types').TavernCandidate[]
+      }>('/tavern/ten-pull', {})
+    ).data
+  },
+
+  async tavernTenPullRecruit(index: number, confirm = true) {
+    return (await http.post('/tavern/ten-pull/recruit', { index, confirm })).data
+  },
+
+  async tavernTenPullClear() {
+    return (await http.post<{ ok: boolean; message: string }>('/tavern/ten-pull/clear', {})).data
   },
 
   async codex(category: 'equipment' | 'monster' | 'term') {

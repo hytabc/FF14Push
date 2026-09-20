@@ -16,7 +16,7 @@ from app.models import (
     TutorialProgress,
     User,
 )
-from app.schemas.game import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.game import ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
 from app.services.admin import admin_username, is_admin
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
@@ -115,6 +115,24 @@ async def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
     return TokenResponse(accessToken=create_access_token(user.id))
+
+
+@router.post("/change-password")
+async def change_password(payload: ChangePasswordRequest, db: DbSession, user: CurrentUser) -> dict:
+    """玩家自助修改密码：需验证当前密码；管理员密码由环境变量托管，不可通过此接口修改。"""
+    if is_admin(user):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="管理员密码由环境变量管理，不能通过此接口修改",
+        )
+    if not verify_password(payload.currentPassword, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="当前密码错误")
+    if payload.newPassword != payload.confirmPassword:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="两次输入的新密码不一致")
+
+    user.password_hash = hash_password(payload.newPassword)
+    await db.commit()
+    return {"ok": True, "message": "密码已修改"}
 
 
 @router.get("/me")

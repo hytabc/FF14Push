@@ -4,7 +4,7 @@ import { computed, ref, shallowRef } from 'vue'
 import { api, type KillPayload } from '@/api'
 import { toApiError } from '@/api/client'
 import { BattleSimulator } from '@/game/core/battle'
-import type { Category, GameState, Item, RaidBossEntry, RaidReportResponse, SlotId } from '@/game/types'
+import type { Category, GameState, Item, RaidBossEntry, RaidReportResponse, RerollMode, SlotId } from '@/game/types'
 import { rarityName } from '@/utils/format'
 
 import { useAuthStore } from './auth'
@@ -449,9 +449,9 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  async function refine(itemId: number) {
+  async function refine(itemId: number, mode: RerollMode = 'random') {
     try {
-      const res = await api.refine(itemId)
+      const res = await api.refine(itemId, mode)
       toast.push(`重造完成，消耗 ${res.cost} 金币`, 'success')
       await loadState()
       return res
@@ -461,9 +461,9 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  async function enchant(itemId: number, autoUntilRare = false) {
+  async function enchant(itemId: number, autoUntilRare = false, mode: RerollMode = 'random') {
     try {
-      const res = await api.enchant(itemId, autoUntilRare)
+      const res = await api.enchant(itemId, autoUntilRare, 100, mode)
       toast.push(
         autoUntilRare
           ? `自动附魔 ${res.attempts} 次，消耗 ${res.cost} 金币${res.hit ? '，出现稀有/太古词条！' : ''}`

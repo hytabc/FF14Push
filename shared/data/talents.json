@@ -5,6 +5,10 @@
   "baseRecruitCost": 1000,
   "refreshCost": 200,
   "freeRefreshIntervalSec": 600,
+  "tenPullCost": 2000,
+  "$commentAncient": "英雄「太古」属性：极低概率使随机 1 条三维变为「三条中最高值 × ancientMultiplier」，每名英雄最多 1 条太古。",
+  "ancientChance": 0.001,
+  "ancientMultiplier": 1.25,
   "talents": {
     "common": { "id": "common", "name": "普通", "pointMin": 80, "pointMax": 100, "growthCoef": 1.0, "recruitCoef": 1 },
     "uncommon": { "id": "uncommon", "name": "优秀", "pointMin": 100, "pointMax": 120, "growthCoef": 1.1, "recruitCoef": 2 },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
@@ -22,6 +22,19 @@ const canRedeem = ref(false)
 const rewardGold = ref(0)
 const redeemCode = ref('')
 const redeeming = ref(false)
+
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const changingPwd = ref(false)
+
+const canChangePassword = computed(
+  () =>
+    Boolean(currentPassword.value) &&
+    newPassword.value.length >= 6 &&
+    newPassword.value === confirmPassword.value &&
+    !changingPwd.value,
+)
 
 const autoSellOptions = data.economy.sell.autoSellRarities
 
@@ -58,6 +71,22 @@ async function submitRedeem() {
     toast.push(toApiError(e).message, 'error')
   } finally {
     redeeming.value = false
+  }
+}
+
+async function submitChangePassword() {
+  if (!canChangePassword.value) return
+  changingPwd.value = true
+  try {
+    const res = await api.changePassword(currentPassword.value, newPassword.value, confirmPassword.value)
+    toast.push(res.message, 'success')
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    changingPwd.value = false
   }
 }
 
@@ -150,6 +179,52 @@ async function replayFromSettings() {
           重新播放新手指引
         </button>
       </div>
+    </section>
+
+    <section class="card p-4">
+      <h3 class="text-sm font-semibold text-white">修改密码</h3>
+      <p class="mt-1 text-[11px] text-ink-500">
+        需输入当前密码；管理员账号的密码由环境变量管理，不能在此修改。
+      </p>
+
+      <div class="mt-3 grid gap-2 sm:max-w-md">
+        <input
+          v-model="currentPassword"
+          type="password"
+          autocomplete="current-password"
+          class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs"
+          placeholder="当前密码"
+        />
+        <input
+          v-model="newPassword"
+          type="password"
+          autocomplete="new-password"
+          class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs"
+          placeholder="新密码（至少 6 位）"
+        />
+        <input
+          v-model="confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs"
+          placeholder="确认新密码"
+          @keyup.enter="submitChangePassword"
+        />
+      </div>
+      <p v-if="newPassword && newPassword.length < 6" class="mt-2 text-[11px] text-rose-300">
+        新密码至少 6 位
+      </p>
+      <p v-else-if="confirmPassword && newPassword !== confirmPassword" class="mt-2 text-[11px] text-rose-300">
+        两次输入的新密码不一致
+      </p>
+
+      <button
+        class="mt-3 rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+        :disabled="!canChangePassword"
+        @click="submitChangePassword"
+      >
+        {{ changingPwd ? '提交中…' : '修改密码' }}
+      </button>
     </section>
 
     <section v-if="redeemEnabled" class="card p-4">

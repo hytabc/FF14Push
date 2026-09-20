@@ -85,6 +85,12 @@ def generate_candidate(current_hero_level: int, rng: random.Random | None = None
             diff += 1
         i += 1
 
+    # 太古：极低概率使随机 1 条三维变为「三条中最高值 × ancientMultiplier」，每名英雄最多 1 条
+    ancient_attr = None
+    if rng.random() < float(CONFIG.talents["ancientChance"]):
+        ancient_attr = rng.choice(["str", "dex", "int"])
+        attrs[ancient_attr] = max(1, int(round(max(attrs.values()) * float(CONFIG.talents["ancientMultiplier"]))))
+
     attr_main = bias_id if bias_id != "balanced" else max(attrs, key=lambda k: attrs[k])
     return {
         "name": rng.choice(NAME_POOL),
@@ -94,6 +100,7 @@ def generate_candidate(current_hero_level: int, rng: random.Random | None = None
         "strength": attrs["str"],
         "agility": attrs["dex"],
         "intellect": attrs["int"],
+        "ancientAttr": ancient_attr,
         "totalPoints": total_points,
         "recruitCost": recruit_cost(talent, current_hero_level),
         "recommendedJobs": recommended_jobs(attr_main),
@@ -113,6 +120,7 @@ def initial_hero(rng: random.Random | None = None) -> dict[str, Any]:
         "strength": each,
         "agility": each,
         "intellect": total - each * 2,
+        "ancientAttr": None,
         "totalPoints": total,
         "isInitial": True,
     }
