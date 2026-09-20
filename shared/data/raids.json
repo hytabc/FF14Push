@@ -1,0 +1,234 @@
+{
+  "$comment": "副本：无小怪、仅 BOSS；属性以玩家等级锚定后放大，BOSS 自带抗性。difficulty=normal 为普通副本，=hard 为高难副本（特殊副本）。来源：需求「高难副本」",
+  "$commentGate": "门槛字段：minEquipRarity 为全部装备品阶下限；topRarity + topRarityRatio 要求「至少 ⌈栏位数×比例⌉ 件达到该品阶」；minAncientTermsPerItem 要求每件装备至少有 N 个太古词条。",
+  "raids": [
+    {
+      "id": "raid_1",
+      "order": 1,
+      "difficulty": "normal",
+      "name": "极·究极神兵",
+      "requiredLevel": 20,
+      "requiredPower": 7800,
+      "requiresAllSlots": true,
+      "minEquipRarity": "rare",
+      "topRarity": "epic",
+      "topRarityRatio": 0.5,
+      "minAncientTermsPerItem": 0,
+      "enrage": null,
+      "bosses": [
+        {
+          "id": "raid_1_a",
+          "name": "极·究极神兵",
+          "type": "primal",
+          "hpMultiplier": 30,
+          "attackMultiplier": 2.5,
+          "defenseMultiplier": 4.0,
+          "attackInterval": 2.5,
+          "resistancePct": 25
+        }
+      ],
+      "reward": {
+        "firstGold": 50000,
+        "firstExp": 80000,
+        "chestId": "advWeaponBox",
+        "boxCount": 2,
+        "repeatGold": 2000
+      }
+    },
+    {
+      "id": "raid_2",
+      "order": 2,
+      "difficulty": "normal",
+      "name": "极·尼德霍格",
+      "requiredLevel": 40,
+      "requiredPower": 10700,
+      "requiresAllSlots": true,
+      "minEquipRarity": "rare",
+      "topRarity": "epic",
+      "topRarityRatio": 0.5,
+      "minAncientTermsPerItem": 0,
+      "enrage": null,
+      "bosses": [
+        {
+          "id": "raid_2_a",
+          "name": "极·尼德霍格",
+          "type": "dragon",
+          "hpMultiplier": 32,
+          "attackMultiplier": 2.7,
+          "defenseMultiplier": 4.2,
+          "attackInterval": 2.5,
+          "resistancePct": 28
+        }
+      ],
+      "reward": {
+        "firstGold": 300000,
+        "firstExp": 400000,
+        "chestId": "advWeaponBox",
+        "boxCount": 3,
+        "repeatGold": 8000
+      }
+    },
+    {
+      "id": "raid_3",
+      "order": 3,
+      "difficulty": "normal",
+      "name": "极·双神战",
+      "requiredLevel": 60,
+      "requiredPower": 14000,
+      "requiresAllSlots": true,
+      "minEquipRarity": "rare",
+      "topRarity": "epic",
+      "topRarityRatio": 0.5,
+      "minAncientTermsPerItem": 0,
+      "enrage": { "attackMultiplier": 3.5, "damageReductionPct": 70, "attackSpeedBonusPct": 30 },
+      "bosses": [
+        {
+          "id": "raid_3_a",
+          "name": "极·利维亚桑",
+          "type": "primal",
+          "hpMultiplier": 24,
+          "attackMultiplier": 2.4,
+          "defenseMultiplier": 3.8,
+          "attackInterval": 2.5,
+          "resistancePct": 22
+        },
+        {
+          "id": "raid_3_b",
+          "name": "极·拉姆",
+          "type": "primal",
+          "hpMultiplier": 24,
+          "attackMultiplier": 2.4,
+          "defenseMultiplier": 3.8,
+          "attackInterval": 2.5,
+          "resistancePct": 22
+        }
+      ],
+      "reward": {
+        "firstGold": 1200000,
+        "firstExp": 1500000,
+        "chestId": "advWeaponBox",
+        "boxCount": 4,
+        "repeatGold": 25000
+      }
+    },
+    {
+      "id": "raid_4",
+      "order": 4,
+      "difficulty": "normal",
+      "name": "极·暗黑双王",
+      "requiredLevel": 80,
+      "requiredPower": 17400,
+      "requiresAllSlots": true,
+      "minEquipRarity": "rare",
+      "topRarity": "epic",
+      "topRarityRatio": 0.5,
+      "minAncientTermsPerItem": 0,
+      "enrage": { "attackMultiplier": 3.5, "damageReductionPct": 70, "attackSpeedBonusPct": 30 },
+      "bosses": [
+        {
+          "id": "raid_4_a",
+          "name": "极·哈迪斯",
+          "type": "aberration",
+          "hpMultiplier": 28,
+          "attackMultiplier": 2.6,
+          "defenseMultiplier": 4.4,
+          "attackInterval": 2.5,
+          "resistancePct": 30
+        },
+        {
+          "id": "raid_4_b",
+          "name": "极·佐迪亚克",
+          "type": "primal",
+          "hpMultiplier": 28,
+          "attackMultiplier": 2.6,
+          "defenseMultiplier": 4.4,
+          "attackInterval": 2.5,
+          "resistancePct": 30
+        }
+      ],
+      "reward": {
+        "firstGold": 4000000,
+        "firstExp": 5000000,
+        "chestId": "advWeaponBox",
+        "boxCount": 5,
+        "repeatGold": 60000
+      }
+    },
+    {
+      "id": "raid_h1",
+      "order": 5,
+      "difficulty": "hard",
+      "name": "绝·究极神兵",
+      "requiredLevel": 80,
+      "requiredPower": 40000,
+      "requiresAllSlots": true,
+      "minEquipRarity": "legendary",
+      "topRarity": "mythic",
+      "topRarityRatio": 0.5,
+      "minAncientTermsPerItem": 1,
+      "enrage": null,
+      "bosses": [
+        {
+          "id": "raid_h1_a",
+          "name": "绝·究极神兵",
+          "type": "primal",
+          "hpMultiplier": 103,
+          "attackMultiplier": 3.0,
+          "defenseMultiplier": 4.5,
+          "attackInterval": 2.5,
+          "resistancePct": 30
+        }
+      ],
+      "reward": {
+        "firstGold": 3000000,
+        "firstExp": 5000000,
+        "chestId": "advWeaponBox",
+        "boxCount": 5,
+        "repeatGold": 150000
+      }
+    },
+    {
+      "id": "raid_h2",
+      "order": 6,
+      "difficulty": "hard",
+      "name": "绝·巴哈姆特零式",
+      "requiredLevel": 100,
+      "requiredPower": 45000,
+      "requiresAllSlots": true,
+      "minEquipRarity": "legendary",
+      "topRarity": "mythic",
+      "topRarityRatio": 0.5,
+      "minAncientTermsPerItem": 1,
+      "enrage": { "attackMultiplier": 3.5, "damageReductionPct": 70, "attackSpeedBonusPct": 30 },
+      "bosses": [
+        {
+          "id": "raid_h2_a",
+          "name": "绝·巴哈姆特",
+          "type": "dragon",
+          "hpMultiplier": 98,
+          "attackMultiplier": 3.0,
+          "defenseMultiplier": 4.5,
+          "attackInterval": 2.5,
+          "resistancePct": 30
+        },
+        {
+          "id": "raid_h2_b",
+          "name": "绝·那伽",
+          "type": "dragon",
+          "hpMultiplier": 98,
+          "attackMultiplier": 3.0,
+          "defenseMultiplier": 4.5,
+          "attackInterval": 2.5,
+          "resistancePct": 30
+        }
+      ],
+      "reward": {
+        "firstGold": 8000000,
+        "firstExp": 12000000,
+        "chestId": "advWeaponBox",
+        "boxCount": 8,
+        "repeatGold": 400000
+      }
+    }
+  ]
+}

@@ -31,7 +31,10 @@ coverage/
 # 运行时数据
 *.log
 .dev-logs/
-data/
+# 只忽略仓库根的 data/（docker compose 的 postgres 绑定目录）。
+# 不能写成 data/：那会连共享配置目录 shared/data/ 一起忽略，
+# 导致新增的 shared/data/*.json 静默不入库、镜像构建缺文件。
+/data/
 *.db
 *.sqlite
 *.sqlite3
