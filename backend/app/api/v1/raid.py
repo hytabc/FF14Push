@@ -121,7 +121,7 @@ async def start_session(
         "sessionId": session.id,
         "raidId": raid["id"],
         "name": raid["name"],
-        "bosses": boss_stats_for_raid(raid, hero.level),
+        "bosses": boss_stats_for_raid(raid, hero.level, stats),
         "enrage": raid["enrage"],
         "reward": raid["reward"],
     }
@@ -168,7 +168,7 @@ async def report_session(
         }
 
     stats = compute_stats(hero, items)
-    bosses = boss_stats_for_raid(raid, hero.level)
+    bosses = boss_stats_for_raid(raid, hero.level, stats)
     required_ms = min_clear_seconds(stats, bosses, settings.report_tolerance) * 1000.0
     if elapsed_ms < required_ms:
         db.add(

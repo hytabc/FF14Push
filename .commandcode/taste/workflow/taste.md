@@ -10,3 +10,4 @@
 - Prefers test/verification runs to be torn down afterwards with no leftovers: temporary stacks removed, ports released, no stray containers, and no extra files (e.g. data dirs) created inside the repo. Confidence: 0.7
 - Prefers to handle git commits themselves; the agent should leave finished changes uncommitted and report exactly what is staged/unstaged rather than committing on their behalf. Confidence: 0.6
 - Wants the agent to disclose side effects of its work, e.g. starting a long-running local daemon or leaving background processes running. Confidence: 0.6
+- For balance/numbers work, expects the root cause to be diagnosed from measured data first (simulate power/DPS curves and clear times across levels and gear tiers) and the resulting tuning knobs exposed as a few centralized config parameters rather than hardcoded magic numbers. Confidence: 0.55

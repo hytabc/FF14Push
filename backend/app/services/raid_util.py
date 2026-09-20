@@ -15,6 +15,8 @@ SLOT_COUNT = len(CONFIG.slots)
 BOSS_TYPE_BY_ID = {t["id"]: t for t in CONFIG.bosses["types"]}
 RARITY_RANK = {r: i for i, r in enumerate(CONFIG.rarity_order)}
 RARITY_NAME = {r: CONFIG.rarities[r]["name"] for r in CONFIG.rarity_order}
+REF = CONFIG.monsters["reference"]
+BALANCE = CONFIG.raids.get("balance", {})
 
 
 def raid_by_id(raid_id: str) -> dict[str, Any] | None:
@@ -23,6 +25,39 @@ def raid_by_id(raid_id: str) -> dict[str, Any] | None:
 
 def all_raids() -> list[dict[str, Any]]:
     return sorted(CONFIG.raids["raids"], key=lambda r: int(r["order"]))
+
+
+def anchor_dps(hero_level: float) -> float:
+    """等级锚定的参考输出：怪物基准血量 ÷ targetKillSeconds。"""
+    return monster_base_stats(hero_level)["hp"] / float(REF["targetKillSeconds"])
+
+
+def ref_dps(hero_level: int, difficulty: str) -> float:
+    """该难度「刚好够门槛的装备」在此等级的参考输出。"""
+    multipliers = BALANCE.get("refDpsMultiplier", {})
+    multiplier = float(multipliers.get(difficulty, 1.0))
+    return max(1.0, anchor_dps(hero_level) * multiplier)
+
+
+def power_scale(stats: HeroStats, hero_level: int, difficulty: str) -> float:
+    """BOSS 血量缩放系数 = (玩家输出 ÷ 本等级参考输出) ^ powerScaleExponent（下限 1）。
+
+    只放大、不缩小：刚好够门槛的装备比值≈1（维持基准难度），
+    装备越超模 BOSS 越强，避免「等级锚定 + 装备碾压」的漏洞。
+    """
+    exponent = float(BALANCE.get("powerScaleExponent", 0.0))
+    if exponent <= 0 or stats is None:
+        return 1.0
+    ratio = theoretical_dps(stats, 0.0, None) / ref_dps(hero_level, difficulty)
+    return max(1.0, ratio) ** exponent
+
+
+def attack_scale(stats: HeroStats, hero_level: int, difficulty: str) -> float:
+    exponent = float(BALANCE.get("attackScaleExponent", 0.0))
+    if exponent <= 0 or stats is None:
+        return 1.0
+    ratio = theoretical_dps(stats, 0.0, None) / ref_dps(hero_level, difficulty)
+    return max(1.0, ratio) ** exponent
 
 
 def top_rarity_required(raid: dict[str, Any]) -> int:
@@ -34,9 +69,17 @@ def ancient_term_count(item: Any, minimum: int = 1) -> bool:
     return sum(1 for t in (item.terms or []) if t.get("quality") == "ancient") >= minimum
 
 
-def boss_stats_for_raid(raid: dict[str, Any], hero_level: int) -> list[dict[str, Any]]:
-    """按英雄等级锚定 BOSS 属性。怪物属性与玩家等级一致，再乘副本倍率大幅放大。"""
+def boss_stats_for_raid(
+    raid: dict[str, Any], hero_level: int, stats: HeroStats | None = None
+) -> list[dict[str, Any]]:
+    """按英雄等级锚定 BOSS 属性，再乘副本倍率与「战力缩放」。
+
+    怪物属性与玩家等级一致；装备超出本等级参考水平时 BOSS 同步变强（见 power_scale）。
+    """
     base = monster_base_stats(hero_level)
+    difficulty = str(raid.get("difficulty", "normal"))
+    hp_scale = power_scale(stats, hero_level, difficulty)
+    atk_scale = attack_scale(stats, hero_level, difficulty)
     out: list[dict[str, Any]] = []
     for boss in raid["bosses"]:
         boss_type = BOSS_TYPE_BY_ID.get(str(boss.get("type", "")))
@@ -47,8 +90,8 @@ def boss_stats_for_raid(raid: dict[str, Any], hero_level: int) -> list[dict[str,
                 "name": boss["name"],
                 "templateId": boss["id"],
                 "kind": "boss",
-                "hp": round(base["hp"] * float(boss["hpMultiplier"]), 1),
-                "attack": round(base["attack"] * float(boss["attackMultiplier"]), 1),
+                "hp": round(base["hp"] * float(boss["hpMultiplier"]) * hp_scale, 1),
+                "attack": round(base["attack"] * float(boss["attackMultiplier"]) * atk_scale, 1),
                 "defense": round(base["defense"] * float(boss["defenseMultiplier"]), 1),
                 "attackInterval": float(boss["attackInterval"]),
                 "level": hero_level,

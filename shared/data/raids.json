@@ -1,6 +1,12 @@
 {
   "$comment": "副本：无小怪、仅 BOSS；属性以玩家等级锚定后放大，BOSS 自带抗性。difficulty=normal 为普通副本，=hard 为高难副本（特殊副本）。来源：需求「高难副本」",
   "$commentGate": "门槛字段：minEquipRarity 为全部装备品阶下限；topRarity + topRarityRatio 要求「至少 ⌈栏位数×比例⌉ 件达到该品阶」；minAncientTermsPerItem 要求每件装备至少有 N 个太古词条。",
+  "$commentBalance": "战力缩放：BOSS 血量 ×(玩家DPS ÷ 本等级参考DPS)^powerScaleExponent，攻击 ×同比例的 attackScaleExponent 次方。参考DPS = 等级锚定DPS × refDpsMultiplier[难度]，即「刚好够门槛的装备」在该等级的输出；比值下限为 1，所以只有超出门槛的装备才会让 BOSS 变强。exponent=0 即只按等级锚定，=1 则耗时恒定。",
+  "balance": {
+    "powerScaleExponent": 0.8,
+    "attackScaleExponent": 0.4,
+    "refDpsMultiplier": { "normal": 1.2, "hard": 3.9 }
+  },
   "raids": [
     {
       "id": "raid_1",
@@ -129,7 +135,7 @@
           "id": "raid_4_a",
           "name": "极·哈迪斯",
           "type": "aberration",
-          "hpMultiplier": 28,
+          "hpMultiplier": 24,
           "attackMultiplier": 2.6,
           "defenseMultiplier": 4.4,
           "attackInterval": 2.5,
@@ -139,7 +145,7 @@
           "id": "raid_4_b",
           "name": "极·佐迪亚克",
           "type": "primal",
-          "hpMultiplier": 28,
+          "hpMultiplier": 24,
           "attackMultiplier": 2.6,
           "defenseMultiplier": 4.4,
           "attackInterval": 2.5,
@@ -205,7 +211,7 @@
           "id": "raid_h2_a",
           "name": "绝·巴哈姆特",
           "type": "dragon",
-          "hpMultiplier": 98,
+          "hpMultiplier": 82,
           "attackMultiplier": 3.0,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,
@@ -215,7 +221,7 @@
           "id": "raid_h2_b",
           "name": "绝·那伽",
           "type": "dragon",
-          "hpMultiplier": 98,
+          "hpMultiplier": 82,
           "attackMultiplier": 3.0,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,

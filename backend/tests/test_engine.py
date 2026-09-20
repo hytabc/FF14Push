@@ -17,6 +17,7 @@ from app.services.game_config import CONFIG, BaseItem
 from app.services.item_factory import generate_item, roll_sub_attr_value
 from app.services.loot import PityState, chest_by_id, draw_rarity, roll_rarity
 from app.services.regions_util import level_penalty
+from app.services.raid_util import boss_stats_for_raid
 from app.services.stats import compute_stats, convert_three_attrs
 from app.services.valuation import attr_factor, hero_power, sell_price, sell_price_range
 
@@ -378,6 +379,33 @@ class TestSubAttrQuality:
             sub_attrs=[{"attr": "crit", "value": 500.0, "type": "flat", "quality": "ancient"}],
         )
         assert sell_price(ancient) > sell_price(plain)
+
+
+class TestRaidScaling:
+    """副本 BOSS 需随玩家战力缩放，避免装备超模后碾压。"""
+
+    def test_boss_grows_with_player_power(self) -> None:
+        raid = CONFIG.raid_by_id["raid_1"]
+        weak = compute_stats(FakeHero(level=20), [])
+        strong = compute_stats(FakeHero(level=20, strength=400, agility=400, intellect=400), [])
+
+        weak_boss = boss_stats_for_raid(raid, 20, weak)[0]
+        strong_boss = boss_stats_for_raid(raid, 20, strong)[0]
+        assert strong_boss["hp"] > weak_boss["hp"]
+        assert strong_boss["attack"] > weak_boss["attack"]
+
+    def test_scaling_never_weakens_boss(self) -> None:
+        """低于本等级参考输出时应保持基准强度，不因战力低而变弱。"""
+        raid = CONFIG.raid_by_id["raid_1"]
+        naked = compute_stats(FakeHero(level=20), [])
+        assert boss_stats_for_raid(raid, 20, naked)[0]["hp"] == boss_stats_for_raid(raid, 20, None)[0]["hp"]
+
+    def test_boss_scales_with_level(self) -> None:
+        """等级越高，锚定的 BOSS 越强。"""
+        raid = CONFIG.raid_by_id["raid_1"]
+        low = boss_stats_for_raid(raid, 20, None)[0]["hp"]
+        high = boss_stats_for_raid(raid, 100, None)[0]["hp"]
+        assert high > low
 
 
 def _lance_base_for_level(level: int) -> BaseItem:

@@ -388,6 +388,11 @@ export const gameData = {
     }
   },
   raids: raidsJson as unknown as {
+    balance: {
+      powerScaleExponent: number
+      attackScaleExponent: number
+      refDpsMultiplier: Record<string, number>
+    }
     raids: RaidDef[]
   },
   chests: chestsJson as unknown as { chests: ChestDef[]; pity: ChestPity[] },
