@@ -5,3 +5,7 @@
 - Prefers Chinese/domestic mirror endpoints for everything fetched from external sources (Docker base images, pip, npm, apt, etc.) instead of upstream registries, so the project is deployable on mainland China servers. Confidence: 0.9
 - Prefers these mirror/source selectors to be overridable via environment variables (with an empty value falling back to the official upstream source) rather than hardcoded. Confidence: 0.7
 - Prefers a plan-first workflow: explore the codebase, ask clarifying questions on ambiguous requirements, write a plan file for approval, then implement and verify with the test suites. Confidence: 0.7
+- Expects changes to deployment/build config (Dockerfiles, compose) to be verified by actually building the images and running the stack end-to-end (smoke-test real endpoints), not just by static config rendering/linting. Confidence: 0.75
+- Prefers test/verification runs to be torn down afterwards with no leftovers: temporary stacks removed, ports released, no stray containers, and no extra files (e.g. data dirs) created inside the repo. Confidence: 0.7
+- Prefers to handle git commits themselves; the agent should leave finished changes uncommitted and report exactly what is staged/unstaged rather than committing on their behalf. Confidence: 0.6
+- Wants the agent to disclose side effects of its work, e.g. starting a long-running local daemon or leaving background processes running. Confidence: 0.6

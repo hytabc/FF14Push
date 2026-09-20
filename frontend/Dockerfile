@@ -5,7 +5,10 @@
 #   NODE_IMAGE    Node 构建镜像（可指向国内镜像站）
 #   NGINX_IMAGE   运行镜像
 #   NPM_REGISTRY  npm 源（默认 npmmirror，置空则用官方源）
+# 注意：基础镜像的 ARG 必须声明在第一个 FROM 之前（全局作用域），
+# 否则后续 FROM ${...} 取不到值，会报 "base name should not be blank"。
 ARG NODE_IMAGE=node:22-alpine
+ARG NGINX_IMAGE=nginx:1.27-alpine
 FROM ${NODE_IMAGE} AS build
 
 WORKDIR /app
@@ -31,7 +34,6 @@ ENV VITE_API_BASE=${VITE_API_BASE}
 WORKDIR /app/frontend
 RUN npx vite build
 
-ARG NGINX_IMAGE=nginx:1.27-alpine
 FROM ${NGINX_IMAGE}
 
 RUN rm -f /etc/nginx/conf.d/default.conf
