@@ -17,7 +17,7 @@ from app.services.game_config import CONFIG, BaseItem
 from app.services.item_factory import generate_item, roll_sub_attr_value
 from app.services.loot import PityState, chest_by_id, draw_rarity, roll_rarity
 from app.services.combat_model import theoretical_dps
-from app.services.regions_util import level_penalty
+from app.services.regions_util import apply_exp_bonus, exp_bonus_from_terms, level_penalty
 from app.services.raid_util import all_raids, boss_stats_for_raid
 from app.services.slots_util import possible_slots
 from app.services.stats import compute_stats, convert_three_attrs
@@ -408,6 +408,23 @@ class TestRaidScaling:
         low = boss_stats_for_raid(raid, 20, None)[0]["hp"]
         high = boss_stats_for_raid(raid, 100, None)[0]["hp"]
         assert high > low
+
+
+class TestExpTerm:
+    """经验获取效率词条：配置存在且加成按百分比计算。"""
+
+    def test_term_configured(self) -> None:
+        term = CONFIG.term_by_id.get("expGain")
+        assert term is not None, "terms.json 缺少经验词条"
+        assert term["stat"] == "expGainPct"
+        assert term["type"] == "buff"
+        assert term["range"][0] > 0
+
+    def test_bonus_math(self) -> None:
+        assert exp_bonus_from_terms({}) == 0.0
+        assert exp_bonus_from_terms({"expGainPct": 12.0}) == 12.0
+        assert apply_exp_bonus(100, {"expGainPct": 12.0}) == 112
+        assert apply_exp_bonus(100, {}) == 100
 
 
 class TestRaidPressure:
