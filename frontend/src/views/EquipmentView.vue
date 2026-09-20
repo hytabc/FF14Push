@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
 import ItemCard from '@/components/ItemCard.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import type { Item, SlotId } from '@/game/types'
@@ -80,19 +81,29 @@ async function unequip(slotId: SlotId) {
               :class="loadout[slot.id] ? [rarityClass(loadout[slot.id]!.rarity), rarityBg(loadout[slot.id]!.rarity)] : 'border-ink-700 bg-ink-800/60'"
               @click="openPicker(slot.id)"
             >
-              <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
-              <template v-if="loadout[slot.id]">
-                <p class="truncate text-sm font-medium">{{ loadout[slot.id]!.name }}</p>
-                <p class="text-[10px] text-ink-400">
-                  {{ rarityName(loadout[slot.id]!.rarity) }} · Lv.{{ loadout[slot.id]!.levelReq }}
-                </p>
-                <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
-                  <p v-for="entry in loadout[slot.id]!.baseAttrs" :key="entry.attr">
-                    {{ entry.attr }} +{{ Math.round(entry.value) }}
-                  </p>
+              <div class="flex items-center gap-3">
+                <ItemIcon
+                  v-if="loadout[slot.id]"
+                  :base-id="loadout[slot.id]!.baseId"
+                  :rarity="loadout[slot.id]!.rarity"
+                  :size="32"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
+                  <template v-if="loadout[slot.id]">
+                    <p class="truncate text-sm font-medium">{{ loadout[slot.id]!.name }}</p>
+                    <p class="text-[10px] text-ink-400">
+                      {{ rarityName(loadout[slot.id]!.rarity) }} · Lv.{{ loadout[slot.id]!.levelReq }}
+                    </p>
+                    <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+                      <p v-for="entry in loadout[slot.id]!.baseAttrs" :key="entry.attr">
+                        {{ entry.attr }} +{{ Math.round(entry.value) }}
+                      </p>
+                    </div>
+                  </template>
+                  <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择装备</p>
                 </div>
-              </template>
-              <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择装备</p>
+              </div>
             </button>
           </div>
         </div>

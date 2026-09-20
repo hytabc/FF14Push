@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
+import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -159,8 +160,13 @@ function bestRarity(): string {
           :class="[rarityClass(item.rarity), rarityBg(item.rarity)]"
           :style="{ animationDelay: `${Math.min(index * 45, 400)}ms` }"
         >
-          <p class="truncate text-xs font-medium">{{ item.name }}</p>
-          <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>
+          <div class="flex items-center gap-2">
+            <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="36" />
+            <div class="min-w-0">
+              <p class="truncate text-xs font-medium">{{ item.name }}</p>
+              <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>
+            </div>
+          </div>
           <p v-for="entry in item.subAttrs" :key="entry.attr" class="text-[10px] text-ink-300">
             {{ entry.attr }} +{{ entry.value.toFixed(2) }}
           </p>

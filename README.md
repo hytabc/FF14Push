@@ -279,6 +279,24 @@ PRD 中怪物与英雄的成长曲线若直接采用会导致数值发散（BOSS
 
 ---
 
+## 装备像素图标
+
+180 件装备底材各有 1 张 16×16 像素 PNG（`frontend/src/assets/icons/<baseId>.png`），
+由 `scripts/gen-icons.mjs` 生成。不手写 180 份网格，而是组合
+**30 个部位底形 × 6 个档位装饰戳 × 6 套材质调色板**：
+
+```bash
+npm run gen:icons
+```
+
+- 主体配色 = 材质档位色（铁制 → 星辉）；同档位不同部位靠底形区分，同部位不同档位靠装饰戳 + 材质色区分。
+- **6 个品阶色不烘焙进图片**，由 `ItemIcon.vue` 用 CSS 描边/光晕施加，所以 180 张图就能覆盖全部底材与品阶组合。
+- 单张约 130 字节、180 张合计约 24 KB，低于 Vite 默认 `assetsInlineLimit`，构建时全部内联为 data URI ⇒ **渲染装备时零图片请求**。图鉴页 180 条用 `variant="lite"`（单侧光晕）进一步压低滤镜开销。
+- 想改某件装备的造型，只改 `gen-icons.mjs` 里的 `SHAPES` / `ORNAMENTS` / `TIER_PALETTES` 字符画再重跑即可。
+- 生成器与 `shared/schema` 的 `expandBaseItems()` 是两份 id 规则实现，由 `frontend/src/utils/icons.spec.ts` 一致性测试锁住。
+
+---
+
 ## 与 PRD 的差异说明
 
 | 项 | 说明 |

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import data from '@shared/schema'
 import { useItemActions } from '@/stores/itemActions'
@@ -35,9 +36,12 @@ const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
   <Modal :open="!!actions.pending" :title="title" @close="actions.cancel()">
     <div v-if="item" class="space-y-3 text-sm">
       <div class="rounded-lg border border-ink-700 bg-ink-800/70 p-3">
-        <p class="font-medium" :class="rarityClass(item.rarity)">
-          {{ item.name }} · {{ rarityName(item.rarity) }}
-        </p>
+        <div class="flex items-center gap-3">
+          <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="48" />
+          <p class="font-medium" :class="rarityClass(item.rarity)">
+            {{ item.name }} · {{ rarityName(item.rarity) }}
+          </p>
+        </div>
         <ul class="mt-1 space-y-0.5 text-[11px] text-ink-300">
           <li v-for="entry in item.subAttrs" :key="entry.attr">
             {{ entry.attr }} +{{ entry.value.toFixed(2) }}

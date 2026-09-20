@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
+import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import { jobName, rarityClass, rarityName } from '@/utils/format'
@@ -282,14 +283,15 @@ function openBossDialog() {
           <li v-if="game.bossResult.box">装备宝箱：{{ game.bossResult.box }}</li>
         </ul>
         <div v-if="game.bossResult.items.length" class="space-y-1">
-          <p
+          <div
             v-for="item in game.bossResult.items"
             :key="item.id"
-            class="text-xs"
+            class="flex items-center gap-1.5 text-xs"
             :class="rarityClass(item.rarity)"
           >
+            <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="16" />
             {{ item.name }}（{{ rarityName(item.rarity) }}）
-          </p>
+          </div>
         </div>
         <p class="text-xs text-ink-400">是否前往下一地区？</p>
       </div>

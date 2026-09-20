@@ -67,6 +67,11 @@ body {
   background: var(--color-ink-800);
 }
 
+/* 16×16 像素图标放大后保持硬边，避免插值模糊 */
+.pixel-icon {
+  image-rendering: pixelated;
+}
+
 @keyframes float-up {
   0% {
     opacity: 0;

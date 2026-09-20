@@ -11,6 +11,7 @@
     "build": "npm run build -w frontend",
     "preview": "npm run preview -w frontend",
     "test": "npm run test -w frontend",
-    "typecheck": "npm run typecheck -w frontend"
+    "typecheck": "npm run typecheck -w frontend",
+    "gen:icons": "node scripts/gen-icons.mjs"
   }
 }

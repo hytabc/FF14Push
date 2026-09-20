@@ -3,8 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import data from '@shared/schema'
+import ItemIcon from '@/components/ItemIcon.vue'
 import { useToastStore } from '@/stores/toast'
-import type { CodexProgress } from '@/game/types'
+import type { CodexProgress, RarityId } from '@/game/types'
 import { RARITY_ORDER, attrName, baseAttrName, categoryName, formatPercent, jobName, rarityName, slotName, termQualityClass, termQualityName } from '@/utils/format'
 
 type Entry = Record<string, any>
@@ -52,6 +53,13 @@ const progressRow = computed(() => {
   if (!progress.value) return null
   return progress.value[category.value]
 })
+
+/** 已解锁品阶中最高的一个，用作图标描边色；未解锁回落到普通（剪影态）。 */
+function entryRarity(entry: Entry): RarityId {
+  const list = (entry.unlockedRarities ?? []) as RarityId[]
+  if (!list.length) return 'common'
+  return list.reduce((best, r) => (RARITY_ORDER.indexOf(r) > RARITY_ORDER.indexOf(best) ? r : best), list[0])
+}
 
 </script>
 
@@ -108,13 +116,22 @@ const progressRow = computed(() => {
         :class="entry.unlocked ? '' : 'opacity-55'"
       >
         <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
-              {{ entry.unlocked ? entry.name : '未解锁' }}
-            </p>
-            <p class="text-[10px] text-ink-400">
-              {{ categoryName(entry.category) }} · {{ slotName(entry.equipSlots?.[0] ?? entry.slot) }} · 需 Lv.{{ entry.levelReq }}
-            </p>
+          <div class="flex min-w-0 items-center gap-2">
+            <ItemIcon
+              :base-id="entry.baseId"
+              :rarity="entryRarity(entry)"
+              :size="32"
+              variant="lite"
+              :silhouette="!entry.unlocked"
+            />
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
+                {{ entry.unlocked ? entry.name : '未解锁' }}
+              </p>
+              <p class="text-[10px] text-ink-400">
+                {{ categoryName(entry.category) }} · {{ slotName(entry.equipSlots?.[0] ?? entry.slot) }} · 需 Lv.{{ entry.levelReq }}
+              </p>
+            </div>
           </div>
           <span v-if="entry.jobId" class="shrink-0 text-[10px] text-sky-300">{{ jobName(entry.jobId) }}</span>
         </div>

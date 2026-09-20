@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import ItemIcon from '@/components/ItemIcon.vue'
 import { useItemActions } from '@/stores/itemActions'
 import type { Item } from '@/game/types'
 import {
@@ -54,14 +55,17 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
     @click="emit('select', item)"
   >
     <div class="flex items-start justify-between gap-2">
-      <div class="min-w-0">
-        <h3 class="truncate text-sm font-semibold" :class="rarityClass(item.rarity)">
-          {{ item.name }}
-        </h3>
-        <p class="mt-0.5 text-[11px] text-ink-400">
-          {{ rarityName(item.rarity) }} · {{ categoryName(item.category) }} ·
-          {{ slotName(item.equipSlots[0] ?? item.slot) }} · 需 Lv.{{ item.levelReq }}
-        </p>
+      <div class="flex min-w-0 items-center gap-2">
+        <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="32" />
+        <div class="min-w-0">
+          <h3 class="truncate text-sm font-semibold" :class="rarityClass(item.rarity)">
+            {{ item.name }}
+          </h3>
+          <p class="mt-0.5 text-[11px] text-ink-400">
+            {{ rarityName(item.rarity) }} · {{ categoryName(item.category) }} ·
+            {{ slotName(item.equipSlots[0] ?? item.slot) }} · 需 Lv.{{ item.levelReq }}
+          </p>
+        </div>
       </div>
       <span
         v-if="item.equippedSlot"
