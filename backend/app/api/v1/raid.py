@@ -27,6 +27,7 @@ from app.services.raid_util import (
     raid_by_id,
     top_rarity_required,
 )
+from app.services.regions_util import apply_exp_bonus
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
@@ -199,7 +200,7 @@ async def report_session(
     level_info = {"levelsGained": 0, "exp": hero.exp, "level": hero.level}
     grant = EMPTY_GRANT
     if first_clear:
-        level_info = apply_exp(hero, int(reward["firstExp"]))
+        level_info = apply_exp(hero, apply_exp_bonus(int(reward["firstExp"]), stats.term_mods))
         chest = chest_by_id(str(reward["chestId"]))
         generated = []
         if chest is not None:

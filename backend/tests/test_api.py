@@ -192,6 +192,33 @@ class TestBattleLoop:
         assert result["expGained"] > 0
         assert result["killCount"] > 0
 
+    async def test_exp_gain_term_boosts_exp(self, auth_client, session_factory) -> None:
+        """经验获取效率词条：服务端按百分比加成结算经验。"""
+        base = await _farm(auth_client, 1, reports=4)
+        assert base["expGained"] > 0
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            item = (await db.execute(select(Item).where(Item.user_id == me["id"]))).scalars().first()
+            item.terms = [
+                {
+                    "id": "expGain",
+                    "name": "经验获取效率",
+                    "type": "buff",
+                    "stat": "expGainPct",
+                    "trigger": "常驻",
+                    "value": 50.0,
+                    "quality": "common",
+                    "desc": "击败怪物获得的经验 +{v}%",
+                }
+            ]
+            item.equipped_slot = "head"
+            await db.commit()
+
+        boosted = await _farm(auth_client, 1, reports=4)
+        # 击杀数会因随机浮动略有差异，用比例判断即可（50% 加成远大于抖动）
+        assert boosted["expGained"] > base["expGained"] * 1.2
+
     async def test_monster_kills_grant_no_equipment(self, auth_client) -> None:
         """装备只能通过抽箱获取：打怪不产装备，伪造 dropped 也一样。"""
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})

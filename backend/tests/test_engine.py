@@ -16,8 +16,10 @@ from app.services.economy import REQUIRED, build_craft_plan
 from app.services.game_config import CONFIG, BaseItem
 from app.services.item_factory import generate_item, roll_sub_attr_value
 from app.services.loot import PityState, chest_by_id, draw_rarity, roll_rarity
+from app.services.combat_model import theoretical_dps
 from app.services.regions_util import level_penalty
-from app.services.raid_util import boss_stats_for_raid
+from app.services.raid_util import all_raids, boss_stats_for_raid
+from app.services.slots_util import possible_slots
 from app.services.stats import compute_stats, convert_three_attrs
 from app.services.valuation import attr_factor, hero_power, sell_price, sell_price_range
 
@@ -406,6 +408,71 @@ class TestRaidScaling:
         low = boss_stats_for_raid(raid, 20, None)[0]["hp"]
         high = boss_stats_for_raid(raid, 100, None)[0]["hp"]
         assert high > low
+
+
+class TestRaidPressure:
+    """副本必须能打死人。
+
+    门槛装备（刚好够进本的那一套）的承伤必须高于它的被动回复（生命回复 + 吸血），
+    否则英雄永远不会掉血，普通玩家可以靠无限拖时间通关。
+    """
+
+    RAID_SLOTS = [s["id"] for s in CONFIG.slots]
+    GATE_MIX = {
+        "normal": ["epic"] * 6 + ["rare"] * 5,
+        "hard": ["mythic"] * 6 + ["legendary"] * 5,
+    }
+
+    class _Item:
+        def __init__(self, generated: dict[str, Any], slot: str) -> None:
+            self.base_id = generated["baseId"]
+            self.category = generated["category"]
+            self.slot = slot
+            self.rarity = generated["rarity"]
+            self.level_req = generated["levelReq"]
+            self.base_attrs = generated["baseAttrs"]
+            self.sub_attrs = generated["subAttrs"]
+            self.terms = generated["terms"]
+            self.equipped_slot = slot
+
+    def _gate_items(self, level: int, difficulty: str) -> list[Any]:
+        mix = self.GATE_MIX[difficulty]
+        rng = random.Random(11)
+        items = []
+        for index, slot in enumerate(self.RAID_SLOTS):
+            usable = [
+                b for b in CONFIG.base_items if slot in possible_slots(b) and b.level_req <= level
+            ]
+            base = max(usable, key=lambda b: (b.tier_index, b.level_req))
+            generated, _ = generate_item(
+                base.category, level, rarity=mix[index], base_id=base.id, rng=rng
+            )
+            items.append(self._Item(generated, slot))
+        return items
+
+    def test_incoming_damage_beats_passive_healing(self) -> None:
+        for raid in all_raids():
+            level = int(raid["requiredLevel"])
+            difficulty = str(raid["difficulty"])
+            stats = compute_stats(FakeHero(level=level), self._gate_items(level, difficulty))
+            bosses = boss_stats_for_raid(raid, level, stats)
+
+            taken = 1 + stats.term_mods.get("damageTakenPct", 0.0) / 100.0
+            tenacity = 1 - min(0.6, stats.tenacity_pct / 100.0)
+            dodge = 1 - min(60.0, stats.dodge_pct) / 100.0
+
+            incoming = 0.0
+            dealt = 0.0
+            for boss in bosses:
+                raw = float(boss["attack"]) * taken * tenacity
+                per_hit = max(raw * 0.1, raw - stats.phys_def)
+                incoming += per_hit / float(boss["attackInterval"]) * dodge
+                dealt += theoretical_dps(stats, float(boss["defense"]), None)
+            healing = stats.hp_regen + (dealt / len(bosses)) * (stats.lifesteal_pct / 100.0)
+
+            assert incoming > healing, (
+                f"{raid['id']} 门槛装备承伤 {incoming:.0f}/s 未超过被动回复 {healing:.0f}/s，可以无限拖时间"
+            )
 
 
 def _lance_base_for_level(level: int) -> BaseItem:

@@ -33,7 +33,7 @@ from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import boss_box_for_region, chest_by_id
 from app.services.progression import apply_exp
-from app.services.regions_util import kills_required, roll_gold, spawn_interval
+from app.services.regions_util import apply_exp_bonus, kills_required, roll_gold, spawn_interval
 from app.services.stats import compute_stats
 from app.services.validator import MAX_ELAPSED_MS, MIN_ELAPSED_MS, validate_report
 
@@ -160,7 +160,8 @@ async def report(
 
     # 金币与经验（服务端重新结算）
     user.gold = int(user.gold) + result.total_gold
-    level_info = apply_exp(hero, result.total_exp)
+    gained_exp = apply_exp_bonus(result.total_exp, stats.term_mods)  # 经验获取效率 Buff
+    level_info = apply_exp(hero, gained_exp)
 
     # 装备：怪物不掉落，仅能通过抽箱获取（BOSS 宝箱见 _settle_boss）
     for kill in result.kills:
@@ -193,7 +194,7 @@ async def report(
 
     boss_result = None
     if payload.bossKilled:
-        boss_result = await _settle_boss(db, user, hero, items, payload, rng)
+        boss_result = await _settle_boss(db, user, hero, items, payload, rng, stats.term_mods)
 
     session.last_report_at = now
     session.total_kills = int(session.total_kills) + len(result.kills)
@@ -205,7 +206,7 @@ async def report(
     return {
         "gold": int(user.gold),
         "goldGained": result.total_gold,
-        "expGained": result.total_exp,
+        "expGained": gained_exp,
         "level": level_info,
         "killCount": int(hero.region_kill_count),
         "killsRequired": required,
@@ -224,6 +225,7 @@ async def _settle_boss(
     items: Sequence[Item],
     payload: BattleReportRequest,
     rng: random.Random,
+    term_mods: dict[str, float] | None = None,
 ) -> dict | None:
     required = kills_required(payload.regionId)
     if int(hero.region_kill_count) < required:
@@ -235,7 +237,7 @@ async def _settle_boss(
 
     region = CONFIG.region_by_id[payload.regionId]
     boss_gold = roll_gold(payload.regionId, "boss", 0.0, rng)
-    boss_exp = max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"])))
+    boss_exp = apply_exp_bonus(max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"]))), term_mods or {})
 
     user.gold = int(user.gold) + boss_gold
     level_info = apply_exp(hero, boss_exp)

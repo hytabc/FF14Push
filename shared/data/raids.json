@@ -27,7 +27,7 @@
           "name": "极·究极神兵",
           "type": "primal",
           "hpMultiplier": 30,
-          "attackMultiplier": 2.5,
+          "attackMultiplier": 5.5,
           "defenseMultiplier": 4.0,
           "attackInterval": 2.5,
           "resistancePct": 25
@@ -60,7 +60,7 @@
           "name": "极·尼德霍格",
           "type": "dragon",
           "hpMultiplier": 32,
-          "attackMultiplier": 2.7,
+          "attackMultiplier": 5.5,
           "defenseMultiplier": 4.2,
           "attackInterval": 2.5,
           "resistancePct": 28
@@ -93,7 +93,7 @@
           "name": "极·利维亚桑",
           "type": "primal",
           "hpMultiplier": 24,
-          "attackMultiplier": 2.4,
+          "attackMultiplier": 6,
           "defenseMultiplier": 3.8,
           "attackInterval": 2.5,
           "resistancePct": 22
@@ -103,7 +103,7 @@
           "name": "极·拉姆",
           "type": "primal",
           "hpMultiplier": 24,
-          "attackMultiplier": 2.4,
+          "attackMultiplier": 6,
           "defenseMultiplier": 3.8,
           "attackInterval": 2.5,
           "resistancePct": 22
@@ -136,7 +136,7 @@
           "name": "极·哈迪斯",
           "type": "aberration",
           "hpMultiplier": 24,
-          "attackMultiplier": 2.6,
+          "attackMultiplier": 5,
           "defenseMultiplier": 4.4,
           "attackInterval": 2.5,
           "resistancePct": 30
@@ -146,7 +146,7 @@
           "name": "极·佐迪亚克",
           "type": "primal",
           "hpMultiplier": 24,
-          "attackMultiplier": 2.6,
+          "attackMultiplier": 5,
           "defenseMultiplier": 4.4,
           "attackInterval": 2.5,
           "resistancePct": 30
@@ -179,7 +179,7 @@
           "name": "绝·究极神兵",
           "type": "primal",
           "hpMultiplier": 103,
-          "attackMultiplier": 3.0,
+          "attackMultiplier": 18,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,
           "resistancePct": 30
@@ -212,7 +212,7 @@
           "name": "绝·巴哈姆特",
           "type": "dragon",
           "hpMultiplier": 82,
-          "attackMultiplier": 3.0,
+          "attackMultiplier": 18,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,
           "resistancePct": 30
@@ -222,7 +222,7 @@
           "name": "绝·那伽",
           "type": "dragon",
           "hpMultiplier": 82,
-          "attackMultiplier": 3.0,
+          "attackMultiplier": 18,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,
           "resistancePct": 30

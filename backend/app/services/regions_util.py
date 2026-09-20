@@ -140,6 +140,15 @@ def gold_bonus_from_terms(term_mods: dict[str, float], kind: str) -> float:
     return total
 
 
+def exp_bonus_from_terms(term_mods: dict[str, float]) -> float:
+    """经验获取效率 Buff 的加法叠加（百分比，由服务端在结算时乘算）。"""
+    return float(term_mods.get("expGainPct", 0.0))
+
+
+def apply_exp_bonus(exp: int, term_mods: dict[str, float]) -> int:
+    return max(0, int(int(exp) * (1.0 + exp_bonus_from_terms(term_mods) / 100.0)))
+
+
 def elite_chance(term_mods: dict[str, float]) -> float:
     base = float(CONFIG.monsters["eliteBaseChance"])
     return min(1.0, base + term_mods.get("eliteChancePct", 0.0) / 100.0)
