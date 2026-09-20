@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BattleSimulator } from '@/game/core/battle'
 import { estimateDps, rollDamage, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
 import { bossStats, getRegion, goldRange, levelPenalty, monsterStats } from '@/game/core/regions'
-import type { HeroStats } from '@/game/types'
+import type { HeroStats, MonsterStats } from '@/game/types'
 
 function makeStats(overrides: Partial<HeroStats> = {}): HeroStats {
   return {
@@ -79,7 +79,7 @@ describe('地区与怪物配置', () => {
 describe('伤害与技能', () => {
   it('减防后至少造成 10% 伤害', () => {
     const stats = makeStats({ attack: 100, detBonusPct: 0 })
-    const roll = rollDamage(stats, 100, 'physical', 99999, 1, null, () => 0.9)
+    const roll = rollDamage(stats, 100, 'physical', 99999, 1, null, 0, () => 0.9)
     expect(roll.amount).toBeGreaterThanOrEqual(10)
   })
 
@@ -92,7 +92,7 @@ describe('伤害与技能', () => {
       detBonusPct: 0,
     })
     // rand 返回 0 → 必然命中直击与暴击；固定随机浮动取中值
-    const roll = rollDamage(stats, 100, 'physical', 0, 1, null, () => 0)
+    const roll = rollDamage(stats, 100, 'physical', 0, 1, null, 0, () => 0)
     // 100 × 1.25(直击) × 2.0(暴击) × 0.95(浮动下限) = 237
     expect(roll.isCrit).toBe(true)
     expect(roll.isDirectHit).toBe(true)
@@ -100,7 +100,7 @@ describe('伤害与技能', () => {
   })
 
   it('信念恒定乘算', () => {
-    const base = rollDamage(makeStats({ attack: 100 }), 100, 'physical', 0, 1, null, () => 0.5)
+    const base = rollDamage(makeStats({ attack: 100 }), 100, 'physical', 0, 1, null, 0, () => 0.5)
     const withDet = rollDamage(
       makeStats({ attack: 100, detBonusPct: 13 }),
       100,
@@ -108,6 +108,7 @@ describe('伤害与技能', () => {
       0,
       1,
       null,
+      0,
       () => 0.5,
     )
     expect(withDet.amount / base.amount).toBeCloseTo(1.13, 1)
@@ -183,7 +184,7 @@ describe('等级压制', () => {
   it('未命中时判定不产生伤害', () => {
     const stats = makeStats({ attack: 1000, hitRatePct: 0 })
     const penalty = levelPenalty(1, getRegion(40))
-    const roll = rollDamage(stats, 100, 'physical', 0, 1, penalty, () => 1) // 必不命中
+    const roll = rollDamage(stats, 100, 'physical', 0, 1, penalty, 0, () => 1) // 必不命中
     expect(roll.missed).toBe(true)
     expect(roll.amount).toBe(0)
   })
@@ -296,5 +297,110 @@ describe('战斗模拟器', () => {
 
     sim.tick(2)
     expect(sim.monster).not.toBeNull()
+  })
+})
+
+describe('高难副本模拟器', () => {
+  beforeEach(() => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  function makeBoss(id: string, name: string, hp: number): MonsterStats {
+    return {
+      id,
+      regionId: 0,
+      name,
+      templateId: id,
+      kind: 'boss',
+      hp,
+      attack: 1,
+      defense: 0,
+      attackInterval: 2.5,
+      level: 60,
+      resistancePct: 25,
+    }
+  }
+
+  function createRaid(bosses: MonsterStats[]) {
+    return new BattleSimulator({
+      stats: makeStats({ attack: 100000, maxHp: 500000 }),
+      raid: {
+        bosses,
+        enrage: { attackMultiplier: 3.5, damageReductionPct: 70, attackSpeedBonusPct: 30 },
+      },
+    })
+  }
+
+  it('开局即与全部 BOSS 交战，不产生小怪击杀上报', () => {
+    const sim = createRaid([makeBoss('a', '极·甲', 5000), makeBoss('b', '极·乙', 5000)])
+    sim.start()
+    expect(sim.phase).toBe('boss')
+    expect(sim.bossEntries()).toHaveLength(2)
+    expect(sim.monsterName).toBe('极·甲')
+
+    let guard = 0
+    while (sim.phase !== 'cleared' && guard < 20000) {
+      sim.tick(0.1)
+      guard += 1
+    }
+    expect(sim.phase).toBe('cleared')
+    const pending = sim.drainPending()
+    expect(pending.bossKilled).toBe(true)
+    expect(pending.kills).toHaveLength(0)
+  })
+
+  it('切换目标后伤害落在新目标身上', () => {
+    const sim = createRaid([makeBoss('a', '极·甲', 100000), makeBoss('b', '极·乙', 100000)])
+    sim.start()
+    sim.selectTarget(1)
+    expect(sim.bossEntries()[1].isTarget).toBe(true)
+
+    const before = sim.bossEntries().map((b) => b.hp)
+    for (let i = 0; i < 30; i += 1) sim.tick(0.1)
+    const after = sim.bossEntries().map((b) => b.hp)
+    expect(after[0]).toBe(before[0])
+    expect(after[1]).toBeLessThan(before[1])
+  })
+
+  it('一方阵亡后另一方狂暴，且必须两个都死才算通关', () => {
+    const sim = createRaid([makeBoss('a', '极·甲', 3000), makeBoss('b', '极·乙', 400000)])
+    sim.start()
+
+    let guard = 0
+    while (sim.bossEntries().length > 1 && guard < 20000) {
+      sim.tick(0.1)
+      guard += 1
+    }
+    expect(sim.bossEntries()).toHaveLength(1)
+    expect(sim.phase).toBe('boss') // 还没打完
+    const survivor = sim.bossEntries()[0]
+    expect(survivor.enraged).toBe(true)
+    expect(survivor.name).toBe('极·乙')
+
+    guard = 0
+    while (sim.phase !== 'cleared' && guard < 20000) {
+      sim.tick(0.1)
+      guard += 1
+    }
+    expect(sim.phase).toBe('cleared')
+  })
+
+  it('阵亡即挑战失败且不复活', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1, maxHp: 10, physDef: 0, hpRegen: 0, mpRegen: 0 }),
+      raid: { bosses: [makeBoss('a', '极·甲', 10_000_000)], enrage: null },
+    })
+    sim.start()
+    let guard = 0
+    while (sim.phase !== 'dead' && guard < 20000) {
+      sim.tick(0.1)
+      guard += 1
+    }
+    expect(sim.phase).toBe('dead')
+    for (let i = 0; i < 100; i += 1) sim.tick(0.1)
+    expect(sim.phase).toBe('dead')
   })
 })

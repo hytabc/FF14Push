@@ -4,7 +4,7 @@ import { computed, ref, shallowRef } from 'vue'
 import { api, type KillPayload } from '@/api'
 import { toApiError } from '@/api/client'
 import { BattleSimulator } from '@/game/core/battle'
-import type { Category, GameState, Item, SlotId } from '@/game/types'
+import type { Category, GameState, Item, RaidBossEntry, RaidReportResponse, SlotId } from '@/game/types'
 import { rarityName } from '@/utils/format'
 
 import { useAuthStore } from './auth'
@@ -38,11 +38,17 @@ export const useGameStore = defineStore('game', () => {
   const bossResult = ref<BossResult | null>(null)
   const lastError = ref<string | null>(null)
 
+  /** 高难副本：进行中的挑战与结算结果。 */
+  const raid = ref<{ raidId: string; name: string } | null>(null)
+  const raidSessionId = ref<number | null>(null)
+  const raidResult = ref<RaidReportResponse | null>(null)
+
   let rafId = 0
   let tickTimer = 0
   let lastTs = 0
   let reportAccum = 0
   let reporting = false
+  let raidReporting = false
   let generation = 0
   // 上一次成功上报的墙钟时间，用于上报真实窗口（空窗口不上报，固定值会失真）
   let lastReportAt = 0
@@ -60,6 +66,13 @@ export const useGameStore = defineStore('game', () => {
   const floating = computed(() => {
     logVersion.value
     return sim.value?.floating ?? []
+  })
+
+  /** 副本战斗面板：各 BOSS 血量与狂暴状态。 */
+  const raidBosses = computed<RaidBossEntry[]>(() => {
+    void uiTick.value
+    logVersion.value
+    return sim.value?.bossEntries() ?? []
   })
 
   function pushError(e: unknown) {
@@ -93,6 +106,7 @@ export const useGameStore = defineStore('game', () => {
 
   async function startBattle(regionId?: number) {
     if (!state.value) return
+    if (raid.value) await stopRaid(true)
     const target = regionId ?? state.value.hero.currentRegionId ?? 1
     try {
       const session = await api.startBattle(target)
@@ -147,10 +161,15 @@ export const useGameStore = defineStore('game', () => {
         sim.value.clearFloating()
         logVersion.value += 1
 
-        reportAccum += dtMs
-        if (reportAccum >= REPORT_MS) {
-          reportAccum = 0
-          void report()
+        if (raid.value) {
+          // 副本只在「通关 / 阵亡」时上报一次，不做周期上报
+          void finishRaidIfDone()
+        } else {
+          reportAccum += dtMs
+          if (reportAccum >= REPORT_MS) {
+            reportAccum = 0
+            void report()
+          }
         }
       }
       rafId = requestAnimationFrame(step)
@@ -179,7 +198,7 @@ export const useGameStore = defineStore('game', () => {
     try {
       const res = await api.reportBattle({
         sessionId: id,
-        regionId: current.region.id,
+        regionId: current.region?.id ?? 0,
         elapsedMs,
         kills: pending.kills as KillPayload[],
         skillCasts: Object.entries(pending.skillCasts).map(([skillId, count]) => ({ skillId, count })),
@@ -247,15 +266,121 @@ export const useGameStore = defineStore('game', () => {
     sim.value?.continueAfterClear()
   }
 
+  // ---------- 高难副本 ----------
+
+  async function startRaid(raidId: string) {
+    if (!state.value) return
+    try {
+      if (running.value || sessionId.value !== null) await stopBattle(true)
+      const session = await api.raidStart(raidId)
+      raid.value = { raidId: session.raidId, name: session.name }
+      raidSessionId.value = session.sessionId
+      raidResult.value = null
+      sim.value = new BattleSimulator({
+        stats: state.value.hero.stats,
+        raid: { bosses: session.bosses, enrage: session.enrage },
+      })
+      sim.value.start()
+      running.value = true
+      logVersion.value += 1
+      reportAccum = 0
+      lastReportAt = performance.now()
+      startLoop()
+    } catch (e) {
+      pushError(e)
+    }
+  }
+
+  async function stopRaid(silent = false) {
+    running.value = false
+    stopLoop()
+    sim.value?.pause()
+    raid.value = null
+    const id = raidSessionId.value
+    raidSessionId.value = null
+    if (id !== null) {
+      try {
+        await api.raidStop(id)
+      } catch {
+        /* 会话可能已结束，忽略 */
+      }
+    }
+    if (!silent) toast.push('已退出副本', 'info')
+  }
+
+  function selectRaidTarget(index: number) {
+    sim.value?.selectTarget(index)
+    logVersion.value += 1
+  }
+
+  /** 副本结束时（通关或阵亡）上报一次并弹出结算。 */
+  async function finishRaidIfDone() {
+    const current = sim.value
+    const id = raidSessionId.value
+    if (!current || id === null || raidReporting) return
+    if (current.phase !== 'cleared' && current.phase !== 'dead') return
+
+    raidReporting = true
+    running.value = false
+    stopLoop()
+    const cleared = current.phase === 'cleared'
+    const fightMs = Math.round(current.bossFightMs)
+    const elapsedMs = Math.max(300, Math.round(performance.now() - lastReportAt))
+    const raidId = raid.value?.raidId ?? ''
+    raid.value = null
+    raidSessionId.value = null
+    try {
+      const res = await api.raidReport({
+        sessionId: id,
+        raidId,
+        cleared,
+        died: !cleared,
+        elapsedMs,
+        fightMs,
+      })
+      raidResult.value = res
+      if (state.value) {
+        state.value.user.gold = res.gold
+        if (res.items.length > 0) {
+          state.value.items = [...state.value.items, ...res.items]
+          for (const item of res.items) {
+            toast.push(`获得 ${item.name}（${rarityName(item.rarity)}）`, 'loot')
+          }
+        }
+      }
+      if (res.cleared) {
+        toast.push(res.message, res.firstClear ? 'loot' : 'success')
+      } else {
+        toast.push(res.message, 'error')
+      }
+      if (res.level && res.level.levelsGained > 0) {
+        toast.push(`英雄升到 ${res.level.level} 级！`, 'success')
+      }
+      await loadState()
+    } catch (e) {
+      pushError(e)
+    } finally {
+      raidReporting = false
+    }
+  }
+
+  function dismissRaidResult() {
+    raidResult.value = null
+  }
+
   // ---------- 页面可见性：离开即暂停，不做离线收益 ----------
 
   function handleVisibility() {
     if (document.hidden) {
-      if (running.value) void stopBattle(true)
-    } else if (!running.value && sim.value && sessionId.value === null && state.value?.hero.currentRegionId) {
-      // 恢复时重新开会话
-      const regionId = sim.value.region.id
-      void startBattle(regionId)
+      // 副本留在客户端继续跑（不主动结束会话），地区战斗则离开即暂停
+      if (running.value && !raid.value) void stopBattle(true)
+    } else if (!running.value && sim.value && sessionId.value === null) {
+      if (raid.value) {
+        // 副本中途中断则重开一次挑战
+        void startRaid(raid.value.raidId)
+      } else if (state.value?.hero.currentRegionId) {
+        void startBattle(sim.value.region?.id)
+      }
     }
   }
 
@@ -387,6 +512,9 @@ export const useGameStore = defineStore('game', () => {
     sessionId.value = null
     state.value = null
     bossResult.value = null
+    raid.value = null
+    raidSessionId.value = null
+    raidResult.value = null
     lastDraw.value = []
     lastReportAt = 0
   }
@@ -409,11 +537,18 @@ export const useGameStore = defineStore('game', () => {
     gold,
     items,
     loadout,
+    raid,
+    raidResult,
+    raidBosses,
     loadState,
     startBattle,
     stopBattle,
     report,
     dismissBossResult,
+    startRaid,
+    stopRaid,
+    selectRaidTarget,
+    dismissRaidResult,
     handleVisibility,
     equip,
     unequip,

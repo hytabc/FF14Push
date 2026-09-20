@@ -462,6 +462,25 @@ class TestEconomy:
         assert resp.status_code == 400
         assert "手续费不足" in resp.json()["detail"]
 
+    async def test_refine_cost_escalates(self, auth_client, session_factory) -> None:
+        """同一件装备重造越多次越贵，防止无限重造刷属性。"""
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        await _set_gold(auth_client, session_factory, 10_000_000)
+
+        base = CONFIG_REFINE_COST[item["rarity"]]
+        growth = float(CONFIG.economy["refine"]["costGrowthPerRefine"])
+
+        first = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"]})
+        assert first.status_code == 200, first.text
+        assert first.json()["cost"] == base
+        assert first.json()["after"]["refineCost"] == base + int(base * growth)
+
+        second = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"]})
+        assert second.status_code == 200, second.text
+        assert second.json()["cost"] == base + int(base * growth)
+        assert second.json()["cost"] > first.json()["cost"]
+
     async def test_refine_only_rerolls_attrs(self, auth_client, session_factory) -> None:
         opened = await _open_one(auth_client, session_factory)
         item = opened["items"][0]
@@ -574,6 +593,126 @@ class TestTavern:
         assert hero["jobId"] == "adventurer"
         assert hero["isInitial"] is True
         assert hero["currentRegionId"] is None
+
+
+class TestRaid:
+    async def _gear_up(self, auth_client, session_factory, level: int = 100) -> None:
+        """把英雄拉到指定等级并穿满全部栏位（副本门槛用）。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.level = level
+            for slot in CONFIG.slots:
+                db.add(
+                    Item(
+                        user_id=me["id"],
+                        base_id=STARTER_BASE_ID,
+                        name=f"测试装备·{slot['id']}",
+                        category=slot["category"],
+                        slot=slot["id"],
+                        rarity="epic",
+                        level_req=1,
+                        base_attrs=[{"attr": "attack", "value": 200.0}],
+                        sub_attrs=[{"attr": "crit", "value": 120.0, "type": "flat"}],
+                        terms=[],
+                        equipped_slot=slot["id"],
+                    )
+                )
+            await db.commit()
+
+    async def test_gate_rejects_underleveled_hero(self, auth_client) -> None:
+        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})
+        assert resp.status_code == 400
+        assert "等级" in resp.json()["detail"]
+
+    async def test_gate_requires_all_slots(self, auth_client, session_factory) -> None:
+        # 等级够但没穿满：应被栏位门槛拦下
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.level = 100
+            await db.commit()
+        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})
+        assert resp.status_code == 400
+        assert "栏位" in resp.json()["detail"]
+
+    async def test_list_reports_eligibility(self, auth_client, session_factory) -> None:
+        await self._gear_up(auth_client, session_factory)
+        body = (await auth_client.get(f"{API}/raid")).json()
+        raid = next(r for r in body["raids"] if r["id"] == "raid_1")
+        assert raid["eligible"] is True
+        assert raid["blockedReason"] is None
+        assert raid["cleared"] is False
+        assert raid["dualBoss"] is False
+
+    async def test_clear_too_fast_is_rejected(self, auth_client, session_factory) -> None:
+        await self._gear_up(auth_client, session_factory)
+        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
+        resp = await auth_client.post(
+            f"{API}/raid/session/report",
+            json={
+                "sessionId": started["sessionId"],
+                "raidId": "raid_1",
+                "cleared": True,
+                "died": False,
+                "elapsedMs": 1000,
+                "fightMs": 1000,
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_first_clear_full_reward_then_repeat_gold_only(self, auth_client, session_factory) -> None:
+        await self._gear_up(auth_client, session_factory)
+        cfg = CONFIG.raid_by_id["raid_1"]
+        reward = cfg["reward"]
+
+        async def clear_once() -> dict:
+            started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
+            resp = await auth_client.post(
+                f"{API}/raid/session/report",
+                json={
+                    "sessionId": started["sessionId"],
+                    "raidId": "raid_1",
+                    "cleared": True,
+                    "died": False,
+                    "elapsedMs": 10_000_000,
+                    "fightMs": 90_000,
+                },
+            )
+            assert resp.status_code == 200, resp.text
+            return resp.json()
+
+        before = (await auth_client.get(f"{API}/auth/me")).json()["gold"]
+        first = await clear_once()
+        assert first["cleared"] is True
+        assert first["firstClear"] is True
+        assert first["goldGained"] == int(reward["firstGold"])
+        assert len(first["items"]) == int(reward["boxCount"])
+        assert first["gold"] == before + int(reward["firstGold"])
+
+        second = await clear_once()
+        assert second["firstClear"] is False
+        assert second["goldGained"] == int(reward["repeatGold"])
+        assert second["items"] == []
+        assert second["gold"] == first["gold"] + int(reward["repeatGold"])
+
+    async def test_death_grants_nothing(self, auth_client, session_factory) -> None:
+        await self._gear_up(auth_client, session_factory)
+        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
+        before = (await auth_client.get(f"{API}/auth/me")).json()["gold"]
+        resp = await auth_client.post(
+            f"{API}/raid/session/report",
+            json={
+                "sessionId": started["sessionId"],
+                "raidId": "raid_1",
+                "cleared": False,
+                "died": True,
+                "elapsedMs": 5000,
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["cleared"] is False
+        assert (await auth_client.get(f"{API}/auth/me")).json()["gold"] == before
 
 
 class TestCodexAndRanking:

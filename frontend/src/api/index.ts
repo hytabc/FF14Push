@@ -222,4 +222,35 @@ export const api = {
       await http.post<{ ok: boolean; gold: number; goldGained: number; message: string }>('/redeem', { code })
     ).data
   },
+
+  async raidList() {
+    return (
+      await http.get<{
+        raids: import('@/game/types').RaidListEntry[]
+        level: number
+        power: number
+      }>('/raid')
+    ).data
+  },
+
+  async raidStart(raidId: string) {
+    return (await http.post<import('@/game/types').RaidSessionStart>('/raid/session/start', { raidId })).data
+  },
+
+  async raidReport(payload: {
+    sessionId: number
+    raidId: string
+    cleared: boolean
+    died: boolean
+    elapsedMs: number
+    fightMs?: number
+  }) {
+    return (
+      await http.post<import('@/game/types').RaidReportResponse>('/raid/session/report', payload)
+    ).data
+  },
+
+  async raidStop(sessionId: number) {
+    return (await http.post<{ ok: boolean; message: string }>('/raid/session/stop', { sessionId })).data
+  },
 }

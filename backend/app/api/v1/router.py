@@ -10,6 +10,7 @@ from app.api.v1 import (
     economy,
     game,
     inventory,
+    raid,
     ranking,
     redeem,
     region,
@@ -32,3 +33,4 @@ api_router.include_router(ranking.router)
 api_router.include_router(tutorial.router)
 api_router.include_router(settings.router)
 api_router.include_router(redeem.router)
+api_router.include_router(raid.router)

@@ -3,9 +3,8 @@ import { computed } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
-import data from '@shared/schema'
 import { useItemActions } from '@/stores/itemActions'
-import { attrName, attrSuffix, rarityClass, rarityName, termQualityName } from '@/utils/format'
+import { attrName, attrSuffix, rarityClass, rarityName, termLabel } from '@/utils/format'
 
 const actions = useItemActions()
 
@@ -27,8 +26,9 @@ const title = computed(() => {
   }
 })
 
-const refineCost = computed(() => (item.value ? data.rarities.byId[item.value.rarity].refineCost : 0))
-const enchantCost = computed(() => (item.value ? data.rarities.byId[item.value.rarity].enchantCost : 0))
+// 实付价由后端按当前重造次数算好下发，避免前端与结算公式漂移
+const refineCost = computed(() => item.value?.refineCost ?? 0)
+const enchantCost = computed(() => item.value?.enchantCost ?? 0)
 const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
 </script>
 
@@ -54,7 +54,7 @@ const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
             class="rounded border border-ink-600 px-1.5 py-0.5 text-[10px]"
             :class="term.type === 'debuff' ? 'text-rose-300' : 'text-emerald-300'"
           >
-            {{ term.name }}{{ term.quality !== 'common' ? `（${termQualityName(term.quality)}）` : '' }}
+            {{ termLabel(term) }}
             {{ term.desc.replace('{v}', String(term.value)) }}
           </span>
         </div>
@@ -63,6 +63,9 @@ const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
       <p v-if="kind === 'refine'" class="text-xs text-ink-300">
         将重新随机<b class="text-white">基础属性浮动值</b>与<b class="text-white">副属性（种类与数值）</b>；
         品阶、类型、等级需求与所有 Buff/Debuff <b class="text-emerald-300">保持不变</b>。重造后属性可能变好也可能变差。
+        <span v-if="item.refineCount" class="text-amber-300">
+          该装备已重造 {{ item.refineCount }} 次，重造费用会随次数继续上涨。
+        </span>
       </p>
       <p v-else-if="kind === 'enchant'" class="text-xs text-ink-300">
         将<b class="text-rose-300">覆盖现有全部 Buff/Debuff</b>（数量、种类、数值均会重新随机）。

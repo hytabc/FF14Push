@@ -6,7 +6,7 @@
  */
 import data from '@shared/schema'
 
-import type { HeroStats, MonsterStats, RegionDef } from '../types'
+import type { HeroStats, MonsterStats, RaidBossEntry, RaidEnrage, RegionDef } from '../types'
 import {
   ADVENTURER_SKILL,
   isMagical,
@@ -24,6 +24,7 @@ import {
   getRegion,
   levelPenalty,
   monsterStats,
+  NO_LEVEL_PENALTY,
   regionTemplates,
   type LevelPenalty,
 } from './regions'
@@ -58,6 +59,15 @@ interface ActiveBuff {
   name: string
 }
 
+/** 一个敌方单位（地区战斗只有 1 个；高难副本可能有 2 个 BOSS）。 */
+interface EnemyState {
+  stats: MonsterStats
+  hp: number
+  maxHp: number
+  attackTimer: number
+  enraged: boolean
+}
+
 const MAX_LOG = 160
 const MAX_FLOAT = 12
 
@@ -65,16 +75,13 @@ let uid = 0
 const nextId = () => ++uid
 
 export class BattleSimulator {
-  readonly region: RegionDef
+  readonly region: RegionDef | null
   killsRequired: number
   spawnInterval: number
-  boss: MonsterStats
+  boss: MonsterStats | null
 
   phase: Phase = 'idle'
   killCount = 0
-  monster: MonsterStats | null = null
-  monsterHp = 0
-  monsterMaxHp = 0
   heroHp = 0
   heroMp = 0
   shield = 0
@@ -86,7 +93,6 @@ export class BattleSimulator {
   spawnTimer = 0
   bossTimer = 0
   deathTimer = 0
-  monsterAttackTimer = 0
   bossFightMs = 0
   deathCount = 0
 
@@ -94,6 +100,12 @@ export class BattleSimulator {
   pendingSkillCasts: Record<string, number> = {}
   pendingBossKill = false
   pendingDeath = false
+
+  /** 高难副本模式：仅 BOSS、可切换目标、一方阵亡后另一方狂暴。 */
+  readonly isRaid: boolean
+  private enemies: EnemyState[] = []
+  private targetIndex = 0
+  private readonly raidEnrage: RaidEnrage | null
 
   private baseStats: HeroStats
   private buffs: ActiveBuff[] = []
@@ -104,20 +116,39 @@ export class BattleSimulator {
 
   constructor(options: {
     stats: HeroStats
-    regionId: number
-    killsRequired: number
-    spawnInterval: number
+    regionId?: number
+    killsRequired?: number
+    spawnInterval?: number
     killCount?: number
+    raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null }
   }) {
     this.baseStats = options.stats
-    this.region = getRegion(options.regionId)
-    this.killsRequired = options.killsRequired
-    this.spawnInterval = options.spawnInterval
-    this.boss = bossStats(this.region)
+    this.isRaid = options.raid !== undefined
+    this.raidEnrage = options.raid?.enrage ?? null
+    this.killsRequired = options.killsRequired ?? 0
+    this.spawnInterval = options.spawnInterval ?? 1
     this.killCount = options.killCount ?? 0
     this.heroHp = options.stats.maxHp
     this.heroMp = options.stats.maxMp
     this.spawnTimer = 0.6
+    this.penalty = NO_LEVEL_PENALTY
+    this.boss = null
+
+    if (this.isRaid) {
+      this.region = null
+      this.enemies = (options.raid?.bosses ?? []).map((stats) => ({
+        stats,
+        hp: stats.hp,
+        maxHp: stats.hp,
+        attackTimer: stats.attackInterval,
+        enraged: false,
+      }))
+      this.pushLog(`进入高难副本，共 ${this.enemies.length} 个 BOSS`, 'boss')
+      return
+    }
+
+    this.region = getRegion(options.regionId ?? 1)
+    this.boss = bossStats(this.region)
     this.penalty = levelPenalty(options.stats.level, this.region)
     this.pushLog(`进入「${this.region.name}」· Lv.${this.region.levelMin}-${this.region.levelMax}`, 'system')
     if (this.penalty.hitRatePenaltyPct > 0) {
@@ -127,6 +158,66 @@ export class BattleSimulator {
         'system',
       )
     }
+  }
+
+  // ---------- 敌方单位：对外保持「当前目标」视角，兼容地区战斗的既有读取 ----------
+
+  private get current(): EnemyState | undefined {
+    return this.enemies[this.targetIndex]
+  }
+
+  get monster(): MonsterStats | null {
+    return this.current?.stats ?? null
+  }
+
+  get monsterHp(): number {
+    return this.current?.hp ?? 0
+  }
+
+  set monsterHp(value: number) {
+    if (this.current) this.current.hp = value
+  }
+
+  get monsterMaxHp(): number {
+    return this.current?.maxHp ?? 0
+  }
+
+  private get monsterAttackTimer(): number {
+    return this.current?.attackTimer ?? 0
+  }
+
+  private set monsterAttackTimer(value: number) {
+    if (this.current) this.current.attackTimer = value
+  }
+
+  /** 当前目标受到的伤害减免（BOSS 自带抗性 + 狂暴减伤）。 */
+  private targetResistance(): number {
+    const enemy = this.current
+    if (!enemy) return 0
+    const innate = Number(enemy.stats.resistancePct ?? 0)
+    const enrage = enemy.enraged && this.raidEnrage ? Number(this.raidEnrage.damageReductionPct) : 0
+    return innate + enrage
+  }
+
+  /** 副本战斗面板用：所有 BOSS 的血量快照。 */
+  bossEntries(): RaidBossEntry[] {
+    return this.enemies.map((enemy, index) => ({
+      id: enemy.stats.id,
+      name: enemy.stats.name,
+      hp: Math.max(0, enemy.hp),
+      maxHp: enemy.maxHp,
+      hpPct: enemy.maxHp > 0 ? Math.max(0, (enemy.hp / enemy.maxHp) * 100) : 0,
+      enraged: enemy.enraged,
+      isTarget: index === this.targetIndex,
+    }))
+  }
+
+  /** 切换攻击目标（仅高难副本可用）。 */
+  selectTarget(index: number): void {
+    if (!this.isRaid || index < 0 || index >= this.enemies.length || index === this.targetIndex) return
+    this.targetIndex = index
+    this.dots = []
+    this.pushLog(`切换目标 →「${this.enemies[index].stats.name}」`, 'system')
   }
 
   get stats(): HeroStats {
@@ -198,6 +289,7 @@ export class BattleSimulator {
     }
 
     if (this.phase === 'dead') {
+      if (this.isRaid) return // 副本阵亡即挑战失败，不复活
       this.deathTimer -= dt
       if (this.deathTimer <= 0) this.revive()
       return
@@ -206,6 +298,7 @@ export class BattleSimulator {
     this.tickDots(dt)
 
     if (!this.monster) {
+      if (this.isRaid) return
       if (this.phase === 'boss') {
         this.bossTimer -= dt
         if (this.bossTimer <= 0) this.spawnBoss()
@@ -249,22 +342,49 @@ export class BattleSimulator {
       const pool = templates.filter((t) => t.id !== 'elite')
       templateId = pool[Math.floor(Math.random() * pool.length)].id
     }
-    this.setMonster(monsterStats(this.region, templateId))
+    this.setMonster(monsterStats(this.region!, templateId))
     this.pushLog(`遭遇 ${this.monster!.name}`, 'normal')
   }
 
   private spawnBoss(): void {
-    this.setMonster({ ...this.boss })
+    this.setMonster({ ...this.boss! })
     this.bossFightMs = 0
-    this.pushLog(`关底 BOSS「${this.boss.name}」出现！`, 'boss')
+    this.pushLog(`关底 BOSS「${this.boss!.name}」出现！`, 'boss')
   }
 
   private setMonster(monster: MonsterStats): void {
-    this.monster = monster
-    this.monsterMaxHp = monster.hp
-    this.monsterHp = monster.hp
-    this.monsterAttackTimer = monster.attackInterval
+    this.enemies = [
+      { stats: monster, hp: monster.hp, maxHp: monster.hp, attackTimer: monster.attackInterval, enraged: false },
+    ]
+    this.targetIndex = 0
     this.dots = []
+  }
+
+  /** 目标阵亡：移出战斗。副本模式下若仍有存活 BOSS，则对其施加狂暴。 */
+  private removeCurrentEnemy(): void {
+    this.enemies.splice(this.targetIndex, 1)
+    this.dots = []
+    if (this.targetIndex >= this.enemies.length) this.targetIndex = Math.max(0, this.enemies.length - 1)
+  }
+
+  private enrageSurvivors(): void {
+    if (!this.raidEnrage) return
+    for (const enemy of this.enemies) {
+      if (enemy.enraged) continue
+      enemy.enraged = true
+      enemy.stats = {
+        ...enemy.stats,
+        attack: enemy.stats.attack * Number(this.raidEnrage.attackMultiplier),
+        attackInterval: Math.max(
+          0.5,
+          enemy.stats.attackInterval / (1 + Number(this.raidEnrage.attackSpeedBonusPct) / 100),
+        ),
+      }
+      this.pushLog(
+        `「${enemy.stats.name}」因同伴阵亡而狂暴！攻击 ×${this.raidEnrage.attackMultiplier}、减伤 +${this.raidEnrage.damageReductionPct}%`,
+        'danger',
+      )
+    }
   }
 
   private castIfReady(): void {
@@ -309,6 +429,7 @@ export class BattleSimulator {
         this.monster.defense,
         mult,
         this.penalty,
+        this.targetResistance(),
       )
       if (roll.missed) {
         this.pushFloat('未命中', 'monster', 'miss')
@@ -371,7 +492,15 @@ export class BattleSimulator {
           const ratio = stats.maxMp > 0 ? this.heroMp / stats.maxMp : 0
           const maxPotency = Number(effect.maxPotency ?? 600)
           const potency = 400 + (maxPotency - 400) * ratio * 2
-          const roll = rollDamage(stats, potency, skill.damageType, this.monster.defense, 1, this.penalty)
+          const roll = rollDamage(
+            stats,
+            potency,
+            skill.damageType,
+            this.monster.defense,
+            1,
+            this.penalty,
+            this.targetResistance(),
+          )
           if (roll.missed) {
             this.pushFloat('未命中', 'monster', 'miss')
           } else {
@@ -446,22 +575,32 @@ export class BattleSimulator {
     const monster = this.monster
     if (!monster) return
     const isBoss = monster.kind === 'boss'
-    const gold = this.rollGold(monster.kind)
-    const exp = Math.max(1, Math.floor(gold * data.monsters.xpPerGold))
+    this.pushLog(`击败「${monster.name}」！`, 'boss')
 
-    if (isBoss) {
-      this.pendingBossKill = true
-      this.pushLog(`击败「${monster.name}」！`, 'boss')
-    } else {
-      // 装备不再由怪物掉落：只能通过抽箱获取
-      this.pendingKills.push({ monsterId: monster.templateId, gold, exp })
-      this.pushLog(`击败 ${monster.name}，获得 ${gold} 金币`, 'loot')
+    if (!this.isRaid) {
+      // 地区战斗：小怪计入上报，BOSS 触发通关
+      const gold = this.rollGold(monster.kind)
+      const exp = Math.max(1, Math.floor(gold * data.monsters.xpPerGold))
+      if (isBoss) {
+        this.pendingBossKill = true
+      } else {
+        // 装备不再由怪物掉落：只能通过抽箱获取
+        this.pendingKills.push({ monsterId: monster.templateId, gold, exp })
+        this.pushLog(`击败 ${monster.name}，获得 ${gold} 金币`, 'loot')
+      }
     }
 
-    this.monster = null
-    this.monsterHp = 0
-    this.monsterMaxHp = 0
-    this.dots = []
+    this.removeCurrentEnemy()
+
+    if (this.isRaid) {
+      if (this.enemies.length === 0) {
+        this.pendingBossKill = true
+        this.phase = 'cleared'
+      } else {
+        this.enrageSurvivors()
+      }
+      return
+    }
 
     if (isBoss) {
       this.phase = 'cleared'
@@ -484,8 +623,9 @@ export class BattleSimulator {
     this.deathCount += 1
     this.pendingDeath = true
     this.killCount = 0 // PRD 地区 3.2：阵亡后小怪击杀计数归零
-    this.monster = null
-    this.pushLog('英雄阵亡！小怪阶段进度重置', 'danger')
+    this.enemies = []
+    this.dots = []
+    this.pushLog(this.isRaid ? '英雄阵亡！副本挑战失败' : '英雄阵亡！小怪阶段进度重置', 'danger')
   }
 
   private revive(): void {
@@ -499,6 +639,7 @@ export class BattleSimulator {
   }
 
   private rollGold(kind: 'normal' | 'elite' | 'boss'): number {
+    if (!this.region) return 1 // 副本奖励由服务端结算，不本地掷金
     const multiplier = data.regions.goldMultipliers[kind] ?? 1
     const spread = data.regions.goldFloat
     const base = this.region.baseGold * multiplier
@@ -517,6 +658,13 @@ export class BattleSimulator {
 
   start(): void {
     if (this.phase !== 'idle') return
+    if (this.isRaid) {
+      // 副本无小怪阶段：开局即与全部 BOSS 交战
+      this.phase = 'boss'
+      this.bossFightMs = 0
+      this.pushLog('副本战斗开始！', 'system')
+      return
+    }
     this.phase = 'mob'
     this.spawnTimer = 0.6
     this.pushLog('开始自动战斗', 'system')
@@ -526,13 +674,11 @@ export class BattleSimulator {
     if (this.phase !== 'cleared') this.phase = 'idle'
   }
 
-  /** BOSS 已击败后留在当前地区：重置小怪阶段，继续原地挂机。 */
+  /** BOSS 已击败后留在当前地区：重置小怪阶段，继续原地挂机。仅地区战斗可用。 */
   continueAfterClear(): void {
-    if (this.phase !== 'cleared') return
+    if (this.isRaid || this.phase !== 'cleared') return
     this.killCount = 0
-    this.monster = null
-    this.monsterHp = 0
-    this.monsterMaxHp = 0
+    this.enemies = []
     this.dots = []
     this.phase = 'mob'
     this.spawnTimer = this.spawnInterval

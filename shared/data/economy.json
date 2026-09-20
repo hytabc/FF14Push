@@ -11,7 +11,8 @@
   "refine": {
     "$comment": "重造：重新随机基础属性浮动值与副属性，保留品阶/类型/等级需求/词条",
     "baseAttrFloat": 0.20,
-    "subAttrFloat": 0.20
+    "subAttrFloat": 0.20,
+    "costGrowthPerRefine": 0.25
   },
   "enchant": {
     "$comment": "附魔：重新随机全部 Buff/Debuff，含品质判定",

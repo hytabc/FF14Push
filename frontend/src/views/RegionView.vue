@@ -12,7 +12,7 @@ const chapters = ref<Array<{ id: number; name: string; regionIds: number[] }>>([
 const loading = ref(false)
 const switching = ref<number | null>(null)
 
-const currentId = computed(() => game.sim?.region.id ?? game.state?.hero.currentRegionId ?? 1)
+const currentId = computed(() => game.sim?.region?.id ?? game.state?.hero.currentRegionId ?? 1)
 
 async function load() {
   loading.value = true

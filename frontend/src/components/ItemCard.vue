@@ -15,8 +15,8 @@ import {
   rarityHex,
   rarityName,
   slotName,
+  termLabel,
   termQualityClass,
-  termQualityName,
 } from '@/utils/format'
 
 const props = withDefaults(
@@ -95,7 +95,7 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
         :class="termQualityClass(term.quality)"
         :title="term.desc.replace('{v}', String(term.value))"
       >
-        {{ term.name }}{{ term.quality !== 'common' ? `（${termQualityName(term.quality)}）` : '' }}
+        {{ termLabel(term) }}
       </span>
       <span
         v-for="term in debuffs"
@@ -103,7 +103,7 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
         class="rounded border border-rose-500/40 px-1.5 py-0.5 text-[10px] text-rose-300"
         :title="term.desc.replace('{v}', String(term.value))"
       >
-        {{ term.name }}{{ term.quality !== 'common' ? `（${termQualityName(term.quality)}）` : '' }}
+        {{ termLabel(term) }}
       </span>
     </div>
 

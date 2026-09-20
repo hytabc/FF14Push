@@ -12,6 +12,7 @@ from app.models.progress import (
     TavernState,
     TutorialProgress,
 )
+from app.models.raid import RaidProgress, RaidSession
 from app.models.redeem import RedeemRecord
 from app.models.system import AuditLog, BattleSession, RankingEntry
 
@@ -33,6 +34,8 @@ __all__ = [
     "TavernState",
     "AutoSellSetting",
     "RedeemRecord",
+    "RaidSession",
+    "RaidProgress",
     "BattleSession",
     "RankingEntry",
     "AuditLog",

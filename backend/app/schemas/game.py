@@ -110,6 +110,23 @@ class AutoSellRequest(BaseModel):
     rarities: list[str] = Field(default_factory=list)
 
 
+class RaidStartRequest(BaseModel):
+    raidId: str
+
+
+class RaidReportRequest(BaseModel):
+    sessionId: int
+    raidId: str
+    elapsedMs: int = 0
+    cleared: bool = False
+    died: bool = False
+    fightMs: int | None = None
+
+
+class RaidStopRequest(BaseModel):
+    sessionId: int
+
+
 class RedeemRequest(BaseModel):
     code: str = Field(min_length=1, max_length=64)
 

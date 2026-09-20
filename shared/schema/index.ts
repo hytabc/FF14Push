@@ -11,6 +11,7 @@ import baseItemsJson from '../data/base-items.json'
 import monstersJson from '../data/monsters.json'
 import bossesJson from '../data/bosses.json'
 import regionsJson from '../data/regions.json'
+import raidsJson from '../data/raids.json'
 import chestsJson from '../data/chests.json'
 import craftingJson from '../data/crafting.json'
 import economyJson from '../data/economy.json'
@@ -147,6 +148,41 @@ export interface RegionDef {
   spawnInterval: number
   bossName: string
   bossType: string
+}
+
+export interface RaidBossDef {
+  id: string
+  name: string
+  type: string
+  hpMultiplier: number
+  attackMultiplier: number
+  defenseMultiplier: number
+  attackInterval: number
+  resistancePct: number
+}
+
+export interface RaidEnrageDef {
+  attackMultiplier: number
+  damageReductionPct: number
+  attackSpeedBonusPct: number
+}
+
+export interface RaidDef {
+  id: string
+  order: number
+  name: string
+  requiredLevel: number
+  requiredPower: number
+  requiresAllSlots: boolean
+  enrage: RaidEnrageDef | null
+  bosses: RaidBossDef[]
+  reward: {
+    firstGold: number
+    firstExp: number
+    chestId: string
+    boxCount: number
+    repeatGold: number
+  }
 }
 
 export interface ChestDef {
@@ -350,6 +386,9 @@ export const gameData = {
       maxDamageDealtPenaltyPct: number
       maxDamageTakenBonusPct: number
     }
+  },
+  raids: raidsJson as unknown as {
+    raids: RaidDef[]
   },
   chests: chestsJson as unknown as { chests: ChestDef[]; pity: ChestPity[] },
   crafting: craftingJson as unknown as {

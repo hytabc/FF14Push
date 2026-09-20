@@ -45,6 +45,8 @@ export interface Item {
   equippedSlot: SlotId | null
   refineCount: number
   enchantCount: number
+  refineCost: number
+  enchantCost: number
   source: string
   weaponType: string | null
   jobId: string | null
@@ -124,6 +126,9 @@ export interface MonsterStats {
   level: number
   bossType?: string
   skills?: BossSkill[]
+  /** 高难副本：BOSS 自带抗性（削减受到的伤害 %）。 */
+  resistancePct?: number
+  raidId?: string
 }
 
 export interface BossSkill {
@@ -155,6 +160,71 @@ export interface RegionProgressEntry {
   cleared: boolean
   clearedAt: string | null
   bestClearMs: number | null
+}
+
+/** 高难副本：一方阵亡后对存活 BOSS 施加的狂暴加成。 */
+export interface RaidEnrage {
+  attackMultiplier: number
+  damageReductionPct: number
+  attackSpeedBonusPct: number
+}
+
+export interface RaidReward {
+  firstGold: number
+  firstExp: number
+  chestId: string
+  boxCount: number
+  repeatGold: number
+}
+
+export interface RaidListEntry {
+  id: string
+  order: number
+  name: string
+  requiredLevel: number
+  requiredPower: number
+  requiresAllSlots: boolean
+  bossNames: string[]
+  dualBoss: boolean
+  reward: RaidReward
+  eligible: boolean
+  blockedReason: string | null
+  cleared: boolean
+  clearCount: number
+  bestClearMs: number | null
+}
+
+export interface RaidSessionStart {
+  sessionId: number
+  raidId: string
+  name: string
+  bosses: MonsterStats[]
+  enrage: RaidEnrage | null
+  reward: RaidReward
+}
+
+export interface RaidReportResponse {
+  cleared: boolean
+  firstClear: boolean
+  gold: number
+  goldGained: number
+  items: Item[]
+  autoSold: Array<{ name: string; rarity: string; price: number }>
+  autoGold: number
+  fightMs: number
+  message: string
+  level?: { levelsGained: number; exp: number; level: number }
+}
+
+/** 副本战斗面板用的单个 BOSS 状态。 */
+export interface RaidBossEntry {
+  id: string
+  name: string
+  hp: number
+  maxHp: number
+  hpPct: number
+  enraged: boolean
+  isTarget: boolean
 }
 
 export interface RegionListEntry extends RegionDef {

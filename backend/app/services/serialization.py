@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from app.services.economy import enchant_cost, refine_cost
 from app.services.game_config import CONFIG
 from app.services.slots_util import possible_slots
 from app.services.valuation import item_score
@@ -27,6 +28,9 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "equippedSlot": item.equipped_slot,
         "refineCount": item.refine_count,
         "enchantCount": item.enchant_count,
+        # 实付价：重造随重造次数递增，前端直接显示这两个值即可与服务端扣费一致
+        "refineCost": refine_cost(item.rarity, int(item.refine_count or 0)),
+        "enchantCost": enchant_cost(item.rarity),
         "source": item.source,
         "weaponType": base.weapon_type if base else None,
         "jobId": base.job_id if base else None,

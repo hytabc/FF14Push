@@ -242,7 +242,7 @@ function entryRarity(entry: Entry): RarityId {
               entry.qualities?.[q]?.unlocked ? '' : 'opacity-35',
             ]"
           >
-            {{ termQualityName(q) }}
+            {{ q === 'ancient' ? `${termQualityName(q)}🌟` : termQualityName(q) }}
           </span>
         </div>
       </article>

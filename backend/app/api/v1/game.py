@@ -52,6 +52,7 @@ async def game_config() -> dict:
         "economy": CONFIG.economy,
         "talents": CONFIG.talents,
         "regions": CONFIG.regions,
+        "raids": CONFIG.raids,
         "monsters": CONFIG.monsters,
         "bosses": CONFIG.bosses,
         "combat": CONFIG.combat,

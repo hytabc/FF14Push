@@ -71,7 +71,7 @@ export function hitChance(stats: HeroStats, levelPenaltyPct = 0): number {
   return Math.max(0.05, Math.min(0.99, chance))
 }
 
-/** 一次伤害结算：命中 → 直击 → 暴击 → 信念 → 随机浮动 → 减防。来源：PRD 三属性 2.2 / 3.3 */
+/** 一次伤害结算：命中 → 直击 → 暴击 → 信念 → 随机浮动 → BOSS 抗性 → 减防。来源：PRD 三属性 2.2 / 3.3 */
 export function rollDamage(
   stats: HeroStats,
   potencyPct: number,
@@ -79,6 +79,7 @@ export function rollDamage(
   targetDefense: number,
   skillMult = 1,
   penalty: LevelPenalty | null = null,
+  resistancePct = 0,
   rand: () => number = Math.random,
 ): DamageRoll {
   if (penalty && rand() > hitChance(stats, penalty.hitRatePenaltyPct)) {
@@ -97,6 +98,9 @@ export function rollDamage(
 
   const [lo, hi] = data.combat.randomFloat as [number, number]
   raw *= lo + rand() * (hi - lo)
+
+  // BOSS 抗性：直接削减最终伤害（高难副本 BOSS 自带抗性）
+  raw *= Math.max(0, 1 - Math.min(90, resistancePct) / 100)
 
   const mitigated = Math.max(raw * 0.1, raw - targetDefense)
   return { amount: Math.max(1, Math.floor(mitigated)), isCrit, isDirectHit, missed: false }

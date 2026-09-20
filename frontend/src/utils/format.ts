@@ -1,6 +1,6 @@
 import data, { ATTR_NAMES, BASE_ATTR_NAMES } from '@shared/schema'
 
-import type { RarityId, TermQuality } from '@/game/types'
+import type { RarityId, TermEntry, TermQuality } from '@/game/types'
 
 export const RARITY_ORDER = data.rarities.order as RarityId[]
 
@@ -49,6 +49,13 @@ export function rarityHex(rarity: RarityId): string {
 
 export function termQualityName(quality: TermQuality): string {
   return { common: '普通', rare: '稀有', ancient: '太古' }[quality] ?? quality
+}
+
+/** 词条显示名：太古用 🌟 标记（替代文字），稀有保留文字后缀。 */
+export function termLabel(term: TermEntry): string {
+  if (term.quality === 'ancient') return `${term.name}🌟`
+  if (term.quality === 'rare') return `${term.name}（稀有）`
+  return term.name
 }
 
 export function termQualityClass(quality: TermQuality): string {

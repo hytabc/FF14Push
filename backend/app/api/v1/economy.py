@@ -104,7 +104,7 @@ async def refine(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
 
-    cost = refine_cost(item.rarity)
+    cost = refine_cost(item.rarity, int(item.refine_count))
     if int(user.gold) < cost:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
 

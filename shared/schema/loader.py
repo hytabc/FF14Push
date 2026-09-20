@@ -57,6 +57,8 @@ class GameConfig:
     bosses: dict[str, Any]
     regions: dict[str, Any]
     region_by_id: dict[int, dict[str, Any]]
+    raids: dict[str, Any]
+    raid_by_id: dict[str, dict[str, Any]]
     chests: dict[str, Any]
     crafting: dict[str, Any]
     economy: dict[str, Any]
@@ -143,6 +145,7 @@ def load_game_data() -> GameConfig:
         "monsters": _load("monsters.json"),
         "bosses": _load("bosses.json"),
         "regions": _load("regions.json"),
+        "raids": _load("raids.json"),
         "chests": _load("chests.json"),
         "crafting": _load("crafting.json"),
         "economy": _load("economy.json"),
@@ -182,6 +185,8 @@ def load_game_data() -> GameConfig:
         bosses=raw["bosses"],
         regions=raw["regions"],
         region_by_id={r["id"]: r for r in raw["regions"]["regions"]},
+        raids=raw["raids"],
+        raid_by_id={r["id"]: r for r in raw["raids"]["raids"]},
         chests=raw["chests"],
         crafting=raw["crafting"],
         economy=raw["economy"],

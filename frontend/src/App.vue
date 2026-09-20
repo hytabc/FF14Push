@@ -23,6 +23,7 @@ const NAV = [
   { to: '/craft', label: '合成', icon: '⚗' },
   { to: '/hero', label: '英雄', icon: '🧙' },
   { to: '/region', label: '地区', icon: '🗺' },
+  { to: '/raid', label: '高难', icon: '☠' },
   { to: '/tavern', label: '酒馆', icon: '🍺' },
   { to: '/codex', label: '图鉴', icon: '📖' },
   { to: '/ranking', label: '排行', icon: '🏆' },

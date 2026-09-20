@@ -11,8 +11,14 @@ REQUIRED = int(CONFIG.crafting["requiredCount"])
 CRAFT_CATEGORIES = list(CONFIG.crafting["categories"])
 
 
-def refine_cost(rarity: str) -> int:
-    return int(CONFIG.rarities[rarity]["refineCost"])
+def refine_cost(rarity: str, refine_count: int = 0) -> int:
+    """重造费用 = 品阶基准价 × (1 + costGrowthPerRefine × 已重造次数)。
+
+    递增不封顶：同一件装备重造越多次越贵，避免无限重造刷属性。
+    """
+    base = int(CONFIG.rarities[rarity]["refineCost"])
+    growth = float(CONFIG.economy["refine"]["costGrowthPerRefine"])
+    return int(base * (1.0 + growth * max(0, int(refine_count))))
 
 
 def enchant_cost(rarity: str) -> int:

@@ -1,7 +1,7 @@
 import data from '@shared/schema'
 import { describe, expect, it } from 'vitest'
 
-import { attrName, baseAttrName, skillEffectLabel } from '@/utils/format'
+import { attrName, baseAttrName, skillEffectLabel, termLabel } from '@/utils/format'
 
 const HAS_LATIN = /[A-Za-z]/
 
@@ -41,5 +41,18 @@ describe('属性与技能文案中文化', () => {
   it('未知效果类型回落为「未知效果」，不暴露英文枚举', () => {
     expect(skillEffectLabel({ type: 'brandNewEffect' })).toBe('未知效果')
     expect(skillEffectLabel({})).toBe('未知效果')
+  })
+})
+
+describe('词条标签', () => {
+  const base = { id: 'x', type: 'buff' as const, stat: 'attack', trigger: 'passive', value: 1, desc: '' }
+
+  it('太古用 🌟 替代文字', () => {
+    expect(termLabel({ ...base, name: '力量增幅', quality: 'ancient' })).toBe('力量增幅🌟')
+  })
+
+  it('稀有保留文字后缀，普通不加后缀', () => {
+    expect(termLabel({ ...base, name: '力量增幅', quality: 'rare' })).toBe('力量增幅（稀有）')
+    expect(termLabel({ ...base, name: '力量增幅', quality: 'common' })).toBe('力量增幅')
   })
 })

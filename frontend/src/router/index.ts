@@ -13,6 +13,7 @@ const router = createRouter({
     { path: '/craft', name: 'craft', component: () => import('@/views/CraftView.vue') },
     { path: '/hero', name: 'hero', component: () => import('@/views/HeroView.vue') },
     { path: '/region', name: 'region', component: () => import('@/views/RegionView.vue') },
+    { path: '/raid', name: 'raid', component: () => import('@/views/RaidView.vue') },
     { path: '/tavern', name: 'tavern', component: () => import('@/views/TavernView.vue') },
     { path: '/codex', name: 'codex', component: () => import('@/views/CodexView.vue') },
     { path: '/ranking', name: 'ranking', component: () => import('@/views/RankingView.vue'), meta: { public: true } },
