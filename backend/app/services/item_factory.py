@@ -149,17 +149,19 @@ def generate_item(
     rng: random.Random | None = None,
     pity=None,
     base_id: str | None = None,
+    luck: float = 0.0,
 ) -> tuple[dict[str, Any], Any]:
     """生成一件装备。[返回] (item_dict, 新的保底状态)
 
     base_id 用于强制指定底材（如开局赠送的起始武器），省略时按等级随机。
+    luck 为品阶爆率加成（0 表示按基础概率）。
     """
     rng = rng or random.Random()
     base = CONFIG.base_item_by_id[base_id] if base_id else pick_base_item(category, level, rng)
     if rarity is None:
         from app.services.loot import PityState, draw_rarity
 
-        rarity, pity = draw_rarity(box_tier, pity or PityState(), rng)
+        rarity, pity = draw_rarity(box_tier, pity or PityState(), rng, luck)
     spec = CONFIG.rarities[rarity]
     mult = float(spec["multiplier"])
 

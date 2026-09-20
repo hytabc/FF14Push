@@ -30,16 +30,41 @@ class PityState:
         return int(getattr(self, PITY_COUNTERS[minimum]))
 
 
-def roll_rarity(box_tier: str, rng: random.Random | None = None) -> str:
+def rarity_weights(box_tier: str, luck: float = 0.0) -> list[float]:
+    """箱子品阶概率分布。
+
+    luck>0 时按品阶线性加权 `base[i] × (1 + luck × i)` 后归一化，使高品阶更易出现。
+    """
+    base = [float(CONFIG.rarities[r]["boxChance"][box_tier]) for r in RARITY_ORDER]
+    if luck <= 0:
+        return base
+    weights = [base[i] * (1.0 + luck * i) for i in range(len(base))]
+    total = sum(weights)
+    return [w / total for w in weights] if total > 0 else base
+
+
+def roll_rarity(box_tier: str, rng: random.Random | None = None, luck: float = 0.0) -> str:
     """按箱子类型抽取品阶（不含保底）。box_tier: normal | advanced"""
     rng = rng or random
+    probs = rarity_weights(box_tier, luck)
     roll = rng.random()
     cumulative = 0.0
-    for rarity in RARITY_ORDER:
-        cumulative += float(CONFIG.rarities[rarity]["boxChance"][box_tier])
+    for rarity, chance in zip(RARITY_ORDER, probs):
+        cumulative += chance
         if roll < cumulative:
             return rarity
     return RARITY_ORDER[-1]
+
+
+def drop_rate_multiplier(cleared_regions: int) -> float:
+    """按通关地区数计算的品阶爆率倍率（封顶，且不低于 1）。
+
+    仅提高装备品阶抽取概率，不含金币/经验，避免刷取金币。
+    """
+    cfg = CONFIG.chests.get("dropRate", {})
+    per = float(cfg.get("perClearedRegion", 0.0))
+    cap = float(cfg.get("maxMultiplier", 1.0))
+    return min(cap, max(1.0, 1.0 + per * max(0, int(cleared_regions))))
 
 
 def advance_pity(pity: PityState, rarity: str) -> PityState:
@@ -58,10 +83,12 @@ def advance_pity(pity: PityState, rarity: str) -> PityState:
     return new
 
 
-def draw_rarity(box_tier: str, pity: PityState, rng: random.Random | None = None) -> tuple[str, PityState]:
+def draw_rarity(
+    box_tier: str, pity: PityState, rng: random.Random | None = None, luck: float = 0.0
+) -> tuple[str, PityState]:
     """完整抽箱：抽品阶 → 推进计数 → 保底判定。返回 (最终品阶, 新计数)。"""
     rng = rng or random
-    rolled = roll_rarity(box_tier, rng)
+    rolled = roll_rarity(box_tier, rng, luck)
     state = advance_pity(pity, rolled)
     final = rolled
     for rule in CONFIG.chests["pity"]:

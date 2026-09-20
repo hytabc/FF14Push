@@ -399,7 +399,12 @@ export const gameData = {
     }
     raids: RaidDef[]
   },
-  chests: chestsJson as unknown as { chests: ChestDef[]; pity: ChestPity[]; levelBands: number[] },
+  chests: chestsJson as unknown as {
+    chests: ChestDef[]
+    pity: ChestPity[]
+    levelBands: Array<{ level: number; priceMultiplier: number }>
+    dropRate: { perClearedRegion: number; maxMultiplier: number }
+  },
   crafting: craftingJson as unknown as {
     requiredCount: number
     categories: Category[]

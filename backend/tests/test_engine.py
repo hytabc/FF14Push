@@ -20,7 +20,15 @@ from app.services.item_factory import (
     roll_sub_attr_value,
     roll_terms_for_enchant,
 )
-from app.services.loot import PityState, chest_by_id, draw_rarity, roll_rarity
+from app.services.loot import (
+    RARITY_ORDER,
+    PityState,
+    chest_by_id,
+    draw_rarity,
+    drop_rate_multiplier,
+    rarity_weights,
+    roll_rarity,
+)
 from app.services.combat_model import theoretical_dps
 from app.services.recruiting import generate_candidate
 from app.services.regions_util import apply_exp_bonus, exp_bonus_from_terms, level_penalty
@@ -732,3 +740,53 @@ class TestBasedOnCurrentCost:
         for rarity in CONFIG.rarity_order:
             assert refine_cost(rarity, 0, "basedOnCurrent") > refine_cost(rarity, 0, "random")
             assert enchant_cost(rarity, "basedOnCurrent") > enchant_cost(rarity, "random")
+
+
+class _SellProbe:
+    """适配 sell_price 的对象。"""
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.rarity = data["rarity"]
+        self.base_attrs = data["baseAttrs"]
+        self.sub_attrs = data["subAttrs"]
+        self.terms = data["terms"]
+
+
+def _ev_sell_per_draw(category: str, box_tier: str, band: int, luck: float, n: int = 6000, seed: int = 7) -> float:
+    """含保底的期望出售价：连续开箱时保底会提升品阶，需一并计入。"""
+    rng = random.Random(seed)
+    pity = PityState()
+    total = 0.0
+    for _ in range(n):
+        rarity, pity = draw_rarity(box_tier, pity, rng, luck)
+        item, _ = generate_item(category, band, rarity=rarity, rng=rng)
+        total += sell_price(_SellProbe(item))
+    return total / n
+
+
+class TestDropRate:
+    """通关进度 → 品阶爆率倍率：提高装备品阶，且不能刷取金币。"""
+
+    def test_multiplier_scales_and_caps(self) -> None:
+        cap = float(CONFIG.chests["dropRate"]["maxMultiplier"])
+        assert drop_rate_multiplier(0) == 1.0
+        assert 1.0 < drop_rate_multiplier(10) < cap
+        assert drop_rate_multiplier(10_000) == cap
+
+    def test_weights_shift_toward_higher_rarity(self) -> None:
+        base = rarity_weights("normal", 0.0)
+        boosted = rarity_weights("normal", 0.5)
+        assert abs(sum(boosted) - 1.0) < 1e-9
+        top = RARITY_ORDER.index("rare")
+        assert sum(boosted[top:]) > sum(base[top:])
+
+    def test_chest_cannot_be_farmed_for_gold_at_max_luck(self) -> None:
+        """即使满爆率，买箱出售的期望收益也低于箱子价格（无法刷金币）。"""
+        max_luck = drop_rate_multiplier(10_000) - 1.0
+        cheapest_band = min(CONFIG.chests["levelBands"], key=lambda b: float(b["priceMultiplier"]))
+        for chest in CONFIG.chests["chests"]:
+            unit = int(chest["price"] * float(cheapest_band["priceMultiplier"]))
+            ev = _ev_sell_per_draw(
+                chest["category"], chest["tier"], int(cheapest_band["level"]), max_luck
+            )
+            assert ev < unit, f"{chest['id']} 期望出售价 {ev:.1f} ≥ 箱子价 {unit}"

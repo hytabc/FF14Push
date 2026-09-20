@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.main import app
-from app.models import BattleSession, Hero, Item, User
+from app.models import BattleSession, Hero, Item, RegionProgress, User
 from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
@@ -460,6 +460,52 @@ class TestEconomy:
         assert ok.status_code == 200, ok.text
         for item in ok.json()["items"]:
             assert item["levelReq"] <= 1
+
+    async def test_chest_price_scales_with_band(self, auth_client, session_factory) -> None:
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.level = 40
+            await db.commit()
+        await _set_gold(auth_client, session_factory, 100_000)
+
+        base = next(c["price"] for c in CONFIG.chests["chests"] if c["id"] == "weaponBox")
+        mult40 = next(
+            float(b["priceMultiplier"]) for b in CONFIG.chests["levelBands"] if b["level"] == 40
+        )
+
+        low = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 1, "level": 1}
+        )
+        assert low.status_code == 200, low.text
+        assert low.json()["cost"] == base
+
+        high = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 1, "level": 40}
+        )
+        assert high.status_code == 200, high.text
+        assert high.json()["cost"] == int(base * mult40)
+
+    async def test_drop_rate_rises_with_cleared_regions(self, auth_client, session_factory) -> None:
+        before = (await auth_client.get(f"{API}/game/state")).json()
+        assert before["clearedRegions"] == 0
+        assert before["dropRateMultiplier"] == 1.0
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            row = (
+                await db.execute(
+                    select(RegionProgress).where(
+                        RegionProgress.user_id == me["id"], RegionProgress.region_id == 1
+                    )
+                )
+            ).scalar_one()
+            row.cleared = True
+            await db.commit()
+
+        after = (await auth_client.get(f"{API}/game/state")).json()
+        assert after["clearedRegions"] == 1
+        assert after["dropRateMultiplier"] > 1.0
 
     async def test_chest_band_scales_contents_with_selected_level(
         self, auth_client, session_factory
@@ -1001,6 +1047,24 @@ class TestRaid:
             },
         )
         assert resp.status_code == 422
+
+    async def test_hard_raid_accepts_fast_clear(self, auth_client, session_factory) -> None:
+        """高难副本不做击杀时间校验：装备极佳时可远快于理论上限。"""
+        await self._gear_up(auth_client, session_factory, mix=self.HARD_MIX, ancient=True)
+        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
+        resp = await auth_client.post(
+            f"{API}/raid/session/report",
+            json={
+                "sessionId": started["sessionId"],
+                "raidId": "raid_h1",
+                "cleared": True,
+                "died": False,
+                "elapsedMs": 1000,
+                "fightMs": 1000,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["cleared"] is True
 
     async def test_first_clear_full_reward_then_repeat_gold_and_exp(self, auth_client, session_factory) -> None:
         await self._gear_up(auth_client, session_factory)

@@ -322,6 +322,10 @@ export interface GameState {
   itemCounts: Record<RarityId, number>
   regionProgress: Record<string, RegionProgressEntry>
   currentRegion: CurrentRegion | null
+  /** 已通关地区数。 */
+  clearedRegions: number
+  /** 品阶爆率倍率（随通关进度提升，仅影响装备品阶）。 */
+  dropRateMultiplier: number
   pity: Record<string, PityEntry>
   skillStats: Record<string, number>
   codex: CodexProgress

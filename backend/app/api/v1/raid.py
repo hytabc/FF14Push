@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
 from app.models import AuditLog, RaidProgress, RaidSession
 from app.schemas.game import RaidReportRequest, RaidStartRequest, RaidStopRequest
+from app.services.drop_luck import rarity_luck, user_drop_rate
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import chest_by_id
@@ -170,22 +171,25 @@ async def report_session(
         }
 
     stats = compute_stats(hero, items)
-    bosses = boss_stats_for_raid(raid, hero.level, stats)
-    required_ms = min_clear_seconds(stats, bosses, settings.report_tolerance) * 1000.0
-    if elapsed_ms < required_ms:
-        db.add(
-            AuditLog(
-                user_id=user.id,
-                reason="raid_too_fast",
-                payload={"raidId": raid["id"], "elapsedMs": elapsed_ms, "requiredMs": int(required_ms)},
-                rejected=True,
+
+    # 高难副本不做击杀时间校验：装备极佳时可能远快于服务端理论上限。
+    if str(raid.get("difficulty", "normal")) != "hard":
+        bosses = boss_stats_for_raid(raid, hero.level, stats)
+        required_ms = min_clear_seconds(stats, bosses, settings.report_tolerance) * 1000.0
+        if elapsed_ms < required_ms:
+            db.add(
+                AuditLog(
+                    user_id=user.id,
+                    reason="raid_too_fast",
+                    payload={"raidId": raid["id"], "elapsedMs": elapsed_ms, "requiredMs": int(required_ms)},
+                    rejected=True,
+                )
             )
-        )
-        await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"rejected": ["通关时间低于理论上限"]},
-        )
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"rejected": ["通关时间低于理论上限"]},
+            )
 
     row = await _progress(db, user.id, raid["id"])
     if row is None:
@@ -209,8 +213,11 @@ async def report_session(
         generated = []
         if chest is not None:
             rng = random.Random()
+            luck = rarity_luck(await user_drop_rate(db, user.id))
             for _ in range(int(reward["boxCount"])):
-                item, _ = generate_item(chest["category"], hero.level, box_tier=chest["tier"], rng=rng)
+                item, _ = generate_item(
+                    chest["category"], hero.level, box_tier=chest["tier"], rng=rng, luck=luck
+                )
                 generated.append(item)
         if generated:
             grant = await grant_generated_items(db, user, generated, source=f"raid:{raid['id']}")

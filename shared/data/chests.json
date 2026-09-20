@@ -1,7 +1,19 @@
 {
   "$comment": "箱子定义与保底。来源：PRD 2.8",
-  "$commentLevelBands": "抽箱等级档位：玩家等级达到该档位后才可选择；箱子内容按该档位等级生成（等同该等级玩家此前抽取到的装备）。",
-  "levelBands": [1, 20, 40, 60, 80, 100],
+  "$commentLevelBands": "抽箱等级档位：玩家等级达到该档位后才可选择；箱子内容按该档位等级生成（等同该等级玩家此前抽取到的装备）。priceMultiplier 为箱子价格的等级倍率（高档位更贵，量级与地区金币产出曲线对齐）。",
+  "levelBands": [
+    { "level": 1, "priceMultiplier": 1 },
+    { "level": 20, "priceMultiplier": 6 },
+    { "level": 40, "priceMultiplier": 22 },
+    { "level": 60, "priceMultiplier": 80 },
+    { "level": 80, "priceMultiplier": 230 },
+    { "level": 100, "priceMultiplier": 1000 }
+  ],
+  "$commentDropRate": "按通关进度提升装备品阶爆率：每通关 1 个地区 +perClearedRegion，封顶 maxMultiplier。仅作用于箱子的品阶抽取，不影响金币与经验（金币仅由打怪产出且服务端按地区封顶），且上限经过数值校验，确保「买箱出售」永远亏损，无法刷金币。",
+  "dropRate": {
+    "perClearedRegion": 0.0125,
+    "maxMultiplier": 1.5
+  },
   "chests": [
     { "id": "weaponBox", "name": "武器箱", "price": 100, "category": "weapon", "tier": "normal", "icon": "weapon" },
     { "id": "armorBox", "name": "装备箱", "price": 80, "category": "armor", "tier": "normal", "icon": "armor" },

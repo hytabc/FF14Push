@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
 from app.models import ChestPity
 from app.schemas.game import ChestOpenRequest
+from app.services.drop_luck import rarity_luck, user_drop_rate
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
@@ -19,7 +20,9 @@ from app.services.stats import compute_stats
 router = APIRouter(prefix="/chest", tags=["chest"])
 
 ALLOWED_COUNTS = {1, 10}
-LEVEL_BANDS = [int(x) for x in CONFIG.chests["levelBands"]]
+LEVEL_BAND_MULTIPLIER = {
+    int(band["level"]): float(band["priceMultiplier"]) for band in CONFIG.chests["levelBands"]
+}
 
 
 async def _pity(db: DbSession, user_id: int, chest_id: str) -> ChestPity:
@@ -51,18 +54,24 @@ async def open_chest(
 
     # 抽箱等级档位：需玩家等级达到档位；省略时按玩家当前等级（等级同步）。
     band = payload.level
+    band_multiplier = 1.0
     if band is None:
         band = hero.level
     else:
-        if band not in LEVEL_BANDS:
+        if band not in LEVEL_BAND_MULTIPLIER:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="未知的抽箱等级档位")
         if hero.level < band:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"需要英雄等级 {band} 才能抽取该档位",
             )
+        band_multiplier = LEVEL_BAND_MULTIPLIER[band]
 
-    cost = int(chest["price"]) * payload.count
+    # 品阶爆率随通关进度提升（仅影响装备品阶，不含金币）
+    luck = rarity_luck(await user_drop_rate(db, user.id))
+
+    unit_price = int(chest["price"] * band_multiplier)
+    cost = unit_price * payload.count
     if int(user.gold) < cost:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
 
@@ -84,6 +93,7 @@ async def open_chest(
             box_tier=chest["tier"],
             rng=rng,
             pity=pity,
+            luck=luck,
         )
         generated.append(item)
 

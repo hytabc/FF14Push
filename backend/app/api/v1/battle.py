@@ -28,6 +28,7 @@ from app.models import (
 from app.schemas.game import BattleReportRequest, BattleStartRequest, BattleStopRequest
 from app.services.codex import unlock_monster
 from app.services.combat_model import boss_stats, max_kills_in_seconds, resolve_job_skills
+from app.services.drop_luck import rarity_luck, user_drop_rate
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
@@ -247,7 +248,8 @@ async def _settle_boss(
     box = chest_by_id(box_id)
     generated = []
     if box:
-        item, _ = generate_item(box["category"], hero.level, box_tier=box["tier"], rng=rng)
+        luck = rarity_luck(await user_drop_rate(db, user.id))
+        item, _ = generate_item(box["category"], hero.level, box_tier=box["tier"], rng=rng, luck=luck)
         generated.append(item)
     grant = await grant_generated_items(db, user, generated, source="boss", rng=rng)
 

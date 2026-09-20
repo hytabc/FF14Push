@@ -20,8 +20,11 @@ const showReveal = ref(false)
 
 const heroLevel = computed(() => game.hero?.level ?? 1)
 /** 已解锁的等级档位（玩家等级达到即可选）。 */
-const unlockedBands = computed(() => LEVEL_BANDS.filter((b) => b <= heroLevel.value))
-const band = ref(LEVEL_BANDS[0])
+const unlockedBands = computed(() => LEVEL_BANDS.filter((b) => b.level <= heroLevel.value))
+const band = ref<number>(LEVEL_BANDS[0].level)
+const bandDef = computed(() => LEVEL_BANDS.find((b) => b.level === band.value) ?? LEVEL_BANDS[0])
+/** 品阶爆率加成（随通关进度提升，仅影响装备品阶）。 */
+const luck = computed(() => Math.max(0, (game.state?.dropRateMultiplier ?? 1) - 1))
 
 const PITY = data.chests.pity
 
@@ -35,11 +38,17 @@ function pityPct(chestId: string, count: number) {
   return Math.min(100, (current / count) * 100)
 }
 
-function odds(chest: (typeof chests)[number]) {
-  return data.rarities.order.map((r) => ({
-    rarity: r,
-    chance: data.rarities.byId[r].boxChance[chest.tier],
-  }))
+/** 单个箱子在当前档位下的实际单价（与服务端同一公式）。 */
+function unitPrice(chest: { price: number }): number {
+  return Math.floor(chest.price * bandDef.value.priceMultiplier)
+}
+
+/** 当前品阶概率分布（含进度爆率加成）。 */
+function odds(chest: { tier: string }) {
+  const base = data.rarities.order.map((r) => data.rarities.byId[r].boxChance[chest.tier as 'normal' | 'advanced'])
+  const weights = data.rarities.order.map((_, i) => base[i] * (1 + luck.value * i))
+  const total = weights.reduce((sum, w) => sum + w, 0) || 1
+  return data.rarities.order.map((r, i) => ({ rarity: r, chance: weights[i] / total }))
 }
 
 const canAfford = computed(() => (price: number, count: number) => game.gold >= price * count)
@@ -47,7 +56,7 @@ const canAfford = computed(() => (price: number, count: number) => game.gold >= 
 onMounted(async () => {
   if (!game.state) await game.loadState()
   // 默认选中已解锁的最高档位
-  band.value = unlockedBands.value[unlockedBands.value.length - 1] ?? LEVEL_BANDS[0]
+  band.value = unlockedBands.value[unlockedBands.value.length - 1]?.level ?? LEVEL_BANDS[0].level
 })
 
 function isUnlocked(level: number): boolean {
@@ -89,6 +98,8 @@ function bestRarity(): string {
       </div>
       <p class="mt-1 text-xs text-ink-400">
         金币仅通过打怪掉落获得。每开启 10 / 50 / 200 个同类型箱子，必出稀有 / 史诗 / 传说及以上品质。
+        已通关 {{ game.state?.clearedRegions ?? 0 }} 个地区 → 品阶爆率
+        <b class="text-emerald-300">×{{ (game.state?.dropRateMultiplier ?? 1).toFixed(2) }}</b>（仅提升装备品阶，不影响金币）。
       </p>
     </section>
 
@@ -96,26 +107,26 @@ function bestRarity(): string {
       <div class="flex flex-wrap items-center gap-2">
         <h3 class="text-sm font-semibold text-white">抽取档位</h3>
         <span class="text-[11px] text-ink-400">
-          箱子内容按所选档位生成（装备无穿戴等级限制）；需达到对应等级才可选择，当前 Lv.{{ heroLevel }}。
+          箱子内容按所选档位生成（装备无穿戴等级限制），档位越高价格越高；需达到对应等级才可选择，当前 Lv.{{ heroLevel }}。
         </span>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <button
           v-for="b in LEVEL_BANDS"
-          :key="b"
+          :key="b.level"
           class="rounded-md border px-3 py-1.5 text-xs transition"
           :class="
-            !isUnlocked(b)
+            !isUnlocked(b.level)
               ? 'cursor-not-allowed border-ink-700 text-ink-600'
-              : band === b
+              : band === b.level
                 ? 'border-amber-400 bg-amber-400/15 text-amber-200'
                 : 'border-ink-600 text-ink-300 hover:border-ink-400'
           "
-          :disabled="!isUnlocked(b)"
-          :title="isUnlocked(b) ? `抽取 ${b} 级档位` : `需要英雄等级 ${b}`"
-          @click="band = b"
+          :disabled="!isUnlocked(b.level)"
+          :title="isUnlocked(b.level) ? `抽取 ${b.level} 级档位` : `需要英雄等级 ${b.level}`"
+          @click="band = b.level"
         >
-          <span v-if="!isUnlocked(b)">🔒 </span>{{ b }} 级
+          <span v-if="!isUnlocked(b.level)">🔒 </span>{{ b.level }} 级
         </button>
       </div>
     </section>
@@ -131,7 +142,7 @@ function bestRarity(): string {
             </p>
           </div>
           <span class="rounded bg-ink-800 px-2 py-1 font-mono text-xs text-amber-300">
-            {{ chest.price }}
+            {{ formatNumber(unitPrice(chest)) }}
           </span>
         </div>
 
@@ -167,17 +178,17 @@ function bestRarity(): string {
         <div class="mt-4 flex gap-2">
           <button
             class="flex-1 rounded-md bg-ink-700 py-2 text-xs hover:bg-ink-600 disabled:opacity-40"
-            :disabled="!canAfford(chest.price, 1) || busy === chest.id"
+            :disabled="!canAfford(unitPrice(chest), 1) || busy === chest.id"
             @click="draw(chest.id, 1)"
           >
-            单抽 · {{ chest.price }}
+            单抽 · {{ formatNumber(unitPrice(chest)) }}
           </button>
           <button
             class="flex-1 rounded-md bg-amber-500 py-2 text-xs font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-40"
-            :disabled="!canAfford(chest.price, 10) || busy === chest.id"
+            :disabled="!canAfford(unitPrice(chest), 10) || busy === chest.id"
             @click="draw(chest.id, 10)"
           >
-            十连 · {{ formatNumber(chest.price * 10) }}
+            十连 · {{ formatNumber(unitPrice(chest) * 10) }}
           </button>
         </div>
       </article>
