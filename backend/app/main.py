@@ -36,8 +36,10 @@ async def _ranking_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if settings.auto_create_tables:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("已确保数据库表结构存在（AUTO_CREATE_TABLES=true）")
     task = asyncio.create_task(_ranking_loop())
     logger.info("艾欧泽亚放置录 后端已启动")
     try:

@@ -30,3 +30,7 @@ coverage/
 
 # 运行时数据
 *.log
+.dev-logs/
+*.db
+*.sqlite
+*.sqlite3

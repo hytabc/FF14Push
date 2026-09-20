@@ -1,0 +1,33 @@
+# 构建上下文裁剪：只保留构建所需文件
+.git
+.gitignore
+.github
+.commandcode
+.vscode
+.idea
+
+# 依赖与构建产物
+node_modules
+**/node_modules
+frontend/dist
+frontend/.vite
+*.tsbuildinfo
+
+# Python 运行环境与缓存
+backend/.venv
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+.pytest_cache
+.ruff_cache
+
+# 本地数据与日志
+*.db
+*.sqlite
+*.sqlite3
+.dev-logs
+*.log
+
+# 环境变量不进入镜像
+.env
+.env.*

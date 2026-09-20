@@ -16,7 +16,8 @@
 | --- | --- |
 | 前端 | Vue 3 + Vite 6 + TypeScript + Pinia + Vue Router + Tailwind CSS 4 |
 | 后端 | Python 3.11+ / FastAPI + SQLAlchemy 2.0 (async) + Alembic |
-| 数据库 | PostgreSQL 16（开发环境也可用 SQLite） |
+| 数据库 | 本地开发 SQLite；服务器部署 PostgreSQL 16 |
+| 部署 | 本地一键脚本 `scripts/dev.sh`；服务器 `docker compose`（nginx + API + PG） |
 | 共享层 | `shared/` 单一事实来源：配置 JSON + 双端加载器 |
 
 ---
@@ -25,83 +26,160 @@
 
 ```
 FF14Push/
-├── prd.md                    需求文档
-├── docker-compose.yml        PostgreSQL 容器
-├── shared/                   ★ 前后端共享配置层（唯一事实来源）
+├── prd.md                      需求文档
+├── docker-compose.yml          服务器部署编排（db + backend + frontend）
+├── .env.example                部署环境变量模板
+├── .env.local.example          本地开发环境变量模板
+├── scripts/dev.sh              ★ 本地一键启动脚本（无需 Docker）
+├── shared/                     ★ 前后端共享配置层（唯一事实来源）
 │   ├── data/*.json           品阶/栏位/职业/底材/词条/怪物/BOSS/地区/箱子/合成/经济/资质/指引
 │   └── schema/
 │       ├── index.ts          TS 类型 + 底材展开 + 命名导出
 │       └── loader.py         Python 加载器（与 index.ts 同源）
 ├── backend/                  FastAPI 服务
-│   ├── alembic/              数据库迁移
+│   ├── Dockerfile              后端镜像
+│   ├── docker-entrypoint.sh    等库 → 迁移 → 启动
+│   ├── alembic/                数据库迁移
 │   ├── app/
-│   │   ├── api/v1/           路由：auth / game / battle / inventory / chest /
-│   │   │                     economy / region / tavern / codex / ranking / tutorial / settings
-│   │   ├── core/             配置、DB、JWT、依赖
-│   │   ├── models/           ORM 模型
-│   │   ├── services/         数值引擎、掉落、战斗模型、校验、图鉴、排行…
-│   │   └── main.py           应用入口（启动时建表 + 排行榜定时刷新）
-│   └── tests/                94 项 pytest（共享数据一致性 / 数值引擎 / 接口集成）
-└── frontend/                 Vue3 前端
+│   │   ├── api/v1/             路由：auth / game / battle / inventory / chest /
+│   │   │                       economy / region / tavern / codex / ranking / tutorial / settings
+│   │   ├── core/               配置、DB、JWT、依赖
+│   │   ├── models/             ORM 模型
+│   │   ├── services/           数值引擎、掉落、战斗模型、校验、图鉴、排行…
+│   │   └── main.py             应用入口（建表开关 + 排行榜定时刷新）
+│   └── tests/                  94 项 pytest（共享数据一致性 / 数值引擎 / 接口集成）
+└── frontend/                   Vue3 前端
+    ├── Dockerfile              前端镜像（构建 → nginx）
+    ├── nginx.conf              静态站点 + /api 反向代理
     └── src/
-        ├── api/              axios 封装
-        ├── stores/           Pinia：auth / game / toast / itemActions
-        ├── game/core/        战斗模拟、伤害、怪物属性、类型定义
-        ├── components/       通用组件（物品卡、弹窗、指引、日志）
-        └── views/            12 个页面
+        ├── api/                axios 封装
+        ├── stores/             Pinia：auth / game / toast / itemActions
+        ├── game/core/          战斗模拟、伤害、怪物属性、类型定义
+        ├── components/         通用组件（物品卡、弹窗、指引、日志）
+        └── views/              12 个页面
 ```
 
 ---
 
-## 快速开始
-
-### 1. 启动数据库
+## 本地开发（无 Docker）
 
 ```bash
-docker compose up -d db
+./scripts/dev.sh
 ```
 
-> 没有 Docker 时可用 SQLite：把 `DATABASE_URL` 设为 `sqlite+aiosqlite:///./dev.db`。
+首次运行会自动：生成 `.env.local` → 创建 Python 虚拟环境 → 安装前后端依赖 →
+用 **SQLite** 启动后端（自动建表）→ 启动 Vite 前端，并打印访问地址。
+按 `Ctrl-C` 一次性停掉全部服务（含 uvicorn 的 reload 子进程）。
 
-### 2. 启动后端
+```
+游戏入口    http://localhost:5173
+接口文档    http://127.0.0.1:8000/docs
+```
+
+其他用法：
 
 ```bash
+./scripts/dev.sh --reset     # 先清空本地 SQLite 数据库再启动
+./scripts/dev.sh backend     # 只启动后端
+./scripts/dev.sh frontend    # 只启动前端
+./scripts/dev.sh test        # 后端 pytest + 前端 vitest + 类型检查
+./scripts/dev.sh help        # 帮助
+```
+
+### 端口配置
+
+端口、数据库、密钥全部来自仓库根目录的 `.env.local`（模板见 `.env.local.example`）：
+
+```ini
+BACKEND_PORT=8000
+FRONTEND_PORT=5173
+DATABASE_URL=sqlite+aiosqlite:///./dev.db
+JWT_SECRET=dev-only-secret-change-me-0123456789abcdef
+```
+
+改完直接重跑脚本即可。脚本会自动把 `CORS_ORIGINS` 同步成前端实际地址，
+并把 `VITE_API_BASE` 注入给 Vite，因此换端口不需要改任何代码。
+
+> 本机若已装 PostgreSQL，把 `DATABASE_URL` 改成
+> `postgresql+asyncpg://用户:密码@localhost:5432/库名`，并在 `backend` 目录执行
+> `.venv/bin/alembic upgrade head` 即可，脚本其余流程不变。
+
+日志写在 `.dev-logs/backend.log` 与 `.dev-logs/frontend.log`。
+
+---
+
+## 服务器部署（Docker Compose）
+
+```bash
+cp .env.example .env          # 修改端口、数据库密码、JWT 密钥
+docker compose up -d --build
+docker compose logs -f backend
+```
+
+访问 `http://<服务器地址>:${FRONTEND_PORT}`（默认 8080）。
+
+编排包含三个服务：
+
+| 服务 | 说明 | 端口 |
+| --- | --- | --- |
+| `frontend` | nginx 托管前端静态资源，并把 `/api` 反代到后端（同源，无需 CORS） | `${FRONTEND_PORT}` → 80 |
+| `backend` | FastAPI，入口脚本会等数据库就绪 → `alembic upgrade head` → 启动 uvicorn | `127.0.0.1:${BACKEND_PORT}` → 8000 |
+| `db` | PostgreSQL 16，数据持久化在 `eorzea_pgdata` 卷 | `127.0.0.1:${POSTGRES_PORT}` → 5432 |
+
+### 端口与变量（`.env`）
+
+```ini
+# 对外端口
+FRONTEND_PORT=8080     # 唯一需要公网开放的端口
+BACKEND_PORT=8000      # 默认只绑定 127.0.0.1
+POSTGRES_PORT=5432     # 默认只绑定 127.0.0.1
+
+# 数据库
+POSTGRES_USER=eorzea
+POSTGRES_PASSWORD=请务必修改
+POSTGRES_DB=eorzea
+
+# 应用
+JWT_SECRET=请替换为随机值（openssl rand -hex 32）
+CORS_ORIGINS=http://localhost:8080
+```
+
+`db` 与 `backend` 默认只监听 `127.0.0.1`，不对外暴露。
+若要让后端 API 直接对外（例如前后端分离部署），把 `docker-compose.yml` 中
+backend 的 `127.0.0.1:` 前缀去掉，并把 `CORS_ORIGINS` 设为前端实际域名。
+
+前端镜像构建时通过 `VITE_API_BASE=/api/v1` 走同源请求；
+若改为独立域名部署，用
+`docker compose build --build-arg VITE_API_BASE=https://api.example.com/api/v1 frontend` 重新构建。
+
+### 常用运维命令
+
+```bash
+docker compose ps                                    # 服务状态
+docker compose logs -f backend                       # 后端日志
+docker compose exec backend alembic upgrade head     # 手动迁移
+docker compose exec db psql -U eorzea -d eorzea      # 进数据库
+docker compose down                                  # 停止（保留数据卷）
+docker compose down -v                               # 停止并删除数据卷（谨慎）
+```
+
+---
+
+## 手动启动（不使用脚本）
+
+```bash
+# 后端
 cd backend
-python3.12 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
-cp .env.example .env            # 按需修改 DATABASE_URL / JWT_SECRET
-
-# 方式 A：Alembic 迁移（推荐用于 PostgreSQL）
-.venv/bin/alembic upgrade head
-
-# 方式 B：跳过迁移，服务启动时会自动建表
+python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+cp .env.example .env
+.venv/bin/alembic upgrade head          # 或设 AUTO_CREATE_TABLES=true 自动建表
 .venv/bin/uvicorn app.main:app --reload --port 8000
-```
 
-- 健康检查：<http://localhost:8000/health>
-- 接口文档：<http://localhost:8000/docs>
-
-### 3. 启动前端
-
-```bash
-cd frontend
-npm install
-npm run dev        # http://localhost:5173
+# 前端
+cd frontend && npm install && npm run dev
 ```
 
 前端通过 `VITE_API_BASE`（默认 `http://localhost:8000/api/v1`）访问后端。
-
----
-
-## 常用命令
-
-```bash
-# 后端测试
-cd backend && .venv/bin/python -m pytest tests/ -q
-
-# 前端测试 / 类型检查 / 构建
-cd frontend && npm run test && npm run typecheck && npm run build
-```
 
 ---
 
@@ -179,3 +257,4 @@ PRD 中怪物与英雄的成长曲线若直接采用会导致数值发散（BOSS
 - 排行榜防作弊仅做速率与区间校验，未做离线行为分析与人工审核后台。
 - 图鉴完成度奖励（称号/头像框/徽章）目前只展示进度，未实现奖励发放。
 - 数值平衡为初版，虽有回归测试保护节奏区间，仍建议按 PRD 做一轮平衡性测试。
+- 容器编排为单机 Compose，未包含 HTTPS 证书与多实例横向扩展。

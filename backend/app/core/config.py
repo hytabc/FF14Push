@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     report_tolerance: float = 1.10
     api_prefix: str = "/api/v1"
 
+    # 启动时自动建表（本地开发用；生产应使用 alembic upgrade head）
+    auto_create_tables: bool = True
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

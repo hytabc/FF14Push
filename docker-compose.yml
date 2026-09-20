@@ -1,21 +1,77 @@
+# 服务器部署编排（PostgreSQL + FastAPI + Nginx 静态站点）
+#
+#   1. cp .env.example .env   并按需修改端口 / 密码 / JWT 密钥
+#   2. docker compose up -d --build
+#   3. 访问 http://<服务器地址>:${FRONTEND_PORT}
+#
+# 所有对外端口都在 .env 中配置。
+
+name: eorzea-idle-chronicle
+
 services:
   db:
     image: postgres:16-alpine
-    container_name: eorzea-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: eorzea
-      POSTGRES_PASSWORD: eorzea
-      POSTGRES_DB: eorzea
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-eorzea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-eorzea}
     volumes:
       - eorzea_pgdata:/var/lib/postgresql/data
+    ports:
+      # 默认只绑定本机，不对外暴露数据库。
+      # 如需远程连接，把 127.0.0.1 改为 0.0.0.0（并确保防火墙与强密码）。
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eorzea -d eorzea"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eorzea} -d ${POSTGRES_DB:-eorzea}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 10s
+    networks: [eorzea]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: eorzea-backend:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eorzea}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-eorzea}
+      JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET}
+      JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-24}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      REPORT_TOLERANCE: ${REPORT_TOLERANCE:-1.10}
+      # 迁移由容器入口脚本执行，避免与 alembic 冲突
+      AUTO_CREATE_TABLES: "false"
+      BACKEND_PORT: "8000"
+    ports:
+      # 默认只绑定本机；前端已通过 nginx 反向代理 /api，通常无需对外暴露。
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [eorzea]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE: /api/v1
+    image: eorzea-frontend:latest
+    restart: unless-stopped
+    ports:
+      # 唯一需要公网开放的端口
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks: [eorzea]
 
 volumes:
   eorzea_pgdata:
+
+networks:
+  eorzea:
+    driver: bridge
