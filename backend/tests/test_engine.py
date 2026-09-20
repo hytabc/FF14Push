@@ -6,11 +6,17 @@ import random
 
 import pytest
 
-from app.services.combat_model import theoretical_boss_seconds, theoretical_kill_seconds
+from app.services.combat_model import (
+    max_kills_in_seconds,
+    theoretical_boss_seconds,
+    theoretical_dps,
+    theoretical_kill_seconds,
+)
 from app.services.economy import REQUIRED, build_craft_plan
-from app.services.game_config import CONFIG
+from app.services.game_config import CONFIG, BaseItem
 from app.services.item_factory import generate_item
 from app.services.loot import PityState, draw_rarity, roll_rarity
+from app.services.regions_util import level_penalty
 from app.services.stats import compute_stats, convert_three_attrs
 from app.services.valuation import hero_power, sell_price, sell_price_range
 
@@ -289,20 +295,66 @@ class TestCrafting:
         assert plan["steps"] == []
 
 
+def _lance_base_for_level(level: int) -> BaseItem:
+    """该等级可用的最高档长枪底材（统一用长枪族，使职业固定为龙骑士）。"""
+    usable = [b for b in CONFIG.base_items if b.weapon_type == "lance" and b.level_req <= level]
+    return max(usable, key=lambda b: b.tier_index)
+
+
+def _gear_from_base(base: BaseItem, rarity: str) -> FakeItem:
+    mult = float(CONFIG.rarities[rarity]["multiplier"])
+    return FakeItem(
+        category=base.category,
+        rarity=rarity,
+        base_id=base.id,
+        slot=base.slot,
+        level_req=base.level_req,
+        base_attrs=[{"attr": e["attr"], "value": e["base"] * mult} for e in base.base_attrs],
+        sub_attrs=[],
+        terms=[],
+        equipped_slot=base.slot,
+    )
+
+
+def _expected_gear(level: int, rarity: str = "rare") -> list[FakeItem]:
+    """等级匹配的期望装备：该等级可用的最高档长枪（稀有品质）。"""
+    return [_gear_from_base(_lance_base_for_level(level), rarity)]
+
+
+def _starter_weapon() -> FakeItem:
+    """开局赠送并装备的起始武器。"""
+    base = CONFIG.base_item_by_id[str(CONFIG.heroes["initialHero"]["starterWeapon"])]
+    return _gear_from_base(base, "common")
+
+
 class TestCombatPacing:
-    """PRD 数值平衡：小怪约 5 秒、BOSS 战 10-30 秒。"""
+    """数值平衡：起始英雄能推进地区 1；等级匹配 + 装备到位时单怪约 2.5 秒、BOSS 约 20 秒。"""
 
-    @pytest.mark.parametrize("level,region", [(1, 1), (20, 5), (45, 10), (80, 23), (100, 40)])
+    def test_starter_hero_can_clear_first_region(self) -> None:
+        """起始武器必须让 Lv1 英雄在阵亡重置前打满地区 1 的击杀要求。"""
+        stats = compute_stats(FakeHero(level=1), [_starter_weapon()])
+        kill = theoretical_kill_seconds(stats, 1)
+        assert 3.0 <= kill <= 9.0, f"起始英雄单怪耗时 {kill:.1f}s"
+
+    @pytest.mark.parametrize("level,region", [(20, 5), (45, 10), (80, 23), (100, 40)])
     def test_kill_time_is_playable(self, level: int, region: int) -> None:
-        stats = compute_stats(FakeHero(level=level), [])
+        stats = compute_stats(FakeHero(level=level), _expected_gear(level))
         kill = theoretical_kill_seconds(stats, region)
-        assert 2.0 <= kill <= 15.0, f"Lv{level} r{region} 击杀耗时 {kill:.1f}s"
+        assert 1.5 <= kill <= 6.0, f"Lv{level} r{region} 击杀耗时 {kill:.1f}s"
 
-    @pytest.mark.parametrize("level,region", [(1, 1), (20, 5), (45, 10), (80, 23), (100, 40)])
+    @pytest.mark.parametrize("level,region", [(20, 5), (45, 10), (80, 23), (100, 40)])
     def test_boss_time_is_playable(self, level: int, region: int) -> None:
-        stats = compute_stats(FakeHero(level=level), [])
+        stats = compute_stats(FakeHero(level=level), _expected_gear(level))
         boss = theoretical_boss_seconds(stats, region)
-        assert 8.0 <= boss <= 60.0, f"Lv{level} r{region} BOSS 耗时 {boss:.1f}s"
+        assert 8.0 <= boss <= 35.0, f"Lv{level} r{region} BOSS 耗时 {boss:.1f}s"
+
+    @pytest.mark.parametrize("level,region", [(20, 5), (45, 10), (80, 23), (100, 40)])
+    def test_expected_hero_kills_faster_than_naked(self, level: int, region: int) -> None:
+        """装备到位应当明显更快，但不至于秒杀（裸英雄仍是数倍耗时）。"""
+        geared = theoretical_kill_seconds(compute_stats(FakeHero(level=level), _expected_gear(level)), region)
+        naked = theoretical_kill_seconds(compute_stats(FakeHero(level=level), []), region)
+        assert geared < naked
+        assert naked >= 3.0, f"Lv{level} r{region} 裸英雄仅 {naked:.1f}s，装备价值过低"
 
     def test_spawn_interval_decreases_with_region(self) -> None:
         regions = CONFIG.regions["regions"]
@@ -316,3 +368,51 @@ class TestCombatPacing:
         assert kills[0] == 8
         assert kills[-1] == 36
         assert kills == sorted(kills)
+
+
+class TestLevelPenalty:
+    """等级压制：保证玩家只能战胜对应等级的怪物（越级几乎必败）。"""
+
+    def test_no_penalty_when_level_meets_region(self) -> None:
+        for level, region in [(20, 5), (45, 10), (100, 40)]:
+            assert level_penalty(level, region) == {
+                "hitRatePenaltyPct": 0.0,
+                "damageDealtPenaltyPct": 0.0,
+                "damageTakenBonusPct": 0.0,
+            }
+
+    def test_penalty_scales_per_level(self) -> None:
+        cfg = CONFIG.regions["levelPenalty"]
+        penalty = level_penalty(35, 10)  # 地区下限 45 → 落后 10 级
+        assert penalty["hitRatePenaltyPct"] == pytest.approx(10 * cfg["hitRatePenaltyPctPerLevel"])
+        assert penalty["damageDealtPenaltyPct"] == pytest.approx(
+            10 * cfg["damageDealtPenaltyPctPerLevel"]
+        )
+        assert penalty["damageTakenBonusPct"] == pytest.approx(
+            10 * cfg["damageTakenBonusPctPerLevel"]
+        )
+
+    def test_penalty_is_capped(self) -> None:
+        cfg = CONFIG.regions["levelPenalty"]
+        penalty = level_penalty(1, 40)  # 落后 98 级
+        assert penalty["hitRatePenaltyPct"] == cfg["maxHitRatePenaltyPct"]
+        assert penalty["damageDealtPenaltyPct"] == cfg["maxDamageDealtPenaltyPct"]
+        assert penalty["damageTakenBonusPct"] == cfg["maxDamageTakenBonusPct"]
+
+    def test_underleveled_output_collapses(self) -> None:
+        """落后 20 级时有效输出不足等级匹配的 10%，且单怪耗时远超可玩区间。"""
+        region = 23  # 地区下限 70
+        stats = compute_stats(FakeHero(level=50), _expected_gear(50))
+        matched = theoretical_dps(stats, 0.0, level_penalty(70, region))
+        under = theoretical_dps(stats, 0.0, level_penalty(50, region))
+        assert under < matched * 0.10, f"落后 20 级仍有 {under / matched:.1%} 输出"
+        kill = theoretical_kill_seconds(stats, region, penalty=level_penalty(50, region))
+        assert kill > 40.0, f"落后 20 级单怪仅 {kill:.1f}s"
+
+    def test_kill_allowance_shrinks_when_underleveled(self) -> None:
+        """服务端击杀额度必须同步收紧，否则越级可上报等级匹配才有的击杀速率。"""
+        stats = compute_stats(FakeHero(level=50), _expected_gear(50))
+        matched = max_kills_in_seconds(stats, 23, 10.0, 1.0, 70)
+        under = max_kills_in_seconds(stats, 23, 10.0, 1.0, 50)
+        assert under < matched
+        assert under <= 1.0, f"落后 20 级仍允许 {under:.1f} 杀/10s"

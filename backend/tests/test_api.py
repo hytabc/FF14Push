@@ -8,8 +8,12 @@ import pytest
 from sqlalchemy import select
 
 from app.models import BattleSession, Item, User
+from app.services.game_config import CONFIG
 
 API = "/api/v1"
+
+# 开局赠送并装备的起始武器（见 auth._bootstrap_new_user）
+STARTER_BASE_ID = str(CONFIG.heroes["initialHero"]["starterWeapon"])
 
 CONFIG_REFINE_COST = {
     "common": 200, "uncommon": 1000, "rare": 5000,
@@ -157,7 +161,12 @@ class TestInitialState:
         assert state["hero"]["level"] == 1
         assert state["hero"]["talent"] == "common"
         assert state["hero"]["attrBias"] == "balanced"
-        assert state["items"] == []
+        # 开局赠送并装备起始武器（重锚定后裸英雄会卡死在新手阶段）
+        assert len(state["items"]) == 1
+        starter = state["items"][0]
+        assert starter["baseId"] == STARTER_BASE_ID
+        assert starter["source"] == "starter"
+        assert starter["equippedSlot"] == "mainHand"
         assert state["currentRegion"]["id"] == 1
         assert state["regionProgress"]["1"]["unlocked"] is True
         assert state["regionProgress"]["2"]["unlocked"] is False
@@ -166,7 +175,9 @@ class TestInitialState:
         state = (await auth_client.get(f"{API}/game/state")).json()
         cfg = (await auth_client.get(f"{API}/game/config")).json()
         assert len(cfg["slots"]) == 11
-        assert state["loadout"] == {}
+        # 起始武器占用主手，其余栏位为空
+        assert set(state["loadout"]) == {"mainHand"}
+        assert state["loadout"]["mainHand"]["baseId"] == STARTER_BASE_ID
 
     async def test_config_endpoint_exposes_shared_data(self, auth_client) -> None:
         cfg = (await auth_client.get(f"{API}/game/config")).json()
@@ -203,7 +214,9 @@ class TestBattleLoop:
         assert body["goldGained"] > 0
         assert body["items"] == []
         assert body["autoSold"] == []
-        assert (await auth_client.get(f"{API}/game/state")).json()["items"] == []
+        # 打怪不产装备：背包里始终只有开局的起始武器
+        items = (await auth_client.get(f"{API}/game/state")).json()["items"]
+        assert [i["baseId"] for i in items] == [STARTER_BASE_ID]
 
     async def test_reject_absurd_report(self, auth_client) -> None:
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
@@ -501,13 +514,16 @@ class TestTavern:
 
 class TestCodexAndRanking:
     async def test_equipment_codex_unlocks_on_obtain(self, auth_client, session_factory) -> None:
-        await _open_one(auth_client, session_factory)
+        before = (await auth_client.get(f"{API}/codex?category=equipment")).json()
+        # 开局起始武器已解锁 1 条
+        assert before["progress"]["equipment"]["unlocked"] == 1
+
+        item = await _open_one(auth_client, session_factory)
         body = (await auth_client.get(f"{API}/codex?category=equipment")).json()
-        assert body["progress"]["equipment"]["unlocked"] == 1
         unlocked = [e for e in body["entries"] if e["unlocked"]]
-        assert len(unlocked) == 1
-        assert unlocked[0]["totalCount"] == 1
-        assert unlocked[0]["unlockedRarities"]
+        expected = {STARTER_BASE_ID, *[i["baseId"] for i in item["items"]]}
+        assert {e["baseId"] for e in unlocked} == expected
+        assert body["progress"]["equipment"]["unlocked"] == len(expected)
 
     async def test_codex_progress_after_battle(self, auth_client) -> None:
         await _farm(auth_client, 1, reports=5)
@@ -518,11 +534,14 @@ class TestCodexAndRanking:
         unlocked = [e for e in body["entries"] if e["unlocked"]]
         assert unlocked
 
-    async def test_equipment_codex_closed_until_drop(self, auth_client) -> None:
+    async def test_equipment_codex_closed_until_obtain(self, auth_client) -> None:
         resp = await auth_client.get(f"{API}/codex?category=equipment")
         body = resp.json()
         assert body["progress"]["equipment"]["total"] == 180
-        assert all(not e["unlocked"] for e in body["entries"])
+        # 开局只有起始武器已解锁，其余（含更高品阶）保持剪影
+        unlocked = [e for e in body["entries"] if e["unlocked"]]
+        assert [e["baseId"] for e in unlocked] == [STARTER_BASE_ID]
+        assert unlocked[0]["unlockedRarities"] == ["common"]
 
     async def test_term_codex_tracks_three_qualities(self, auth_client) -> None:
         body = (await auth_client.get(f"{API}/codex?category=term")).json()

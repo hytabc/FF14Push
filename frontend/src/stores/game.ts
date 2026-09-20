@@ -5,6 +5,7 @@ import { api, type KillPayload } from '@/api'
 import { toApiError } from '@/api/client'
 import { BattleSimulator } from '@/game/core/battle'
 import type { Category, GameState, Item, SlotId } from '@/game/types'
+import { rarityName } from '@/utils/format'
 
 import { useAuthStore } from './auth'
 import { useToastStore } from './toast'
@@ -213,7 +214,7 @@ export const useGameStore = defineStore('game', () => {
     if (res.items.length > 0) {
       state.value.items = [...state.value.items, ...res.items]
       for (const item of res.items) {
-        toast.push(`获得 ${item.name}（${item.rarity}）`, 'loot')
+        toast.push(`获得 ${item.name}（${rarityName(item.rarity)}）`, 'loot')
       }
     }
     if (res.autoSold.length > 0) {

@@ -342,7 +342,14 @@ export const gameData = {
     goldFloat: number
     goldMultipliers: { normal: number; elite: number; boss: number }
     maxGoldBonus: number
-    levelPenalty: { hitRatePenalty: number; damageTakenBonus: number }
+    levelPenalty: {
+      hitRatePenaltyPctPerLevel: number
+      damageDealtPenaltyPctPerLevel: number
+      damageTakenBonusPctPerLevel: number
+      maxHitRatePenaltyPct: number
+      maxDamageDealtPenaltyPct: number
+      maxDamageTakenBonusPct: number
+    }
   },
   chests: chestsJson as unknown as { chests: ChestDef[]; pity: ChestPity[] },
   crafting: craftingJson as unknown as {

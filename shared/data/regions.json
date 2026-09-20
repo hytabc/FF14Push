@@ -54,6 +54,13 @@
   "goldFloat": 0.30,
   "goldMultipliers": { "normal": 1.0, "elite": 2.0, "boss": 15.0 },
   "maxGoldBonus": 0.80,
-  "$commentLevelPenalty": "英雄等级不足时战斗效率极低。来源：PRD 7.3",
-  "levelPenalty": { "hitRatePenalty": 0.35, "damageTakenBonus": 0.5 }
+  "$commentLevelPenalty": "英雄等级低于地区 levelMin 时，每落后 1 级按下列比例累加：命中下降 + 输出下降 + 受伤增加，保证玩家只能战胜对应等级的怪物。来源：PRD 7.3",
+  "levelPenalty": {
+    "hitRatePenaltyPctPerLevel": 3.5,
+    "damageDealtPenaltyPctPerLevel": 5.0,
+    "damageTakenBonusPctPerLevel": 5.0,
+    "maxHitRatePenaltyPct": 75,
+    "maxDamageDealtPenaltyPct": 85,
+    "maxDamageTakenBonusPct": 300
+  }
 }

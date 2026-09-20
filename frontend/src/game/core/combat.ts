@@ -2,6 +2,7 @@
 import data from '@shared/schema'
 
 import type { HeroStats, MonsterStats } from '../types'
+import type { LevelPenalty } from './regions'
 
 export interface DamageRoll {
   amount: number
@@ -63,17 +64,30 @@ export function powerAttack(stats: HeroStats): number {
   return isMagical(stats) ? stats.magicAttack : stats.attack
 }
 
-/** 一次伤害结算：直击 → 暴击 → 信念 → 随机浮动 → 减防。来源：PRD 三属性 2.2 / 3.3 */
+/** 命中率 = 基础命中 − 等级压制惩罚 + 命中属性，上限 99%。与 `damage.py:hit_chance` 一致。 */
+export function hitChance(stats: HeroStats, levelPenaltyPct = 0): number {
+  const base = 1 - (data.combat.baseMissChance as number)
+  const chance = base + stats.hitRatePct / 100 - levelPenaltyPct / 100
+  return Math.max(0.05, Math.min(0.99, chance))
+}
+
+/** 一次伤害结算：命中 → 直击 → 暴击 → 信念 → 随机浮动 → 减防。来源：PRD 三属性 2.2 / 3.3 */
 export function rollDamage(
   stats: HeroStats,
   potencyPct: number,
   damageType: 'physical' | 'magical',
   targetDefense: number,
   skillMult = 1,
+  penalty: LevelPenalty | null = null,
   rand: () => number = Math.random,
 ): DamageRoll {
+  if (penalty && rand() > hitChance(stats, penalty.hitRatePenaltyPct)) {
+    return { amount: 0, isCrit: false, isDirectHit: false, missed: true }
+  }
+
   let raw = (potencyPct / 100) * (damageType === 'magical' ? stats.magicAttack : stats.attack) * skillMult
   raw *= 1 + stats.detBonusPct / 100
+  if (penalty) raw *= Math.max(0, 1 - penalty.damageDealtPenaltyPct / 100)
 
   const isDirectHit = rand() * 100 < stats.dhRatePct
   if (isDirectHit) raw *= data.combat.directHitMultiplier as number
@@ -107,7 +121,11 @@ export function monsterHitChance(dodgePct: number): number {
 }
 
 /** 期望每秒伤害（用于展示 DPS，与后端 combat_model 同源）。 */
-export function estimateDps(stats: HeroStats, targetDefense: number): number {
+export function estimateDps(
+  stats: HeroStats,
+  targetDefense: number,
+  penalty: LevelPenalty | null = null,
+): number {
   const skills = jobSkills(stats.jobId)
   const gcd = data.combat.gcdSeconds as number
   const mult = skillDamageMultiplier(stats, stats.jobId)
@@ -134,9 +152,20 @@ export function estimateDps(stats: HeroStats, targetDefense: number): number {
 
   const attackRate = Math.max(castRate, 1 / (data.combat.basicAttackCd as number))
   const gross = powerAttack(stats) * (potencyPerSec / 100) * damageMult * mult
-  return Math.max(1, Math.max(gross * 0.1, gross - targetDefense * attackRate))
+  const dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * attackRate))
+  if (!penalty) return dps
+  return Math.max(
+    0.01,
+    dps *
+      hitChance(stats, penalty.hitRatePenaltyPct) *
+      Math.max(0, 1 - penalty.damageDealtPenaltyPct / 100),
+  )
 }
 
-export function secondsToKill(stats: HeroStats, monster: MonsterStats): number {
-  return Math.max(0.05, monster.hp / estimateDps(stats, monster.defense))
+export function secondsToKill(
+  stats: HeroStats,
+  monster: MonsterStats,
+  penalty: LevelPenalty | null = null,
+): number {
+  return Math.max(0.05, monster.hp / estimateDps(stats, monster.defense, penalty))
 }

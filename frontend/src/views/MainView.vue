@@ -222,7 +222,15 @@ function openBossDialog() {
                 v-for="f in sim?.floating ?? []"
                 :key="f.id"
                 class="animate-float font-mono text-sm font-bold"
-                :class="f.tone === 'hero' ? 'text-emerald-300' : f.tone === 'crit' ? 'text-orange-300' : 'text-rose-300'"
+                :class="
+                  f.tone === 'hero'
+                    ? 'text-emerald-300'
+                    : f.tone === 'crit'
+                      ? 'text-orange-300'
+                      : f.tone === 'miss'
+                        ? 'text-ink-400'
+                        : 'text-rose-300'
+                "
               >
                 {{ f.text }}
               </span>

@@ -7,7 +7,7 @@ import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { Item } from '@/game/types'
-import { formatNumber, rarityBg, rarityClass, rarityName } from '@/utils/format'
+import { attrName, attrSuffix, formatNumber, rarityBg, rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
 const toast = useToastStore()
@@ -168,7 +168,7 @@ function bestRarity(): string {
             </div>
           </div>
           <p v-for="entry in item.subAttrs" :key="entry.attr" class="text-[10px] text-ink-300">
-            {{ entry.attr }} +{{ entry.value.toFixed(2) }}
+            {{ attrName(entry.attr) }} +{{ entry.value.toFixed(2) }}{{ attrSuffix(entry.attr) }}
           </p>
         </div>
       </div>

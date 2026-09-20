@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
 import { useGameStore } from '@/stores/game'
-import { attrName, formatPercent, jobName, rarityClass, rarityName } from '@/utils/format'
+import { attrName, formatPercent, jobName, rarityClass, rarityName, skillEffectLabel } from '@/utils/format'
 
 const game = useGameStore()
 const showAllJobs = ref(false)
@@ -152,7 +152,7 @@ function castShare(skillId: string) {
             </span>
           </div>
           <p v-if="skill.effects.length" class="mt-1 text-[10px] text-ink-500">
-            {{ skill.effects.map((e) => String(e.type)).join('、') }}
+            {{ skill.effects.map(skillEffectLabel).join('、') }}
           </p>
         </div>
       </div>

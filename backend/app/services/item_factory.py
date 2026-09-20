@@ -126,10 +126,14 @@ def generate_item(
     box_tier: str = "normal",
     rng: random.Random | None = None,
     pity=None,
+    base_id: str | None = None,
 ) -> tuple[dict[str, Any], Any]:
-    """生成一件装备。[返回] (item_dict, 新的保底状态)"""
+    """生成一件装备。[返回] (item_dict, 新的保底状态)
+
+    base_id 用于强制指定底材（如开局赠送的起始武器），省略时按等级随机。
+    """
     rng = rng or random.Random()
-    base = pick_base_item(category, level, rng)
+    base = CONFIG.base_item_by_id[base_id] if base_id else pick_base_item(category, level, rng)
     if rarity is None:
         from app.services.loot import PityState, draw_rarity
 
@@ -156,9 +160,15 @@ def generate_item(
     return item, pity
 
 
-def generate_by_rarity(category: str, level: int, rarity: str, rng: random.Random | None = None) -> dict[str, Any]:
-    """指定品阶生成（合成 / BOSS 宝箱用）。"""
-    item, _ = generate_item(category, level, rarity=rarity, rng=rng)
+def generate_by_rarity(
+    category: str,
+    level: int,
+    rarity: str,
+    rng: random.Random | None = None,
+    base_id: str | None = None,
+) -> dict[str, Any]:
+    """指定品阶生成（合成 / BOSS 宝箱 / 起始装备用）。"""
+    item, _ = generate_item(category, level, rarity=rarity, rng=rng, base_id=base_id)
     return item
 
 

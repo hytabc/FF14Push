@@ -1,6 +1,7 @@
 {
   "$comment": "小怪模板与属性推导。来源：PRD 地区 3.3 / 3.1 / 8（数值平衡原则）",
-  "$commentModel": "以「参考英雄曲线」为锚：怪物属性由地区等级下限与参考英雄的攻/血曲线推导，保证小怪阶段约 30-90 秒、单体约 5 秒，且装备不足时英雄可能阵亡（对应阵亡重置机制）。PRD 未给出可用的固定系数，故改为锚定式，全部系数集中在此处便于平衡调优。",
+  "$commentModel": "以「期望英雄」曲线为锚：怪物属性由地区等级下限与期望英雄的攻/血曲线推导，保证小怪阶段约 30-90 秒、单怪约 targetKillSeconds，且装备不足时英雄可能阵亡（对应阵亡重置机制）。PRD 未给出可用的固定系数，故改为锚定式，全部系数集中在此处便于平衡调优。",
+  "$commentExpectedHero": "期望英雄 = 等级匹配地区 + 已装备等级对应底材武器 + 5 技能职业。旧版参考曲线只描述「裸普攻」，导致玩家转职穿装后 DPS 达到锚定的 4-8 倍而秒杀一切；现改为按期望英雄锚定。",
   "reference": {
     "heroAttack": {
       "base": 40,
@@ -10,8 +11,10 @@
       "base": 430,
       "perLevel": 88
     },
-    "refPotencyPerSecond": 30,
-    "targetKillSeconds": 5.0,
+    "refPotencyPerSecond": 70,
+    "refGearAttackMultiplier": 1.6,
+    "refDamageMultiplier": 1.2,
+    "targetKillSeconds": 2.5,
     "targetSurvivalSeconds": 26.0,
     "defenseRatioOfAttack": 0.1
   },

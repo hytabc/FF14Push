@@ -36,11 +36,22 @@ def _ref_hp(level: float) -> float:
 
 
 def monster_base_stats(level: float) -> dict[str, float]:
-    """由参考英雄曲线推导的小怪基准属性。"""
+    """由「期望英雄」曲线推导的小怪基准属性。
+
+    期望英雄 = 等级匹配地区 + 已装备等级对应底材武器 + 5 技能职业。
+    怪物 HP 按「期望英雄的每秒伤害 × targetKillSeconds」锚定，因此等级匹配、
+    装备到位时单怪耗时约等于 targetKillSeconds；装备越差耗时越长（可能阵亡）。
+    """
     atk = _ref_attack(level)
     hp = _ref_hp(level)
+    expected_dps = (
+        atk
+        * float(REF["refGearAttackMultiplier"])
+        * float(REF["refPotencyPerSecond"]) / 100.0
+        * float(REF["refDamageMultiplier"])
+    )
     return {
-        "hp": atk * float(REF["refPotencyPerSecond"]) / 100.0 * float(REF["targetKillSeconds"]),
+        "hp": expected_dps * float(REF["targetKillSeconds"]),
         "attack": hp / (float(REF["targetSurvivalSeconds"]) / MONSTER_INTERVAL),
         "defense": atk * float(REF["defenseRatioOfAttack"]),
     }
@@ -135,15 +146,27 @@ def elite_chance(term_mods: dict[str, float]) -> float:
 
 
 def level_penalty(hero_level: int, region_id: int) -> dict[str, float]:
-    """英雄等级低于地区下限时的惩罚。来源：PRD 地区 7.3"""
+    """英雄等级低于地区下限时的软惩罚：命中下降 + 输出下降 + 受伤增加。
+
+    每落后 1 级按配置比例累加，超过上限取上限；等级达标则为全 0。
+    来源：PRD 地区 7.3
+    """
     region = CONFIG.region_by_id[region_id]
-    if hero_level >= int(region["levelMin"]):
-        return {"hitRatePenaltyPct": 0.0, "damageTakenBonusPct": 0.0}
+    deficit = max(0, int(region["levelMin"]) - int(hero_level))
+    if deficit == 0:
+        return {"hitRatePenaltyPct": 0.0, "damageDealtPenaltyPct": 0.0, "damageTakenBonusPct": 0.0}
+
     cfg = CONFIG.regions["levelPenalty"]
-    deficit = int(region["levelMin"]) - hero_level
     return {
-        "hitRatePenaltyPct": min(60.0, deficit * float(cfg["hitRatePenaltyPct"]) * 100 / 10),
-        "damageTakenBonusPct": min(200.0, deficit * float(cfg["damageTakenBonusPct"]) * 100 / 10),
+        "hitRatePenaltyPct": min(
+            float(cfg["maxHitRatePenaltyPct"]), deficit * float(cfg["hitRatePenaltyPctPerLevel"])
+        ),
+        "damageDealtPenaltyPct": min(
+            float(cfg["maxDamageDealtPenaltyPct"]), deficit * float(cfg["damageDealtPenaltyPctPerLevel"])
+        ),
+        "damageTakenBonusPct": min(
+            float(cfg["maxDamageTakenBonusPct"]), deficit * float(cfg["damageTakenBonusPctPerLevel"])
+        ),
     }
 
 

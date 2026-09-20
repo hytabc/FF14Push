@@ -1,7 +1,7 @@
 {
   "$comment": "关底 BOSS。来源：PRD 地区 4.2 / 4.3 / 4.4",
   "$commentScaling": "BOSS 属性 = 同地区小怪基准 × 以下倍率。PRD 4.2 写 HP 为小怪 50-80 倍，但 8.5 要求 BOSS 战约 10-30 秒，二者矛盾（50-80 倍会使战斗长达数分钟）。此处取可玩的倍率，使 BOSS 战约 20 秒。",
-  "hpMultiplierRange": [3.5, 5.0],
+  "hpMultiplierRange": [6.0, 8.0],
   "attackMultiplierRange": [1.2, 1.8],
   "defenseMultiplierRange": [1.5, 2.5],
   "attackInterval": 2.5,

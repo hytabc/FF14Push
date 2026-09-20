@@ -59,12 +59,17 @@ export function termQualityClass(quality: TermQuality): string {
   }[quality]
 }
 
+/**
+ * 属性 id → 中文名。
+ * 饰品底材用的是副属性 id（str/dex/int/vit），武器与防具用的是底材属性 id（attack/physDef…），
+ * 因此两张表要互相兜底，否则会回落成英文 id。
+ */
 export function attrName(attrId: string): string {
-  return ATTR_NAMES[attrId] ?? baseAttrName(attrId)
+  return ATTR_NAMES[attrId] ?? BASE_ATTR_NAMES[attrId as keyof typeof BASE_ATTR_NAMES] ?? attrId
 }
 
 export function baseAttrName(attrId: string): string {
-  return BASE_ATTR_NAMES[attrId as keyof typeof BASE_ATTR_NAMES] ?? attrId
+  return BASE_ATTR_NAMES[attrId as keyof typeof BASE_ATTR_NAMES] ?? ATTR_NAMES[attrId] ?? attrId
 }
 
 export function attrSuffix(attrId: string): string {
@@ -83,6 +88,37 @@ export function jobName(jobId: string): string {
 
 export function categoryName(category: string): string {
   return { weapon: '武器', armor: '防具', accessory: '饰品' }[category] ?? category
+}
+
+function durationSuffix(seconds: number): string {
+  return seconds > 0 ? `（${seconds}s）` : ''
+}
+
+/** 技能效果的中文label。覆盖 jobs.json 中出现的全部 effects[].type。 */
+const SKILL_EFFECT_LABELS: Record<string, (pct: number, seconds: number) => string> = {
+  heal: (pct) => `回复生命 ${pct}%`,
+  healOverTime: (pct, seconds) => `持续回复 ${pct}%${durationSuffix(seconds)}`,
+  fullHeal: () => '生命全满',
+  shield: (pct, seconds) => `获得护盾 ${pct}%${durationSuffix(seconds)}`,
+  dot: (pct, seconds) => `持续伤害 ${pct}%${durationSuffix(seconds)}`,
+  stun: (_pct, seconds) => `眩晕${durationSuffix(seconds)}`,
+  mpRestore: (pct) => `回复魔力 ${pct}%`,
+  mpDumpPotency: () => '消耗全部魔力提升威力',
+  cdReduceAll: (pct) => `全部技能冷却 −${pct}%`,
+  attackBuff: (pct, seconds) => `攻击力 +${pct}%${durationSuffix(seconds)}`,
+  critRateBuff: (pct, seconds) => `暴击率 +${pct}%${durationSuffix(seconds)}`,
+  attackSpeedBuff: (pct, seconds) => `攻击速度 +${pct}%${durationSuffix(seconds)}`,
+  allDamageBuff: (pct, seconds) => `全伤害 +${pct}%${durationSuffix(seconds)}`,
+  damageReduction: (pct, seconds) => `受到伤害 −${pct}%${durationSuffix(seconds)}`,
+}
+
+/** 技能效果 → 中文说明；未知类型不暴露原始英文枚举。 */
+export function skillEffectLabel(effect: { type?: unknown; value?: unknown; duration?: unknown }): string {
+  const builder = SKILL_EFFECT_LABELS[String(effect?.type ?? '')]
+  if (!builder) return '未知效果'
+  const pct = Math.round(Number(effect.value ?? 0) * 100)
+  const seconds = Math.round(Number(effect.duration ?? 0))
+  return builder(pct, seconds)
 }
 
 export function formatNumber(value: number): string {

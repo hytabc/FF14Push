@@ -18,7 +18,15 @@ import {
   skillDamageMultiplier,
   type SkillLike,
 } from './combat'
-import { bossStats, eliteChance, getRegion, monsterStats, regionTemplates } from './regions'
+import {
+  bossStats,
+  eliteChance,
+  getRegion,
+  levelPenalty,
+  monsterStats,
+  regionTemplates,
+  type LevelPenalty,
+} from './regions'
 
 export interface KillRecord {
   monsterId: string
@@ -32,10 +40,12 @@ export interface LogEntry {
   tone: 'normal' | 'skill' | 'damage' | 'loot' | 'danger' | 'system' | 'boss'
 }
 
+type FloatTone = 'hero' | 'monster' | 'crit' | 'miss'
+
 export interface FloatingText {
   id: number
   text: string
-  tone: 'hero' | 'monster' | 'crit'
+  tone: FloatTone
   side: 'hero' | 'monster'
 }
 
@@ -89,6 +99,8 @@ export class BattleSimulator {
   private buffs: ActiveBuff[] = []
   private dots: Array<{ remaining: number; potency: number; tick: number }> = []
   private regenTimer = 0
+  /** 越级时的等级压制惩罚（英雄等级 ≥ 地区下限则为全 0）。 */
+  readonly penalty: LevelPenalty
 
   constructor(options: {
     stats: HeroStats
@@ -106,7 +118,15 @@ export class BattleSimulator {
     this.heroHp = options.stats.maxHp
     this.heroMp = options.stats.maxMp
     this.spawnTimer = 0.6
+    this.penalty = levelPenalty(options.stats.level, this.region)
     this.pushLog(`进入「${this.region.name}」· Lv.${this.region.levelMin}-${this.region.levelMax}`, 'system')
+    if (this.penalty.hitRatePenaltyPct > 0) {
+      this.pushLog(
+        `等级压制：英雄 Lv.${options.stats.level} 低于地区下限，命中 -${this.penalty.hitRatePenaltyPct.toFixed(0)}%、` +
+          `伤害 -${this.penalty.damageDealtPenaltyPct.toFixed(0)}%、受到伤害 +${this.penalty.damageTakenBonusPct.toFixed(0)}%`,
+        'system',
+      )
+    }
   }
 
   get stats(): HeroStats {
@@ -282,15 +302,27 @@ export class BattleSimulator {
 
     if (skill.potency > 0 && this.monster) {
       const mult = skillDamageMultiplier(stats, stats.jobId)
-      const roll = rollDamage(stats, skill.potency, skill.damageType, this.monster.defense, mult)
-      this.monsterHp -= roll.amount
-      this.pushFloat(
-        `${roll.amount}${roll.isCrit ? '!' : ''}`,
-        'monster',
-        roll.isCrit || roll.isDirectHit ? 'crit' : 'monster',
+      const roll = rollDamage(
+        stats,
+        skill.potency,
+        skill.damageType,
+        this.monster.defense,
+        mult,
+        this.penalty,
       )
-      if (roll.isCrit) this.pushLog(`${skill.name} 暴击 ${roll.amount} 伤害`, 'damage')
-      else this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+      if (roll.missed) {
+        this.pushFloat('未命中', 'monster', 'miss')
+        this.pushLog(`${skill.name} 未命中`, 'damage')
+      } else {
+        this.monsterHp -= roll.amount
+        this.pushFloat(
+          `${roll.amount}${roll.isCrit ? '!' : ''}`,
+          'monster',
+          roll.isCrit || roll.isDirectHit ? 'crit' : 'monster',
+        )
+        if (roll.isCrit) this.pushLog(`${skill.name} 暴击 ${roll.amount} 伤害`, 'damage')
+        else this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+      }
     } else {
       this.pushLog(`施放 ${skill.name}`, 'skill')
     }
@@ -339,9 +371,13 @@ export class BattleSimulator {
           const ratio = stats.maxMp > 0 ? this.heroMp / stats.maxMp : 0
           const maxPotency = Number(effect.maxPotency ?? 600)
           const potency = 400 + (maxPotency - 400) * ratio * 2
-          const roll = rollDamage(stats, potency, skill.damageType, this.monster.defense)
-          this.monsterHp -= roll.amount
-          this.pushFloat(`${roll.amount}${roll.isCrit ? '!' : ''}`, 'monster', 'crit')
+          const roll = rollDamage(stats, potency, skill.damageType, this.monster.defense, 1, this.penalty)
+          if (roll.missed) {
+            this.pushFloat('未命中', 'monster', 'miss')
+          } else {
+            this.monsterHp -= roll.amount
+            this.pushFloat(`${roll.amount}${roll.isCrit ? '!' : ''}`, 'monster', 'crit')
+          }
           this.heroMp = 0
           break
         }
@@ -375,7 +411,7 @@ export class BattleSimulator {
       100,
       stats.physDef,
       stats.tenacityPct,
-      stats.termMods.damageTakenPct ?? 0,
+      (stats.termMods.damageTakenPct ?? 0) + this.penalty.damageTakenBonusPct,
     )
 
     // 荆棘反弹
@@ -552,11 +588,11 @@ export class BattleSimulator {
     }
   }
 
-  pushFloating(text: string, side: 'hero' | 'monster', tone: 'hero' | 'monster' | 'crit'): void {
+  pushFloating(text: string, side: 'hero' | 'monster', tone: FloatTone): void {
     this.pushFloat(text, side, tone)
   }
 
-  private pushFloat(text: string, side: 'hero' | 'monster', tone: 'hero' | 'monster' | 'crit'): void {
+  private pushFloat(text: string, side: 'hero' | 'monster', tone: FloatTone): void {
     this.floating.push({ id: nextId(), text, tone, side })
     if (this.floating.length > MAX_FLOAT) this.floating.splice(0, this.floating.length - MAX_FLOAT)
   }

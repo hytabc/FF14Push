@@ -7,7 +7,7 @@ import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import type { Item, SlotId } from '@/game/types'
-import { rarityBg, rarityClass, rarityName, slotName } from '@/utils/format'
+import { rarityBg, rarityClass, rarityName, slotName, baseAttrName } from '@/utils/format'
 
 const game = useGameStore()
 const pickerSlot = ref<SlotId | null>(null)
@@ -97,7 +97,7 @@ async function unequip(slotId: SlotId) {
                     </p>
                     <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
                       <p v-for="entry in loadout[slot.id]!.baseAttrs" :key="entry.attr">
-                        {{ entry.attr }} +{{ Math.round(entry.value) }}
+                        {{ baseAttrName(entry.attr) }} +{{ Math.round(entry.value) }}
                       </p>
                     </div>
                   </template>

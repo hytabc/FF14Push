@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BattleSimulator } from '@/game/core/battle'
 import { estimateDps, rollDamage, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
-import { bossStats, getRegion, goldRange, monsterStats } from '@/game/core/regions'
+import { bossStats, getRegion, goldRange, levelPenalty, monsterStats } from '@/game/core/regions'
 import type { HeroStats } from '@/game/types'
 
 function makeStats(overrides: Partial<HeroStats> = {}): HeroStats {
@@ -79,7 +79,7 @@ describe('地区与怪物配置', () => {
 describe('伤害与技能', () => {
   it('减防后至少造成 10% 伤害', () => {
     const stats = makeStats({ attack: 100, detBonusPct: 0 })
-    const roll = rollDamage(stats, 100, 'physical', 99999, 1, () => 0.9)
+    const roll = rollDamage(stats, 100, 'physical', 99999, 1, null, () => 0.9)
     expect(roll.amount).toBeGreaterThanOrEqual(10)
   })
 
@@ -92,7 +92,7 @@ describe('伤害与技能', () => {
       detBonusPct: 0,
     })
     // rand 返回 0 → 必然命中直击与暴击；固定随机浮动取中值
-    const roll = rollDamage(stats, 100, 'physical', 0, 1, () => 0)
+    const roll = rollDamage(stats, 100, 'physical', 0, 1, null, () => 0)
     // 100 × 1.25(直击) × 2.0(暴击) × 0.95(浮动下限) = 237
     expect(roll.isCrit).toBe(true)
     expect(roll.isDirectHit).toBe(true)
@@ -100,13 +100,14 @@ describe('伤害与技能', () => {
   })
 
   it('信念恒定乘算', () => {
-    const base = rollDamage(makeStats({ attack: 100 }), 100, 'physical', 0, 1, () => 0.5)
+    const base = rollDamage(makeStats({ attack: 100 }), 100, 'physical', 0, 1, null, () => 0.5)
     const withDet = rollDamage(
       makeStats({ attack: 100, detBonusPct: 13 }),
       100,
       'physical',
       0,
       1,
+      null,
       () => 0.5,
     )
     expect(withDet.amount / base.amount).toBeCloseTo(1.13, 1)
@@ -139,6 +140,52 @@ describe('伤害与技能', () => {
     const seconds = secondsToKill(stats, monsterStats(getRegion(5), 'normal'))
     expect(seconds).toBeGreaterThan(0.5)
     expect(seconds).toBeLessThan(60)
+  })
+})
+
+describe('等级压制', () => {
+  it('等级达到地区下限时无惩罚', () => {
+    const region = getRegion(5) // levelMin 20
+    for (const level of [20, 35, 100]) {
+      const penalty = levelPenalty(level, region)
+      expect(penalty.hitRatePenaltyPct).toBe(0)
+      expect(penalty.damageDealtPenaltyPct).toBe(0)
+      expect(penalty.damageTakenBonusPct).toBe(0)
+    }
+  })
+
+  it('每落后 1 级按配置累加三项惩罚', () => {
+    const cfg = data.regions.levelPenalty
+    const penalty = levelPenalty(35, getRegion(10)) // levelMin 45 → 落后 10 级
+    expect(penalty.hitRatePenaltyPct).toBeCloseTo(10 * cfg.hitRatePenaltyPctPerLevel, 5)
+    expect(penalty.damageDealtPenaltyPct).toBeCloseTo(10 * cfg.damageDealtPenaltyPctPerLevel, 5)
+    expect(penalty.damageTakenBonusPct).toBeCloseTo(10 * cfg.damageTakenBonusPctPerLevel, 5)
+  })
+
+  it('惩罚不超过配置上限', () => {
+    const cfg = data.regions.levelPenalty
+    const penalty = levelPenalty(1, getRegion(40)) // 落后 98 级
+    expect(penalty.hitRatePenaltyPct).toBe(cfg.maxHitRatePenaltyPct)
+    expect(penalty.damageDealtPenaltyPct).toBe(cfg.maxDamageDealtPenaltyPct)
+    expect(penalty.damageTakenBonusPct).toBe(cfg.maxDamageTakenBonusPct)
+  })
+
+  it('落后 20 级时击杀耗时至少放大 10 倍', () => {
+    const region = getRegion(23) // levelMin 70
+    const monster = monsterStats(region, 'normal')
+    const matched = makeStats({ level: 70, attack: 3000, hitRatePct: 5 })
+    const underLeveled = makeStats({ level: 50, attack: 3000, hitRatePct: 5 })
+    const matchedSeconds = secondsToKill(matched, monster, levelPenalty(70, region))
+    const underSeconds = secondsToKill(underLeveled, monster, levelPenalty(50, region))
+    expect(underSeconds / matchedSeconds).toBeGreaterThan(10)
+  })
+
+  it('未命中时判定不产生伤害', () => {
+    const stats = makeStats({ attack: 1000, hitRatePct: 0 })
+    const penalty = levelPenalty(1, getRegion(40))
+    const roll = rollDamage(stats, 100, 'physical', 0, 1, penalty, () => 1) // 必不命中
+    expect(roll.missed).toBe(true)
+    expect(roll.amount).toBe(0)
   })
 })
 

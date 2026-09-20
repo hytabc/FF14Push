@@ -7,6 +7,8 @@ const REF = data.monsters.reference as {
   heroAttack: { base: number; perLevel: number }
   heroHp: { base: number; perLevel: number }
   refPotencyPerSecond: number
+  refGearAttackMultiplier: number
+  refDamageMultiplier: number
   targetKillSeconds: number
   targetSurvivalSeconds: number
   defenseRatioOfAttack: number
@@ -27,13 +29,46 @@ function refHp(level: number): number {
   return REF.heroHp.base + REF.heroHp.perLevel * (level - 1)
 }
 
+/** 小怪基准属性。锚定「期望英雄」= 等级匹配 + 等级对应装备 + 5 技能职业。 */
 function monsterBaseStats(level: number) {
   const atk = refAttack(level)
   const hp = refHp(level)
+  const expectedDps =
+    atk * REF.refGearAttackMultiplier * (REF.refPotencyPerSecond / 100) * REF.refDamageMultiplier
   return {
-    hp: (atk * REF.refPotencyPerSecond) / 100 * REF.targetKillSeconds,
+    hp: expectedDps * REF.targetKillSeconds,
     attack: hp / (REF.targetSurvivalSeconds / MONSTER_INTERVAL),
     defense: atk * REF.defenseRatioOfAttack,
+  }
+}
+
+export interface LevelPenalty {
+  hitRatePenaltyPct: number
+  damageDealtPenaltyPct: number
+  damageTakenBonusPct: number
+}
+
+export const NO_LEVEL_PENALTY: LevelPenalty = {
+  hitRatePenaltyPct: 0,
+  damageDealtPenaltyPct: 0,
+  damageTakenBonusPct: 0,
+}
+
+/** 英雄等级低于地区下限时的软惩罚。必须与后端 `regions_util.level_penalty` 一致。 */
+export function levelPenalty(heroLevel: number, region: RegionDef): LevelPenalty {
+  const deficit = Math.max(0, Math.floor(region.levelMin) - Math.floor(heroLevel))
+  if (deficit === 0) return NO_LEVEL_PENALTY
+  const cfg = data.regions.levelPenalty
+  return {
+    hitRatePenaltyPct: Math.min(cfg.maxHitRatePenaltyPct, deficit * cfg.hitRatePenaltyPctPerLevel),
+    damageDealtPenaltyPct: Math.min(
+      cfg.maxDamageDealtPenaltyPct,
+      deficit * cfg.damageDealtPenaltyPctPerLevel,
+    ),
+    damageTakenBonusPct: Math.min(
+      cfg.maxDamageTakenBonusPct,
+      deficit * cfg.damageTakenBonusPctPerLevel,
+    ),
   }
 }
 

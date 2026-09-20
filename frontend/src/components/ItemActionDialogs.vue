@@ -5,7 +5,7 @@ import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import data from '@shared/schema'
 import { useItemActions } from '@/stores/itemActions'
-import { rarityClass, rarityName, termQualityName } from '@/utils/format'
+import { attrName, attrSuffix, rarityClass, rarityName, termQualityName } from '@/utils/format'
 
 const actions = useItemActions()
 
@@ -44,7 +44,7 @@ const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
         </div>
         <ul class="mt-1 space-y-0.5 text-[11px] text-ink-300">
           <li v-for="entry in item.subAttrs" :key="entry.attr">
-            {{ entry.attr }} +{{ entry.value.toFixed(2) }}
+            {{ attrName(entry.attr) }} +{{ entry.value.toFixed(2) }}{{ attrSuffix(entry.attr) }}
           </li>
         </ul>
         <div v-if="item.terms.length" class="mt-2 flex flex-wrap gap-1">

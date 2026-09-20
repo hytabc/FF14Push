@@ -127,9 +127,10 @@ async def report(
     server_elapsed_ms = int(max(0.0, (now - last_at).total_seconds() * 1000))
     window_ms = max(MIN_ELAPSED_MS, min(MAX_ELAPSED_MS, max(payload.elapsedMs, server_elapsed_ms)))
 
-    # 击杀额度：按理论上限随上报累积，跨上报保留余额，避免短上报把合法击杀全部截断
+    # 击杀额度：按理论上限随上报累积，跨上报保留余额，避免短上报把合法击杀全部截断。
+    # 传入英雄等级，使越级英雄的额度同步受等级压制收紧。
     allowance = float(session.kill_credit) + max_kills_in_seconds(
-        stats, payload.regionId, window_ms / 1000.0, settings.report_tolerance
+        stats, payload.regionId, window_ms / 1000.0, settings.report_tolerance, hero.level
     )
 
     result = validate_report(

@@ -10,14 +10,18 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.models import (
     AutoSellSetting,
     Hero,
+    Item,
     RegionProgress,
     TavernState,
     TutorialProgress,
     User,
 )
 from app.schemas.game import LoginRequest, RegisterRequest, TokenResponse
+from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
+from app.services.item_factory import generate_item
 from app.services.recruiting import generate_candidate, initial_hero
+from app.services.serialization import item_from_generated
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,7 +64,24 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
             rarities=list(CONFIG.economy["sell"]["autoSellRarities"]),
         )
     )
+
+    # 起始武器：重锚定后裸英雄无法完成地区 1 的击杀要求，开局直接给一把铁制长剑并装备。
+    starter_id = CONFIG.heroes["initialHero"].get("starterWeapon")
+    starter_base = CONFIG.base_item_by_id.get(starter_id) if starter_id else None
+    starter_item: Item | None = None
+    if starter_base is not None:
+        generated, _ = generate_item(starter_base.category, 1, rarity="common", base_id=starter_id)
+        starter_item = Item(
+            user_id=user.id,
+            **item_from_generated(generated, "starter"),
+            equipped_slot="mainHand",
+        )
+        db.add(starter_item)
+
     await db.flush()
+    if starter_item is not None:
+        await unlock_equipment(db, user.id, starter_item)
+        await unlock_terms(db, user.id, starter_item.terms or [])
     return hero
 
 
