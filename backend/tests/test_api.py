@@ -868,6 +868,45 @@ class TestRaid:
         started = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
         assert started.status_code == 200, started.text
 
+    async def test_hard_raid_ignores_level_gate(self, auth_client, session_factory) -> None:
+        """高难副本不设等级门槛：等级低于 requiredLevel 也能进入（等级同步当前）。"""
+        await self._gear_up(auth_client, session_factory, level=50, mix=self.HARD_MIX, ancient=True)
+        body = (await auth_client.get(f"{API}/raid")).json()
+        raid = next(r for r in body["raids"] if r["id"] == "raid_h1")
+        assert raid["requiredLevel"] == 80  # 数据保留，但不再作为门槛
+        assert raid["eligible"] is True, raid["blockedReason"]
+
+        started = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
+        assert started.status_code == 200, started.text
+        assert started.json()["difficulty"] == "hard"
+        # BOSS 数值按玩家当前等级锚定
+        assert started.json()["bosses"][0]["level"] == 50
+
+    async def test_normal_raid_still_enforces_level_gate(self, auth_client, session_factory) -> None:
+        await self._gear_up(auth_client, session_factory, level=50)
+        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_3"})
+        assert resp.status_code == 400
+        assert "等级" in resp.json()["detail"]
+
+    async def test_hard_bosses_receive_extra_skills(self, auth_client, session_factory) -> None:
+        await self._gear_up(auth_client, session_factory, mix=self.HARD_MIX, ancient=True)
+        started = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
+        assert started.status_code == 200, started.text
+        body = started.json()
+        assert body["difficulty"] == "hard"
+        expected = {"hardBulwark", "hardFrenzy", "hardAnnihilation"}
+        for boss in body["bosses"]:
+            assert expected <= {s["id"] for s in boss["skills"]}, boss["skills"]
+
+    async def test_normal_raid_bosses_have_no_hard_skills(self, auth_client, session_factory) -> None:
+        await self._gear_up(auth_client, session_factory)
+        started = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})
+        assert started.status_code == 200, started.text
+        body = started.json()
+        assert body["difficulty"] == "normal"
+        for boss in body["bosses"]:
+            assert "hardAnnihilation" not in {s["id"] for s in boss["skills"]}
+
     async def test_clear_too_fast_is_rejected(self, auth_client, session_factory) -> None:
         await self._gear_up(auth_client, session_factory)
         started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()

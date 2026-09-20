@@ -140,7 +140,10 @@ async function closeResult() {
         <p class="mt-2 text-[11px] text-ink-400">{{ raid.bossNames.join(' / ') }}</p>
 
         <ul class="mt-2 space-y-0.5 text-[11px] text-ink-400">
-          <li>· 需要等级 Lv.{{ raid.requiredLevel }}</li>
+          <li v-if="raid.difficulty === 'hard'">
+            · 等级同步当前 Lv.{{ game.hero?.level ?? '—' }}（高难副本不设等级门槛）
+          </li>
+          <li v-else>· 需要等级 Lv.{{ raid.requiredLevel }}</li>
           <li>· 需要战力 {{ formatNumber(raid.requiredPower) }}</li>
           <li v-if="raid.requiresAllSlots">· 需要穿满全部装备栏位</li>
           <li>
@@ -234,6 +237,9 @@ async function closeResult() {
             <div class="mt-1 h-3 overflow-hidden rounded-full bg-ink-800">
               <div class="h-full rounded-full bg-rose-500 transition-all" :style="{ width: `${boss.hpPct}%` }" />
             </div>
+            <p v-if="boss.skillNames.length" class="mt-2 text-[10px] text-fuchsia-300">
+              技能：{{ boss.skillNames.join('、') }}
+            </p>
           </button>
         </div>
       </section>

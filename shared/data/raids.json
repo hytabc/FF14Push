@@ -189,6 +189,11 @@
           "resistancePct": 30
         }
       ],
+      "extraSkills": [
+        { "id": "hardBulwark", "name": "坚壁", "cd": 24, "effect": "shield", "damageReduce": 0.5, "duration": 6, "desc": "获得 50% 减伤，持续 6 秒" },
+        { "id": "hardFrenzy", "name": "狂乱", "cd": 30, "effect": "enrage", "attackBuff": 0.6, "duration": 10, "desc": "攻击力 +60%，持续 10 秒" },
+        { "id": "hardAnnihilation", "name": "湮灭", "cd": 18, "effect": "nuke", "potency": 450, "desc": "每 18 秒造成 450% 攻击力的高威力伤害" }
+      ],
       "reward": {
         "firstGold": 3000000,
         "firstExp": 5000000,
@@ -232,6 +237,11 @@
           "attackInterval": 2.5,
           "resistancePct": 30
         }
+      ],
+      "extraSkills": [
+        { "id": "hardBulwark", "name": "坚壁", "cd": 24, "effect": "shield", "damageReduce": 0.5, "duration": 6, "desc": "获得 50% 减伤，持续 6 秒" },
+        { "id": "hardFrenzy", "name": "狂乱", "cd": 30, "effect": "enrage", "attackBuff": 0.6, "duration": 10, "desc": "攻击力 +60%，持续 10 秒" },
+        { "id": "hardAnnihilation", "name": "湮灭", "cd": 18, "effect": "nuke", "potency": 450, "desc": "每 18 秒造成 450% 攻击力的高威力伤害" }
       ],
       "reward": {
         "firstGold": 8000000,

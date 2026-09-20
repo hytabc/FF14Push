@@ -80,9 +80,11 @@ def boss_stats_for_raid(
     difficulty = str(raid.get("difficulty", "normal"))
     hp_scale = power_scale(stats, hero_level, difficulty)
     atk_scale = attack_scale(stats, hero_level, difficulty)
+    extra_skills = list(raid.get("extraSkills", []) or [])
     out: list[dict[str, Any]] = []
     for boss in raid["bosses"]:
         boss_type = BOSS_TYPE_BY_ID.get(str(boss.get("type", "")))
+        skills = list(boss_type["skills"] if boss_type else []) + extra_skills
         out.append(
             {
                 "id": boss["id"],
@@ -97,7 +99,7 @@ def boss_stats_for_raid(
                 "level": hero_level,
                 "resistancePct": float(boss["resistancePct"]),
                 "bossType": boss.get("type"),
-                "skills": boss_type["skills"] if boss_type else [],
+                "skills": skills,
             }
         )
     return out
@@ -106,10 +108,15 @@ def boss_stats_for_raid(
 def eligibility(
     raid: dict[str, Any], hero_level: int, stats: HeroStats, items: Iterable[Any]
 ) -> tuple[bool, str | None]:
-    """进入门槛：等级 → 栏位穿满 → 装备品阶 → 太古词条 → 战力。返回 (是否可进入, 拦截原因)。"""
-    required_level = int(raid["requiredLevel"])
-    if hero_level < required_level:
-        return False, f"需要英雄等级 {required_level}"
+    """进入门槛：栏位穿满 → 装备品阶 → 太古词条 → 战力。返回 (是否可进入, 拦截原因)。
+
+    高难副本（difficulty=hard）不设等级门槛：等级始终同步为玩家当前英雄等级，
+    BOSS 数值按当前等级锚定；难度由装备/战力门槛与极高倍率承担。
+    """
+    if str(raid.get("difficulty", "normal")) != "hard":
+        required_level = int(raid["requiredLevel"])
+        if hero_level < required_level:
+            return False, f"需要英雄等级 {required_level}"
 
     equipped = [item for item in items if getattr(item, "equipped_slot", None)]
     if bool(raid.get("requiresAllSlots", True)) and len(equipped) < SLOT_COUNT:

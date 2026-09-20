@@ -122,6 +122,7 @@ async def start_session(
         "sessionId": session.id,
         "raidId": raid["id"],
         "name": raid["name"],
+        "difficulty": raid.get("difficulty", "normal"),
         "bosses": boss_stats_for_raid(raid, hero.level, stats),
         "enrage": raid["enrage"],
         "reward": raid["reward"],

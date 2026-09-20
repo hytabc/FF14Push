@@ -278,7 +278,7 @@ export const useGameStore = defineStore('game', () => {
       raidResult.value = null
       sim.value = new BattleSimulator({
         stats: state.value.hero.stats,
-        raid: { bosses: session.bosses, enrage: session.enrage },
+        raid: { bosses: session.bosses, enrage: session.enrage, hard: session.difficulty === 'hard' },
       })
       sim.value.start()
       running.value = true

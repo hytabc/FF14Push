@@ -171,10 +171,13 @@ export interface RaidDef {
   id: string
   order: number
   name: string
+  difficulty?: 'normal' | 'hard'
   requiredLevel: number
   requiredPower: number
   requiresAllSlots: boolean
   enrage: RaidEnrageDef | null
+  /** 高难副本专属技能：附加到该副本所有 BOSS 上。 */
+  extraSkills?: unknown[]
   bosses: RaidBossDef[]
   reward: {
     firstGold: number

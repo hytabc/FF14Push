@@ -403,4 +403,61 @@ describe('高难副本模拟器', () => {
     for (let i = 0; i < 100; i += 1) sim.tick(0.1)
     expect(sim.phase).toBe('dead')
   })
+
+  it('高难 BOSS 减伤技能生效：相同输出下掉血更慢', () => {
+    const plain = makeBoss('plain', '无技能', 1_000_000)
+    const guarded: MonsterStats = {
+      ...makeBoss('guarded', '坚壁', 1_000_000),
+      skills: [
+        { id: 'hardBulwark', name: '坚壁', cd: 1, effect: 'shield', damageReduce: 0.8, duration: 999, desc: '' },
+      ],
+    }
+    const heroStats = makeStats({ attack: 1000, maxHp: 100000 })
+    const simPlain = new BattleSimulator({ stats: heroStats, raid: { bosses: [plain], enrage: null, hard: true } })
+    const simGuard = new BattleSimulator({ stats: heroStats, raid: { bosses: [guarded], enrage: null, hard: true } })
+    simPlain.start()
+    simGuard.start()
+    for (let i = 0; i < 50; i += 1) {
+      simPlain.tick(0.1)
+      simGuard.tick(0.1)
+    }
+    expect(simGuard.bossEntries()[0].hp).toBeGreaterThan(simPlain.bossEntries()[0].hp)
+  })
+
+  it('高难 BOSS 增伤技能生效：英雄承受更多伤害', () => {
+    const plain = makeBoss('plain2', '无技能', 1_000_000)
+    const frenzied: MonsterStats = {
+      ...makeBoss('frenzied', '狂乱', 1_000_000),
+      attack: 100,
+      skills: [
+        { id: 'hardFrenzy', name: '狂乱', cd: 1, effect: 'enrage', attackBuff: 0.6, duration: 999, desc: '' },
+      ],
+    }
+    const heroStats = makeStats({ attack: 1000, maxHp: 100000, physDef: 0, tenacityPct: 0, hpRegen: 0 })
+    const simPlain = new BattleSimulator({ stats: heroStats, raid: { bosses: [plain], enrage: null, hard: true } })
+    const simFrenzy = new BattleSimulator({ stats: heroStats, raid: { bosses: [frenzied], enrage: null, hard: true } })
+    simPlain.start()
+    simFrenzy.start()
+    for (let i = 0; i < 50; i += 1) {
+      simPlain.tick(0.1)
+      simFrenzy.tick(0.1)
+    }
+    expect(simFrenzy.heroHp).toBeLessThan(simPlain.heroHp)
+  })
+
+  it('非高难（普通副本/地区）不触发 BOSS 技能', () => {
+    const boss: MonsterStats = {
+      ...makeBoss('normal', '普通副本', 100000),
+      skills: [
+        { id: 'hardBulwark', name: '坚壁', cd: 1, effect: 'shield', damageReduce: 0.8, duration: 999, desc: '' },
+      ],
+    }
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1000, maxHp: 100000 }),
+      raid: { bosses: [boss], enrage: null, hard: false },
+    })
+    sim.start()
+    for (let i = 0; i < 50; i += 1) sim.tick(0.1)
+    expect(sim.log.map((e) => e.text).join('\n')).not.toContain('坚壁')
+  })
 })

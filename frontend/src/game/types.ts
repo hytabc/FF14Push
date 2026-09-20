@@ -213,6 +213,7 @@ export interface RaidSessionStart {
   sessionId: number
   raidId: string
   name: string
+  difficulty: 'normal' | 'hard'
   bosses: MonsterStats[]
   enrage: RaidEnrage | null
   reward: RaidReward
@@ -242,6 +243,8 @@ export interface RaidBossEntry {
   hpPct: number
   enraged: boolean
   isTarget: boolean
+  /** BOSS 技能名（高难副本会实际发动）。 */
+  skillNames: string[]
 }
 
 export interface RegionListEntry extends RegionDef {

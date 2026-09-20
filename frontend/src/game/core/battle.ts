@@ -6,7 +6,7 @@
  */
 import data from '@shared/schema'
 
-import type { HeroStats, MonsterStats, RaidBossEntry, RaidEnrage, RegionDef } from '../types'
+import type { BossSkill, HeroStats, MonsterStats, RaidBossEntry, RaidEnrage, RegionDef } from '../types'
 import {
   ADVENTURER_SKILL,
   isMagical,
@@ -66,6 +66,10 @@ interface EnemyState {
   maxHp: number
   attackTimer: number
   enraged: boolean
+  /** 高难副本 BOSS 技能冷却（按技能 id）。 */
+  skillCd: Record<string, number>
+  /** BOSS 自身增益：减伤（damageReduce）/ 增伤（attackBuff）。 */
+  selfBuffs: Array<{ stat: string; value: number; remaining: number }>
 }
 
 const MAX_LOG = 160
@@ -103,6 +107,8 @@ export class BattleSimulator {
 
   /** 高难副本模式：仅 BOSS、可切换目标、一方阵亡后另一方狂暴。 */
   readonly isRaid: boolean
+  /** 高难（hard）副本：BOSS 技能生效。地区与普通副本不受影响。 */
+  readonly raidHard: boolean
   private enemies: EnemyState[] = []
   private targetIndex = 0
   private readonly raidEnrage: RaidEnrage | null
@@ -110,6 +116,8 @@ export class BattleSimulator {
   private baseStats: HeroStats
   private buffs: ActiveBuff[] = []
   private dots: Array<{ remaining: number; potency: number; tick: number }> = []
+  /** BOSS 施加给英雄的持续伤害（高难副本）。 */
+  private heroDots: Array<{ remaining: number; potencyPerSec: number; tick: number; source: string }> = []
   private regenTimer = 0
   /** 越级时的等级压制惩罚（英雄等级 ≥ 地区下限则为全 0）。 */
   readonly penalty: LevelPenalty
@@ -120,10 +128,11 @@ export class BattleSimulator {
     killsRequired?: number
     spawnInterval?: number
     killCount?: number
-    raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null }
+    raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null; hard?: boolean }
   }) {
     this.baseStats = options.stats
     this.isRaid = options.raid !== undefined
+    this.raidHard = Boolean(options.raid?.hard)
     this.raidEnrage = options.raid?.enrage ?? null
     this.killsRequired = options.killsRequired ?? 0
     this.spawnInterval = options.spawnInterval ?? 1
@@ -136,13 +145,7 @@ export class BattleSimulator {
 
     if (this.isRaid) {
       this.region = null
-      this.enemies = (options.raid?.bosses ?? []).map((stats) => ({
-        stats,
-        hp: stats.hp,
-        maxHp: stats.hp,
-        attackTimer: stats.attackInterval,
-        enraged: false,
-      }))
+      this.enemies = (options.raid?.bosses ?? []).map((stats) => this.makeEnemy(stats))
       this.pushLog(`进入高难副本，共 ${this.enemies.length} 个 BOSS`, 'boss')
       return
     }
@@ -190,13 +193,23 @@ export class BattleSimulator {
     if (this.current) this.current.attackTimer = value
   }
 
-  /** 当前目标受到的伤害减免（BOSS 自带抗性 + 狂暴减伤）。 */
+  /** 当前目标受到的伤害减免（BOSS 自带抗性 + 狂暴减伤 + 高难技能减伤）。 */
   private targetResistance(): number {
     const enemy = this.current
     if (!enemy) return 0
     const innate = Number(enemy.stats.resistancePct ?? 0)
     const enrage = enemy.enraged && this.raidEnrage ? Number(this.raidEnrage.damageReductionPct) : 0
-    return innate + enrage
+    const skillDr =
+      enemy.selfBuffs.reduce((sum, b) => (b.stat === 'damageReduce' ? sum + b.value : sum), 0) * 100
+    return Math.min(90, innate + enrage + skillDr)
+  }
+
+  /** 当前目标的攻击力倍率（高难技能的增伤）。 */
+  private bossAttackMultiplier(): number {
+    const enemy = this.current
+    if (!enemy) return 1
+    const buff = enemy.selfBuffs.reduce((sum, b) => (b.stat === 'attackBuff' ? sum + b.value : sum), 0)
+    return 1 + buff
   }
 
   /** 副本战斗面板用：所有 BOSS 的血量快照。 */
@@ -209,6 +222,7 @@ export class BattleSimulator {
       hpPct: enemy.maxHp > 0 ? Math.max(0, (enemy.hp / enemy.maxHp) * 100) : 0,
       enraged: enemy.enraged,
       isTarget: index === this.targetIndex,
+      skillNames: (enemy.stats.skills ?? []).map((s) => s.name),
     }))
   }
 
@@ -296,6 +310,7 @@ export class BattleSimulator {
     }
 
     this.tickDots(dt)
+    this.tickHeroDots(dt)
 
     if (!this.monster) {
       if (this.isRaid) return
@@ -313,6 +328,7 @@ export class BattleSimulator {
 
     this.castIfReady()
     this.tickMonster(dt)
+    this.tickBossSkills(dt)
   }
 
   private tickDots(dt: number): void {
@@ -352,18 +368,33 @@ export class BattleSimulator {
     this.pushLog(`关底 BOSS「${this.boss!.name}」出现！`, 'boss')
   }
 
+  /** 构造敌方单位：初始化 BOSS 技能冷却与自身增益容器。 */
+  private makeEnemy(stats: MonsterStats): EnemyState {
+    const skillCd: Record<string, number> = {}
+    for (const skill of stats.skills ?? []) skillCd[skill.id] = Math.max(1, Number(skill.cd ?? 10))
+    return {
+      stats,
+      hp: stats.hp,
+      maxHp: stats.hp,
+      attackTimer: stats.attackInterval,
+      enraged: false,
+      skillCd,
+      selfBuffs: [],
+    }
+  }
+
   private setMonster(monster: MonsterStats): void {
-    this.enemies = [
-      { stats: monster, hp: monster.hp, maxHp: monster.hp, attackTimer: monster.attackInterval, enraged: false },
-    ]
+    this.enemies = [this.makeEnemy(monster)]
     this.targetIndex = 0
     this.dots = []
+    this.heroDots = []
   }
 
   /** 目标阵亡：移出战斗。副本模式下若仍有存活 BOSS，则对其施加狂暴。 */
   private removeCurrentEnemy(): void {
     this.enemies.splice(this.targetIndex, 1)
     this.dots = []
+    this.heroDots = []
     if (this.targetIndex >= this.enemies.length) this.targetIndex = Math.max(0, this.enemies.length - 1)
   }
 
@@ -539,7 +570,7 @@ export class BattleSimulator {
       return
     }
     let damage = rollIncoming(
-      this.monster!.attack,
+      this.monster!.attack * this.bossAttackMultiplier(),
       100,
       stats.physDef,
       stats.tenacityPct,
@@ -571,6 +602,146 @@ export class BattleSimulator {
       this.killMonster()
       return
     }
+    if (this.heroHp <= 0) this.heroDies()
+  }
+
+  // ---------- 高难副本 BOSS 技能（仅 raidHard 生效） ----------
+
+  /** 推进 BOSS 技能冷却与自身增益，冷却就绪即释放。 */
+  private tickBossSkills(dt: number): void {
+    if (!this.isRaid || !this.raidHard) return
+    const enemy = this.current
+    if (!enemy) return
+
+    for (const buff of enemy.selfBuffs) buff.remaining -= dt
+    enemy.selfBuffs = enemy.selfBuffs.filter((b) => b.remaining > 0)
+
+    for (const skill of enemy.stats.skills ?? []) {
+      const remaining = (enemy.skillCd[skill.id] ?? 0) - dt
+      if (remaining > 0) {
+        enemy.skillCd[skill.id] = remaining
+        continue
+      }
+      enemy.skillCd[skill.id] = Math.max(1, Number(skill.cd ?? 10))
+      this.castBossSkill(enemy, skill)
+      if (this.phase === 'dead' || this.phase === 'cleared') return
+    }
+  }
+
+  private castBossSkill(enemy: EnemyState, skill: BossSkill): void {
+    const effect = String(skill.effect ?? '')
+    const duration = Math.max(0, Number(skill.duration ?? 0))
+    switch (effect) {
+      case 'shield': {
+        const reduce = Number(skill.damageReduce ?? 0)
+        if (reduce > 0) {
+          const seconds = duration || 6
+          enemy.selfBuffs.push({ stat: 'damageReduce', value: reduce, remaining: seconds })
+          this.pushLog(
+            `「${enemy.stats.name}」施放 ${skill.name}：受到伤害 −${Math.round(reduce * 100)}%（${seconds}s）`,
+            'danger',
+          )
+        }
+        break
+      }
+      case 'enrage': {
+        const buff = Number(skill.attackBuff ?? 0)
+        if (buff > 0 && duration > 0) {
+          enemy.selfBuffs.push({ stat: 'attackBuff', value: buff, remaining: duration })
+          this.pushLog(
+            `「${enemy.stats.name}」施放 ${skill.name}：攻击力 +${Math.round(buff * 100)}%（${duration}s）`,
+            'danger',
+          )
+        }
+        break
+      }
+      case 'dot': {
+        const potency = Number(skill.potency ?? 0)
+        if (potency > 0) {
+          const seconds = duration || 5
+          this.heroDots.push({
+            remaining: seconds,
+            potencyPerSec: potency / seconds,
+            tick: 1,
+            source: skill.name,
+          })
+          this.pushLog(
+            `「${enemy.stats.name}」施放 ${skill.name}：持续伤害 ${Math.round(potency)}%（${seconds}s）`,
+            'danger',
+          )
+        }
+        break
+      }
+      case 'nuke':
+      case 'aoe':
+      case 'charge':
+      case 'debuff': {
+        const potency = Number(skill.potency ?? 0)
+        if (potency > 0) this.bossSkillDamage(enemy, skill, potency)
+        const speedDebuff = Number(skill.attackSpeedDebuff ?? 0)
+        if (effect === 'debuff' && speedDebuff > 0 && this.phase !== 'dead') {
+          const seconds = duration || 5
+          this.buffs.push({ stat: 'attackSpeedBuff', value: -speedDebuff, remaining: seconds, name: skill.name })
+          this.pushLog(
+            `「${enemy.stats.name}」施放 ${skill.name}：攻击速度 −${Math.round(speedDebuff * 100)}%（${seconds}s）`,
+            'danger',
+          )
+        }
+        break
+      }
+      default:
+        break
+    }
+  }
+
+  /** BOSS 高威力技能：对英雄造成 `potency%` × BOSS 攻击的伤害。 */
+  private bossSkillDamage(enemy: EnemyState, skill: BossSkill, potency: number): void {
+    const stats = this.stats
+    if (Math.random() * 100 < Math.min(60, stats.dodgePct)) {
+      this.pushFloat('闪避', 'hero', 'hero')
+      return
+    }
+    const attackBuff = enemy.selfBuffs.reduce((sum, b) => (b.stat === 'attackBuff' ? sum + b.value : sum), 0)
+    const attack = enemy.stats.attack * (1 + attackBuff)
+    const defense = skill.damageType === 'magical' ? stats.magicDef : stats.physDef
+    let damage = rollIncoming(
+      attack,
+      potency,
+      defense,
+      stats.tenacityPct,
+      (stats.termMods.damageTakenPct ?? 0) + this.penalty.damageTakenBonusPct,
+    )
+    if (this.shield > 0) {
+      const absorbed = Math.min(this.shield, damage)
+      this.shield -= absorbed
+      damage -= absorbed
+    }
+    if (damage > 0) {
+      this.heroHp -= damage
+      this.pushFloat(`-${damage}`, 'hero', 'monster')
+    }
+    if (stats.lifestealPct > 0) {
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100)))
+    }
+    if (this.heroHp <= 0) this.heroDies()
+  }
+
+  /** BOSS 持续伤害计时（作用于英雄）。 */
+  private tickHeroDots(dt: number): void {
+    if (this.heroDots.length === 0) return
+    const enemy = this.current
+    const base = enemy ? enemy.stats.attack * this.bossAttackMultiplier() : 0
+    for (const dot of this.heroDots) {
+      dot.remaining -= dt
+      dot.tick -= dt
+      if (dot.tick <= 0) {
+        dot.tick = 1
+        const damage = Math.max(1, Math.floor(base * (dot.potencyPerSec / 100)))
+        this.heroHp -= damage
+        this.pushFloat(`-${damage}`, 'hero', 'monster')
+      }
+    }
+    this.heroDots = this.heroDots.filter((d) => d.remaining > 0)
     if (this.heroHp <= 0) this.heroDies()
   }
 
@@ -628,6 +799,7 @@ export class BattleSimulator {
     this.killCount = 0 // PRD 地区 3.2：阵亡后小怪击杀计数归零
     this.enemies = []
     this.dots = []
+    this.heroDots = []
     this.pushLog(this.isRaid ? '英雄阵亡！副本挑战失败' : '英雄阵亡！小怪阶段进度重置', 'danger')
   }
 
@@ -636,6 +808,7 @@ export class BattleSimulator {
     this.heroHp = stats.maxHp
     this.heroMp = stats.maxMp
     this.shield = 0
+    this.heroDots = []
     this.phase = 'mob'
     this.spawnTimer = this.spawnInterval
     this.pushLog('英雄已复活，生命值回满', 'system')
