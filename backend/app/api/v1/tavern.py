@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, update
@@ -29,6 +29,24 @@ async def _tavern(db: DbSession, user_id: int) -> TavernState:
     return row
 
 
+def _as_utc(value: datetime | None) -> datetime | None:
+    """SQLite 读回的时间戳可能是 naive，统一按 UTC 处理，避免 aware/naive 相减报错。"""
+    if value is None:
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _free_refresh_state(row: TavernState, now: datetime, interval: int) -> tuple[bool, datetime | None]:
+    """返回（是否可免费刷新，下次可免费刷新的时间点）。"""
+    last = _as_utc(row.free_refresh_used_at)
+    if last is None:
+        return True, None
+    next_at = last + timedelta(seconds=interval)
+    if now >= next_at:
+        return True, None
+    return False, next_at
+
+
 @router.get("")
 async def tavern_state(db: DbSession, user: CurrentUser, hero: OptionalHero) -> dict:
     row = await _tavern(db, user.id)
@@ -37,11 +55,15 @@ async def tavern_state(db: DbSession, user: CurrentUser, hero: OptionalHero) -> 
         await db.commit()
     level = hero.level if hero else 1
     cost = recruit_cost(row.candidate["talent"], level) if row.candidate else 0
+    interval = int(CONFIG.talents["freeRefreshIntervalSec"])
+    free_available, next_at = _free_refresh_state(row, datetime.now(timezone.utc), interval)
     return {
         "candidate": row.candidate,
         "recruitCost": cost,
         "refreshCost": int(CONFIG.talents["refreshCost"]),
-        "freeRefreshIntervalSec": int(CONFIG.talents["freeRefreshIntervalSec"]),
+        "freeRefreshIntervalSec": interval,
+        "freeRefreshAvailable": free_available,
+        "nextFreeRefreshAt": next_at.isoformat() if next_at else None,
         "currentHero": (
             {
                 "name": hero.name,
@@ -63,31 +85,38 @@ async def refresh(
     """刷新候选：200 金币 / 次，或每 10 分钟免费 1 次。来源：PRD 招募 2.3"""
     row = await _tavern(db, user.id)
     now = datetime.now(timezone.utc)
-    free_interval = int(CONFIG.talents["freeRefreshIntervalSec"])
-    last_free = row.free_refresh_used_at
-    free_available = last_free is None or (now - last_free).total_seconds() >= free_interval
+    interval = int(CONFIG.talents["freeRefreshIntervalSec"])
+    free_available, next_free_at = _free_refresh_state(row, now, interval)
 
-    cost = 0
-    if not free_available or payload.useGold:
+    if payload.useGold:
+        # 金币刷新：始终按价扣费，不影响免费额度
         cost = int(CONFIG.talents["refreshCost"])
         if int(user.gold) < cost:
-            if not free_available:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
-            cost = 0
-        else:
-            user.gold = int(user.gold) - cost
-
-    if cost == 0 and free_available:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
+        user.gold = int(user.gold) - cost
+    else:
+        # 免费刷新：冷却中直接拒绝，绝不静默扣金币
+        if not free_available:
+            remain = max(1, int((next_free_at - now).total_seconds())) if next_free_at else interval
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"免费刷新冷却中，还需 {remain} 秒，可使用金币刷新",
+            )
+        cost = 0
         row.free_refresh_used_at = now
 
     row.candidate = generate_candidate(hero.level if hero else 1)
     row.refreshed_at = now
     await db.commit()
+
+    free_available, next_free_at = _free_refresh_state(row, now, interval)
     return {
         "candidate": row.candidate,
         "gold": int(user.gold),
         "cost": cost,
-        "recruitCost": recruit_cost(row.candidate["talent"], hero.level),
+        "recruitCost": recruit_cost(row.candidate["talent"], hero.level if hero else 1),
+        "freeRefreshAvailable": free_available,
+        "nextFreeRefreshAt": next_free_at.isoformat() if next_free_at else None,
     }
 
 

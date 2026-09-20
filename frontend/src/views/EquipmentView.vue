@@ -36,7 +36,7 @@ const candidates = computed<Item[]>(() => {
   if (!pickerSlot.value) return []
   return game.items
     .filter((item) => item.equipSlots.includes(pickerSlot.value as SlotId))
-    .sort((a, b) => b.levelReq - a.levelReq || a.name.localeCompare(b.name))
+    .sort((a, b) => b.score - a.score || b.levelReq - a.levelReq || a.name.localeCompare(b.name))
 })
 
 const slotCategory = computed(() => {
@@ -132,7 +132,7 @@ async function unequip(slotId: SlotId) {
       @close="pickerSlot = null"
     >
       <p class="mb-3 text-xs text-ink-400">
-        仅显示可放入该栏位的装备，且英雄等级需达到装备需求（当前 Lv.{{ game.hero?.level }}）。
+        仅显示可放入该栏位的装备，且英雄等级需达到装备需求（当前 Lv.{{ game.hero?.level }}）；已按战力从高到低排序。
       </p>
       <div class="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
         <button

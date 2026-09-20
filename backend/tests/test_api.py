@@ -376,6 +376,7 @@ class TestEconomy:
             assert item["category"] == "weapon"
             assert item["rarity"] in ("common", "uncommon", "rare", "epic", "legendary", "mythic")
             assert item["sellPriceMin"] <= item["sellPriceMax"]
+            assert item["score"] >= 0
         assert body["pity"]["sinceRare"] < 10
 
     async def test_equip_and_unequip(self, auth_client, session_factory) -> None:
@@ -502,6 +503,32 @@ class TestTavern:
 
         refreshed = await auth_client.post(f"{API}/tavern/refresh", json={"useGold": False})
         assert refreshed.status_code == 200
+        body = refreshed.json()
+        assert body["cost"] == 0
+        assert body["freeRefreshAvailable"] is False
+        assert body["nextFreeRefreshAt"]
+
+    async def test_free_refresh_cooldown_does_not_charge_gold(self, auth_client, session_factory) -> None:
+        await _set_gold(auth_client, session_factory, 1000)
+
+        first = await auth_client.post(f"{API}/tavern/refresh", json={"useGold": False})
+        assert first.status_code == 200
+        assert first.json()["gold"] == 1000
+
+        second = await auth_client.post(f"{API}/tavern/refresh", json={"useGold": False})
+        assert second.status_code == 400
+        assert "冷却" in second.json()["detail"]
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        assert me["gold"] == 1000
+
+    async def test_gold_refresh_charges_fee(self, auth_client, session_factory) -> None:
+        await _set_gold(auth_client, session_factory, 1000)
+        resp = await auth_client.post(f"{API}/tavern/refresh", json={"useGold": True})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["cost"] == int(CONFIG.talents["refreshCost"])
+        assert body["gold"] == 1000 - int(CONFIG.talents["refreshCost"])
 
     async def test_recruit_requires_gold(self, auth_client) -> None:
         resp = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})

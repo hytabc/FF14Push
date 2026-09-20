@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import ItemCard from '@/components/ItemCard.vue'
 import { useGameStore } from '@/stores/game'
@@ -10,7 +10,7 @@ const game = useGameStore()
 
 const category = ref<'all' | Category>('all')
 const rarityFilter = ref<'all' | RarityId>('all')
-const sortBy = ref<'rarity' | 'level' | 'name'>('rarity')
+const sortBy = ref<'rarity' | 'level' | 'name' | 'power'>('rarity')
 const selected = ref<Set<number>>(new Set())
 const page = ref(1)
 const PAGE_SIZE = 24
@@ -23,10 +23,15 @@ const filtered = computed(() => {
 
   const rarityIndex = (r: RarityId) => RARITY_ORDER.indexOf(r)
   return list.sort((a, b) => {
+    if (sortBy.value === 'power') return b.score - a.score || rarityIndex(b.rarity) - rarityIndex(a.rarity)
     if (sortBy.value === 'rarity') return rarityIndex(b.rarity) - rarityIndex(a.rarity) || b.levelReq - a.levelReq
     if (sortBy.value === 'level') return b.levelReq - a.levelReq
     return a.name.localeCompare(b.name, 'zh-Hans-CN')
   })
+})
+
+watch([sortBy, category, rarityFilter], () => {
+  page.value = 1
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
@@ -96,6 +101,7 @@ async function batchSell() {
           <option v-for="r in RARITY_ORDER" :key="r" :value="r">{{ rarityName(r) }}</option>
         </select>
         <select v-model="sortBy" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+          <option value="power">按战力排序</option>
           <option value="rarity">按品阶排序</option>
           <option value="level">按等级需求排序</option>
           <option value="name">按名称排序</option>

@@ -38,6 +38,7 @@ export interface Item {
   equipSlots: SlotId[]
   rarity: RarityId
   levelReq: number
+  score: number
   baseAttrs: BaseAttrEntry[]
   subAttrs: SubAttrEntry[]
   terms: TermEntry[]

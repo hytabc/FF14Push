@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
@@ -18,9 +18,23 @@ const refreshCost = ref(200)
 const loading = ref(false)
 const busy = ref(false)
 const confirmRecruit = ref(false)
+const nextFreeAt = ref<number | null>(null)
+const nowMs = ref(Date.now())
+let timer: number | undefined
 
 const hero = computed(() => game.hero)
 const canAfford = computed(() => (candidate.value?.recruitCost ?? 0) <= game.gold)
+const shortfall = computed(() => Math.max(0, (candidate.value?.recruitCost ?? 0) - game.gold))
+const freeRemainingSec = computed(() =>
+  nextFreeAt.value ? Math.max(0, Math.ceil((nextFreeAt.value - nowMs.value) / 1000)) : 0,
+)
+const freeAvailable = computed(() => freeRemainingSec.value <= 0)
+
+function mmss(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 async function load() {
   loading.value = true
@@ -29,6 +43,7 @@ async function load() {
     candidate.value = res.candidate
     currentHero.value = res.currentHero
     refreshCost.value = res.refreshCost
+    nextFreeAt.value = res.nextFreeRefreshAt ? Date.parse(res.nextFreeRefreshAt) : null
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
   } finally {
@@ -37,8 +52,13 @@ async function load() {
 }
 
 onMounted(async () => {
+  timer = window.setInterval(() => (nowMs.value = Date.now()), 1000)
   if (!game.state) await game.loadState()
   await load()
+})
+
+onUnmounted(() => {
+  if (timer !== undefined) window.clearInterval(timer)
 })
 
 async function refresh(useGold: boolean) {
@@ -48,7 +68,8 @@ async function refresh(useGold: boolean) {
     const res = await api.tavernRefresh(useGold)
     candidate.value = res.candidate
     if (game.state) game.state.user.gold = res.gold
-    toast.push(useGold && res.cost ? `消耗 ${res.cost} 金币刷新` : '已免费刷新候选英雄', 'info')
+    nextFreeAt.value = res.nextFreeRefreshAt ? Date.parse(res.nextFreeRefreshAt) : null
+    toast.push(res.cost > 0 ? `消耗 ${res.cost} 金币刷新` : '已免费刷新候选英雄', 'info')
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
   } finally {
@@ -135,10 +156,10 @@ function attrBar(value: number, total: number) {
           <div class="flex gap-2">
             <button
               class="rounded bg-ink-700 px-2 py-1 text-[11px] hover:bg-ink-600 disabled:opacity-50"
-              :disabled="busy || loading"
+              :disabled="busy || loading || !freeAvailable"
               @click="refresh(false)"
             >
-              免费刷新（每 10 分钟 1 次）
+              {{ freeAvailable ? '免费刷新（每 10 分钟 1 次）' : `免费刷新（${mmss(freeRemainingSec)} 后可再用）` }}
             </button>
             <button
               class="rounded bg-ink-700 px-2 py-1 text-[11px] hover:bg-ink-600 disabled:opacity-50"
@@ -187,8 +208,11 @@ function attrBar(value: number, total: number) {
             :disabled="!canAfford || busy"
             @click="confirmRecruit = true"
           >
-            {{ canAfford ? `招募 · ${formatNumber(candidate.recruitCost)} 金币` : '金币不足' }}
+            招募 · {{ formatNumber(candidate.recruitCost) }} 金币
           </button>
+          <p v-if="!canAfford" class="text-[11px] text-rose-300">
+            金币不足，还差 {{ formatNumber(shortfall) }} 金币
+          </p>
           <p class="text-[10px] text-ink-600">
             招募费用 = 基础费用 × 资质系数 × (1 + 当前英雄等级 / 10)
           </p>
@@ -204,6 +228,9 @@ function attrBar(value: number, total: number) {
       <p v-if="candidate" class="mt-3 text-xs text-ink-400">
         新英雄：{{ candidate.name }} · {{ rarityName(candidate.talent) }} · {{ candidate.attrBiasLabel }} ·
         力量 {{ candidate.strength }} / 敏捷 {{ candidate.agility }} / 智力 {{ candidate.intellect }}
+      </p>
+      <p v-if="candidate" class="mt-2 text-xs text-amber-300">
+        将消耗 {{ formatNumber(candidate.recruitCost) }} 金币（当前持有 💰 {{ game.gold.toLocaleString() }}）
       </p>
       <template #footer>
         <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="confirmRecruit = false">

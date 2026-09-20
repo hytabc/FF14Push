@@ -5,3 +5,7 @@
 - Prefers fine-grained time displays in the UI (e.g. 0.1s precision for cooldowns/countdowns) so values visibly tick and convey a sense of dynamic change. Confidence: 0.6
 tiplying. Confidence: 0.6
 - Prefers fine-grained time displays in the UI (e.g. 0.1s precision for cooldowns/countdowns) so values visibly tick and convey a sense of dynamic change. Confidence: 0.6
+- Wants all user-facing copy to be Chinese: no raw English identifiers leaking into the UI (attribute ids like `physDef`/`crit`/`dh`, effect/trigger enums, rarity or category slugs). Data should carry Chinese display names and views must map ids to them. Confidence: 0.85
+- For game balance, prefers level gating over gear power: a player at a given level should only be able to beat monsters of a matching level, and even generously geared players must not trivially one-shot much higher-level monsters. Confidence: 0.7
+- Wants in-game prices/fees to be always visible on the page (e.g. hero recruit cost shown on the button and in the confirm dialog), and dislikes actions that silently deduct currency without the player seeing the amount. Confidence: 0.6
+- Prefers item/equipment lists to be sortable by power (战力) descending with the highest-power entries on top, exposed via a sort control (dropdown/one-click) in list-heavy views like the backpack and the equipment picker. Confidence: 0.6

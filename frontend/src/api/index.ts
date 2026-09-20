@@ -143,6 +143,8 @@ export const api = {
         recruitCost: number
         refreshCost: number
         freeRefreshIntervalSec: number
+        freeRefreshAvailable: boolean
+        nextFreeRefreshAt: string | null
         currentHero: Record<string, unknown> | null
       }>('/tavern')
     ).data

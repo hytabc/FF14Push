@@ -9,6 +9,7 @@ import {
   attrSuffix,
   baseAttrName,
   categoryName,
+  formatNumber,
   rarityBg,
   rarityClass,
   rarityHex,
@@ -64,6 +65,7 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
           <p class="mt-0.5 text-[11px] text-ink-400">
             {{ rarityName(item.rarity) }} · {{ categoryName(item.category) }} ·
             {{ slotName(item.equipSlots[0] ?? item.slot) }} · 需 Lv.{{ item.levelReq }}
+            <span class="ml-1 font-mono text-amber-300">战力 {{ formatNumber(item.score) }}</span>
           </p>
         </div>
       </div>

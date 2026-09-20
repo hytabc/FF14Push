@@ -6,6 +6,7 @@ from typing import Any, Iterable
 
 from app.services.game_config import CONFIG
 from app.services.slots_util import possible_slots
+from app.services.valuation import item_score
 
 
 def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[str, Any]:
@@ -19,6 +20,7 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "equipSlots": possible_slots(base) if base else [item.slot],
         "rarity": item.rarity,
         "levelReq": item.level_req,
+        "score": int(round(item_score(item))),
         "baseAttrs": item.base_attrs or [],
         "subAttrs": item.sub_attrs or [],
         "terms": item.terms or [],
