@@ -18,6 +18,7 @@ const router = createRouter({
     { path: '/codex', name: 'codex', component: () => import('@/views/CodexView.vue') },
     { path: '/ranking', name: 'ranking', component: () => import('@/views/RankingView.vue'), meta: { public: true } },
     { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
+    { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

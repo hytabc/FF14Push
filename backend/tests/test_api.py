@@ -5,11 +5,15 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from app.core.config import get_settings
+from app.main import app
 from app.models import BattleSession, Hero, Item, User
+from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
+from app.services.ranking import refresh_all_rankings
 
 API = "/api/v1"
 
@@ -815,6 +819,120 @@ class TestRaid:
         assert (await auth_client.get(f"{API}/auth/me")).json()["gold"] == before
 
 
+class TestAdmin:
+    ADMIN_USER = "admin"
+    ADMIN_PASS = "admin-secret-123"
+
+    @pytest.fixture(autouse=True)
+    def _admin_env(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_USERNAME", self.ADMIN_USER)
+        monkeypatch.setenv("ADMIN_PASSWORD", self.ADMIN_PASS)
+        get_settings.cache_clear()
+        yield
+        get_settings.cache_clear()
+
+    async def _ensure_admin(self, session_factory) -> None:
+        async with session_factory() as db:
+            await ensure_admin_user(db)
+
+    async def _login_as_admin(self, client) -> None:
+        resp = await client.post(
+            f"{API}/auth/login", json={"username": self.ADMIN_USER, "password": self.ADMIN_PASS}
+        )
+        assert resp.status_code == 200, resp.text
+        client.headers.update({"Authorization": f"Bearer {resp.json()['accessToken']}"})
+
+    async def test_admin_account_created_and_flagged(self, client, session_factory) -> None:
+        await self._ensure_admin(session_factory)
+        await self._login_as_admin(client)
+
+        me = (await client.get(f"{API}/auth/me")).json()
+        assert me["username"] == self.ADMIN_USER
+        assert me["isAdmin"] is True
+        assert me["hasHero"] is False  # 管理员不创建英雄 → 不上榜
+
+    async def test_admin_username_is_reserved(self, client, session_factory) -> None:
+        await self._ensure_admin(session_factory)
+        resp = await client.post(
+            f"{API}/auth/register",
+            json={"username": self.ADMIN_USER, "password": "whatever123"},
+        )
+        assert resp.status_code == 409
+
+    async def test_normal_user_is_not_admin(self, auth_client) -> None:
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        assert me["isAdmin"] is False
+        # 非管理员调用管理接口 → 403
+        assert (await auth_client.get(f"{API}/admin/users")).status_code == 403
+
+    async def test_admin_can_reset_user_password(self, client, session_factory, auth_client) -> None:
+        await self._ensure_admin(session_factory)
+        target = (await auth_client.get(f"{API}/auth/me")).json()
+
+        await self._login_as_admin(client)
+        found = (await client.get(f"{API}/admin/users", params={"query": "tester"})).json()
+        assert any(u["id"] == target["id"] for u in found["users"])
+
+        resp = await client.post(
+            f"{API}/admin/reset-password", json={"userId": target["id"], "newPassword": "brand-new-pass"}
+        )
+        assert resp.status_code == 200, resp.text
+
+        # 旧密码失效、新密码可登录
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+            old = await fresh.post(
+                f"{API}/auth/login", json={"username": "tester", "password": "secret123"}
+            )
+            assert old.status_code == 401
+            new = await fresh.post(
+                f"{API}/auth/login", json={"username": "tester", "password": "brand-new-pass"}
+            )
+            assert new.status_code == 200, new.text
+
+    async def test_admin_cannot_reset_own_password(self, client, session_factory) -> None:
+        await self._ensure_admin(session_factory)
+        await self._login_as_admin(client)
+        me = (await client.get(f"{API}/auth/me")).json()
+        resp = await client.post(
+            f"{API}/admin/reset-password", json={"userId": me["id"], "newPassword": "irrelevant123"}
+        )
+        assert resp.status_code == 400
+        assert "环境变量" in resp.json()["detail"]
+
+    async def test_admin_hidden_from_ranking(self, client, session_factory, auth_client) -> None:
+        # 让普通玩家有成绩，并给管理员也塞一个英雄，验证仍被排除
+        await self._ensure_admin(session_factory)
+        async with session_factory() as db:
+            admin = (await db.execute(select(User).where(User.username == self.ADMIN_USER))).scalar_one()
+            db.add(
+                Hero(
+                    user_id=admin.id,
+                    name="管理员英雄",
+                    level=99,
+                    talent="mythic",
+                    attr_bias="balanced",
+                    current_region_id=1,
+                )
+            )
+            await db.commit()
+            await refresh_all_rankings(db)
+            await db.commit()
+
+        entries = (await client.get(f"{API}/ranking", params={"board": "level"})).json()["entries"]
+        assert entries, "排行榜不应为空"
+        assert all(e["username"] != self.ADMIN_USER for e in entries)
+
+    async def test_ranking_exposes_login_username(self, client, session_factory, auth_client) -> None:
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            await refresh_all_rankings(db)
+            await db.commit()
+
+        entries = (await client.get(f"{API}/ranking", params={"board": "level"})).json()["entries"]
+        mine = next(e for e in entries if e["userId"] == me["id"])
+        assert mine["username"] == me["username"]
+
+
 class TestCodexAndRanking:
     async def test_equipment_codex_unlocks_on_obtain(self, auth_client, session_factory) -> None:
         before = (await auth_client.get(f"{API}/codex?category=equipment")).json()
@@ -939,6 +1057,8 @@ class TestRedeem:
     async def test_disabled_without_env_code(self, auth_client, monkeypatch) -> None:
         monkeypatch.setenv("REDEEM_CODE", "")
         monkeypatch.setenv("REDEEM_GOLD", "0")
+        # 环境变量在测试体内才设置，必须重新取配置（夹具阶段可能已被预热）
+        get_settings.cache_clear()
 
         state = (await auth_client.get(f"{API}/redeem")).json()
         assert state == {"enabled": False, "canRedeem": False, "rewardGold": 0}
@@ -947,6 +1067,7 @@ class TestRedeem:
     async def test_redeem_grants_gold_once(self, auth_client, monkeypatch) -> None:
         monkeypatch.setenv("REDEEM_CODE", "EORZEA2026")
         monkeypatch.setenv("REDEEM_GOLD", "12345")
+        get_settings.cache_clear()
 
         state = (await auth_client.get(f"{API}/redeem")).json()
         assert state == {"enabled": True, "canRedeem": True, "rewardGold": 12345}

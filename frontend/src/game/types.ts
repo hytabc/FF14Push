@@ -369,6 +369,8 @@ export interface RankingEntry {
   rank: number
   userId: number
   nickname: string
+  /** 登录账号：与昵称一起展示（昵称可重复，账号唯一）。 */
+  username: string
   value: number
   payload: Record<string, unknown>
 }

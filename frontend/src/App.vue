@@ -30,6 +30,11 @@ const NAV = [
   { to: '/settings', label: '设置', icon: '⚙' },
 ]
 
+/** 管理入口只对管理员可见。 */
+const navItems = computed(() =>
+  auth.isAdmin ? [...NAV, { to: '/admin', label: '管理', icon: '🔧' }] : NAV,
+)
+
 function onVisibilityChange() {
   game.handleVisibility()
 }
@@ -80,7 +85,7 @@ async function logout() {
 
       <nav class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 pb-2 text-xs">
         <RouterLink
-          v-for="nav in NAV"
+          v-for="nav in navItems"
           :key="nav.to"
           :to="nav.to"
           class="shrink-0 rounded-md px-2.5 py-1.5 transition"

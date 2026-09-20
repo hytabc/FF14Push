@@ -29,7 +29,14 @@ export const api = {
 
   async me() {
     return (
-      await http.get<{ id: number; username: string; nickname: string; gold: number; hasHero: boolean }>('/auth/me')
+      await http.get<{
+        id: number
+        username: string
+        nickname: string
+        gold: number
+        hasHero: boolean
+        isAdmin: boolean
+      }>('/auth/me')
     ).data
   },
 
@@ -252,5 +259,25 @@ export const api = {
 
   async raidStop(sessionId: number) {
     return (await http.post<{ ok: boolean; message: string }>('/raid/session/stop', { sessionId })).data
+  },
+
+  async adminUsers(query = '', limit = 20) {
+    return (
+      await http.get<{
+        users: Array<{
+          id: number
+          username: string
+          nickname: string
+          gold: number
+          level: number | null
+          hasHero: boolean
+          isAdmin: boolean
+        }>
+      }>('/admin/users', { params: { query, limit } })
+    ).data
+  },
+
+  async adminResetPassword(userId: number, newPassword: string) {
+    return (await http.post<{ ok: boolean; message: string }>('/admin/reset-password', { userId, newPassword })).data
   },
 }

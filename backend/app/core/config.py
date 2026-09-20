@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     redeem_code: str = ""
     redeem_gold: int = 0
 
+    # 管理员账号：账号名与密码由环境变量配置；密码为空即不启用管理员。
+    admin_username: str = "admin"
+    admin_password: str = ""
+
     # 启动时自动建表（本地开发用；生产应使用 alembic upgrade head）
     auto_create_tables: bool = True
 

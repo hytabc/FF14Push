@@ -54,6 +54,9 @@ services:
       # 兑换码：留空即关闭该功能；每个账号对同一兑换码只能兑换一次
       REDEEM_CODE: ${REDEEM_CODE:-}
       REDEEM_GOLD: ${REDEEM_GOLD:-0}
+      # 管理员：留空 ADMIN_PASSWORD 即不启用；管理员不参与排行榜
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # 迁移由容器入口脚本执行，避免与 alembic 冲突
       AUTO_CREATE_TABLES: "false"
       BACKEND_PORT: "8000"

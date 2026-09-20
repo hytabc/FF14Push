@@ -8,11 +8,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import Hero, RankingEntry, RegionProgress, User
+from app.services.admin import is_admin
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
@@ -34,6 +35,9 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
 
     counts = {board: 0 for board in BOARDS}
     for user in users:
+        # 管理员不参与排行榜（且不创建英雄，双重保险）
+        if is_admin(user):
+            continue
         hero = user.hero
         if hero is None:
             continue
@@ -87,34 +91,56 @@ async def fetch_board(db: AsyncSession, board: str, page: int = 1, page_size: in
     offset = max(0, (page - 1) * page_size)
     rows = (
         await db.execute(
-            select(RankingEntry)
+            select(RankingEntry, User.username)
+            .join(User, User.id == RankingEntry.user_id)
             .where(RankingEntry.board == board)
             .order_by(RankingEntry.value.desc(), RankingEntry.secondary.desc())
             .offset(offset)
             .limit(page_size)
         )
-    ).scalars().all()
+    ).all()
     return [
         {
             "rank": offset + index + 1,
             "userId": row.user_id,
             "nickname": row.nickname,
+            # 登录账号：与昵称一起展示，便于区分重名玩家（昵称可重复，账号唯一）
+            "username": username,
             "value": row.value,
             "payload": row.payload,
         }
-        for index, row in enumerate(rows)
+        for index, (row, username) in enumerate(rows)
     ]
 
 
 async def fetch_user_rank(db: AsyncSession, board: str, user_id: int) -> dict[str, Any] | None:
-    rows = (
+    row = (
         await db.execute(
-            select(RankingEntry)
-            .where(RankingEntry.board == board)
-            .order_by(RankingEntry.value.desc(), RankingEntry.secondary.desc())
+            select(RankingEntry, User.username)
+            .join(User, User.id == RankingEntry.user_id)
+            .where(RankingEntry.board == board, RankingEntry.user_id == user_id)
         )
-    ).scalars().all()
-    for index, row in enumerate(rows):
-        if row.user_id == user_id:
-            return {"rank": index + 1, "value": row.value, "nickname": row.nickname, "userId": user_id}
-    return None
+    ).first()
+    if row is None:
+        return None
+    entry, username = row
+    better = (
+        await db.execute(
+            select(func.count())
+            .select_from(RankingEntry)
+            .where(
+                RankingEntry.board == board,
+                or_(
+                    RankingEntry.value > entry.value,
+                    and_(RankingEntry.value == entry.value, RankingEntry.secondary > entry.secondary),
+                ),
+            )
+        )
+    ).scalar_one()
+    return {
+        "rank": int(better) + 1,
+        "value": entry.value,
+        "nickname": entry.nickname,
+        "username": username,
+        "userId": user_id,
+    }

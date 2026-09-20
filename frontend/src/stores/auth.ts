@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
   const nickname = ref<string>('')
   const username = ref<string>('')
+  const isAdmin = ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -24,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
       const me = await api.me()
       nickname.value = me.nickname
       username.value = me.username
+      isAdmin.value = Boolean(me.isAdmin)
       return me
     } catch {
       logout()
@@ -67,8 +69,21 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     nickname.value = ''
     username.value = ''
+    isAdmin.value = false
     localStorage.removeItem(TOKEN_KEY)
   }
 
-  return { token, nickname, username, loading, error, isLoggedIn, login, register, logout, loadProfile }
+  return {
+    token,
+    nickname,
+    username,
+    isAdmin,
+    loading,
+    error,
+    isLoggedIn,
+    login,
+    register,
+    logout,
+    loadProfile,
+  }
 })

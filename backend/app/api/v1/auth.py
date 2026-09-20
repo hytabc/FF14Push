@@ -17,6 +17,7 @@ from app.models import (
     User,
 )
 from app.schemas.game import LoginRequest, RegisterRequest, TokenResponse
+from app.services.admin import admin_username, is_admin
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
 from app.services.item_factory import generate_item
@@ -87,6 +88,10 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
+    # 管理员账号名保留，避免被普通玩家占用（否则启动同步会与之冲突）
+    if payload.username.strip() == admin_username():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该用户名为保留的管理员账号")
+
     exists = (await db.execute(select(User).where(User.username == payload.username))).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名已被占用")
@@ -121,4 +126,5 @@ async def me(user: CurrentUser, db: DbSession) -> dict:
         "nickname": user.nickname,
         "gold": int(user.gold),
         "hasHero": hero is not None,
+        "isAdmin": is_admin(user),
     }

@@ -102,7 +102,7 @@ function valueText(entry: RankingEntry): string {
               {{ entry.rank }}
             </td>
             <td class="px-3 py-2 text-ink-100">
-              {{ entry.nickname }}<span class="opacity-60">#{{ entry.userId }}</span>
+              {{ entry.nickname }}<span class="opacity-60">#{{ entry.username }}</span>
             </td>
             <td class="px-3 py-2 text-ink-400">{{ entry.payload?.level ?? '—' }}</td>
             <td class="px-3 py-2 text-right font-mono text-ink-200">{{ valueText(entry) }}</td>

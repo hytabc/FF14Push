@@ -14,6 +14,7 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal, engine
 from app.models import Base
+from app.services.admin import ensure_admin_user
 from app.services.ranking import refresh_all_rankings
 
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +41,13 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("已确保数据库表结构存在（AUTO_CREATE_TABLES=true）")
+    try:
+        async with SessionLocal() as db:
+            action = await ensure_admin_user(db)
+        if action != "disabled":
+            logger.info("管理员账号已同步（%s）", action)
+    except Exception:  # noqa: BLE001
+        logger.exception("管理员账号同步失败（不影响服务启动）")
     task = asyncio.create_task(_ranking_loop())
     logger.info("艾欧泽亚放置录 后端已启动")
     try:

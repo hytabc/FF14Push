@@ -131,6 +131,11 @@ class RedeemRequest(BaseModel):
     code: str = Field(min_length=1, max_length=64)
 
 
+class AdminResetPasswordRequest(BaseModel):
+    userId: int
+    newPassword: str = Field(min_length=6, max_length=64)
+
+
 class ApiMessage(BaseModel):
     ok: bool = True
     message: str = "ok"
