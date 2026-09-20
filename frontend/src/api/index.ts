@@ -266,7 +266,22 @@ export const api = {
         raids: import('@/game/types').RaidListEntry[]
         level: number
         power: number
+        chest: { count: number; slots: string[] }
       }>('/raid')
+    ).data
+  },
+
+  async raidChestClaim(slot: string) {
+    return (
+      await http.post<{
+        gold: number
+        count: number
+        slot: string
+        items: Item[]
+        autoSold: Array<{ name: string; rarity: string; price: number }>
+        autoGold: number
+        pendingChest: number
+      }>('/raid/chest/claim', { slot })
     ).data
   },
 

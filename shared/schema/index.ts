@@ -182,10 +182,13 @@ export interface RaidDef {
   reward: {
     firstGold: number
     firstExp: number
-    chestId: string
-    boxCount: number
     repeatGold: number
     repeatExp: number
+    boxCount: number
+    /** 普通副本：通关直接发放的宝箱；高难副本用 boxTier + slotChoice 自选装备种类。 */
+    chestId?: string
+    boxTier?: string
+    slotChoice?: boolean
   }
 }
 

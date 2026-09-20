@@ -226,6 +226,8 @@ export interface RaidReportResponse {
   goldGained: number
   /** 本次通关获得的经验（首通用 firstExp，重刷用 repeatExp）。 */
   expGained: number
+  /** 高难宝箱：通关后待开启的数量与可自选装备种类。 */
+  pendingChest?: { count: number; slots: string[] } | null
   items: Item[]
   autoSold: Array<{ name: string; rarity: string; price: number }>
   autoGold: number

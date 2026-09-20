@@ -143,6 +143,11 @@ class RaidStopRequest(BaseModel):
     sessionId: int
 
 
+class RaidChestClaimRequest(BaseModel):
+    # 自选的装备种类（底材 slot，如 mainHand / head / ring）
+    slot: str = Field(min_length=1, max_length=24)
+
+
 class RedeemRequest(BaseModel):
     code: str = Field(min_length=1, max_length=64)
 

@@ -88,6 +88,24 @@ export function slotName(slot: string): string {
   return data.slots.find((s) => s.id === slot)?.name ?? slot
 }
 
+/** 底材 slot（自选装备种类）→ 中文名。 */
+const BASE_SLOT_NAMES: Record<string, string> = {
+  mainHand: '武器',
+  head: '头盔',
+  body: '铠甲',
+  hands: '手甲',
+  legs: '护腿',
+  feet: '战靴',
+  necklace: '项链',
+  earring: '耳环',
+  bracelet: '手镯',
+  ring: '戒指',
+}
+
+export function baseSlotName(slot: string): string {
+  return BASE_SLOT_NAMES[slot] ?? slotName(slot)
+}
+
 export function jobName(jobId: string): string {
   if (jobId === 'adventurer') return '冒险者'
   return data.jobById[jobId]?.name ?? jobId

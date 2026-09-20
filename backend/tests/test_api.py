@@ -1050,6 +1050,48 @@ class TestRaid:
         assert resp.status_code == 200, resp.text
         assert resp.json()["cleared"] is True
 
+    async def test_hard_raid_drops_chooseable_chest(self, auth_client, session_factory) -> None:
+        """高难副本通关掉落自选种类宝箱：通关不直接给装备，自选后一次性开箱。"""
+        await self._gear_up(auth_client, session_factory, mix=self.HARD_MIX, ancient=True)
+        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
+        box_count = int(CONFIG.raid_by_id["raid_h1"]["reward"]["boxCount"])
+
+        resp = await auth_client.post(
+            f"{API}/raid/session/report",
+            json={
+                "sessionId": started["sessionId"],
+                "raidId": "raid_h1",
+                "cleared": True,
+                "died": False,
+                "elapsedMs": 1000,
+                "fightMs": 1000,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["items"] == []  # 高难宝箱不直接发装备
+        assert body["pendingChest"]["count"] == box_count
+        assert "head" in body["pendingChest"]["slots"]
+
+        listing = (await auth_client.get(f"{API}/raid")).json()
+        assert listing["chest"]["count"] == box_count
+
+        bad = await auth_client.post(f"{API}/raid/chest/claim", json={"slot": "nope"})
+        assert bad.status_code == 400
+
+        claim = await auth_client.post(f"{API}/raid/chest/claim", json={"slot": "head"})
+        assert claim.status_code == 200, claim.text
+        got = claim.json()
+        assert got["count"] == box_count
+        assert got["slot"] == "head"
+        assert len(got["items"]) + len(got["autoSold"]) == box_count
+        for item in got["items"]:
+            assert item["slot"] == "head"
+        assert got["pendingChest"] == 0
+
+        again = await auth_client.post(f"{API}/raid/chest/claim", json={"slot": "head"})
+        assert again.status_code == 400
+
     async def test_first_clear_full_reward_then_repeat_gold_and_exp(self, auth_client, session_factory) -> None:
         await self._gear_up(auth_client, session_factory)
         cfg = CONFIG.raid_by_id["raid_1"]

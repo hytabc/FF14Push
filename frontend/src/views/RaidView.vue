@@ -4,10 +4,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
 import Modal from '@/components/Modal.vue'
+import RaidChestPicker from '@/components/RaidChestPicker.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { RaidListEntry } from '@/game/types'
-import { formatNumber, rarityClass, rarityName } from '@/utils/format'
+import { baseSlotName, formatNumber, rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
 const toast = useToastStore()
@@ -15,6 +16,7 @@ const toast = useToastStore()
 const raids = ref<RaidListEntry[]>([])
 const loading = ref(false)
 const starting = ref<string | null>(null)
+const claiming = ref(false)
 
 const activeRaid = computed(() => game.raid)
 const bosses = computed(() => game.raidBosses)
@@ -54,10 +56,28 @@ async function load() {
   try {
     const res = await api.raidList()
     raids.value = res.raids
+    game.setRaidChest(res.chest?.count ?? 0, res.chest?.slots ?? [])
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
   } finally {
     loading.value = false
+  }
+}
+
+/** 开启高难宝箱：自选装备种类，一次性开出全部待开启宝箱。 */
+async function claimChest(slot: string) {
+  if (claiming.value) return
+  claiming.value = true
+  try {
+    const res = await game.claimRaidChest(slot)
+    if (!res) return
+    toast.push(`开启高难宝箱 ×${res.count}（${baseSlotName(slot)}）`, 'success')
+    if (res.autoSold.length) {
+      toast.push(`自动出售 ${res.autoSold.length} 件装备，+${res.autoGold} 金币`, 'info')
+    }
+    await load()
+  } finally {
+    claiming.value = false
   }
 }
 
@@ -104,6 +124,15 @@ async function closeResult() {
         <span class="ml-auto font-mono text-xs text-amber-300">当前战力 {{ formatNumber(game.state?.power ?? 0) }}</span>
       </div>
     </section>
+
+    <!-- 待开启的高难宝箱 -->
+    <RaidChestPicker
+      v-if="game.raidChest.count > 0"
+      :count="game.raidChest.count"
+      :slots="game.raidChest.slots"
+      :busy="claiming"
+      @claim="claimChest"
+    />
 
     <!-- 副本列表 -->
     <section v-if="!activeRaid" class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -319,6 +348,14 @@ async function closeResult() {
           <p>获得装备：</p>
           <p v-for="item in game.raidResult.items" :key="item.id">· {{ item.name }}</p>
         </div>
+        <!-- 高难宝箱：结算时自选装备种类开启 -->
+        <RaidChestPicker
+          v-if="game.raidResult.cleared && game.raidChest.count > 0"
+          :count="game.raidChest.count"
+          :slots="game.raidChest.slots"
+          :busy="claiming"
+          @claim="claimChest"
+        />
       </div>
       <template #footer>
         <button class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950" @click="closeResult">

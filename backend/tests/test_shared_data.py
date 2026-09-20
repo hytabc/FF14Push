@@ -6,9 +6,32 @@ from app.services.game_config import CONFIG
 
 
 def test_rarity_probabilities_sum_to_one() -> None:
-    for tier in ("normal", "advanced"):
+    for tier in ("normal", "advanced", "boss"):
         total = sum(CONFIG.rarities[r]["boxChance"][tier] for r in CONFIG.rarity_order)
         assert abs(total - 1.0) < 1e-6, f"{tier} 品阶概率合计应为 1，实际 {total}"
+
+
+def test_boss_chest_has_better_odds_than_advanced() -> None:
+    """高难宝箱（boss 档）的品阶期望必须高于高级抽奖箱。"""
+
+    def expected_tier(tier: str) -> float:
+        return sum(
+            index * CONFIG.rarities[rarity]["boxChance"][tier]
+            for index, rarity in enumerate(CONFIG.rarity_order)
+        )
+
+    assert expected_tier("boss") > expected_tier("advanced")
+    assert expected_tier("advanced") > expected_tier("normal")
+
+
+def test_hard_raids_use_slot_choice_boss_chest() -> None:
+    for raid in CONFIG.raids["raids"]:
+        if raid.get("difficulty") != "hard":
+            continue
+        reward = raid["reward"]
+        assert reward.get("slotChoice") is True, raid["id"]
+        assert reward.get("boxTier") == "boss", raid["id"]
+        assert int(reward["boxCount"]) > 0
 
 
 def test_rarity_order_and_tiers() -> None:

@@ -34,6 +34,33 @@ def pick_base_item(category: str, level: int, rng: random.Random) -> BaseItem:
     return rng.choices(usable, weights=weights, k=1)[0]
 
 
+def pick_base_item_by_slot(slot: str, level: int, rng: random.Random) -> BaseItem:
+    """按装备种类（底材 slot）挑选可用底材，档位越高权重越大。"""
+    candidates = [b for b in CONFIG.base_items if b.slot == slot]
+    if not candidates:
+        raise ValueError(f"未知装备种类: {slot}")
+    usable = [b for b in candidates if b.level_req <= level]
+    if not usable:
+        usable = [b for b in candidates if b.tier_index == 0]
+    best_tier = max(b.tier_index for b in usable)
+    weights = [4 ** max(0, b.tier_index - best_tier + 2) for b in usable]
+    return rng.choices(usable, weights=weights, k=1)[0]
+
+
+def generate_item_for_slot(
+    level: int,
+    slot: str,
+    box_tier: str = "normal",
+    rng: random.Random | None = None,
+    luck: float = 0.0,
+) -> dict[str, Any]:
+    """按自选装备种类生成装备（高难宝箱用）。"""
+    rng = rng or random.Random()
+    base = pick_base_item_by_slot(slot, level, rng)
+    item, _ = generate_item(base.category, level, box_tier=box_tier, rng=rng, luck=luck, base_id=base.id)
+    return item
+
+
 def roll_sub_attr_value(rng: random.Random, lo: float, hi: float, quality: str) -> float:
     """副属性数值：普通在区间内随机浮动；稀有取上限；太古取上限 ×1.25。
 

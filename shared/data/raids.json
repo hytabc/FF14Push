@@ -197,7 +197,8 @@
       "reward": {
         "firstGold": 3000000,
         "firstExp": 5000000,
-        "chestId": "advWeaponBox",
+        "boxTier": "boss",
+        "slotChoice": true,
         "boxCount": 5,
         "repeatGold": 150000,
         "repeatExp": 900000
@@ -246,7 +247,8 @@
       "reward": {
         "firstGold": 8000000,
         "firstExp": 12000000,
-        "chestId": "advWeaponBox",
+        "boxTier": "boss",
+        "slotChoice": true,
         "boxCount": 8,
         "repeatGold": 400000,
         "repeatExp": 2000000

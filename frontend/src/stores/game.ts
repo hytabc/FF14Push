@@ -52,6 +52,28 @@ export const useGameStore = defineStore('game', () => {
   const raidSessionId = ref<number | null>(null)
   const raidResult = ref<RaidReportResponse | null>(null)
 
+  /** 待开启的高难宝箱（可自选装备种类）。 */
+  const raidChest = ref<{ count: number; slots: string[] }>({ count: 0, slots: [] })
+
+  function setRaidChest(count: number, slots?: string[]) {
+    raidChest.value = {
+      count: Math.max(0, count),
+      slots: slots && slots.length ? slots : raidChest.value.slots,
+    }
+  }
+
+  async function claimRaidChest(slot: string) {
+    try {
+      const res = await api.raidChestClaim(slot)
+      await loadState()
+      setRaidChest(res.pendingChest)
+      return res
+    } catch (e) {
+      pushError(e)
+      return null
+    }
+  }
+
   let rafId = 0
   let tickTimer = 0
   let lastTs = 0
@@ -363,6 +385,7 @@ export const useGameStore = defineStore('game', () => {
         fightMs,
       })
       raidResult.value = res
+      if (res.pendingChest) setRaidChest(res.pendingChest.count, res.pendingChest.slots)
       if (state.value) {
         state.value.user.gold = res.gold
         if (res.items.length > 0) {
@@ -541,6 +564,7 @@ export const useGameStore = defineStore('game', () => {
     raid.value = null
     raidSessionId.value = null
     raidResult.value = null
+    raidChest.value = { count: 0, slots: [] }
     lastDraw.value = []
     lastReportAt = 0
   }
@@ -568,6 +592,9 @@ export const useGameStore = defineStore('game', () => {
     raid,
     raidResult,
     raidBosses,
+    raidChest,
+    setRaidChest,
+    claimRaidChest,
     loadState,
     startBattle,
     stopBattle,

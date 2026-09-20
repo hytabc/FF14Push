@@ -20,6 +20,8 @@ class RaidSession(Base, TimestampMixin):
     ended_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     active: Mapped[bool] = mapped_column(sa.Boolean, default=True)
     cleared: Mapped[bool] = mapped_column(sa.Boolean, default=False)
+    # 待开启的高难宝箱数量：通关结算后由玩家自选装备种类再开箱
+    pending_chest: Mapped[int] = mapped_column(sa.Integer, default=0)
 
 
 class RaidProgress(Base, TimestampMixin):
