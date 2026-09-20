@@ -1,0 +1,103 @@
+{
+  "$comment": "小怪模板与属性推导。来源：PRD 地区 3.3 / 3.1 / 8（数值平衡原则）",
+  "$commentModel": "以「参考英雄曲线」为锚：怪物属性由地区等级下限与参考英雄的攻/血曲线推导，保证小怪阶段约 30-90 秒、单体约 5 秒，且装备不足时英雄可能阵亡（对应阵亡重置机制）。PRD 未给出可用的固定系数，故改为锚定式，全部系数集中在此处便于平衡调优。",
+  "reference": {
+    "heroAttack": {
+      "base": 40,
+      "perLevel": 34
+    },
+    "heroHp": {
+      "base": 430,
+      "perLevel": 88
+    },
+    "refPotencyPerSecond": 30,
+    "targetKillSeconds": 5.0,
+    "targetSurvivalSeconds": 26.0,
+    "defenseRatioOfAttack": 0.1
+  },
+  "monsterAttackInterval": 2.0,
+  "templates": [
+    {
+      "id": "normal",
+      "name": "普通怪",
+      "examples": [
+        "野狼",
+        "哥布林"
+      ],
+      "multipliers": {
+        "hp": 1.0,
+        "attack": 1.0,
+        "defense": 1.0,
+        "attackSpeed": 1.0
+      },
+      "goldMultiplier": 1.0,
+      "xpMultiplier": 1.0
+    },
+    {
+      "id": "highAtk",
+      "name": "高攻怪",
+      "examples": [
+        "狂暴兽"
+      ],
+      "multipliers": {
+        "hp": 0.7,
+        "attack": 1.6,
+        "defense": 0.8,
+        "attackSpeed": 1.0
+      },
+      "goldMultiplier": 1.0,
+      "xpMultiplier": 1.0
+    },
+    {
+      "id": "highDef",
+      "name": "高防怪",
+      "examples": [
+        "石像鬼"
+      ],
+      "multipliers": {
+        "hp": 1.2,
+        "attack": 0.7,
+        "defense": 2.5,
+        "attackSpeed": 0.9
+      },
+      "goldMultiplier": 1.0,
+      "xpMultiplier": 1.0
+    },
+    {
+      "id": "fast",
+      "name": "高速怪",
+      "examples": [
+        "蜂群"
+      ],
+      "multipliers": {
+        "hp": 0.8,
+        "attack": 0.9,
+        "defense": 0.8,
+        "attackSpeed": 1.6
+      },
+      "goldMultiplier": 1.0,
+      "xpMultiplier": 1.0
+    },
+    {
+      "id": "elite",
+      "name": "精英怪",
+      "examples": [
+        "蛮族战士"
+      ],
+      "multipliers": {
+        "hp": 1.8,
+        "attack": 1.4,
+        "defense": 1.4,
+        "attackSpeed": 1.1
+      },
+      "goldMultiplier": 2.0,
+      "xpMultiplier": 2.0
+    }
+  ],
+  "eliteBaseChance": 0.08,
+  "$commentXp": "经验值 = 掉落金币 × xpPerGold，保证「怪物等级越高经验越多」。来源：PRD 2.11.1",
+  "xpPerGold": 1.5,
+  "$commentDrop": "装备掉落概率（概率较低）。来源：PRD 2.7.2",
+  "equipmentDropChance": 0.03,
+  "$commentLevel": "地区等级取「等级区间下限」，与参考英雄曲线对齐"
+}

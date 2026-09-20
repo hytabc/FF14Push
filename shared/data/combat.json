@@ -1,0 +1,72 @@
+{
+  "$comment": "战斗与三属性伤害公式。来源：PRD 新增三属性系统 2.2 / 3.1 / 3.2 / 3.3",
+  "$commentOrder": "每次伤害判定顺序：直击 → 暴击 → 信念恒定乘算",
+  "directHitMultiplier": 1.25,
+  "critBaseRatePct": 5,
+  "critBaseMultiplierPct": 140,
+  "critRatePerDenomPct": 20,
+  "critDamagePerDenomPct": 20,
+  "directHitRateMaxPct": 55,
+  "determinationPerDenomPct": 13,
+  "randomFloat": [
+    0.95,
+    1.05
+  ],
+  "$commentScaling": "暴击/直击/信念的基准值与缩放分母随英雄等级段变化。来源：PRD 3.2",
+  "levelTiers": [
+    {
+      "levelMin": 1,
+      "levelMax": 20,
+      "base": 50,
+      "denominator": 285,
+      "scaleCoef": 0.15
+    },
+    {
+      "levelMin": 21,
+      "levelMax": 40,
+      "base": 120,
+      "denominator": 570,
+      "scaleCoef": 0.3
+    },
+    {
+      "levelMin": 41,
+      "levelMax": 60,
+      "base": 250,
+      "denominator": 1000,
+      "scaleCoef": 0.5
+    },
+    {
+      "levelMin": 61,
+      "levelMax": 80,
+      "base": 420,
+      "denominator": 1425,
+      "scaleCoef": 0.75
+    },
+    {
+      "levelMin": 81,
+      "levelMax": 100,
+      "base": 420,
+      "denominator": 1900,
+      "scaleCoef": 1.0
+    }
+  ],
+  "$commentPrimaryLink": "主属性与三属性的联动加成。来源：PRD 4.1",
+  "primaryLink": {
+    "str": {
+      "crit": 0.1
+    },
+    "dex": {
+      "dh": 0.1
+    },
+    "int": {
+      "det": 0.1
+    }
+  },
+  "$commentHit": "命中率不足时可能 Miss（与直击无关）。来源：PRD 2.1",
+  "baseMissChance": 0.05,
+  "$commentSkill": "技能释放规则。来源：PRD 2.6.1",
+  "gcdSeconds": 1.5,
+  "basicAttackCd": 3,
+  "$commentDetBase": "PRD 3.1：Lv.100 时信念公式使用基准 390，而暴击/直击为 420，故此处对信念基准做偏移。",
+  "detBaseAdjust": -30
+}

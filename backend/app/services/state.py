@@ -1,0 +1,116 @@
+"""组装前端所需的完整游戏状态快照。"""
+
+from __future__ import annotations
+
+from typing import Any, Sequence
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import (
+    AutoSellSetting,
+    ChestPity,
+    Hero,
+    HeroSkillStat,
+    Item,
+    RegionProgress,
+    TavernState,
+    TutorialProgress,
+    User,
+)
+from app.services.codex import codex_progress
+from app.services.economy import count_by_rarity
+from app.services.game_config import CONFIG
+from app.services.progression import exp_to_next
+from app.services.recruiting import recruit_cost
+from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
+from app.services.serialization import hero_to_dict, item_to_dict, loadout
+from app.services.stats import compute_stats
+from app.services.valuation import hero_power, sell_price_range
+
+
+async def build_game_state(
+    db: AsyncSession, user: User, hero: Hero, items: Sequence[Item] | None = None
+) -> dict[str, Any]:
+    if items is None:
+        items = list((await db.execute(select(Item).where(Item.user_id == user.id))).scalars().all())
+
+    stats = compute_stats(hero, items)
+
+    progress_rows = (
+        await db.execute(select(RegionProgress).where(RegionProgress.user_id == user.id))
+    ).scalars().all()
+    progress = {
+        row.region_id: {
+            "regionId": row.region_id,
+            "unlocked": row.unlocked,
+            "cleared": row.cleared,
+            "clearedAt": row.cleared_at.isoformat() if row.cleared_at else None,
+            "bestClearMs": row.best_clear_ms,
+        }
+        for row in progress_rows
+    }
+
+    pity_rows = (await db.execute(select(ChestPity).where(ChestPity.user_id == user.id))).scalars().all()
+    pity = {
+        row.chest_type: {
+            "sinceRare": row.since_rare,
+            "sinceEpic": row.since_epic,
+            "sinceLegendary": row.since_legendary,
+        }
+        for row in pity_rows
+    }
+
+    skill_rows = (
+        await db.execute(select(HeroSkillStat).where(HeroSkillStat.hero_id == hero.id))
+    ).scalars().all()
+    skill_stats = {row.skill_id: row.cast_count for row in skill_rows}
+
+    tutorial = (
+        await db.execute(select(TutorialProgress).where(TutorialProgress.user_id == user.id))
+    ).scalar_one_or_none()
+    tavern = (await db.execute(select(TavernState).where(TavernState.user_id == user.id))).scalar_one_or_none()
+    auto_sell = (
+        await db.execute(select(AutoSellSetting).where(AutoSellSetting.user_id == user.id))
+    ).scalar_one_or_none()
+
+    region = CONFIG.region_by_id.get(hero.current_region_id or 1)
+    region_detail = None
+    if region:
+        region_detail = {
+            **region,
+            "killsRequired": kills_required(region["id"]),
+            "spawnInterval": spawn_interval(region["id"]),
+            "boss": boss_stats(region["id"]),
+            "monsters": [monster_stats(region["id"], t["id"]) for t in CONFIG.monsters["templates"]],
+        }
+
+    return {
+        "user": {"id": user.id, "nickname": user.nickname, "gold": int(user.gold)},
+        "hero": hero_to_dict(hero, stats),
+        "power": hero_power(stats),
+        "expToNext": exp_to_next(hero.level),
+        "recruitCost": recruit_cost(hero.talent, hero.level),
+        "loadout": loadout(items),
+        "items": [item_to_dict(item, sell_price_range(item)) for item in items],
+        "itemCounts": count_by_rarity(items),
+        "regionProgress": progress,
+        "currentRegion": region_detail,
+        "pity": pity,
+        "skillStats": skill_stats,
+        "codex": await codex_progress(db, user.id),
+        "tutorial": {
+            "currentStep": tutorial.current_step if tutorial else 1,
+            "completed": bool(tutorial.completed) if tutorial else False,
+            "skipped": bool(tutorial.skipped) if tutorial else False,
+        },
+        "tavern": {"candidate": tavern.candidate if tavern else None},
+        "settings": {
+            "autoSell": {
+                "enabled": bool(auto_sell.enabled) if auto_sell else False,
+                "rarities": list(auto_sell.rarities)
+                if auto_sell
+                else list(CONFIG.economy["sell"]["autoSellRarities"]),
+            }
+        },
+    }

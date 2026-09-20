@@ -1,0 +1,32 @@
+{
+  "$comment": "关底 BOSS。来源：PRD 地区 4.2 / 4.3 / 4.4",
+  "$commentScaling": "BOSS 属性 = 同地区小怪基准 × 以下倍率。PRD 4.2 写 HP 为小怪 50-80 倍，但 8.5 要求 BOSS 战约 10-30 秒，二者矛盾（50-80 倍会使战斗长达数分钟）。此处取可玩的倍率，使 BOSS 战约 20 秒。",
+  "hpMultiplierRange": [3.5, 5.0],
+  "attackMultiplierRange": [1.2, 1.8],
+  "defenseMultiplierRange": [1.5, 2.5],
+  "attackInterval": 2.5,
+  "$commentReward": "击败奖励。来源：PRD 地区 4.4",
+  "reward": {
+    "goldMultiplierRange": [10, 20],
+    "xpMultiplierRange": [15, 25],
+    "boxCount": 1
+  },
+  "types": [
+    { "id": "humanoid", "name": "人形",
+      "skills": [{ "id": "chargedSlash", "name": "蓄力斩", "cd": 12, "effect": "charge", "chargeSeconds": 3, "potency": 300, "desc": "蓄力 3 秒后造成 300% 攻击力伤害" }] },
+    { "id": "beast", "name": "野兽",
+      "skills": [{ "id": "enrage", "name": "狂暴", "cd": 20, "effect": "enrage", "hpThreshold": 0.3, "attackBuff": 0.5, "desc": "生命低于 30% 时攻击力 +50%" }] },
+    { "id": "primal", "name": "蛮神",
+      "skills": [{ "id": "elementalBurst", "name": "元素爆发", "cd": 20, "effect": "aoe", "potency": 200, "desc": "每 20 秒造成 200% 攻击力的范围伤害" }] },
+    { "id": "dragon", "name": "龙族",
+      "skills": [{ "id": "dragonBreath", "name": "龙息", "cd": 15, "effect": "dot", "potency": 150, "duration": 5, "desc": "每 15 秒造成 150% 攻击力的持续伤害（5 秒）" }] },
+    { "id": "golem", "name": "魔像",
+      "skills": [{ "id": "harden", "name": "硬化", "cd": 25, "effect": "shield", "damageReduce": 0.5, "duration": 5, "desc": "每 25 秒获得减伤 50% 的护盾，持续 5 秒" }] },
+    { "id": "tribal", "name": "蛮族",
+      "skills": [{ "id": "savageCharge", "name": "狂暴冲锋", "cd": 18, "effect": "nuke", "potency": 250, "desc": "每 18 秒造成 250% 攻击力伤害" }] },
+    { "id": "plant", "name": "植物",
+      "skills": [{ "id": "entangle", "name": "根须缠绕", "cd": 18, "effect": "debuff", "potency": 180, "attackSpeedDebuff": 0.25, "duration": 5, "desc": "每 18 秒造成 180% 攻击力伤害并使英雄攻击速度 -25%（5 秒）" }] },
+    { "id": "aberration", "name": "异形",
+      "skills": [{ "id": "voidErosion", "name": "虚蚀", "cd": 20, "effect": "nuke", "potency": 200, "damageType": "magical", "desc": "每 20 秒造成 200% 攻击力的魔法伤害" }] }
+  ]
+}

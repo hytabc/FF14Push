@@ -1,0 +1,21 @@
+{
+  "$comment": "装备栏位定义。11 格：主手 1 + 防具 5 + 饰品 5（含双戒指）。来源：PRD 2.2 + 决策记录",
+  "slots": [
+    { "id": "mainHand", "name": "主手武器", "category": "weapon", "accepts": ["mainHand"], "order": 0 },
+    { "id": "head", "name": "头部", "category": "armor", "accepts": ["head"], "order": 1 },
+    { "id": "body", "name": "身体", "category": "armor", "accepts": ["body"], "order": 2 },
+    { "id": "hands", "name": "手部", "category": "armor", "accepts": ["hands"], "order": 3 },
+    { "id": "legs", "name": "腿部", "category": "armor", "accepts": ["legs"], "order": 4 },
+    { "id": "feet", "name": "脚部", "category": "armor", "accepts": ["feet"], "order": 5 },
+    { "id": "necklace", "name": "项链", "category": "accessory", "accepts": ["necklace"], "order": 6 },
+    { "id": "earring", "name": "耳环", "category": "accessory", "accepts": ["earring"], "order": 7 },
+    { "id": "bracelet", "name": "手镯", "category": "accessory", "accepts": ["bracelet"], "order": 8 },
+    { "id": "ring1", "name": "戒指 I", "category": "accessory", "accepts": ["ring"], "order": 9 },
+    { "id": "ring2", "name": "戒指 II", "category": "accessory", "accepts": ["ring"], "order": 10 }
+  ],
+  "categories": {
+    "weapon": { "id": "weapon", "name": "武器", "slotIds": ["mainHand"] },
+    "armor": { "id": "armor", "name": "防具", "slotIds": ["head", "body", "hands", "legs", "feet"] },
+    "accessory": { "id": "accessory", "name": "饰品", "slotIds": ["necklace", "earring", "bracelet", "ring1", "ring2"] }
+  }
+}

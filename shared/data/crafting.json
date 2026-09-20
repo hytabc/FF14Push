@@ -1,0 +1,13 @@
+{
+  "$comment": "装备合成系统。来源：PRD 2.9",
+  "requiredCount": 16,
+  "categories": ["weapon", "armor", "accessory"],
+  "$commentCategories": "同类 = 同一种箱子类型产出的装备（武器/防具/饰品）",
+  "routes": [
+    { "from": "common", "to": "uncommon", "fee": 200 },
+    { "from": "uncommon", "to": "rare", "fee": 500 },
+    { "from": "rare", "to": "epic", "fee": 1500 },
+    { "from": "epic", "to": "legendary", "fee": 5000 },
+    { "from": "legendary", "to": "mythic", "fee": 20000 }
+  ]
+}

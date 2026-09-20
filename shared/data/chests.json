@@ -1,0 +1,23 @@
+{
+  "$comment": "箱子定义与保底。来源：PRD 2.8",
+  "chests": [
+    { "id": "weaponBox", "name": "武器箱", "price": 100, "category": "weapon", "tier": "normal", "icon": "weapon" },
+    { "id": "armorBox", "name": "装备箱", "price": 80, "category": "armor", "tier": "normal", "icon": "armor" },
+    { "id": "accessoryBox", "name": "饰品箱", "price": 60, "category": "accessory", "tier": "normal", "icon": "accessory" },
+    { "id": "advWeaponBox", "name": "高级武器箱", "price": 500, "category": "weapon", "tier": "advanced", "icon": "weapon" },
+    { "id": "advArmorBox", "name": "高级装备箱", "price": 400, "category": "armor", "tier": "advanced", "icon": "armor" },
+    { "id": "advAccessoryBox", "name": "高级饰品箱", "price": 300, "category": "accessory", "tier": "advanced", "icon": "accessory" }
+  ],
+  "$commentPity": "每开启 N 个同类型箱子必出对应品阶及以上。来源：PRD 2.8.3",
+  "pity": [
+    { "count": 10, "minRarity": "rare" },
+    { "count": 50, "minRarity": "epic" },
+    { "count": 200, "minRarity": "legendary" }
+  ],
+  "$commentReward": "宝箱掉落（BOSS 奖励用），按地区等级决定品质",
+  "bossRewardBoxByTier": [
+    { "maxRegionIndex": 10, "chestId": "weaponBox" },
+    { "maxRegionIndex": 20, "chestId": "advWeaponBox" },
+    { "maxRegionIndex": 40, "chestId": "advWeaponBox" }
+  ]
+}

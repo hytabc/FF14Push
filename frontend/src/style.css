@@ -1,0 +1,122 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink-950: #0b0f18;
+  --color-ink-900: #111725;
+  --color-ink-800: #182034;
+  --color-ink-700: #232c45;
+  --color-ink-600: #33405f;
+  --color-ink-400: #8391b4;
+  --color-ink-200: #c3cbe0;
+
+  --color-rarity-common: #d8d8d8;
+  --color-rarity-uncommon: #3fc46a;
+  --color-rarity-rare: #3f7fe0;
+  --color-rarity-epic: #a855f7;
+  --color-rarity-legendary: #f97316;
+  --color-rarity-mythic: #ef4444;
+
+  --color-term-common: #9ca3af;
+  --color-term-rare: #f5c542;
+  --color-term-ancient: #ef4444;
+
+  --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, #1b2a4a 0%, transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, #2a1b45 0%, transparent 55%),
+    var(--color-ink-950);
+  color: var(--color-ink-200);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 999px;
+}
+
+@utility card {
+  border-radius: 0.875rem;
+  border: 1px solid var(--color-ink-700);
+  background: color-mix(in srgb, var(--color-ink-900) 88%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+@utility panel {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-ink-700);
+  background: var(--color-ink-800);
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-42px) scale(1.02);
+  }
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-float {
+  animation: float-up 1.1s ease-out forwards;
+}
+.animate-rise {
+  animation: rise-in 0.28s ease-out both;
+}
+.animate-pulse-ring {
+  animation: pulse-ring 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-rise,
+  .animate-pulse-ring {
+    animation: none;
+  }
+}

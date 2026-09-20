@@ -1,0 +1,58 @@
+{
+  "$comment": "装备底材（base items）。来源：PRD 2.3.1（底材决定固定属性种类）、图鉴 3.1。使用「档位 × 族」的紧凑定义，由加载器展开为具体底材。",
+  "$commentTiers": "每档提供武器攻击 / 防御 / 生命 / 主属性 四个锚定数值，各部位按 ratio 取用。精金档对应 PRD 示例中的 Lv.80 装备。",
+  "tiers": [
+    { "index": 0, "name": "铁制", "levelReq": 1, "weaponAttack": 12, "defense": 4, "hp": 30, "mainAttr": 3 },
+    { "index": 1, "name": "白钢", "levelReq": 20, "weaponAttack": 250, "defense": 45, "hp": 320, "mainAttr": 7 },
+    { "index": 2, "name": "秘银", "levelReq": 40, "weaponAttack": 480, "defense": 95, "hp": 720, "mainAttr": 10 },
+    { "index": 3, "name": "钛合金", "levelReq": 60, "weaponAttack": 750, "defense": 155, "hp": 1200, "mainAttr": 15 },
+    { "index": 4, "name": "精金", "levelReq": 80, "weaponAttack": 1000, "defense": 225, "hp": 1800, "mainAttr": 20 },
+    { "index": 5, "name": "星辉", "levelReq": 95, "weaponAttack": 1200, "defense": 290, "hp": 2300, "mainAttr": 26 }
+  ],
+  "subAttrPools": {
+    "physical": ["str", "dex", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
+    "magical": ["int", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
+    "armor": ["str", "dex", "int", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
+    "accessory": ["str", "dex", "int", "vit", "crit", "dh", "det", "sks", "sps", "lifesteal", "dodge", "acc"]
+  },
+  "$commentBaseFloat": "基础属性 = 底材基准 × 品阶倍率 × (1 ± 20%)。来源：PRD 2.3.3",
+  "baseAttrFloat": 0.20,
+  "subAttrFloat": 0.20,
+  "weaponFamilies": [
+    { "weaponType": "sword_shield", "jobId": "PLD", "suffix": "长剑", "pool": "physical" },
+    { "weaponType": "axe", "jobId": "WAR", "suffix": "战斧", "pool": "physical" },
+    { "weaponType": "greatsword", "jobId": "DRK", "suffix": "大剑", "pool": "physical" },
+    { "weaponType": "gunblade", "jobId": "GNB", "suffix": "枪刃", "pool": "physical" },
+    { "weaponType": "staff", "jobId": "WHM", "suffix": "法杖", "pool": "magical" },
+    { "weaponType": "book", "jobId": "SCH", "suffix": "魔导书", "pool": "magical" },
+    { "weaponType": "globe", "jobId": "AST", "suffix": "天球仪", "pool": "magical" },
+    { "weaponType": "noulith", "jobId": "SGE", "suffix": "蛇刺剑", "pool": "magical" },
+    { "weaponType": "fist", "jobId": "MNK", "suffix": "拳套", "pool": "physical" },
+    { "weaponType": "lance", "jobId": "DRG", "suffix": "长枪", "pool": "physical" },
+    { "weaponType": "dualDagger", "jobId": "NIN", "suffix": "双剑", "pool": "physical" },
+    { "weaponType": "katana", "jobId": "SAM", "suffix": "武士刀", "pool": "physical" },
+    { "weaponType": "scythe", "jobId": "RPR", "suffix": "镰刀", "pool": "physical" },
+    { "weaponType": "twinblade", "jobId": "VPR", "suffix": "双刃剑", "pool": "physical" },
+    { "weaponType": "bow", "jobId": "BRD", "suffix": "弓", "pool": "physical" },
+    { "weaponType": "gun", "jobId": "MCH", "suffix": "火枪", "pool": "physical" },
+    { "weaponType": "chakram", "jobId": "DNC", "suffix": "轮刃", "pool": "physical" },
+    { "weaponType": "rod", "jobId": "BLM", "suffix": "咒杖", "pool": "magical" },
+    { "weaponType": "grimoire", "jobId": "SMN", "suffix": "魔典", "pool": "magical" },
+    { "weaponType": "rapier", "jobId": "RDM", "suffix": "刺剑", "pool": "magical" },
+    { "weaponType": "brush", "jobId": "PCT", "suffix": "画笔", "pool": "magical" }
+  ],
+  "$commentWeaponBase": "武器基础属性：物理职业为物理攻击力，法系职业为魔法攻击力",
+  "armorFamilies": [
+    { "slot": "head", "suffix": "头盔", "baseAttrs": [{ "attr": "physDef", "ratio": 1.0 }, { "attr": "magicDef", "ratio": 0.7 }] },
+    { "slot": "body", "suffix": "铠甲", "baseAttrs": [{ "attr": "physDef", "ratio": 1.4 }, { "attr": "magicDef", "ratio": 1.0 }, { "attr": "hp", "ratio": 1.0 }] },
+    { "slot": "hands", "suffix": "手甲", "baseAttrs": [{ "attr": "physDef", "ratio": 0.8 }, { "attr": "magicDef", "ratio": 0.6 }] },
+    { "slot": "legs", "suffix": "护腿", "baseAttrs": [{ "attr": "physDef", "ratio": 1.2 }, { "attr": "magicDef", "ratio": 0.85 }, { "attr": "hp", "ratio": 0.8 }] },
+    { "slot": "feet", "suffix": "战靴", "baseAttrs": [{ "attr": "physDef", "ratio": 0.8 }, { "attr": "magicDef", "ratio": 0.6 }] }
+  ],
+  "accessoryFamilies": [
+    { "slot": "necklace", "suffix": "项链", "baseAttr": "int", "pool": "accessory" },
+    { "slot": "earring", "suffix": "耳环", "baseAttr": "vit", "pool": "accessory" },
+    { "slot": "bracelet", "suffix": "手镯", "baseAttr": "dex", "pool": "accessory" },
+    { "slot": "ring", "suffix": "戒指", "baseAttr": "str", "pool": "accessory" }
+  ]
+}

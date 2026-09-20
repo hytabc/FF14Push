@@ -1,0 +1,2 @@
+- Prefers Simplified Chinese (简体中文) for planning documents, clarifying questions, and all communication with them. Confidence: 0.9
+- Prefers Vue 3 + Vite as the frontend stack. Confidence: 0.7

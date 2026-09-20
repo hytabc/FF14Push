@@ -1,0 +1,97 @@
+{
+  "$comment": "副属性池。来源：PRD 2.3.2 + 新增三属性 5.1/5.2/5.4。ranges 为各品阶下的取值区间。",
+  "attributes": [
+    {
+      "id": "str", "name": "力量", "valueType": "flat", "role": "primary",
+      "sellsWeight": 1.0, "rarityCoef": 1.0,
+      "ranges": { "common": [5, 15], "uncommon": [8, 25], "rare": [15, 45], "epic": [30, 90], "legendary": [60, 180], "mythic": [120, 360] },
+      "desc": "提升生命值上限、生命回复、物理防御、物理攻击"
+    },
+    {
+      "id": "dex", "name": "敏捷", "valueType": "flat", "role": "primary",
+      "sellsWeight": 1.0, "rarityCoef": 1.0,
+      "ranges": { "common": [5, 15], "uncommon": [8, 25], "rare": [15, 45], "epic": [30, 90], "legendary": [60, 180], "mythic": [120, 360] },
+      "desc": "提升闪避、攻击速度、暴击率、命中"
+    },
+    {
+      "id": "int", "name": "智力", "valueType": "flat", "role": "primary",
+      "sellsWeight": 1.0, "rarityCoef": 1.0,
+      "ranges": { "common": [5, 15], "uncommon": [8, 25], "rare": [15, 45], "epic": [30, 90], "legendary": [60, 180], "mythic": [120, 360] },
+      "desc": "提升魔法值上限、魔法回复、魔法攻击、技能伤害、冷却缩减"
+    },
+    {
+      "id": "vit", "name": "体力", "valueType": "flat", "role": "primary",
+      "sellsWeight": 1.0, "rarityCoef": 1.0,
+      "ranges": { "common": [5, 15], "uncommon": [8, 25], "rare": [15, 45], "epic": [30, 90], "legendary": [60, 180], "mythic": [120, 360] },
+      "desc": "提升生命值上限与物理防御"
+    },
+    {
+      "id": "crit", "name": "暴击", "valueType": "flat", "role": "offensive",
+      "sellsWeight": 1.5, "rarityCoef": 1.0,
+      "ranges": { "common": [10, 30], "uncommon": [30, 60], "rare": [60, 120], "epic": [120, 250], "legendary": [250, 500], "mythic": [500, 900] },
+      "desc": "同时提升暴击率与暴击伤害倍率"
+    },
+    {
+      "id": "dh", "name": "直击", "valueType": "flat", "role": "offensive",
+      "sellsWeight": 1.3, "rarityCoef": 1.0,
+      "ranges": { "common": [10, 30], "uncommon": [30, 60], "rare": [60, 120], "epic": [120, 250], "legendary": [250, 500], "mythic": [500, 900] },
+      "desc": "提升直击发生概率，直击伤害固定 125%"
+    },
+    {
+      "id": "det", "name": "信念", "valueType": "flat", "role": "offensive",
+      "sellsWeight": 1.2, "rarityCoef": 1.0,
+      "ranges": { "common": [10, 30], "uncommon": [30, 60], "rare": [60, 120], "epic": [120, 250], "legendary": [250, 500], "mythic": [500, 900] },
+      "desc": "恒定提升全部伤害与治疗"
+    },
+    {
+      "id": "sks", "name": "攻击速度", "valueType": "percent", "role": "utility",
+      "sellsWeight": 0.8, "rarityCoef": 1.0,
+      "ranges": { "common": [0.5, 1.5], "uncommon": [1, 2.5], "rare": [2, 5], "epic": [4, 9], "legendary": [8, 15], "mythic": [15, 25] },
+      "desc": "提升普攻频率"
+    },
+    {
+      "id": "sps", "name": "技能急速", "valueType": "percent", "role": "utility",
+      "sellsWeight": 0.8, "rarityCoef": 1.0,
+      "ranges": { "common": [0.5, 1.5], "uncommon": [1, 2.5], "rare": [2, 5], "epic": [4, 9], "legendary": [8, 15], "mythic": [15, 25] },
+      "desc": "按百分比减少技能冷却"
+    },
+    {
+      "id": "regen", "name": "生命回复", "valueType": "flat", "role": "utility",
+      "sellsWeight": 0.8, "rarityCoef": 1.0,
+      "ranges": { "common": [1, 3], "uncommon": [2, 5], "rare": [4, 10], "epic": [8, 20], "legendary": [16, 40], "mythic": [32, 80] },
+      "desc": "每秒回复生命值"
+    },
+    {
+      "id": "lifesteal", "name": "吸血", "valueType": "percent", "role": "utility",
+      "sellsWeight": 0.8, "rarityCoef": 1.0,
+      "ranges": { "common": [0.3, 0.8], "uncommon": [0.6, 1.5], "rare": [1, 3], "epic": [2, 5], "legendary": [4, 8], "mythic": [8, 14] },
+      "desc": "造成伤害时按比例回复生命"
+    },
+    {
+      "id": "dodge", "name": "闪避", "valueType": "percent", "role": "utility",
+      "sellsWeight": 0.8, "rarityCoef": 1.0,
+      "ranges": { "common": [0.3, 0.8], "uncommon": [0.6, 1.5], "rare": [1, 3], "epic": [2, 5], "legendary": [4, 8], "mythic": [8, 14] },
+      "desc": "按概率闪避攻击"
+    },
+    {
+      "id": "acc", "name": "命中", "valueType": "percent", "role": "utility",
+      "sellsWeight": 0.8, "rarityCoef": 1.0,
+      "ranges": { "common": [0.3, 0.8], "uncommon": [0.6, 1.5], "rare": [1, 3], "epic": [2, 5], "legendary": [4, 8], "mythic": [8, 14] },
+      "desc": "降低攻击 Miss 概率"
+    },
+    {
+      "id": "tenacity", "name": "韧性", "valueType": "percent", "role": "utility",
+      "sellsWeight": 0.8, "rarityCoef": 1.0,
+      "ranges": { "common": [0.3, 0.8], "uncommon": [0.6, 1.5], "rare": [1, 3], "epic": [2, 5], "legendary": [4, 8], "mythic": [8, 14] },
+      "desc": "降低受到的伤害"
+    }
+  ],
+  "$commentBaseAttributes": "底材固定属性（非副属性池），由 base-items.json 引用",
+  "baseAttributes": [
+    { "id": "attack", "name": "物理攻击力" },
+    { "id": "magicAttack", "name": "魔法攻击力" },
+    { "id": "physDef", "name": "物理防御" },
+    { "id": "magicDef", "name": "魔法防御" },
+    { "id": "hp", "name": "生命值" }
+  ]
+}

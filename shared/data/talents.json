@@ -1,0 +1,22 @@
+{
+  "$comment": "英雄资质品阶。来源：PRD 招募 2.3 / 3.3 / 6.2",
+  "order": ["common", "uncommon", "rare", "epic", "legendary", "mythic"],
+  "baseRecruitCost": 1000,
+  "refreshCost": 200,
+  "freeRefreshIntervalSec": 600,
+  "talents": {
+    "common": { "id": "common", "name": "普通", "pointMin": 80, "pointMax": 100, "growthCoef": 1.0, "recruitCoef": 1 },
+    "uncommon": { "id": "uncommon", "name": "优秀", "pointMin": 100, "pointMax": 120, "growthCoef": 1.1, "recruitCoef": 2 },
+    "rare": { "id": "rare", "name": "稀有", "pointMin": 120, "pointMax": 150, "growthCoef": 1.25, "recruitCoef": 5 },
+    "epic": { "id": "epic", "name": "史诗", "pointMin": 150, "pointMax": 180, "growthCoef": 1.5, "recruitCoef": 15 },
+    "legendary": { "id": "legendary", "name": "传说", "pointMin": 180, "pointMax": 220, "growthCoef": 2.0, "recruitCoef": 50 },
+    "mythic": { "id": "mythic", "name": "神话", "pointMin": 220, "pointMax": 260, "growthCoef": 2.5, "recruitCoef": 200 }
+  },
+  "$commentBias": "主属性偏向：三维总和固定，主属性最高。来源：PRD 招募 3.2",
+  "biases": {
+    "str": { "id": "str", "name": "力量型", "weights": { "str": 0.5, "dex": 0.28, "int": 0.22 } },
+    "dex": { "id": "dex", "name": "敏捷型", "weights": { "str": 0.28, "dex": 0.5, "int": 0.22 } },
+    "int": { "id": "int", "name": "智力型", "weights": { "str": 0.22, "dex": 0.28, "int": 0.5 } },
+    "balanced": { "id": "balanced", "name": "均衡型", "weights": { "str": 0.3333, "dex": 0.3333, "int": 0.3334 } }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$comment": "经济系统：出售 / 重造 / 附魔。来源：PRD 出售 3.2、重造 4.2、附魔 5.2-5.3",
+  "sell": {
+    "basePrice": 10,
+    "randomFloat": 0.10,
+    "scoreDivisor": 100,
+    "autoSellRarities": ["common", "uncommon"]
+  },
+  "refine": {
+    "$comment": "重造：重新随机基础属性浮动值与副属性，保留品阶/类型/等级需求/词条",
+    "baseAttrFloat": 0.20,
+    "subAttrFloat": 0.20
+  },
+  "enchant": {
+    "$comment": "附魔：重新随机全部 Buff/Debuff，含品质判定",
+    "autoUntilRareExtraCostMultiplier": 10
+  },
+  "termQuality": {
+    "common": 0.989,
+    "rare": 0.010,
+    "ancient": 0.001
+  },
+  "power": {
+    "$comment": "战力计算权重。来源：PRD 排行榜 2.2 / 新增三属性 8.2",
+    "weights": {
+      "hp": 0.05,
+      "attack": 1.0,
+      "magicAttack": 1.0,
+      "physDef": 0.6,
+      "magicDef": 0.6,
+      "str": 2.0,
+      "dex": 2.0,
+      "int": 2.0,
+      "vit": 1.5,
+      "crit": 3.0,
+      "dh": 2.6,
+      "det": 2.4,
+      "sks": 15.0,
+      "sps": 15.0,
+      "regen": 3.0,
+      "lifesteal": 15.0,
+      "dodge": 15.0,
+      "acc": 10.0,
+      "tenacity": 10.0
+    }
+  }
+}

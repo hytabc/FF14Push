@@ -1,0 +1,44 @@
+{
+  "$comment": "Buff/Debuff 词条池。来源：PRD 2.4、金币 Buff 5.3、三属性联动 6.1/6.2",
+  "qualityChances": { "common": 0.989, "rare": 0.01, "ancient": 0.001 },
+  "qualityRules": {
+    "common": { "name": "普通", "valueRule": "normal", "border": "#9ca3af", "sellValue": 0.1 },
+    "rare": { "name": "稀有", "valueRule": "max", "border": "#f5c542", "sellValue": 0.5 },
+    "ancient": { "name": "太古", "valueRule": "max_x1.25", "border": "#ef4444", "sellValue": 1.5 }
+  },
+  "debuffValue": { "common": -0.15, "rare": -0.35, "ancient": -0.6 },
+  "terms": [
+    { "id": "strBoost", "name": "力量增幅", "type": "buff", "trigger": "常驻", "stat": "attackPct", "range": [2, 15], "desc": "攻击力 +{v}%" },
+    { "id": "hpResonance", "name": "生命共鸣", "type": "buff", "trigger": "常驻", "stat": "maxHpPct", "range": [3, 20], "desc": "最大生命 +{v}%" },
+    { "id": "swift", "name": "迅捷", "type": "buff", "trigger": "常驻", "stat": "attackSpeedPct", "range": [2, 10], "desc": "攻击速度 +{v}%" },
+    { "id": "skillMastery", "name": "技能精通", "type": "buff", "trigger": "常驻", "stat": "skillDamagePct", "range": [3, 12], "desc": "技能伤害 +{v}%" },
+    { "id": "cdReduce", "name": "冷却缩减", "type": "buff", "trigger": "常驻", "stat": "cdReducePct", "range": [2, 8], "desc": "技能冷却 -{v}%" },
+    { "id": "lifestealTerm", "name": "吸血", "type": "buff", "trigger": "常驻", "stat": "lifestealPct", "range": [1, 5], "desc": "造成伤害的 {v}% 回复生命" },
+    { "id": "critBoost", "name": "暴击强化", "type": "buff", "trigger": "常驻", "stat": "critRatePct", "range": [2, 10], "desc": "暴击率 +{v}%" },
+    { "id": "thorns", "name": "荆棘", "type": "buff", "trigger": "常驻", "stat": "thornsPct", "range": [3, 15], "desc": "受到攻击反弹 {v}% 伤害" },
+    { "id": "deathResist", "name": "死亡抵抗", "type": "buff", "trigger": "触发", "stat": "reviveChancePct", "range": [5, 15], "desc": "死亡时 {v}% 概率复活并回复 30% 生命" },
+    { "id": "combo", "name": "连击", "type": "buff", "trigger": "触发", "stat": "doubleAttackPct", "range": [3, 12], "desc": "{v}% 概率追加一次普攻" },
+
+    { "id": "goldGain", "name": "金币获取效率", "type": "buff", "trigger": "常驻", "stat": "goldGainPct", "range": [3, 15], "slots": ["necklace", "earring", "ring1", "ring2"], "desc": "击杀怪物获得的金币 +{v}%" },
+    { "id": "wealthResonance", "name": "财富共鸣", "type": "buff", "trigger": "常驻", "stat": "goldAllPct", "range": [2, 10], "slots": ["ring1", "ring2", "bracelet"], "desc": "所有来源金币 +{v}%" },
+    { "id": "greed", "name": "贪婪之心", "type": "buff", "trigger": "常驻", "stat": "goldBossPct", "range": [5, 20], "slots": ["necklace", "earring"], "desc": "BOSS 掉落金币 +{v}%" },
+    { "id": "scavenger", "name": "拾荒者", "type": "buff", "trigger": "常驻", "stat": "eliteChancePct", "range": [3, 12], "slots": ["bracelet", "ring1", "ring2"], "desc": "精英怪出现概率 +{v}%" },
+    { "id": "lucky", "name": "幸运", "type": "buff", "trigger": "常驻", "stat": "goldLuckPct", "range": [5, 15], "slots": ["ring1", "ring2", "earring"], "desc": "金币随机浮动下限提升 {v}%" },
+
+    { "id": "critMastery", "name": "暴击精通", "type": "buff", "trigger": "常驻", "stat": "critStatPct", "range": [5, 20], "slots": ["mainHand", "head", "body"], "desc": "暴击属性 +{v}%" },
+    { "id": "dhMastery", "name": "直击精通", "type": "buff", "trigger": "常驻", "stat": "dhStatPct", "range": [5, 18], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "直击属性 +{v}%" },
+    { "id": "detMastery", "name": "信念精通", "type": "buff", "trigger": "常驻", "stat": "detStatPct", "range": [4, 15], "slots": ["necklace", "earring", "bracelet"], "desc": "信念属性 +{v}%" },
+    { "id": "critDmgBoost", "name": "暴击伤害强化", "type": "buff", "trigger": "常驻", "stat": "critDamagePct", "range": [3, 12], "slots": ["mainHand", "ring1", "ring2"], "desc": "暴击伤害倍率额外 +{v}%" },
+    { "id": "dhConvert", "name": "直击转化", "type": "buff", "trigger": "常驻", "stat": "dhConvertPct", "range": [5, 15], "slots": ["earring", "bracelet"], "desc": "暴击率的 {v}% 转化为直击率" },
+
+    { "id": "weaken", "name": "虚弱", "type": "debuff", "trigger": "常驻", "stat": "attackPct", "range": [-15, -3], "desc": "攻击力 {v}%" },
+    { "id": "slow", "name": "迟缓", "type": "debuff", "trigger": "常驻", "stat": "attackSpeedPct", "range": [-10, -2], "desc": "攻击速度 {v}%" },
+    { "id": "fragile", "name": "脆弱", "type": "debuff", "trigger": "常驻", "stat": "damageTakenPct", "range": [3, 12], "desc": "受到伤害 +{v}%" },
+    { "id": "manaDrain", "name": "法力枯竭", "type": "debuff", "trigger": "常驻", "stat": "skillDamagePct", "range": [-10, -2], "desc": "技能伤害 {v}%" },
+    { "id": "heavy", "name": "沉重", "type": "debuff", "trigger": "常驻", "stat": "dodgePct", "range": [-8, -2], "desc": "闪避 {v}%" },
+    { "id": "curse", "name": "诅咒", "type": "debuff", "trigger": "持续", "stat": "hpLossPct", "range": [0.5, 2], "desc": "每秒损失最大生命的 {v}%" },
+    { "id": "critWeaken", "name": "暴击削弱", "type": "debuff", "trigger": "常驻", "stat": "critStatPct", "range": [-15, -5], "desc": "暴击属性 {v}%" },
+    { "id": "dhWeaken", "name": "直击削弱", "type": "debuff", "trigger": "常驻", "stat": "dhStatPct", "range": [-12, -4], "desc": "直击属性 {v}%" },
+    { "id": "detWeaken", "name": "信念动摇", "type": "debuff", "trigger": "常驻", "stat": "detStatPct", "range": [-10, -3], "desc": "信念增伤 {v}%" }
+  ]
+}
