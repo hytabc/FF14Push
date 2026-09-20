@@ -40,6 +40,7 @@ from app.services.valuation import (
     attr_factor,
     attrs_score,
     hero_power,
+    item_score,
     sell_price,
     sell_price_range,
     terms_score,
@@ -790,3 +791,108 @@ class TestDropRate:
                 chest["category"], chest["tier"], int(cheapest_band["level"]), max_luck
             )
             assert ev < unit, f"{chest['id']} 期望出售价 {ev:.1f} ≥ 箱子价 {unit}"
+
+
+class _ScoredItem:
+    """适配 item_score / compute_stats 的生成装备替身。"""
+
+    def __init__(self, generated: dict[str, Any], slot: str, equipped: bool = True) -> None:
+        self.id = id(self)
+        self.base_id = generated["baseId"]
+        self.category = generated["category"]
+        self.slot = slot
+        self.rarity = generated["rarity"]
+        self.level_req = generated["levelReq"]
+        self.base_attrs = generated["baseAttrs"]
+        self.sub_attrs = generated["subAttrs"]
+        self.terms = generated["terms"]
+        self.equipped_slot = slot if equipped else None
+
+
+class TestPowerScoring:
+    """战力重算：低档装备不得虚高，且战力排序必须与真实收益同向。
+
+    来源：需求「会出现高战力低等级装备，且穿上高战力装备属性不如低战力装备」。
+    """
+
+    WEAPON_TIERS = {tier: f"w_lance_{tier}" for tier in range(6)}
+
+    def test_sub_attr_score_scales_with_tier(self) -> None:
+        """同一底材族、同一品阶下，item_score 必须随档位单调递增。"""
+        for rarity in ("common", "epic", "mythic"):
+            prev: float | None = None
+            for tier in range(6):
+                item, _ = generate_item(
+                    "weapon", 95, rarity=rarity, base_id=self.WEAPON_TIERS[tier], rng=random.Random(7)
+                )
+                score = attrs_score(item["baseAttrs"], item["subAttrs"])
+                if prev is not None:
+                    assert score > prev, f"{rarity} 档位 {tier} 战力 {score} 未高于上一档 {prev}"
+                prev = score
+
+    def test_low_tier_mythic_below_high_tier_common(self) -> None:
+        """低档高品阶（Lv1 神话）战力必须低于高档低品阶（Lv95 普通）。"""
+        for category, low_base, high_base in (
+            ("weapon", "w_lance_0", "w_lance_5"),
+            ("armor", "a_head_0", "a_head_5"),
+            ("accessory", "c_ring_0", "c_ring_5"),
+        ):
+            low, _ = generate_item(category, 1, rarity="mythic", base_id=low_base, rng=random.Random(3))
+            high, _ = generate_item(category, 95, rarity="common", base_id=high_base, rng=random.Random(3))
+            low_score = attrs_score(low["baseAttrs"], low["subAttrs"])
+            high_score = attrs_score(high["baseAttrs"], high["subAttrs"])
+            assert low_score < high_score, f"{category}: Lv1 神话 {low_score} ≥ Lv95 普通 {high_score}"
+
+    def test_equipping_higher_score_item_does_not_lower_hero_power(self) -> None:
+        """换上战力更高的装备后，英雄总战力不得下降（装备战力与英雄战力同口径）。"""
+        hero = FakeHero(level=95)
+        low_gen, _ = generate_item("weapon", 1, rarity="mythic", base_id="w_lance_0", rng=random.Random(5))
+        high_gen, _ = generate_item("weapon", 95, rarity="common", base_id="w_lance_5", rng=random.Random(5))
+        low = _ScoredItem(low_gen, "mainHand")
+        high = _ScoredItem(high_gen, "mainHand")
+        assert item_score(low) < item_score(high)
+        assert hero_power(compute_stats(hero, [high])) > hero_power(compute_stats(hero, [low]))
+
+    def test_power_weights_shape(self) -> None:
+        """三属性权重不得压过攻击力，且必须高于普通副属性（PRD 排行榜 2.2）。"""
+        w = CONFIG.economy["power"]["weights"]
+        for attr in ("crit", "dh", "det"):
+            assert w[attr] <= w["attack"] * 1.5, attr
+            for utility in ("sks", "sps", "lifesteal", "dodge", "acc", "tenacity"):
+                assert w[utility] < w[attr], f"{utility} 权重应低于 {attr}"
+
+    def test_higher_score_means_higher_combat_value(self) -> None:
+        """同一底材/品阶下，战力更高的装备其真实输出不得更低（防权重脱钩）。
+
+        候选装备的底材固定（基础属性相同），差异只在副属性，因此该断言直接检验
+        「战力排序 = 真实收益排序」。旧权重下 sks 等虚高会使其失败。
+        """
+        level = 80
+        slot_ids = [s["id"] for s in CONFIG.slots]
+        rng = random.Random(23)
+
+        # 固定门槛装（主手留空，用于替换候选）
+        loadout: dict[str, _ScoredItem] = {}
+        for slot in slot_ids:
+            if slot == "mainHand":
+                continue
+            usable = [b for b in CONFIG.base_items if slot in possible_slots(b) and b.level_req <= level]
+            base = max(usable, key=lambda b: (b.tier_index, b.level_req))
+            generated, _ = generate_item(base.category, level, rarity="epic", base_id=base.id, rng=rng)
+            loadout[slot] = _ScoredItem(generated, slot)
+
+        base = CONFIG.base_item_by_id["w_lance_4"]
+        candidates = [
+            _ScoredItem(generate_item("weapon", level, rarity="epic", base_id=base.id, rng=rng)[0], "mainHand")
+            for _ in range(30)
+        ]
+
+        def dps(item: _ScoredItem) -> float:
+            stats = compute_stats(FakeHero(level=level, attr_bias="str"), [*loadout.values(), item])
+            return theoretical_dps(stats, 0.0, None)
+
+        ranked = sorted(candidates, key=item_score)
+        third = len(ranked) // 3
+        low_power = sum(dps(i) for i in ranked[:third]) / third
+        high_power = sum(dps(i) for i in ranked[-third:]) / third
+        assert high_power > low_power, f"高战力组 {high_power:.0f} 未高于低战力组 {low_power:.0f}"

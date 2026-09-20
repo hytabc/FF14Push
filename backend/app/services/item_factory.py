@@ -82,12 +82,15 @@ def pick_sub_attrs(base: BaseItem, rarity: str, rng: random.Random) -> list[dict
         return []
     count = min(count, len(pool))
     chosen = rng.sample(pool, count)
+    # 副属性随档位缩放：底材固定属性本就按档位增长，副属性同步缩放后
+    # item_score 才会随档位单调增长（避免低档高品阶装备战力虚高）。
+    scale = float(getattr(base, "sub_attr_scale", 1.0))
     out: list[dict[str, Any]] = []
     for attr_id in chosen:
         attr = CONFIG.attribute_by_id[attr_id]
         lo, hi = attr["ranges"][rarity]
         quality = _roll_quality(rng)
-        value = roll_sub_attr_value(rng, float(lo), float(hi), quality)
+        value = roll_sub_attr_value(rng, float(lo) * scale, float(hi) * scale, quality)
         out.append(
             {
                 "attr": attr_id,

@@ -1,13 +1,14 @@
 {
   "$comment": "装备底材（base items）。来源：PRD 2.3.1（底材决定固定属性种类）、图鉴 3.1。使用「档位 × 族」的紧凑定义，由加载器展开为具体底材。",
   "$commentTiers": "每档提供武器攻击 / 防御 / 生命 / 主属性 四个锚定数值，各部位按 ratio 取用。精金档对应 PRD 示例中的 Lv.80 装备。",
+  "$commentSubAttrScale": "副属性 = ranges[品阶] × subAttrScale（按档位缩放）。底材固定属性本就随档位缩放，副属性同步缩放后 item_score 才会随档位单调增长，避免「低档高品阶」装备战力虚高。取值 = levelReq / 95，与 weaponAttack 锚点（≈12.6×levelReq）的缩放一致；高档 5 为基准 1.0。",
   "tiers": [
-    { "index": 0, "name": "铁制", "levelReq": 1, "weaponAttack": 12, "defense": 4, "hp": 30, "mainAttr": 3 },
-    { "index": 1, "name": "白钢", "levelReq": 20, "weaponAttack": 250, "defense": 45, "hp": 320, "mainAttr": 7 },
-    { "index": 2, "name": "秘银", "levelReq": 40, "weaponAttack": 480, "defense": 95, "hp": 720, "mainAttr": 10 },
-    { "index": 3, "name": "钛合金", "levelReq": 60, "weaponAttack": 750, "defense": 155, "hp": 1200, "mainAttr": 15 },
-    { "index": 4, "name": "精金", "levelReq": 80, "weaponAttack": 1000, "defense": 225, "hp": 1800, "mainAttr": 20 },
-    { "index": 5, "name": "星辉", "levelReq": 95, "weaponAttack": 1200, "defense": 290, "hp": 2300, "mainAttr": 26 }
+    { "index": 0, "name": "铁制", "levelReq": 1, "weaponAttack": 12, "defense": 4, "hp": 30, "mainAttr": 3, "subAttrScale": 0.011 },
+    { "index": 1, "name": "白钢", "levelReq": 20, "weaponAttack": 250, "defense": 45, "hp": 320, "mainAttr": 7, "subAttrScale": 0.211 },
+    { "index": 2, "name": "秘银", "levelReq": 40, "weaponAttack": 480, "defense": 95, "hp": 720, "mainAttr": 10, "subAttrScale": 0.421 },
+    { "index": 3, "name": "钛合金", "levelReq": 60, "weaponAttack": 750, "defense": 155, "hp": 1200, "mainAttr": 15, "subAttrScale": 0.632 },
+    { "index": 4, "name": "精金", "levelReq": 80, "weaponAttack": 1000, "defense": 225, "hp": 1800, "mainAttr": 20, "subAttrScale": 0.842 },
+    { "index": 5, "name": "星辉", "levelReq": 95, "weaponAttack": 1200, "defense": 290, "hp": 2300, "mainAttr": 26, "subAttrScale": 1.0 }
   ],
   "subAttrPools": {
     "physical": ["str", "dex", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],

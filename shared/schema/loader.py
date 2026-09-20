@@ -30,6 +30,7 @@ class BaseItem:
     tier_name: str
     base_attrs: list[dict[str, Any]]
     sub_attr_pool: list[str]
+    sub_attr_scale: float = 1.0
     weapon_type: str | None = None
     job_id: str | None = None
 
@@ -91,6 +92,7 @@ def _expand_base_items(data: dict[str, Any], job_main_attr: dict[str, str]) -> l
                         {"attr": "magicAttack" if is_magical else "attack", "base": t["weaponAttack"]}
                     ],
                     sub_attr_pool=list(pools[fam["pool"]]),
+                    sub_attr_scale=float(t.get("subAttrScale", 1.0)),
                 )
             )
 
@@ -111,6 +113,7 @@ def _expand_base_items(data: dict[str, Any], job_main_attr: dict[str, str]) -> l
                     tier_name=t["name"],
                     base_attrs=attrs,
                     sub_attr_pool=list(pools["armor"]),
+                    sub_attr_scale=float(t.get("subAttrScale", 1.0)),
                 )
             )
 
@@ -127,6 +130,7 @@ def _expand_base_items(data: dict[str, Any], job_main_attr: dict[str, str]) -> l
                     tier_name=t["name"],
                     base_attrs=[{"attr": fam["baseAttr"], "base": t["mainAttr"]}],
                     sub_attr_pool=list(pools[fam["pool"]]),
+                    sub_attr_scale=float(t.get("subAttrScale", 1.0)),
                 )
             )
 

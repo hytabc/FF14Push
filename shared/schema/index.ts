@@ -124,6 +124,8 @@ export interface BaseItem {
   levelReq: number
   tierIndex: number
   tierName: string
+  /** 副属性按档位缩放的系数（= levelReq / 95），生成装备时乘以副属性区间。 */
+  tierScale: number
   baseAttrs: BaseAttrEntry[]
   subAttrPool: AttrId[]
 }
@@ -266,7 +268,7 @@ const jobsData = jobsJson as unknown as {
 }
 
 const baseItemsDataRaw = baseItemsJson as unknown as {
-  tiers: Array<{ index: number; name: string; levelReq: number; weaponAttack: number; defense: number; hp: number; mainAttr: number }>
+  tiers: Array<{ index: number; name: string; levelReq: number; weaponAttack: number; defense: number; hp: number; mainAttr: number; subAttrScale: number }>
   subAttrPools: Record<string, AttrId[]>
   baseAttrFloat: number
   subAttrFloat: number
@@ -303,6 +305,7 @@ export function expandBaseItems(): BaseItem[] {
         levelReq: t.levelReq,
         tierIndex: t.index,
         tierName: t.name,
+        tierScale: t.subAttrScale,
         baseAttrs: [{ attr: isMagical ? 'magicAttack' : 'attack', base: t.weaponAttack }],
         subAttrPool: d.subAttrPools[fam.pool],
       })
@@ -319,6 +322,7 @@ export function expandBaseItems(): BaseItem[] {
         levelReq: t.levelReq,
         tierIndex: t.index,
         tierName: t.name,
+        tierScale: t.subAttrScale,
         baseAttrs: fam.baseAttrs.map((b) => ({
           attr: b.attr,
           base: b.attr === 'hp' ? t.hp * b.ratio : t.defense * b.ratio,
@@ -338,6 +342,7 @@ export function expandBaseItems(): BaseItem[] {
         levelReq: t.levelReq,
         tierIndex: t.index,
         tierName: t.name,
+        tierScale: t.subAttrScale,
         baseAttrs: [{ attr: fam.baseAttr, base: t.mainAttr }],
         subAttrPool: d.subAttrPools[fam.pool],
       })

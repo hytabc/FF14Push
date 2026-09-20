@@ -16,7 +16,12 @@ TERM_DEBUFF_SELL = {q: float(v) for q, v in CONFIG.terms["debuffValue"].items()}
 
 
 def hero_power(stats: HeroStats) -> int:
-    """战力 = Σ(属性 × 权重)。"""
+    """战力 = Σ(属性 × 权重)。
+
+    与 `attrs_score` 共用同一权重表，使「装备战力之和」与「英雄战力」口径一致：
+    战力更高的装备换上后，英雄战力必然不降。暴击/直击/信念按面板值×权重计入
+    （其收益已由权重标定，不再额外叠加等级相关的速率项，避免两套口径打架）。
+    """
     w = POWER_WEIGHTS
     total = 0.0
     total += stats.max_hp * w.get("hp", 0)
@@ -34,7 +39,6 @@ def hero_power(stats: HeroStats) -> int:
     total += stats.dodge_pct * w.get("dodge", 0)
     total += stats.hit_rate_pct * w.get("acc", 0)
     total += stats.tenacity_pct * w.get("tenacity", 0)
-    total += (stats.crit_rate_pct + stats.crit_damage_pct + stats.dh_rate_pct + stats.det_bonus_pct) * 10.0
     return int(total)
 
 
