@@ -124,7 +124,7 @@ docker compose logs -f backend
 | --- | --- | --- |
 | `frontend` | nginx 托管前端静态资源，并把 `/api` 反代到后端（同源，无需 CORS） | `${FRONTEND_PORT}` → 80 |
 | `backend` | FastAPI，入口脚本会等数据库就绪 → `alembic upgrade head` → 启动 uvicorn | `127.0.0.1:${BACKEND_PORT}` → 8000 |
-| `db` | PostgreSQL 16，数据持久化在 `eorzea_pgdata` 卷 | `127.0.0.1:${POSTGRES_PORT}` → 5432 |
+| `db` | PostgreSQL 16，数据持久化在 `${POSTGRES_DATA_DIR}`（默认 `./data/postgres`，bind mount 到本机） | `127.0.0.1:${POSTGRES_PORT}` → 5432 |
 
 ### 端口与变量（`.env`）
 
@@ -138,6 +138,9 @@ POSTGRES_PORT=5432     # 默认只绑定 127.0.0.1
 POSTGRES_USER=eorzea
 POSTGRES_PASSWORD=请务必修改
 POSTGRES_DB=eorzea
+
+# 数据库文件在本机的存放目录（bind mount）
+POSTGRES_DATA_DIR=./data/postgres
 
 # 应用
 JWT_SECRET=请替换为随机值（openssl rand -hex 32）
@@ -159,9 +162,22 @@ docker compose ps                                    # 服务状态
 docker compose logs -f backend                       # 后端日志
 docker compose exec backend alembic upgrade head     # 手动迁移
 docker compose exec db psql -U eorzea -d eorzea      # 进数据库
-docker compose down                                  # 停止（保留数据卷）
-docker compose down -v                               # 停止并删除数据卷（谨慎）
+docker compose down                                  # 停止（保留数据）
+docker compose up -d --build                         # 更新实例（数据保留）
 ```
+
+### 数据目录与备份
+
+数据库文件通过 bind mount 落在本机目录 `${POSTGRES_DATA_DIR}`（默认仓库内 `./data/postgres`），
+不在容器里，因此**重新构建 / 重建容器不会丢数据**：
+
+- 备份：直接复制该目录即可，例如 `tar czf pgdata-$(date +%F).tar.gz -C data postgres`；
+- 恢复：`docker compose down` 后用备份替换 `./data/postgres` 再 `docker compose up -d`；
+- 迁移服务器：把该目录一起拷到新机器上的相同相对路径即可；
+- 换路径：改 `.env` 里的 `POSTGRES_DATA_DIR` 后 `docker compose up -d`（建议先把旧目录内容搬过去）。
+
+> 注意：该目录已在 `.gitignore` 中排除，不要提交到仓库。
+> Linux 上若 `db` 容器启动报数据目录权限错误，执行 `sudo chown -R 999:999 ./data/postgres` 后重启。
 
 ---
 

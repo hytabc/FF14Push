@@ -1,7 +1,7 @@
 """战斗上报校验。来源：PRD 排行榜 2.5（服务端校验、防篡改）
 
 策略：
-- 击杀数超过理论上限 → 按上限截断，超出容差 2 倍以上则整单拒绝并写审计日志；
+- 击杀数超过理论上限 → 按上限截断，超出容差 2 倍（另加 1 只粒度容差）以上则整单拒绝并写审计日志；
 - 单只怪物金币超过该地区理论上限 → 截断到上限；
 - 掉落物一律由服务端 RNG 产出，客户端只上报「是否发生了掉落」。
 """
@@ -69,7 +69,9 @@ def validate_report(
                 reject_reason="unknown_monster",
             )
 
-    if len(kills) > allowed * 2:
+    # 击杀数是整数：窗口内额度可能不足 1（例如低等级地区短窗口），
+    # 需要给 1 只的粒度容差；额度大时仍以 2 倍为界，防作弊强度不变。
+    if len(kills) > allowed * 2 + 1:
         return ValidationResult(
             accepted=False,
             issues=[f"击杀数 {len(kills)} 远超上限 {allowed:.2f}"],

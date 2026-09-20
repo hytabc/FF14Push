@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from sqlalchemy import select
 
-from app.models import Item, User
+from app.models import BattleSession, Item, User
 
 API = "/api/v1"
 
@@ -195,6 +197,49 @@ class TestBattleLoop:
         )
         assert resp.status_code == 422
         assert "rejected" in str(resp.json()["detail"])
+
+    async def test_single_kill_in_short_window_is_accepted(self, auth_client) -> None:
+        """客户端只在有击杀时才上报，单次窗口只有 1 只怪不应被判超速。
+
+        额度按整只发放，这里额度不足 1 只，击杀会在后续上报由 kill_credit 补发，
+        关键是不能再返回 422「数据校验未通过」。
+        """
+        started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
+        session_id = started.json()["sessionId"]
+        resp = await auth_client.post(
+            f"{API}/battle/session/report",
+            json={
+                "sessionId": session_id,
+                "regionId": 1,
+                "elapsedMs": 1500,
+                "kills": [{"monsterId": "normal", "gold": 15, "exp": 20}],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+
+    async def test_idle_gap_is_covered_by_server_elapsed(self, auth_client, session_factory) -> None:
+        """上报窗口以服务端真实间隔为准：空闲 15 秒后的多只击杀应被接受并入账。"""
+        started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
+        session_id = started.json()["sessionId"]
+
+        async with session_factory() as db:
+            session = (
+                await db.execute(select(BattleSession).where(BattleSession.id == session_id))
+            ).scalar_one()
+            session.last_report_at = datetime.now(timezone.utc) - timedelta(seconds=15)
+            await db.commit()
+
+        resp = await auth_client.post(
+            f"{API}/battle/session/report",
+            json={
+                "sessionId": session_id,
+                "regionId": 1,
+                "elapsedMs": 1500,
+                "kills": [{"monsterId": "normal", "gold": 15, "exp": 20} for _ in range(3)],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["goldGained"] > 0
 
     async def test_gold_is_clamped_to_region_cap(self, auth_client) -> None:
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})

@@ -40,6 +40,8 @@ export const useGameStore = defineStore('game', () => {
   let reportAccum = 0
   let reporting = false
   let generation = 0
+  // 上一次成功上报的墙钟时间，用于上报真实窗口（空窗口不上报，固定值会失真）
+  let lastReportAt = 0
 
   const loggedIn = computed(() => auth.isLoggedIn)
   const hero = computed(() => state.value?.hero ?? null)
@@ -102,6 +104,7 @@ export const useGameStore = defineStore('game', () => {
       running.value = true
       logVersion.value += 1
       reportAccum = 0
+      lastReportAt = performance.now()
       startLoop()
     } catch (e) {
       pushError(e)
@@ -163,11 +166,12 @@ export const useGameStore = defineStore('game', () => {
 
     reporting = true
     const gen = generation
+    const elapsedMs = Math.min(20_000, Math.max(300, Math.round(performance.now() - lastReportAt)))
     try {
       const res = await api.reportBattle({
         sessionId: id,
         regionId: current.region.id,
-        elapsedMs: REPORT_MS,
+        elapsedMs,
         kills: pending.kills as KillPayload[],
         skillCasts: Object.entries(pending.skillCasts).map(([skillId, count]) => ({ skillId, count })),
         killCount: current.killCount,
@@ -176,6 +180,7 @@ export const useGameStore = defineStore('game', () => {
         bossFightMs: pending.bossFightMs || undefined,
       })
       if (gen !== generation) return
+      lastReportAt = performance.now()
       applyReport(res)
     } catch (e) {
       current.restorePending(pending)
@@ -372,6 +377,7 @@ export const useGameStore = defineStore('game', () => {
     state.value = null
     bossResult.value = null
     lastDraw.value = []
+    lastReportAt = 0
   }
 
   return {

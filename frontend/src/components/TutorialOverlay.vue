@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
@@ -12,6 +12,7 @@ import type { TutorialState } from '@/game/types'
 const game = useGameStore()
 const toast = useToastStore()
 const route = useRoute()
+const router = useRouter()
 
 const tutorial = ref<TutorialState | null>(null)
 const confirmSkip = ref(false)
@@ -74,7 +75,7 @@ async function next() {
       const target = nextStep ? STEP_ROUTE[nextStep.key] : undefined
       if (target && target !== route.path) {
         // 指引步骤会切到对应页面
-        window.location.assign(`#${target}`)
+        void router.push(target)
       }
     }
   } catch (e) {
@@ -102,7 +103,12 @@ defineExpose({ load })
 </script>
 
 <template>
-  <Modal v-if="visible && current" :open="visible" :title="`新手指引 ${current.step}/15 · ${current.title}`">
+  <Modal
+    v-if="visible && current"
+    :open="visible"
+    :z-index="90"
+    :title="`新手指引 ${current.step}/15 · ${current.title}`"
+  >
     <p class="text-sm leading-relaxed text-ink-200">{{ current.text }}</p>
     <p class="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
       需要操作：{{ current.action }}
@@ -123,7 +129,7 @@ defineExpose({ load })
     </template>
   </Modal>
 
-  <Modal :open="confirmSkip" title="确认跳过新手指引？" @close="confirmSkip = false">
+  <Modal :open="confirmSkip" :z-index="100" title="确认跳过新手指引？" @close="confirmSkip = false">
     <p class="text-sm text-ink-200">
       跳过后续所有步骤后，将<b class="text-rose-300">无法获得</b>指引完成奖励。之后可在「设置 → 新手指引」中重新开启。
     </p>

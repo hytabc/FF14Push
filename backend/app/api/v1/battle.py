@@ -34,7 +34,7 @@ from app.services.loot import boss_box_for_region, chest_by_id
 from app.services.progression import apply_exp
 from app.services.regions_util import kills_required, roll_gold, spawn_interval
 from app.services.stats import compute_stats
-from app.services.validator import validate_report
+from app.services.validator import MAX_ELAPSED_MS, MIN_ELAPSED_MS, validate_report
 
 router = APIRouter(prefix="/battle", tags=["battle"])
 settings = get_settings()
@@ -119,16 +119,24 @@ async def report(
 
     stats = compute_stats(hero, items)
 
+    # 客户端只在有事件时才上报，上报间隔并不固定：窗口必须以服务端时钟为准，
+    # 否则额度永远只能按固定短窗口核算，合法单杀会被判超速。
+    now = datetime.now(timezone.utc)
+    last_at = session.last_report_at or session.started_at
+    if last_at.tzinfo is None:  # SQLite 会返回 naive datetime
+        last_at = last_at.replace(tzinfo=timezone.utc)
+    server_elapsed_ms = int(max(0.0, (now - last_at).total_seconds() * 1000))
+    window_ms = max(MIN_ELAPSED_MS, min(MAX_ELAPSED_MS, max(payload.elapsedMs, server_elapsed_ms)))
+
     # 击杀额度：按理论上限随上报累积，跨上报保留余额，避免短上报把合法击杀全部截断
-    seconds = payload.elapsedMs / 1000.0
     allowance = float(session.kill_credit) + max_kills_in_seconds(
-        stats, payload.regionId, seconds, settings.report_tolerance
+        stats, payload.regionId, window_ms / 1000.0, settings.report_tolerance
     )
 
     result = validate_report(
         stats=stats,
         region_id=payload.regionId,
-        elapsed_ms=payload.elapsedMs,
+        elapsed_ms=window_ms,
         kills=[k.model_dump() for k in payload.kills],
         allowance=allowance,
         tolerance=settings.report_tolerance,
@@ -197,7 +205,7 @@ async def report(
     if payload.bossKilled:
         boss_result = await _settle_boss(db, user, hero, items, payload, rng)
 
-    session.last_report_at = datetime.now(timezone.utc)
+    session.last_report_at = now
     session.total_kills = int(session.total_kills) + len(result.kills)
     session.total_gold = int(session.total_gold) + result.total_gold
     session.total_exp = int(session.total_exp) + result.total_exp

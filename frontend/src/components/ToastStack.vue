@@ -12,7 +12,7 @@ const toneClass: Record<string, string> = {
 </script>
 
 <template>
-  <div class="pointer-events-none fixed inset-x-0 top-3 z-[80] flex flex-col items-center gap-2 px-3">
+  <div class="pointer-events-none fixed inset-x-0 top-3 z-[110] flex flex-col items-center gap-2 px-3">
     <TransitionGroup name="toast">
       <div
         v-for="item in toast.items"

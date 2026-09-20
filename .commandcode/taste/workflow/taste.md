@@ -1,3 +1,4 @@
 - Prefers a single shell script (e.g. `scripts/dev.sh`) to bootstrap and run local development (env setup, deps, starting servers) rather than relying on Docker locally. Confidence: 0.8
 - Prefers Docker Compose for server/production deployment, kept separate from the local dev workflow. Confidence: 0.8
 - Prefers ports and deployment configuration to be supplied via environment variables (`.env` files) rather than hardcoded in code or config. Confidence: 0.75
+- Prefers persistent data (e.g. database files) to be bind-mounted to a local directory path rather than kept in Docker managed volumes, so instance rebuilds/updates don't lose data. Confidence: 0.8

@@ -17,7 +17,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-eorzea}
     volumes:
-      - eorzea_pgdata:/var/lib/postgresql/data
+      # 数据库文件映射到本机目录（实例重建 / 更新不会丢数据）。
+      # 路径可用 .env 中的 POSTGRES_DATA_DIR 覆盖，默认仓库内 ./data/postgres。
+      - ${POSTGRES_DATA_DIR:-./data/postgres}:/var/lib/postgresql/data
     ports:
       # 默认只绑定本机，不对外暴露数据库。
       # 如需远程连接，把 127.0.0.1 改为 0.0.0.0（并确保防火墙与强密码）。
@@ -68,9 +70,6 @@ services:
       backend:
         condition: service_started
     networks: [eorzea]
-
-volumes:
-  eorzea_pgdata:
 
 networks:
   eorzea:

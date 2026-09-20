@@ -4,8 +4,9 @@ withDefaults(
     title?: string
     open: boolean
     maxWidth?: string
+    zIndex?: number
   }>(),
-  { title: '', maxWidth: 'max-w-lg' },
+  { title: '', maxWidth: 'max-w-lg', zIndex: 70 },
 )
 
 const emit = defineEmits<{ close: [] }>()
@@ -16,7 +17,8 @@ const emit = defineEmits<{ close: [] }>()
     <Transition name="fade">
       <div
         v-if="open"
-        class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4"
+        class="fixed inset-0 flex items-center justify-center bg-black/60 p-4"
+        :style="{ zIndex }"
         @click.self="emit('close')"
       >
         <div class="card w-full animate-rise p-5" :class="maxWidth">
