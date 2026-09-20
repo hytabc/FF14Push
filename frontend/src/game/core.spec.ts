@@ -272,4 +272,29 @@ describe('战斗模拟器', () => {
     expect(sim.heroHp).toBeLessThanOrEqual(100)
     expect(sim.heroHp).toBeGreaterThan(0)
   })
+
+  it('BOSS 击败后留在当前地区可继续挂机', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 100000, maxHp: 200000 }),
+      regionId: 1,
+      killsRequired: 3,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    let guard = 0
+    while (sim.phase !== 'cleared' && guard < 20000) {
+      sim.tick(0.1)
+      guard += 1
+    }
+    expect(sim.phase).toBe('cleared')
+
+    sim.continueAfterClear()
+    expect(sim.phase).toBe('mob')
+    expect(sim.killCount).toBe(0)
+    expect(sim.monster).toBeNull()
+
+    sim.tick(2)
+    expect(sim.monster).not.toBeNull()
+  })
 })

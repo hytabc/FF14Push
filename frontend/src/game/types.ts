@@ -81,7 +81,7 @@ export interface HeroStats {
 }
 
 export interface Hero {
-  id: number
+  id: number | null
   name: string
   level: number
   exp: number

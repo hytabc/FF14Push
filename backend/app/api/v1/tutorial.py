@@ -66,11 +66,16 @@ async def set_step(payload: TutorialRequest, db: DbSession, user: CurrentUser) -
 
 @router.post("/complete")
 async def complete(db: DbSession, user: CurrentUser) -> dict:
-    """完成全部 15 步：500 金币 + 3 个普通箱。跳过不发放。来源：PRD 新手指引 1.5"""
+    """完成全部 15 步：500 金币 + 3 个普通箱。跳过不发放，且奖励仅发一次。来源：PRD 新手指引 1.5"""
     row = await _progress(db, user.id)
     if row.skipped:
         return {**_payload(row), "granted": False, "message": "已跳过指引，不发放奖励"}
+
+    # 重播后再次走完流程：标记完成但不再发奖
+    row.current_step = TOTAL_STEPS
+    row.completed = True
     if row.rewarded:
+        await db.commit()
         return {**_payload(row), "granted": False, "message": "奖励已领取"}
 
     reward = CONFIG.tutorial["completionReward"]
@@ -85,8 +90,6 @@ async def complete(db: DbSession, user: CurrentUser) -> dict:
             generated.append(generate_item(chest["category"], 1, box_tier=chest["tier"])[0])
 
     grant = await grant_generated_items(db, user, generated, source="tutorial")
-    row.current_step = TOTAL_STEPS
-    row.completed = True
     row.rewarded = True
     await db.commit()
     return {
@@ -109,11 +112,10 @@ async def skip(db: DbSession, user: CurrentUser) -> dict:
 
 @router.post("/restart")
 async def restart(db: DbSession, user: CurrentUser) -> dict:
-    """从第一步重新播放。"""
+    """从第一步重新播放（已领取的奖励不重置，避免重播刷奖励）。"""
     row = await _progress(db, user.id)
     row.current_step = 1
     row.completed = False
     row.skipped = False
-    row.rewarded = False
     await db.commit()
     return {**_payload(row), "message": "已从第一步重新开始"}

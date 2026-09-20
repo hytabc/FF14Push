@@ -526,6 +526,19 @@ export class BattleSimulator {
     if (this.phase !== 'cleared') this.phase = 'idle'
   }
 
+  /** BOSS 已击败后留在当前地区：重置小怪阶段，继续原地挂机。 */
+  continueAfterClear(): void {
+    if (this.phase !== 'cleared') return
+    this.killCount = 0
+    this.monster = null
+    this.monsterHp = 0
+    this.monsterMaxHp = 0
+    this.dots = []
+    this.phase = 'mob'
+    this.spawnTimer = this.spawnInterval
+    this.pushLog('留在当前地区，继续挂机', 'system')
+  }
+
   /** 取出并清空待上报的事件。 */
   drainPending(): {
     kills: KillRecord[]

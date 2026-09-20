@@ -538,6 +538,23 @@ class TestTavern:
         resp = await auth_client.post(f"{API}/tavern/dismiss")
         assert resp.status_code == 400
 
+    async def test_state_without_hero_shows_default_adventurer(self, auth_client, session_factory) -> None:
+        await _set_gold(auth_client, session_factory, 1_000_000)
+        recruited = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})
+        assert recruited.status_code == 200, recruited.text
+
+        dismissed = await auth_client.post(f"{API}/tavern/dismiss")
+        assert dismissed.status_code == 200, dismissed.text
+
+        state = await auth_client.get(f"{API}/game/state")
+        assert state.status_code == 200, state.text
+        hero = state.json()["hero"]
+        assert hero["name"] == "冒险者"
+        assert hero["level"] == 1
+        assert hero["jobId"] == "adventurer"
+        assert hero["isInitial"] is True
+        assert hero["currentRegionId"] is None
+
 
 class TestCodexAndRanking:
     async def test_equipment_codex_unlocks_on_obtain(self, auth_client, session_factory) -> None:
@@ -621,6 +638,22 @@ class TestTutorial:
         body = (await auth_client.post(f"{API}/tutorial/restart")).json()
         assert body["currentStep"] == 1
         assert body["skipped"] is False
+
+    async def test_replay_after_restart_grants_no_reward(self, auth_client) -> None:
+        first = (await auth_client.post(f"{API}/tutorial/complete")).json()
+        assert first["granted"] is True
+        gold_after_first = first["gold"]
+
+        restarted = (await auth_client.post(f"{API}/tutorial/restart")).json()
+        assert restarted["currentStep"] == 1
+        assert restarted["rewarded"] is True
+
+        again = (await auth_client.post(f"{API}/tutorial/complete")).json()
+        assert again["granted"] is False
+        assert again["completed"] is True
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        assert me["gold"] == gold_after_first
 
 
 class TestSettings:

@@ -243,6 +243,8 @@ export const useGameStore = defineStore('game', () => {
 
   function dismissBossResult() {
     bossResult.value = null
+    // 留在当前地区：BOSS 已击败后模拟会停在 cleared，这里恢复小怪阶段继续挂机。
+    sim.value?.continueAfterClear()
   }
 
   // ---------- 页面可见性：离开即暂停，不做离线收益 ----------

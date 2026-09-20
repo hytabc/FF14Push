@@ -22,18 +22,40 @@ from app.services.codex import codex_progress
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
 from app.services.progression import exp_to_next
-from app.services.recruiting import recruit_cost
+from app.services.recruiting import initial_hero, recruit_cost
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
 from app.services.serialization import hero_to_dict, item_to_dict, loadout
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power, sell_price_range
 
 
+def _placeholder_hero(user_id: int) -> Hero:
+    """无英雄时用于展示的默认冒险者（不落库）。来源：需求「无英雄显示为默认冒险者」。"""
+    preset = initial_hero()
+    return Hero(
+        user_id=user_id,
+        name=preset["name"],
+        level=1,
+        exp=0,
+        talent=preset["talent"],
+        attr_bias=preset["attrBias"],
+        strength=preset["strength"],
+        agility=preset["agility"],
+        intellect=preset["intellect"],
+        current_region_id=None,
+        region_kill_count=0,
+        is_initial=True,
+    )
+
+
 async def build_game_state(
-    db: AsyncSession, user: User, hero: Hero, items: Sequence[Item] | None = None
+    db: AsyncSession, user: User, hero: Hero | None, items: Sequence[Item] | None = None
 ) -> dict[str, Any]:
     if items is None:
         items = list((await db.execute(select(Item).where(Item.user_id == user.id))).scalars().all())
+
+    if hero is None:
+        hero = _placeholder_hero(user.id)
 
     stats = compute_stats(hero, items)
 
@@ -74,7 +96,7 @@ async def build_game_state(
         await db.execute(select(AutoSellSetting).where(AutoSellSetting.user_id == user.id))
     ).scalar_one_or_none()
 
-    region = CONFIG.region_by_id.get(hero.current_region_id or 1)
+    region = CONFIG.region_by_id.get(hero.current_region_id) if hero.current_region_id else None
     region_detail = None
     if region:
         region_detail = {

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
+from app.core.deps import CurrentItems, CurrentUser, DbSession, OptionalHero
 from app.services.game_config import CONFIG
 from app.services.state import build_game_state
 
@@ -13,7 +13,7 @@ router = APIRouter(tags=["game"])
 
 @router.get("/game/state")
 async def game_state(
-    db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
+    db: DbSession, user: CurrentUser, hero: OptionalHero, items: CurrentItems
 ) -> dict:
     return await build_game_state(db, user, hero, items)
 
