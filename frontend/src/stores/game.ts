@@ -32,10 +32,13 @@ export const useGameStore = defineStore('game', () => {
   const sessionId = ref<number | null>(null)
   const running = ref(false)
   const logVersion = ref(0)
+  // 0.1s 节拍：技能 CD 等时间数据按 0.1s 刷新展示
+  const uiTick = ref(0)
   const bossResult = ref<BossResult | null>(null)
   const lastError = ref<string | null>(null)
 
   let rafId = 0
+  let tickTimer = 0
   let lastTs = 0
   let reportAccum = 0
   let reporting = false
@@ -130,6 +133,9 @@ export const useGameStore = defineStore('game', () => {
   function startLoop() {
     if (rafId) return
     lastTs = performance.now()
+    tickTimer = window.setInterval(() => {
+      uiTick.value += 1
+    }, TICK_MS)
     const step = (ts: number) => {
       const dtMs = Math.min(400, ts - lastTs)
       lastTs = ts
@@ -154,6 +160,8 @@ export const useGameStore = defineStore('game', () => {
   function stopLoop() {
     if (rafId) cancelAnimationFrame(rafId)
     rafId = 0
+    if (tickTimer) window.clearInterval(tickTimer)
+    tickTimer = 0
   }
 
   async function report() {
@@ -387,6 +395,7 @@ export const useGameStore = defineStore('game', () => {
     sessionId,
     running,
     isRunning,
+    uiTick,
     battleLog,
     floating,
     bossResult,

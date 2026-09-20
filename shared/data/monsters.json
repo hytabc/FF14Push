@@ -97,7 +97,7 @@
   "eliteBaseChance": 0.08,
   "$commentXp": "经验值 = 掉落金币 × xpPerGold，保证「怪物等级越高经验越多」。来源：PRD 2.11.1",
   "xpPerGold": 1.5,
-  "$commentDrop": "装备掉落概率（概率较低）。来源：PRD 2.7.2",
-  "equipmentDropChance": 0.03,
+  "$commentDrop": "怪物装备掉落：已停用（0）。装备只能通过抽箱获取；BOSS 宝箱奖励走 chests.json，不受此值影响。",
+  "equipmentDropChance": 0,
   "$commentLevel": "地区等级取「等级区间下限」，与参考英雄曲线对齐"
 }

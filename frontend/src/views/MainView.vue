@@ -51,6 +51,16 @@ const killProgress = computed(() => {
   return Math.min(100, (s.killCount / Math.max(1, s.killsRequired)) * 100)
 })
 
+/** 技能剩余 CD：量化到 0.1s，并由 0.1s 节拍（uiTick）驱动刷新。 */
+const cdRemaining = computed<Record<string, number>>(() => {
+  void game.uiTick
+  const out: Record<string, number> = {}
+  for (const skill of sim.value?.skills ?? []) {
+    out[skill.id] = Math.max(0, Math.round((sim.value?.cooldowns[skill.id] ?? 0) * 10) / 10)
+  }
+  return out
+})
+
 onMounted(async () => {
   if (!game.state) await game.loadState()
   if (!game.isRunning && game.state?.hero.currentRegionId) {
@@ -237,8 +247,8 @@ function openBossDialog() {
           </p>
           <p class="text-[10px] text-ink-600">
             CD {{ skill.cd }}s
-            <span v-if="(sim?.cooldowns[skill.id] ?? 0) > 0" class="text-amber-300">
-              · 剩 {{ (sim?.cooldowns[skill.id] ?? 0).toFixed(1) }}s
+            <span v-if="cdRemaining[skill.id] > 0" class="text-amber-300">
+              · 剩 {{ cdRemaining[skill.id].toFixed(1) }}s
             </span>
           </p>
         </div>

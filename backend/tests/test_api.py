@@ -107,7 +107,7 @@ async def _farm(client, region_id: int, reports: int = 3, elapsed_ms: int = 1500
                 "regionId": region_id,
                 "elapsedMs": elapsed_ms,
                 "kills": [
-                    {"monsterId": "normal", "gold": 20, "exp": 30, "dropped": False}
+                    {"monsterId": "normal", "gold": 20, "exp": 30}
                     for _ in range(max(1, int(elapsed_ms / 1000 / spawn)))
                 ],
                 "killCount": 0,
@@ -182,6 +182,28 @@ class TestBattleLoop:
         assert result["gold"] > 0
         assert result["expGained"] > 0
         assert result["killCount"] > 0
+
+    async def test_monster_kills_grant_no_equipment(self, auth_client) -> None:
+        """装备只能通过抽箱获取：打怪不产装备，伪造 dropped 也一样。"""
+        started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
+        session_id = started.json()["sessionId"]
+        resp = await auth_client.post(
+            f"{API}/battle/session/report",
+            json={
+                "sessionId": session_id,
+                "regionId": 1,
+                "elapsedMs": 20000,
+                "kills": [
+                    {"monsterId": "normal", "gold": 20, "exp": 30, "dropped": True} for _ in range(4)
+                ],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["goldGained"] > 0
+        assert body["items"] == []
+        assert body["autoSold"] == []
+        assert (await auth_client.get(f"{API}/game/state")).json()["items"] == []
 
     async def test_reject_absurd_report(self, auth_client) -> None:
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})

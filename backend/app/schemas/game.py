@@ -32,6 +32,7 @@ class KillEvent(BaseModel):
     monsterId: str
     gold: int
     exp: int
+    # 已忽略：装备仅通过抽箱获取，服务端不再采信该字段（保留以兼容旧客户端）
     dropped: bool = False
 
 

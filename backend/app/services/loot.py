@@ -73,10 +73,6 @@ def draw_rarity(box_tier: str, pity: PityState, rng: random.Random | None = None
     return final, state
 
 
-def equipment_drop_chance() -> float:
-    return float(CONFIG.monsters["equipmentDropChance"])
-
-
 def boss_box_for_region(region_id: int) -> str:
     """按地区序号决定 BOSS 宝箱品质。来源：PRD 地区 4.4"""
     for rule in CONFIG.chests["bossRewardBoxByTier"]:

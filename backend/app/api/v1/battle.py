@@ -1,6 +1,7 @@
 """自动战斗：会话管理、上报校验与结算。来源：PRD 战斗 2.7、地区关卡、防作弊 2.5
 
-权威边界：客户端只上报「发生了什么」，金币/经验/掉落一律由服务端重新结算。
+权威边界：客户端只上报「发生了什么」，金币/经验一律由服务端重新结算。
+装备只能通过抽箱获取（BOSS 宝箱见 _settle_boss），小怪与精英不掉落装备。
 不做离线收益：会话结束时战斗即停止。
 """
 
@@ -38,8 +39,6 @@ from app.services.validator import MAX_ELAPSED_MS, MIN_ELAPSED_MS, validate_repo
 
 router = APIRouter(prefix="/battle", tags=["battle"])
 settings = get_settings()
-
-ITEM_CATEGORIES = ["weapon", "armor", "accessory"]
 
 
 async def _progress(db: DbSession, user_id: int, region_id: int) -> RegionProgress | None:
@@ -162,17 +161,7 @@ async def report(
     user.gold = int(user.gold) + result.total_gold
     level_info = apply_exp(hero, result.total_exp)
 
-    # 装备掉落：客户端只上报「发生了掉落」，产物由服务端 RNG 决定
-    generated = []
-    for kill in result.kills:
-        if kill.dropped:
-            category = rng.choice(ITEM_CATEGORIES)
-            item, _ = generate_item(category, hero.level, rng=rng)
-            generated.append(item)
-
-    grant = await grant_generated_items(db, user, generated, source="monster", rng=rng)
-
-    # 小怪图鉴
+    # 装备：怪物不掉落，仅能通过抽箱获取（BOSS 宝箱见 _settle_boss）
     for kill in result.kills:
         await unlock_monster(db, user.id, kill.monster_id)
 
@@ -219,9 +208,9 @@ async def report(
         "level": level_info,
         "killCount": int(hero.region_kill_count),
         "killsRequired": required,
-        "items": grant["items"],
-        "autoSold": grant["autoSold"],
-        "autoGold": grant["autoGold"],
+        "items": [],
+        "autoSold": [],
+        "autoGold": 0,
         "boss": boss_result,
         "warnings": result.issues,
     }

@@ -13,6 +13,22 @@ const pickerSlot = ref<SlotId | null>(null)
 
 const slots = computed(() => [...data.slots].sort((a, b) => a.order - b.order))
 
+/** 栏位分组：左侧防具、右侧饰品、下方武器（整行）。 */
+const slotGroups = computed(() => {
+  const byId = new Map(slots.value.map((s) => [s.id, s]))
+  const pick = (ids: SlotId[]) => ids.map((id) => byId.get(id)).filter((s) => s !== undefined)
+  return [
+    { key: 'armor', title: '防具', slots: pick(['head', 'body', 'hands', 'legs', 'feet']), full: false },
+    {
+      key: 'accessory',
+      title: '饰品',
+      slots: pick(['necklace', 'earring', 'bracelet', 'ring1', 'ring2']),
+      full: false,
+    },
+    { key: 'weapon', title: '武器', slots: pick(['mainHand']), full: true },
+  ]
+})
+
 const loadout = computed(() => game.loadout)
 
 const candidates = computed<Item[]>(() => {
@@ -53,28 +69,33 @@ async function unequip(slotId: SlotId) {
         <span class="text-xs text-ink-400">共 {{ slots.length }} 个栏位（含双戒指）</span>
       </div>
 
-      <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <button
-          v-for="slot in slots"
-          :key="slot.id"
-          class="rounded-lg border p-3 text-left transition hover:border-white/40"
-          :class="loadout[slot.id] ? [rarityClass(loadout[slot.id]!.rarity), rarityBg(loadout[slot.id]!.rarity)] : 'border-ink-700 bg-ink-800/60'"
-          @click="openPicker(slot.id)"
-        >
-          <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
-          <template v-if="loadout[slot.id]">
-            <p class="truncate text-sm font-medium">{{ loadout[slot.id]!.name }}</p>
-            <p class="text-[10px] text-ink-400">
-              {{ rarityName(loadout[slot.id]!.rarity) }} · Lv.{{ loadout[slot.id]!.levelReq }}
-            </p>
-            <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
-              <p v-for="entry in loadout[slot.id]!.baseAttrs" :key="entry.attr">
-                {{ entry.attr }} +{{ Math.round(entry.value) }}
-              </p>
-            </div>
-          </template>
-          <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择装备</p>
-        </button>
+      <div class="mt-4 grid gap-3 lg:grid-cols-2">
+        <div v-for="group in slotGroups" :key="group.key" :class="group.full ? 'lg:col-span-2' : ''">
+          <p class="mb-2 text-xs font-medium text-ink-400">{{ group.title }}</p>
+          <div class="space-y-2">
+            <button
+              v-for="slot in group.slots"
+              :key="slot.id"
+              class="w-full rounded-lg border p-3 text-left transition hover:border-white/40"
+              :class="loadout[slot.id] ? [rarityClass(loadout[slot.id]!.rarity), rarityBg(loadout[slot.id]!.rarity)] : 'border-ink-700 bg-ink-800/60'"
+              @click="openPicker(slot.id)"
+            >
+              <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
+              <template v-if="loadout[slot.id]">
+                <p class="truncate text-sm font-medium">{{ loadout[slot.id]!.name }}</p>
+                <p class="text-[10px] text-ink-400">
+                  {{ rarityName(loadout[slot.id]!.rarity) }} · Lv.{{ loadout[slot.id]!.levelReq }}
+                </p>
+                <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+                  <p v-for="entry in loadout[slot.id]!.baseAttrs" :key="entry.attr">
+                    {{ entry.attr }} +{{ Math.round(entry.value) }}
+                  </p>
+                </div>
+              </template>
+              <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择装备</p>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 

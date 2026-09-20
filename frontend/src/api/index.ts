@@ -16,7 +16,6 @@ export interface KillPayload {
   monsterId: string
   gold: number
   exp: number
-  dropped: boolean
 }
 
 export const api = {

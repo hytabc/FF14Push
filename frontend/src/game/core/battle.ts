@@ -1,8 +1,8 @@
 /**
  * 客户端战斗模拟。
  *
- * 只负责表现与「发生了哪些事件」；金币、经验、掉落成品一律以服务端结算为准
- * （服务端会按理论上限校验并重新 roll 装备）。
+ * 只负责表现与「发生了哪些事件」；金币与经验一律以服务端结算为准
+ * （装备只能通过抽箱获取，怪物不掉落装备）。
  */
 import data from '@shared/schema'
 
@@ -24,7 +24,6 @@ export interface KillRecord {
   monsterId: string
   gold: number
   exp: number
-  dropped: boolean
 }
 
 export interface LogEntry {
@@ -413,15 +412,14 @@ export class BattleSimulator {
     const isBoss = monster.kind === 'boss'
     const gold = this.rollGold(monster.kind)
     const exp = Math.max(1, Math.floor(gold * data.monsters.xpPerGold))
-    const dropped = !isBoss && Math.random() < data.monsters.equipmentDropChance
 
     if (isBoss) {
       this.pendingBossKill = true
       this.pushLog(`击败「${monster.name}」！`, 'boss')
     } else {
-      this.pendingKills.push({ monsterId: monster.templateId, gold, exp, dropped })
+      // 装备不再由怪物掉落：只能通过抽箱获取
+      this.pendingKills.push({ monsterId: monster.templateId, gold, exp })
       this.pushLog(`击败 ${monster.name}，获得 ${gold} 金币`, 'loot')
-      if (dropped) this.pushLog('掉落了一件装备！', 'loot')
     }
 
     this.monster = null

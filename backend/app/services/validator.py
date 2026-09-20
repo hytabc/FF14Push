@@ -3,7 +3,7 @@
 策略：
 - 击杀数超过理论上限 → 按上限截断，超出容差 2 倍（另加 1 只粒度容差）以上则整单拒绝并写审计日志；
 - 单只怪物金币超过该地区理论上限 → 截断到上限；
-- 掉落物一律由服务端 RNG 产出，客户端只上报「是否发生了掉落」。
+- 装备不再由怪物掉落（仅抽箱获取），客户端上报的 dropped 一律忽略。
 """
 
 from __future__ import annotations
@@ -101,7 +101,8 @@ def validate_report(
                 monster_id=template_id,
                 gold=max(0, gold),
                 exp=max(0, exp),
-                dropped=bool(kill.get("dropped", False)),
+                # 装备不再由怪物掉落（仅抽箱获取），不采信客户端上报的 dropped
+                dropped=False,
             )
         )
 
