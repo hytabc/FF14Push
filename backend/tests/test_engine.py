@@ -15,12 +15,12 @@ from app.services.combat_model import (
 from app.services.economy import REQUIRED, build_craft_plan
 from app.services.game_config import CONFIG, BaseItem
 from app.services.item_factory import generate_item
-from app.services.loot import PityState, draw_rarity, roll_rarity
+from app.services.loot import PityState, chest_by_id, draw_rarity, roll_rarity
 from app.services.regions_util import level_penalty
 from app.services.stats import compute_stats, convert_three_attrs
-from app.services.valuation import hero_power, sell_price, sell_price_range
+from app.services.valuation import attr_factor, hero_power, sell_price, sell_price_range
 
-from tests.fakes import FakeHero, FakeItem
+from tests.fakes import FakeHero, FakeItem, GeneratedItem
 
 
 class TestThreeAttributes:
@@ -265,6 +265,42 @@ class TestValuation:
             ],
         )
         assert sell_price(with_terms) > sell_price(plain)
+
+    def test_attr_factor_is_bounded(self) -> None:
+        """属性系数必须饱和封顶，否则高等级装备卖价会随属性无限膨胀。"""
+        cap = 1.0 + float(CONFIG.economy["sell"]["attrBonusMax"])
+        huge = FakeItem(rarity="common", base_attrs=[{"attr": "attack", "value": 10_000_000}])
+        tiny = FakeItem(rarity="common", base_attrs=[{"attr": "attack", "value": 1}])
+        assert attr_factor(tiny) >= 1.0
+        assert attr_factor(huge) < cap
+        assert attr_factor(huge) > attr_factor(tiny)
+
+
+class TestSellEconomy:
+    """出售价必须明显低于抽箱价，否则可「买箱卖装备」无限刷金币。来源：需求「防止金币无限叠加」。"""
+
+    CHEST_IDS = ("weaponBox", "armorBox", "accessoryBox", "advWeaponBox", "advArmorBox", "advAccessoryBox")
+
+    @pytest.mark.parametrize("level", [1, 25, 50, 100])
+    def test_expected_sell_below_chest_price(self, level: int) -> None:
+        for chest_id in self.CHEST_IDS:
+            chest = chest_by_id(chest_id)
+            assert chest is not None
+            rng = random.Random(20240101)
+            pity = PityState()
+            n = 3000
+            total = 0
+            wins = 0
+            for _ in range(n):
+                data, pity = generate_item(
+                    chest["category"], level, box_tier=chest["tier"], rng=rng, pity=pity
+                )
+                price = sell_price(GeneratedItem(data))
+                total += price
+                wins += 1 if price > chest["price"] else 0
+            mean = total / n
+            assert mean < chest["price"], f"{chest_id} Lv{level} 期望卖出 {mean:.1f} ≥ 箱子价 {chest['price']}"
+            assert wins / n < 0.10, f"{chest_id} Lv{level} 抽到赚头的概率 {wins / n:.1%} 过高"
 
 
 class TestCrafting:

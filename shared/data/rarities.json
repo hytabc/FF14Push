@@ -31,7 +31,7 @@
       "subAttrMax": 2,
       "debuffChance": 0.25,
       "boxChance": { "normal": 0.30, "advanced": 0.30 },
-      "sellCoef": 2.5,
+      "sellCoef": 2.0,
       "refineCost": 1000,
       "enchantCost": 5000,
       "tier": 1
@@ -48,7 +48,7 @@
       "subAttrMax": 2,
       "debuffChance": 0.20,
       "boxChance": { "normal": 0.15, "advanced": 0.30 },
-      "sellCoef": 6.0,
+      "sellCoef": 3.5,
       "refineCost": 5000,
       "enchantCost": 25000,
       "tier": 2
@@ -65,7 +65,7 @@
       "subAttrMax": 3,
       "debuffChance": 0.14,
       "boxChance": { "normal": 0.04, "advanced": 0.15 },
-      "sellCoef": 15.0,
+      "sellCoef": 12.0,
       "refineCost": 25000,
       "enchantCost": 120000,
       "tier": 3
@@ -82,7 +82,7 @@
       "subAttrMax": 3,
       "debuffChance": 0.09,
       "boxChance": { "normal": 0.009, "advanced": 0.04 },
-      "sellCoef": 40.0,
+      "sellCoef": 45.0,
       "refineCost": 120000,
       "enchantCost": 600000,
       "tier": 4
@@ -99,7 +99,7 @@
       "subAttrMax": 3,
       "debuffChance": 0.05,
       "boxChance": { "normal": 0.001, "advanced": 0.01 },
-      "sellCoef": 100.0,
+      "sellCoef": 160.0,
       "refineCost": 600000,
       "enchantCost": 3000000,
       "tier": 5

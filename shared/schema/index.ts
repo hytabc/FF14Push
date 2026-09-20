@@ -358,7 +358,7 @@ export const gameData = {
     routes: Array<{ from: RarityId; to: RarityId; fee: number }>
   },
   economy: economyJson as unknown as {
-    sell: { basePrice: number; randomFloat: number; scoreDivisor: number; autoSellRarities: RarityId[] }
+    sell: { basePrice: number; randomFloat: number; scoreHalf: number; attrBonusMax: number; autoSellRarities: RarityId[] }
     refine: { baseAttrFloat: number; subAttrFloat: number }
     enchant: { autoUntilRareExtraCostMultiplier: number }
     termQuality: Record<TermQuality, number>

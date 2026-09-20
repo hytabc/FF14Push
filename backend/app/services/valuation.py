@@ -48,6 +48,18 @@ def item_score(item: Any) -> float:
     return score
 
 
+def attr_factor(item: Any) -> float:
+    """属性加成系数 = 1 + attrBonusMax × score / (score + scoreHalf)。
+
+    用饱和曲线封顶（1 → 1 + attrBonusMax），避免卖价随属性评分线性无上限增长：
+    箱子价格是固定的，item_score 却随英雄等级/品阶膨胀，线性系数会让「买箱卖装备」稳赚。
+    """
+    cfg = CONFIG.economy["sell"]
+    score = max(0.0, item_score(item))
+    half = max(1.0, float(cfg["scoreHalf"]))
+    return 1.0 + float(cfg["attrBonusMax"]) * score / (score + half)
+
+
 def term_value_coefficient(item: Any) -> float:
     """Buff 价值系数 = Σ(Buff 价值) − Σ(Debuff 价值)。"""
     total = 0.0
@@ -61,14 +73,13 @@ def term_value_coefficient(item: Any) -> float:
 
 
 def sell_price(item: Any, rng: Any | None = None) -> int:
-    """出售价格 = 底价 × 品阶系数 × (1 + 属性评分/100) × (1 + Buff价值系数) × (1 ± 10%)。"""
+    """出售价格 = 底价 × 品阶系数 × 属性系数 × (1 + Buff价值系数) × (1 ± 10%)。"""
     cfg = CONFIG.economy["sell"]
     base_price = float(cfg["basePrice"])
     rarity_coef = float(CONFIG.rarities[item.rarity]["sellCoef"])
-    score_coef = item_score(item) / float(cfg["scoreDivisor"])
     buff_coef = term_value_coefficient(item)
 
-    price = base_price * rarity_coef * (1.0 + score_coef) * max(0.1, 1.0 + buff_coef)
+    price = base_price * rarity_coef * attr_factor(item) * max(0.1, 1.0 + buff_coef)
     spread = float(cfg["randomFloat"])
     if rng is not None:
         price *= 1.0 + rng.uniform(-spread, spread)

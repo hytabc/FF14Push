@@ -1,9 +1,11 @@
 {
   "$comment": "经济系统：出售 / 重造 / 附魔。来源：PRD 出售 3.2、重造 4.2、附魔 5.2-5.3",
+  "$commentSell": "出售价 = 底价 × 品阶系数 × 属性系数 × Buff系数 × 随机浮动。属性系数用饱和曲线封顶（1 → 1+attrBonusMax），避免高等级装备卖价随属性无限膨胀、买箱卖装备刷金币。",
   "sell": {
     "basePrice": 10,
     "randomFloat": 0.10,
-    "scoreDivisor": 100,
+    "scoreHalf": 1200,
+    "attrBonusMax": 0.6,
     "autoSellRarities": ["common", "uncommon"]
   },
   "refine": {

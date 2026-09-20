@@ -29,6 +29,16 @@ class FakeHero:
         self.is_initial = True
 
 
+class GeneratedItem:
+    """把 item_factory 生成的 dict 适配成可参与估值/序列化的对象。"""
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.rarity = data["rarity"]
+        self.base_attrs = data["baseAttrs"]
+        self.sub_attrs = data["subAttrs"]
+        self.terms = data["terms"]
+
+
 class FakeItem:
     def __init__(
         self,
