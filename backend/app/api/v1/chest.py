@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
 from app.models import ChestPity
 from app.schemas.game import ChestOpenRequest
+from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import PityState, chest_by_id
@@ -18,6 +19,7 @@ from app.services.stats import compute_stats
 router = APIRouter(prefix="/chest", tags=["chest"])
 
 ALLOWED_COUNTS = {1, 10}
+LEVEL_BANDS = [int(x) for x in CONFIG.chests["levelBands"]]
 
 
 async def _pity(db: DbSession, user_id: int, chest_id: str) -> ChestPity:
@@ -47,6 +49,19 @@ async def open_chest(
     if payload.count not in ALLOWED_COUNTS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只支持单抽或十连")
 
+    # 抽箱等级档位：需玩家等级达到档位；省略时按玩家当前等级（等级同步）。
+    band = payload.level
+    if band is None:
+        band = hero.level
+    else:
+        if band not in LEVEL_BANDS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="未知的抽箱等级档位")
+        if hero.level < band:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"需要英雄等级 {band} 才能抽取该档位",
+            )
+
     cost = int(chest["price"]) * payload.count
     if int(user.gold) < cost:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
@@ -65,7 +80,7 @@ async def open_chest(
     for _ in range(payload.count):
         item, pity = generate_item(
             category=chest["category"],
-            level=hero.level,
+            level=band,
             box_tier=chest["tier"],
             rng=rng,
             pity=pity,

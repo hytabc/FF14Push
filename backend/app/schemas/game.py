@@ -78,6 +78,8 @@ class SellRequest(BaseModel):
 class ChestOpenRequest(BaseModel):
     chestId: str
     count: int = 1
+    # 抽箱等级档位：箱子内容按该等级生成；需玩家等级达到该档位。省略时按玩家当前等级。
+    level: int | None = None
 
 
 class CraftRequest(BaseModel):

@@ -438,6 +438,85 @@ class TestEconomy:
             assert item["score"] >= 0
         assert body["pity"]["sinceRare"] < 10
 
+    async def test_chest_level_band_gate(self, auth_client, session_factory) -> None:
+        await _set_gold(auth_client, session_factory, 100_000)
+        # 1 级英雄不能抽 20 级档位
+        locked = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 1, "level": 20}
+        )
+        assert locked.status_code == 400
+        assert "等级" in locked.json()["detail"]
+
+        # 非档位等级直接拒绝
+        bad = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 1, "level": 37}
+        )
+        assert bad.status_code == 400
+
+        # 1 级档位可用，产出 1 级底材
+        ok = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 10, "level": 1}
+        )
+        assert ok.status_code == 200, ok.text
+        for item in ok.json()["items"]:
+            assert item["levelReq"] <= 1
+
+    async def test_chest_band_scales_contents_with_selected_level(
+        self, auth_client, session_factory
+    ) -> None:
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.level = 40
+            await db.commit()
+        await _set_gold(auth_client, session_factory, 1_000_000)
+
+        high = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 10, "level": 40}
+        )
+        assert high.status_code == 200, high.text
+        assert any(item["levelReq"] == 40 for item in high.json()["items"])
+
+        low = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 10, "level": 1}
+        )
+        assert low.status_code == 200, low.text
+        assert all(item["levelReq"] <= 1 for item in low.json()["items"])
+
+    async def test_equip_ignores_level_requirement(self, auth_client, session_factory) -> None:
+        """装备不再有等级门槛：低等级英雄也能穿戴高等级装备。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            db.add(
+                Item(
+                    user_id=me["id"],
+                    base_id="w_sword_shield_0",
+                    name="高等级武器",
+                    category="weapon",
+                    slot="mainHand",
+                    rarity="common",
+                    level_req=95,
+                    base_attrs=[{"attr": "attack", "value": 10.0}],
+                    sub_attrs=[],
+                    terms=[],
+                    equipped_slot=None,
+                    source="test",
+                )
+            )
+            await db.commit()
+            item_id = (
+                await db.execute(
+                    select(Item).where(Item.user_id == me["id"], Item.level_req == 95)
+                )
+            ).scalar_one().id
+
+        resp = await auth_client.post(
+            f"{API}/inventory/equip", json={"itemId": item_id, "slot": "mainHand"}
+        )
+        assert resp.status_code == 200, resp.text
+        loadout = (await auth_client.get(f"{API}/game/state")).json()["loadout"]
+        assert loadout["mainHand"]["id"] == item_id
+
     async def test_equip_and_unequip(self, auth_client, session_factory) -> None:
         opened = await _open_one(auth_client, session_factory)
         item = opened["items"][0]

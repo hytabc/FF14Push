@@ -13,9 +13,15 @@ const game = useGameStore()
 const toast = useToastStore()
 
 const chests = data.chests.chests
+const LEVEL_BANDS = data.chests.levelBands
 const busy = ref<string | null>(null)
 const revealItems = ref<Item[]>([])
 const showReveal = ref(false)
+
+const heroLevel = computed(() => game.hero?.level ?? 1)
+/** 已解锁的等级档位（玩家等级达到即可选）。 */
+const unlockedBands = computed(() => LEVEL_BANDS.filter((b) => b <= heroLevel.value))
+const band = ref(LEVEL_BANDS[0])
 
 const PITY = data.chests.pity
 
@@ -40,13 +46,19 @@ const canAfford = computed(() => (price: number, count: number) => game.gold >= 
 
 onMounted(async () => {
   if (!game.state) await game.loadState()
+  // 默认选中已解锁的最高档位
+  band.value = unlockedBands.value[unlockedBands.value.length - 1] ?? LEVEL_BANDS[0]
 })
+
+function isUnlocked(level: number): boolean {
+  return heroLevel.value >= level
+}
 
 async function draw(chestId: string, count: number) {
   if (busy.value) return
   busy.value = chestId
   try {
-    const res = await game.openChest(chestId, count)
+    const res = await game.openChest(chestId, count, band.value)
     if (!res) return
     revealItems.value = res.items
     showReveal.value = true
@@ -80,6 +92,34 @@ function bestRarity(): string {
       </p>
     </section>
 
+    <section class="card p-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <h3 class="text-sm font-semibold text-white">抽取档位</h3>
+        <span class="text-[11px] text-ink-400">
+          箱子内容按所选档位生成（装备无穿戴等级限制）；需达到对应等级才可选择，当前 Lv.{{ heroLevel }}。
+        </span>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button
+          v-for="b in LEVEL_BANDS"
+          :key="b"
+          class="rounded-md border px-3 py-1.5 text-xs transition"
+          :class="
+            !isUnlocked(b)
+              ? 'cursor-not-allowed border-ink-700 text-ink-600'
+              : band === b
+                ? 'border-amber-400 bg-amber-400/15 text-amber-200'
+                : 'border-ink-600 text-ink-300 hover:border-ink-400'
+          "
+          :disabled="!isUnlocked(b)"
+          :title="isUnlocked(b) ? `抽取 ${b} 级档位` : `需要英雄等级 ${b}`"
+          @click="band = b"
+        >
+          <span v-if="!isUnlocked(b)">🔒 </span>{{ b }} 级
+        </button>
+      </div>
+    </section>
+
     <section class="grid gap-3 md:grid-cols-2">
       <article v-for="chest in chests" :key="chest.id" class="card p-4">
         <div class="flex items-start justify-between">
@@ -87,7 +127,7 @@ function bestRarity(): string {
             <h3 class="text-sm font-semibold text-white">{{ chest.name }}</h3>
             <p class="text-[11px] text-ink-400">
               {{ { weapon: '武器', armor: '防具', accessory: '饰品' }[chest.category] }} ·
-              {{ chest.tier === 'advanced' ? '高级（品阶概率提升）' : '普通' }}
+              {{ chest.tier === 'advanced' ? '高级（品阶概率提升）' : '普通' }} · {{ band }} 级档位
             </p>
           </div>
           <span class="rounded bg-ink-800 px-2 py-1 font-mono text-xs text-amber-300">

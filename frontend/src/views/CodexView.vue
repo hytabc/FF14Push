@@ -129,7 +129,7 @@ function entryRarity(entry: Entry): RarityId {
                 {{ entry.unlocked ? entry.name : '未解锁' }}
               </p>
               <p class="text-[10px] text-ink-400">
-                {{ categoryName(entry.category) }} · {{ slotName(entry.equipSlots?.[0] ?? entry.slot) }} · 需 Lv.{{ entry.levelReq }}
+                {{ categoryName(entry.category) }} · {{ slotName(entry.equipSlots?.[0] ?? entry.slot) }} · Lv.{{ entry.levelReq }}
               </p>
             </div>
           </div>

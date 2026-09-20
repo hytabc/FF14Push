@@ -399,7 +399,7 @@ export const gameData = {
     }
     raids: RaidDef[]
   },
-  chests: chestsJson as unknown as { chests: ChestDef[]; pity: ChestPity[] },
+  chests: chestsJson as unknown as { chests: ChestDef[]; pity: ChestPity[]; levelBands: number[] },
   crafting: craftingJson as unknown as {
     requiredCount: number
     categories: Category[]

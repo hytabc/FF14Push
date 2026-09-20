@@ -31,15 +31,11 @@ const slotGroups = computed(() => {
 })
 
 const loadout = computed(() => game.loadout)
-const heroLevel = computed(() => game.hero?.level ?? 1)
 
 const candidates = computed<Item[]>(() => {
   if (!pickerSlot.value) return []
   return game.items
-    .filter(
-      (item) =>
-        item.equipSlots.includes(pickerSlot.value as SlotId) && item.levelReq <= heroLevel.value,
-    )
+    .filter((item) => item.equipSlots.includes(pickerSlot.value as SlotId))
     .sort((a, b) => b.score - a.score || b.levelReq - a.levelReq || a.name.localeCompare(b.name))
 })
 
@@ -136,7 +132,7 @@ async function unequip(slotId: SlotId) {
       @close="pickerSlot = null"
     >
       <p class="mb-3 text-xs text-ink-400">
-        仅显示可放入该栏位的装备，且英雄等级需达到装备需求（当前 Lv.{{ game.hero?.level }}）；已按战力从高到低排序。
+        仅显示可放入该栏位的装备（无等级限制），已按战力从高到低排序。
       </p>
       <div class="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
         <button
@@ -156,8 +152,7 @@ async function unequip(slotId: SlotId) {
           @select="equip(item, pickerSlot!)"
         />
         <p v-if="!candidates.length" class="py-6 text-center text-xs text-ink-600">
-          背包中没有可用于「{{ slotCategory }}」栏位、且满足当前等级（Lv.{{ heroLevel }}）的装备，
-          去抽箱页面获取或提升等级吧。
+          背包中没有可用于「{{ slotCategory }}」栏位的装备，去抽箱页面获取吧。
         </p>
       </div>
     </Modal>

@@ -91,7 +91,7 @@ export const api = {
     return (await http.post<{ gold: number; goldGained: number }>('/inventory/sell', { itemIds })).data
   },
 
-  async openChest(chestId: string, count: number) {
+  async openChest(chestId: string, count: number, level?: number) {
     return (
       await http.post<{
         gold: number
@@ -99,7 +99,7 @@ export const api = {
         items: Item[]
         autoSold: Array<{ name: string; rarity: string; price: number }>
         pity: { sinceRare: number; sinceEpic: number; sinceLegendary: number }
-      }>('/chest/open', { chestId, count })
+      }>('/chest/open', { chestId, count, level })
     ).data
   },
 

@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
-import { useGameStore } from '@/stores/game'
 import { useItemActions } from '@/stores/itemActions'
 import type { Item } from '@/game/types'
 import {
@@ -37,11 +36,7 @@ const emit = defineEmits<{
   unequip: [item: Item]
 }>()
 
-const game = useGameStore()
 const itemActions = useItemActions()
-
-/** 英雄等级不足时不可穿戴（与后端等级校验一致）。 */
-const canEquip = computed(() => (game.hero?.level ?? 1) >= props.item.levelReq)
 
 const style = computed(() => ({
   borderColor: rarityHex(props.item.rarity),
@@ -69,7 +64,7 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
           </h3>
           <p class="mt-0.5 text-[11px] text-ink-400">
             {{ rarityName(item.rarity) }} · {{ categoryName(item.category) }} ·
-            {{ slotName(item.equipSlots[0] ?? item.slot) }} · 需 Lv.{{ item.levelReq }}
+            {{ slotName(item.equipSlots[0] ?? item.slot) }} · Lv.{{ item.levelReq }}
             <span class="ml-1 font-mono text-amber-300">战力 {{ formatNumber(item.score) }}</span>
           </p>
         </div>
@@ -128,13 +123,10 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
       </button>
       <button
         v-else
-        class="rounded px-2 py-1 text-[11px] disabled:cursor-not-allowed"
-        :class="canEquip ? 'bg-emerald-600/80 text-white hover:bg-emerald-500' : 'bg-ink-700 text-ink-400 opacity-60'"
-        :disabled="!canEquip"
-        :title="canEquip ? '' : `需要英雄等级 ${item.levelReq} 才能穿戴`"
+        class="rounded bg-emerald-600/80 px-2 py-1 text-[11px] text-white hover:bg-emerald-500"
         @click="emit('equip', item)"
       >
-        {{ canEquip ? '装备' : `需 Lv.${item.levelReq}` }}
+        装备
       </button>
       <button
         class="rounded bg-indigo-600/70 px-2 py-1 text-[11px] text-white hover:bg-indigo-500"

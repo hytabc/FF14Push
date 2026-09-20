@@ -418,9 +418,9 @@ export const useGameStore = defineStore('game', () => {
 
   const lastDraw = ref<Item[]>([])
 
-  async function openChest(chestId: string, count: number) {
+  async function openChest(chestId: string, count: number, level?: number) {
     try {
-      const res = await api.openChest(chestId, count)
+      const res = await api.openChest(chestId, count, level)
       lastDraw.value = res.items
       state.value && (state.value.user.gold = res.gold)
       if (state.value) {

@@ -42,11 +42,6 @@ async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHe
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="底材配置缺失")
     if not accepts(slot, base):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该装备不能放入此栏位")
-    if hero.level < item.level_req:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"需要英雄等级 {item.level_req} 才能穿戴",
-        )
 
     current = (
         await db.execute(

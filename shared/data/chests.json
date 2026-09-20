@@ -1,5 +1,7 @@
 {
   "$comment": "箱子定义与保底。来源：PRD 2.8",
+  "$commentLevelBands": "抽箱等级档位：玩家等级达到该档位后才可选择；箱子内容按该档位等级生成（等同该等级玩家此前抽取到的装备）。",
+  "levelBands": [1, 20, 40, 60, 80, 100],
   "chests": [
     { "id": "weaponBox", "name": "武器箱", "price": 100, "category": "weapon", "tier": "normal", "icon": "weapon" },
     { "id": "armorBox", "name": "装备箱", "price": 80, "category": "armor", "tier": "normal", "icon": "armor" },
