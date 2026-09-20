@@ -101,7 +101,9 @@ function valueText(entry: RankingEntry): string {
             <td class="px-3 py-2 font-mono" :class="entry.rank <= 3 ? 'text-amber-300' : 'text-ink-400'">
               {{ entry.rank }}
             </td>
-            <td class="px-3 py-2 text-ink-100">{{ entry.nickname }}</td>
+            <td class="px-3 py-2 text-ink-100">
+              {{ entry.nickname }}<span class="opacity-60">#{{ entry.userId }}</span>
+            </td>
             <td class="px-3 py-2 text-ink-400">{{ entry.payload?.level ?? '—' }}</td>
             <td class="px-3 py-2 text-right font-mono text-ink-200">{{ valueText(entry) }}</td>
           </tr>
