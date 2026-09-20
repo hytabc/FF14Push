@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable
 
 from app.services.combat_model import theoretical_dps
 from app.services.game_config import CONFIG
@@ -154,18 +154,3 @@ def eligibility(
     if power < required_power:
         return False, f"战力不足（需要 {required_power}，当前 {power}）"
     return True, None
-
-
-def min_clear_seconds(
-    stats: HeroStats,
-    bosses: Sequence[dict[str, Any]],
-    tolerance: float = 1.0,
-) -> float:
-    """通关所需的最少时间下界 = Σ BOSS 血量 / 理论 DPS（含抗性）。用于服务端防作弊。"""
-    if not bosses:
-        return 0.0
-    avg_defense = sum(float(b["defense"]) for b in bosses) / len(bosses)
-    avg_resistance = sum(float(b.get("resistancePct", 0.0)) for b in bosses) / len(bosses)
-    dps = theoretical_dps(stats, avg_defense, None) * (1.0 - avg_resistance / 100.0)
-    total_hp = sum(float(b["hp"]) for b in bosses)
-    return total_hp / max(0.01, dps) / max(0.01, tolerance)

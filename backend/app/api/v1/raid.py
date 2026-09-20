@@ -11,9 +11,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from app.core.config import get_settings
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
-from app.models import AuditLog, RaidProgress, RaidSession
+from app.models import RaidProgress, RaidSession
 from app.schemas.game import RaidReportRequest, RaidStartRequest, RaidStopRequest
 from app.services.drop_luck import rarity_luck, user_drop_rate
 from app.services.grants import grant_generated_items
@@ -24,7 +23,6 @@ from app.services.raid_util import (
     all_raids,
     boss_stats_for_raid,
     eligibility,
-    min_clear_seconds,
     raid_by_id,
     top_rarity_required,
 )
@@ -33,13 +31,8 @@ from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
 router = APIRouter(prefix="/raid", tags=["raid"])
-settings = get_settings()
 
 EMPTY_GRANT = {"items": [], "autoSold": [], "autoGold": 0}
-
-
-def _as_utc(value: datetime) -> datetime:
-    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
 async def _progress(db: DbSession, user_id: int, raid_id: str) -> RaidProgress | None:
@@ -153,8 +146,6 @@ async def report_session(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="副本与会话不一致")
 
     now = datetime.now(timezone.utc)
-    server_elapsed_ms = int(max(0.0, (now - _as_utc(session.started_at)).total_seconds() * 1000))
-    elapsed_ms = max(int(payload.elapsedMs), server_elapsed_ms)
 
     session.active = False
     session.ended_at = now
@@ -170,26 +161,8 @@ async def report_session(
             "message": "挑战失败，未获得奖励" if payload.died else "已结束挑战",
         }
 
+    # 副本不做击杀时间校验：装备极佳时可能远快于服务端理论上限，避免误判为作弊。
     stats = compute_stats(hero, items)
-
-    # 高难副本不做击杀时间校验：装备极佳时可能远快于服务端理论上限。
-    if str(raid.get("difficulty", "normal")) != "hard":
-        bosses = boss_stats_for_raid(raid, hero.level, stats)
-        required_ms = min_clear_seconds(stats, bosses, settings.report_tolerance) * 1000.0
-        if elapsed_ms < required_ms:
-            db.add(
-                AuditLog(
-                    user_id=user.id,
-                    reason="raid_too_fast",
-                    payload={"raidId": raid["id"], "elapsedMs": elapsed_ms, "requiredMs": int(required_ms)},
-                    rejected=True,
-                )
-            )
-            await db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"rejected": ["通关时间低于理论上限"]},
-            )
 
     row = await _progress(db, user.id, raid["id"])
     if row is None:

@@ -1032,7 +1032,8 @@ class TestRaid:
         for boss in body["bosses"]:
             assert "hardAnnihilation" not in {s["id"] for s in boss["skills"]}
 
-    async def test_clear_too_fast_is_rejected(self, auth_client, session_factory) -> None:
+    async def test_raid_accepts_fast_clear(self, auth_client, session_factory) -> None:
+        """副本不做击杀时间校验：装备极佳时通关远快于理论上限也接受。"""
         await self._gear_up(auth_client, session_factory)
         started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
         resp = await auth_client.post(
@@ -1040,23 +1041,6 @@ class TestRaid:
             json={
                 "sessionId": started["sessionId"],
                 "raidId": "raid_1",
-                "cleared": True,
-                "died": False,
-                "elapsedMs": 1000,
-                "fightMs": 1000,
-            },
-        )
-        assert resp.status_code == 422
-
-    async def test_hard_raid_accepts_fast_clear(self, auth_client, session_factory) -> None:
-        """高难副本不做击杀时间校验：装备极佳时可远快于理论上限。"""
-        await self._gear_up(auth_client, session_factory, mix=self.HARD_MIX, ancient=True)
-        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
-        resp = await auth_client.post(
-            f"{API}/raid/session/report",
-            json={
-                "sessionId": started["sessionId"],
-                "raidId": "raid_h1",
                 "cleared": True,
                 "died": False,
                 "elapsedMs": 1000,
