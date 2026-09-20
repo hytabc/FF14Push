@@ -168,6 +168,10 @@ POSTGRES_DATA_DIR=./data/postgres
 # 应用
 JWT_SECRET=请替换为随机值（openssl rand -hex 32）
 CORS_ORIGINS=http://localhost:8080
+
+# 兑换码（留空关闭该功能；每个账号对同一码只能兑换一次）
+REDEEM_CODE=
+REDEEM_GOLD=0
 ```
 
 `db` 与 `backend` 默认只监听 `127.0.0.1`，不对外暴露。
@@ -303,7 +307,8 @@ monsterHp = refAttack(level) × refGearAttackMultiplier × (refPotencyPerSecond 
 | 英雄招募 | 酒馆刷新与金币招募，资质 6 阶，三维按偏向分配 |
 | 图鉴 | 装备（按底材 × 品阶）、怪物、词条（普通/稀有/太古三档） |
 | 排行榜 | 等级榜 / 关卡榜（必做）+ 战力榜 / 金币榜，每 5 分钟服务端刷新 |
-| 新手指引 | 15 步强制引导，可跳过（无奖励）与设置内重播 |
+| 新手指引 | 15 步强制引导，可跳过（无奖励）与设置内重播（奖励只发一次） |
+| 兑换码 | 码与奖励金币由 `REDEEM_CODE` / `REDEEM_GOLD` 配置，每个账号对同一码只能兑换一次 |
 | 账号 | 账号密码注册登录 + JWT |
 
 ---
@@ -341,6 +346,7 @@ npm run gen:icons
 | 起始武器 | PRD 2.5.1 写「初始英雄为冒险者、仅普攻」；因怪物强度按期望英雄锚定，裸英雄会卡死在新手阶段（地区 1 单怪 13.8s，存活期内打不满 8 杀），故开局自动装备一把**铁制长剑**（骑士），见 `heroes.json:initialHero.starterWeapon` |
 | 等级压制 | PRD 地区 7.3 只写了「效率极低」；本项目落为可量化的命中/输出/受伤三项软惩罚，见上文「等级压制」 |
 | 出售价格 | PRD 出售 3.2 的「×(1 + 属性评分/100)」随等级线性无上限增长，而箱子价格是固定值 → 高等级「买箱卖装备」稳赚。改为**饱和封顶**的属性系数（1 → 1+`attrBonusMax`），并重定品阶系数，使各箱期望卖价仅约为箱价的 20%-60%，只有抽到高品阶（约 5% 概率）才有赚头。见 `shared/data/economy.json:sell`、`rarities.json:sellCoef` |
+| 招募资质系数 | PRD 招募 2.3 的资质系数为 1/2/5/15/50/200，神话资质在英雄 30 级时需 86 万金币，实际不可达；改为 **1/2/3/6/12/30**（`baseRecruitCost` 仍为 1000），神话资质 30 级降到 12 万。见 `shared/data/talents.json:talents.*.recruitCoef` |
 
 ---
 

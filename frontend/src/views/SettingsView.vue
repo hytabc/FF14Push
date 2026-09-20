@@ -2,11 +2,12 @@
 import { onMounted, ref } from 'vue'
 
 import { api } from '@/api'
+import { toApiError } from '@/api/client'
 import data from '@shared/schema'
 import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
-import { RARITY_ORDER, rarityName } from '@/utils/format'
+import { RARITY_ORDER, formatNumber, rarityName } from '@/utils/format'
 
 const game = useGameStore()
 const toast = useToastStore()
@@ -16,6 +17,12 @@ const rarities = ref<string[]>([])
 const saving = ref(false)
 const confirmRestart = ref(false)
 
+const redeemEnabled = ref(false)
+const canRedeem = ref(false)
+const rewardGold = ref(0)
+const redeemCode = ref('')
+const redeeming = ref(false)
+
 const autoSellOptions = data.economy.sell.autoSellRarities
 
 onMounted(async () => {
@@ -23,7 +30,36 @@ onMounted(async () => {
   const settings = game.state?.settings.autoSell
   enabled.value = settings?.enabled ?? false
   rarities.value = settings?.rarities ?? [...autoSellOptions]
+  await loadRedeem()
 })
+
+async function loadRedeem() {
+  try {
+    const res = await api.redeemState()
+    redeemEnabled.value = res.enabled
+    canRedeem.value = res.canRedeem
+    rewardGold.value = res.rewardGold
+  } catch {
+    redeemEnabled.value = false
+  }
+}
+
+async function submitRedeem() {
+  const code = redeemCode.value.trim()
+  if (!code || redeeming.value) return
+  redeeming.value = true
+  try {
+    const res = await api.redeem(code)
+    toast.push(res.message, 'success')
+    redeemCode.value = ''
+    if (game.state) game.state.user.gold = res.gold
+    await loadRedeem()
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    redeeming.value = false
+  }
+}
 
 function toggleRarity(rarity: string) {
   rarities.value = rarities.value.includes(rarity)
@@ -114,6 +150,32 @@ async function replayFromSettings() {
           重新播放新手指引
         </button>
       </div>
+    </section>
+
+    <section v-if="redeemEnabled" class="card p-4">
+      <h3 class="text-sm font-semibold text-white">兑换码</h3>
+      <p class="mt-1 text-[11px] text-ink-500">
+        输入兑换码可领取金币，每个账号对同一兑换码只能兑换一次。
+      </p>
+
+      <template v-if="canRedeem">
+        <div class="mt-3 flex flex-wrap gap-2">
+          <input
+            v-model="redeemCode"
+            class="min-w-0 flex-1 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs"
+            placeholder="请输入兑换码"
+            @keyup.enter="submitRedeem"
+          />
+          <button
+            class="rounded-md bg-amber-500 px-4 py-1.5 text-xs font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+            :disabled="redeeming || !redeemCode.trim()"
+            @click="submitRedeem"
+          >
+            {{ redeeming ? '兑换中…' : `兑换 · ${formatNumber(rewardGold)} 金币` }}
+          </button>
+        </div>
+      </template>
+      <p v-else class="mt-3 text-xs text-emerald-300">你已经兑换过该兑换码了。</p>
     </section>
 
     <section class="card p-4">

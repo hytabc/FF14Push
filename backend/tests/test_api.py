@@ -7,7 +7,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from app.models import BattleSession, Item, User
+from app.core.config import get_settings
+from app.models import BattleSession, Hero, Item, User
 from app.services.game_config import CONFIG
 
 API = "/api/v1"
@@ -530,6 +531,28 @@ class TestTavern:
         assert body["cost"] == int(CONFIG.talents["refreshCost"])
         assert body["gold"] == 1000 - int(CONFIG.talents["refreshCost"])
 
+    async def test_shown_recruit_cost_matches_charge_after_level_up(self, auth_client, session_factory) -> None:
+        """候选生成后英雄升级，页面显示价仍须等于招募时的实际扣费。"""
+        await _set_gold(auth_client, session_factory, 10_000_000)
+
+        info = (await auth_client.get(f"{API}/tavern")).json()
+        assert info["candidate"]["recruitCost"] == info["recruitCost"]
+        low_cost = info["recruitCost"]
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.level = 30
+            await db.commit()
+
+        info2 = (await auth_client.get(f"{API}/tavern")).json()
+        assert info2["candidate"]["recruitCost"] == info2["recruitCost"]
+        assert info2["recruitCost"] > low_cost
+
+        resp = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["cost"] == info2["recruitCost"]
+
     async def test_recruit_requires_gold(self, auth_client) -> None:
         resp = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})
         assert resp.status_code == 400
@@ -668,3 +691,43 @@ class TestSettings:
             f"{API}/settings/auto-sell", json={"enabled": True, "rarities": ["nope"]}
         )
         assert bad.json()["ok"] is False
+
+
+class TestRedeem:
+    @pytest.fixture(autouse=True)
+    def _reset_settings(self):
+        get_settings.cache_clear()
+        yield
+        get_settings.cache_clear()
+
+    async def test_disabled_without_env_code(self, auth_client, monkeypatch) -> None:
+        monkeypatch.setenv("REDEEM_CODE", "")
+        monkeypatch.setenv("REDEEM_GOLD", "0")
+
+        state = (await auth_client.get(f"{API}/redeem")).json()
+        assert state == {"enabled": False, "canRedeem": False, "rewardGold": 0}
+        assert (await auth_client.post(f"{API}/redeem", json={"code": "whatever"})).status_code == 400
+
+    async def test_redeem_grants_gold_once(self, auth_client, monkeypatch) -> None:
+        monkeypatch.setenv("REDEEM_CODE", "EORZEA2026")
+        monkeypatch.setenv("REDEEM_GOLD", "12345")
+
+        state = (await auth_client.get(f"{API}/redeem")).json()
+        assert state == {"enabled": True, "canRedeem": True, "rewardGold": 12345}
+
+        wrong = await auth_client.post(f"{API}/redeem", json={"code": "wrong-code"})
+        assert wrong.status_code == 400
+        assert "无效" in wrong.json()["detail"]
+
+        before = (await auth_client.get(f"{API}/auth/me")).json()["gold"]
+        ok = await auth_client.post(f"{API}/redeem", json={"code": "EORZEA2026"})
+        assert ok.status_code == 200, ok.text
+        assert ok.json()["goldGained"] == 12345
+        assert ok.json()["gold"] == before + 12345
+
+        again = await auth_client.post(f"{API}/redeem", json={"code": "EORZEA2026"})
+        assert again.status_code == 400
+        assert "已经兑换过" in again.json()["detail"]
+
+        assert (await auth_client.get(f"{API}/auth/me")).json()["gold"] == before + 12345
+        assert (await auth_client.get(f"{API}/redeem")).json()["canRedeem"] is False

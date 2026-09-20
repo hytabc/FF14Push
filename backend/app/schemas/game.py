@@ -110,6 +110,10 @@ class AutoSellRequest(BaseModel):
     rarities: list[str] = Field(default_factory=list)
 
 
+class RedeemRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+
+
 class ApiMessage(BaseModel):
     ok: bool = True
     message: str = "ok"

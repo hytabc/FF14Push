@@ -42,6 +42,16 @@ def recruit_cost(talent: str, current_hero_level: int) -> int:
     return int(float(cfg["baseRecruitCost"]) * coef * (1.0 + current_hero_level / 10.0))
 
 
+def with_recruit_cost(candidate: dict[str, Any], current_hero_level: int) -> dict[str, Any]:
+    """候选副本：按当前英雄等级重算 recruitCost。
+
+    候选是生成时落库的，其中的 recruitCost 会随英雄升级而过期；
+    招募实际扣费又按招募时的等级计算，两者不一致会让玩家看到「价格变了」。
+    所有对外返回候选的接口都应经过这里。
+    """
+    return {**candidate, "recruitCost": recruit_cost(candidate["talent"], current_hero_level)}
+
+
 def recommended_jobs(attr: str) -> list[str]:
     return [j["id"] for j in CONFIG.jobs["jobs"] if j["mainAttr"] == attr]
 

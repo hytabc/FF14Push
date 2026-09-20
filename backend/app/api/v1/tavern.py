@@ -11,7 +11,7 @@ from app.core.deps import CurrentItems, CurrentUser, DbSession, OptionalHero
 from app.models import Hero, Item, TavernState
 from app.schemas.game import TavernRecruitRequest, TavernRefreshRequest
 from app.services.game_config import CONFIG
-from app.services.recruiting import generate_candidate, recruit_cost
+from app.services.recruiting import generate_candidate, recruit_cost, with_recruit_cost
 from app.services.serialization import hero_to_dict
 from app.services.stats import compute_stats
 
@@ -54,11 +54,12 @@ async def tavern_state(db: DbSession, user: CurrentUser, hero: OptionalHero) -> 
         row.candidate = generate_candidate(hero.level if hero else 1)
         await db.commit()
     level = hero.level if hero else 1
+    candidate = with_recruit_cost(row.candidate, level) if row.candidate else None
     cost = recruit_cost(row.candidate["talent"], level) if row.candidate else 0
     interval = int(CONFIG.talents["freeRefreshIntervalSec"])
     free_available, next_at = _free_refresh_state(row, datetime.now(timezone.utc), interval)
     return {
-        "candidate": row.candidate,
+        "candidate": candidate,
         "recruitCost": cost,
         "refreshCost": int(CONFIG.talents["refreshCost"]),
         "freeRefreshIntervalSec": interval,

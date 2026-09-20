@@ -212,4 +212,14 @@ export const api = {
   async setAutoSell(enabled: boolean, rarities: string[]) {
     return (await http.post('/settings/auto-sell', { enabled, rarities })).data
   },
+
+  async redeemState() {
+    return (await http.get<{ enabled: boolean; canRedeem: boolean; rewardGold: number }>('/redeem')).data
+  },
+
+  async redeem(code: string) {
+    return (
+      await http.post<{ ok: boolean; gold: number; goldGained: number; message: string }>('/redeem', { code })
+    ).data
+  },
 }

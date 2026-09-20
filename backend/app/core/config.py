@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     report_tolerance: float = 1.10
     api_prefix: str = "/api/v1"
 
+    # 兑换码：码与奖励金币均由环境变量配置；码为空即关闭该功能。
+    redeem_code: str = ""
+    redeem_gold: int = 0
+
     # 启动时自动建表（本地开发用；生产应使用 alembic upgrade head）
     auto_create_tables: bool = True
 

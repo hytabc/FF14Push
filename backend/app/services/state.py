@@ -22,7 +22,7 @@ from app.services.codex import codex_progress
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
 from app.services.progression import exp_to_next
-from app.services.recruiting import initial_hero, recruit_cost
+from app.services.recruiting import initial_hero, recruit_cost, with_recruit_cost
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
 from app.services.serialization import hero_to_dict, item_to_dict, loadout
 from app.services.stats import compute_stats
@@ -126,7 +126,9 @@ async def build_game_state(
             "completed": bool(tutorial.completed) if tutorial else False,
             "skipped": bool(tutorial.skipped) if tutorial else False,
         },
-        "tavern": {"candidate": tavern.candidate if tavern else None},
+        "tavern": {
+            "candidate": with_recruit_cost(tavern.candidate, hero.level) if tavern and tavern.candidate else None
+        },
         "settings": {
             "autoSell": {
                 "enabled": bool(auto_sell.enabled) if auto_sell else False,

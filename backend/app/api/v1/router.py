@@ -11,6 +11,7 @@ from app.api.v1 import (
     game,
     inventory,
     ranking,
+    redeem,
     region,
     settings,
     tavern,
@@ -30,3 +31,4 @@ api_router.include_router(codex.router)
 api_router.include_router(ranking.router)
 api_router.include_router(tutorial.router)
 api_router.include_router(settings.router)
+api_router.include_router(redeem.router)

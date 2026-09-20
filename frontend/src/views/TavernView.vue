@@ -77,6 +77,13 @@ async function refresh(useGold: boolean) {
   }
 }
 
+async function openConfirm() {
+  if (busy.value) return
+  // 招募按英雄「当前」等级计费：确认前先刷新一次，避免升级后价格与服务端不一致。
+  await load()
+  confirmRecruit.value = true
+}
+
 async function recruit() {
   confirmRecruit.value = false
   busy.value = true
@@ -206,7 +213,7 @@ function attrBar(value: number, total: number) {
             class="w-full rounded-md py-2.5 text-sm font-medium transition disabled:opacity-40"
             :class="canAfford ? 'bg-amber-500 text-ink-950 hover:bg-amber-400' : 'bg-ink-700 text-ink-400'"
             :disabled="!canAfford || busy"
-            @click="confirmRecruit = true"
+            @click="openConfirm"
           >
             招募 · {{ formatNumber(candidate.recruitCost) }} 金币
           </button>

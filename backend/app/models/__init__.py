@@ -12,6 +12,7 @@ from app.models.progress import (
     TavernState,
     TutorialProgress,
 )
+from app.models.redeem import RedeemRecord
 from app.models.system import AuditLog, BattleSession, RankingEntry
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "TutorialProgress",
     "TavernState",
     "AutoSellSetting",
+    "RedeemRecord",
     "BattleSession",
     "RankingEntry",
     "AuditLog",
