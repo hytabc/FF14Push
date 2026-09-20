@@ -14,7 +14,7 @@ from app.services.combat_model import (
 )
 from app.services.economy import REQUIRED, build_craft_plan
 from app.services.game_config import CONFIG, BaseItem
-from app.services.item_factory import generate_item
+from app.services.item_factory import generate_item, roll_sub_attr_value
 from app.services.loot import PityState, chest_by_id, draw_rarity, roll_rarity
 from app.services.regions_util import level_penalty
 from app.services.stats import compute_stats, convert_three_attrs
@@ -345,6 +345,39 @@ class TestUpgradeCosts:
         assert refine == sorted(refine)
         assert enchant == sorted(enchant)
         assert all(e > r for r, e in zip(refine, enchant))
+
+
+class TestSubAttrQuality:
+    """副属性也支持品质：普通区间内随机、稀有取上限、太古取上限 ×1.25。"""
+
+    class _Rng:
+        """固定取值替身：uniform 取中值，使结果可预期。"""
+
+        def uniform(self, lo: float, hi: float) -> float:
+            return (lo + hi) / 2
+
+    def test_quality_value_rules(self) -> None:
+        rng = self._Rng()
+        # 暴击 100-400：太古 = 400 × 1.25 = 500
+        assert roll_sub_attr_value(rng, 100.0, 400.0, "ancient") == 500.0
+        assert roll_sub_attr_value(rng, 100.0, 400.0, "rare") == 400.0
+        assert 100.0 <= roll_sub_attr_value(rng, 100.0, 400.0, "common") <= 400.0 * 1.2
+
+    def test_generated_sub_attrs_carry_quality(self) -> None:
+        rng = random.Random(5)
+        item, _ = generate_item("weapon", 50, rng=rng)
+        assert item["subAttrs"]
+        for entry in item["subAttrs"]:
+            assert entry["quality"] in ("common", "rare", "ancient")
+
+    def test_ancient_sub_attr_is_worth_more(self) -> None:
+        """太古副属性数值更高，装备评分/售价随之提高。"""
+        plain = FakeItem(rarity="epic", sub_attrs=[{"attr": "crit", "value": 400.0, "type": "flat"}])
+        ancient = FakeItem(
+            rarity="epic",
+            sub_attrs=[{"attr": "crit", "value": 500.0, "type": "flat", "quality": "ancient"}],
+        )
+        assert sell_price(ancient) > sell_price(plain)
 
 
 def _lance_base_for_level(level: int) -> BaseItem:

@@ -16,6 +16,8 @@ export interface SubAttrEntry {
   attr: string
   value: number
   type: 'flat' | 'percent'
+  /** 副属性品质：普通 / 稀有（取上限）/ 太古（上限 ×1.25）。 */
+  quality?: TermQuality
 }
 
 export interface TermEntry {
@@ -180,10 +182,15 @@ export interface RaidReward {
 export interface RaidListEntry {
   id: string
   order: number
+  difficulty: 'normal' | 'hard'
   name: string
   requiredLevel: number
   requiredPower: number
   requiresAllSlots: boolean
+  minEquipRarity: RarityId
+  topRarity: RarityId | null
+  topRarityCount: number
+  minAncientTermsPerItem: number
   bossNames: string[]
   dualBoss: boolean
   reward: RaidReward

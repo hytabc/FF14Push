@@ -84,6 +84,8 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
       <li v-for="(entry, index) in item.subAttrs" :key="`s${index}`" class="text-sky-300">
         {{ attrName(entry.attr) }}
         <span class="font-mono">+{{ entry.value.toFixed(entry.type === 'percent' ? 2 : 0) }}{{ attrSuffix(entry.attr) }}</span>
+        <span v-if="entry.quality === 'ancient'" class="ml-0.5">🌟</span>
+        <span v-else-if="entry.quality === 'rare'" class="ml-0.5 text-term-rare">（稀有）</span>
       </li>
     </ul>
 

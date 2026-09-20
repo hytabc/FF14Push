@@ -45,6 +45,8 @@ const sellPrice = computed(() => item.value?.sellPriceMax ?? 0)
         <ul class="mt-1 space-y-0.5 text-[11px] text-ink-300">
           <li v-for="entry in item.subAttrs" :key="entry.attr">
             {{ attrName(entry.attr) }} +{{ entry.value.toFixed(2) }}{{ attrSuffix(entry.attr) }}
+            <span v-if="entry.quality === 'ancient'" class="ml-0.5">🌟</span>
+            <span v-else-if="entry.quality === 'rare'" class="ml-0.5 text-term-rare">（稀有）</span>
           </li>
         </ul>
         <div v-if="item.terms.length" class="mt-2 flex flex-wrap gap-1">

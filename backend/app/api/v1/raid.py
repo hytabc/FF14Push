@@ -25,6 +25,7 @@ from app.services.raid_util import (
     eligibility,
     min_clear_seconds,
     raid_by_id,
+    top_rarity_required,
 )
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
@@ -76,10 +77,15 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
             {
                 "id": raid["id"],
                 "order": raid["order"],
+                "difficulty": raid.get("difficulty", "normal"),
                 "name": raid["name"],
                 "requiredLevel": raid["requiredLevel"],
                 "requiredPower": raid["requiredPower"],
                 "requiresAllSlots": raid["requiresAllSlots"],
+                "minEquipRarity": raid.get("minEquipRarity", "common"),
+                "topRarity": raid.get("topRarity"),
+                "topRarityCount": top_rarity_required(raid) if raid.get("topRarity") else 0,
+                "minAncientTermsPerItem": int(raid.get("minAncientTermsPerItem", 0) or 0),
                 "bossNames": [b["name"] for b in raid["bosses"]],
                 "dualBoss": len(raid["bosses"]) > 1,
                 "reward": raid["reward"],

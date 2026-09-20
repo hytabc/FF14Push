@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, Iterable, Sequence
 
 from app.services.combat_model import theoretical_dps
@@ -12,6 +13,8 @@ from app.services.valuation import hero_power
 
 SLOT_COUNT = len(CONFIG.slots)
 BOSS_TYPE_BY_ID = {t["id"]: t for t in CONFIG.bosses["types"]}
+RARITY_RANK = {r: i for i, r in enumerate(CONFIG.rarity_order)}
+RARITY_NAME = {r: CONFIG.rarities[r]["name"] for r in CONFIG.rarity_order}
 
 
 def raid_by_id(raid_id: str) -> dict[str, Any] | None:
@@ -20,6 +23,15 @@ def raid_by_id(raid_id: str) -> dict[str, Any] | None:
 
 def all_raids() -> list[dict[str, Any]]:
     return sorted(CONFIG.raids["raids"], key=lambda r: int(r["order"]))
+
+
+def top_rarity_required(raid: dict[str, Any]) -> int:
+    """需要达到 topRarity 的件数：栏位数 × 比例，向上取整（11 × 0.5 → 6）。"""
+    return math.ceil(SLOT_COUNT * float(raid.get("topRarityRatio", 0.5)))
+
+
+def ancient_term_count(item: Any, minimum: int = 1) -> bool:
+    return sum(1 for t in (item.terms or []) if t.get("quality") == "ancient") >= minimum
 
 
 def boss_stats_for_raid(raid: dict[str, Any], hero_level: int) -> list[dict[str, Any]]:
@@ -48,22 +60,44 @@ def boss_stats_for_raid(raid: dict[str, Any], hero_level: int) -> list[dict[str,
     return out
 
 
-def equipped_slot_count(items: Iterable[Any]) -> int:
-    return sum(1 for item in items if getattr(item, "equipped_slot", None))
-
-
 def eligibility(
     raid: dict[str, Any], hero_level: int, stats: HeroStats, items: Iterable[Any]
 ) -> tuple[bool, str | None]:
-    """进入门槛：等级 + 栏位穿满 + 战力阈值。返回 (是否可进入, 拦截原因)。"""
+    """进入门槛：等级 → 栏位穿满 → 装备品阶 → 太古词条 → 战力。返回 (是否可进入, 拦截原因)。"""
     required_level = int(raid["requiredLevel"])
     if hero_level < required_level:
         return False, f"需要英雄等级 {required_level}"
 
-    if bool(raid.get("requiresAllSlots", True)):
-        equipped = equipped_slot_count(items)
-        if equipped < SLOT_COUNT:
-            return False, f"需要穿满全部 {SLOT_COUNT} 个装备栏位（当前 {equipped} 个）"
+    equipped = [item for item in items if getattr(item, "equipped_slot", None)]
+    if bool(raid.get("requiresAllSlots", True)) and len(equipped) < SLOT_COUNT:
+        return False, f"需要穿满全部 {SLOT_COUNT} 个装备栏位（当前 {len(equipped)} 个）"
+
+    min_rarity = str(raid.get("minEquipRarity", "common"))
+    min_rank = RARITY_RANK.get(min_rarity, 0)
+    below = [item for item in equipped if RARITY_RANK.get(item.rarity, 0) < min_rank]
+    if below:
+        return False, (
+            f"全部装备品阶不得低于{RARITY_NAME.get(min_rarity, min_rarity)}"
+            f"（当前 {len(below)} 件未达标）"
+        )
+
+    top_rarity = raid.get("topRarity")
+    if top_rarity:
+        need = top_rarity_required(raid)
+        top_rank = RARITY_RANK.get(str(top_rarity), 0)
+        got = sum(1 for item in equipped if RARITY_RANK.get(item.rarity, 0) >= top_rank)
+        if got < need:
+            return False, (
+                f"需要至少 {need} 件{RARITY_NAME.get(str(top_rarity), top_rarity)}装备（当前 {got} 件）"
+            )
+
+    need_ancient = int(raid.get("minAncientTermsPerItem", 0) or 0)
+    if need_ancient > 0:
+        ok = sum(1 for item in equipped if ancient_term_count(item, need_ancient))
+        if ok < SLOT_COUNT:
+            return False, (
+                f"需要每件装备至少 {need_ancient} 个太古词条（当前 {ok}/{SLOT_COUNT} 件达标）"
+            )
 
     required_power = int(raid["requiredPower"])
     power = hero_power(stats)

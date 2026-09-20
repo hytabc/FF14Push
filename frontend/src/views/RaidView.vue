@@ -7,7 +7,7 @@ import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { RaidListEntry } from '@/game/types'
-import { formatNumber } from '@/utils/format'
+import { formatNumber, rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
 const toast = useToastStore()
@@ -111,16 +111,29 @@ async function closeResult() {
         v-for="raid in raids"
         :key="raid.id"
         class="card p-4 text-left transition hover:border-white/40 disabled:opacity-50"
+        :class="raid.difficulty === 'hard' ? 'border-rose-500/40' : ''"
         :disabled="!raid.eligible || starting === raid.id"
         @click="enter(raid)"
       >
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2">
           <h3 class="text-sm font-semibold text-white">{{ raid.name }}</h3>
-          <span
-            class="rounded px-2 py-0.5 text-[11px]"
-            :class="raid.dualBoss ? 'bg-fuchsia-500/20 text-fuchsia-200' : 'bg-ink-800 text-ink-300'"
-          >
-            {{ raid.dualBoss ? '双 BOSS' : '单 BOSS' }}
+          <span class="flex shrink-0 gap-1">
+            <span
+              class="rounded px-2 py-0.5 text-[11px]"
+              :class="
+                raid.difficulty === 'hard'
+                  ? 'bg-rose-500/20 text-rose-200'
+                  : 'bg-ink-800 text-ink-300'
+              "
+            >
+              {{ raid.difficulty === 'hard' ? '高难' : '普通' }}
+            </span>
+            <span
+              class="rounded px-2 py-0.5 text-[11px]"
+              :class="raid.dualBoss ? 'bg-fuchsia-500/20 text-fuchsia-200' : 'bg-ink-800 text-ink-300'"
+            >
+              {{ raid.dualBoss ? '双 BOSS' : '单 BOSS' }}
+            </span>
           </span>
         </div>
 
@@ -130,6 +143,17 @@ async function closeResult() {
           <li>· 需要等级 Lv.{{ raid.requiredLevel }}</li>
           <li>· 需要战力 {{ formatNumber(raid.requiredPower) }}</li>
           <li v-if="raid.requiresAllSlots">· 需要穿满全部装备栏位</li>
+          <li>
+            · 全部装备品阶 ≥
+            <span :class="rarityClass(raid.minEquipRarity)">{{ rarityName(raid.minEquipRarity) }}</span>
+          </li>
+          <li v-if="raid.topRarity">
+            · 至少 {{ raid.topRarityCount }} 件
+            <span :class="rarityClass(raid.topRarity)">{{ rarityName(raid.topRarity) }}</span> 装备
+          </li>
+          <li v-if="raid.minAncientTermsPerItem" class="text-amber-300">
+            · 每件装备至少 {{ raid.minAncientTermsPerItem }} 个太古词条 🌟
+          </li>
         </ul>
 
         <p class="mt-2 text-[11px] text-ink-500">

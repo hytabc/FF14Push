@@ -33,6 +33,19 @@ def pick_base_item(category: str, level: int, rng: random.Random) -> BaseItem:
     return rng.choices(usable, weights=weights, k=1)[0]
 
 
+def roll_sub_attr_value(rng: random.Random, lo: float, hi: float, quality: str) -> float:
+    """副属性数值：普通在区间内随机浮动；稀有取上限；太古取上限 ×1.25。
+
+    与 Buff/Debuff 词条的品质规则一致（来源：PRD 附魔 5.3）。
+    例：暴击区间 100-400 → 太古为 500。
+    """
+    if quality == "ancient":
+        return _extreme_value(lo, hi) * 1.25
+    if quality == "rare":
+        return _extreme_value(lo, hi)
+    return rng.uniform(lo, hi) * _float_factor(rng, CONFIG.sub_attr_float)
+
+
 def pick_sub_attrs(base: BaseItem, rarity: str, rng: random.Random) -> list[dict[str, Any]]:
     spec = CONFIG.rarities[rarity]
     count = rng.randint(int(spec["subAttrMin"]), int(spec["subAttrMax"]))
@@ -45,8 +58,16 @@ def pick_sub_attrs(base: BaseItem, rarity: str, rng: random.Random) -> list[dict
     for attr_id in chosen:
         attr = CONFIG.attribute_by_id[attr_id]
         lo, hi = attr["ranges"][rarity]
-        value = rng.uniform(float(lo), float(hi)) * _float_factor(rng, CONFIG.sub_attr_float)
-        out.append({"attr": attr_id, "value": round(value, 2), "type": attr["valueType"]})
+        quality = _roll_quality(rng)
+        value = roll_sub_attr_value(rng, float(lo), float(hi), quality)
+        out.append(
+            {
+                "attr": attr_id,
+                "value": round(value, 2),
+                "type": attr["valueType"],
+                "quality": quality,
+            }
+        )
     return out
 
 
