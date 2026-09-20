@@ -12,6 +12,7 @@ import { useToastStore } from './toast'
 
 const TICK_MS = 100
 const REPORT_MS = 1500
+const AUTO_ADVANCE_KEY = 'eorzea.autoAdvance'
 
 export interface BossResult {
   bossName: string
@@ -37,6 +38,14 @@ export const useGameStore = defineStore('game', () => {
   const uiTick = ref(0)
   const bossResult = ref<BossResult | null>(null)
   const lastError = ref<string | null>(null)
+
+  // 自动进入下一阶段：击杀 BOSS 后自动前往下一地区（本地偏好，持久化）
+  const autoAdvance = ref(localStorage.getItem(AUTO_ADVANCE_KEY) === '1')
+
+  function setAutoAdvance(value: boolean) {
+    autoAdvance.value = value
+    localStorage.setItem(AUTO_ADVANCE_KEY, value ? '1' : '0')
+  }
 
   /** 高难副本：进行中的挑战与结算结果。 */
   const raid = ref<{ raidId: string; name: string } | null>(null)
@@ -242,21 +251,36 @@ export const useGameStore = defineStore('game', () => {
 
     current.applyServerKillCount(res.killCount, res.killsRequired)
 
+    // 开启「自动进入下一阶段」时，击杀 BOSS 直接推进到下一地区，不弹结算窗
+    let pendingAdvance = false
     if (res.boss) {
-      bossResult.value = {
-        bossName: res.boss.bossName,
-        gold: res.boss.gold,
-        exp: res.boss.exp,
-        firstClear: res.boss.firstClear,
-        nextRegionId: res.boss.nextRegionId,
-        box: res.boss.box,
-        items: res.boss.items,
+      if (autoAdvance.value && res.boss.nextRegionId) {
+        bossResult.value = null
+        pendingAdvance = true
+      } else {
+        bossResult.value = {
+          bossName: res.boss.bossName,
+          gold: res.boss.gold,
+          exp: res.boss.exp,
+          firstClear: res.boss.firstClear,
+          nextRegionId: res.boss.nextRegionId,
+          box: res.boss.box,
+          items: res.boss.items,
+        }
       }
     }
 
     if (res.level.levelsGained > 0) {
       toast.push(`英雄升到 ${res.level.level} 级！`, 'success')
-      void refreshAfterGearChange()
+      if (!pendingAdvance) void refreshAfterGearChange()
+    }
+
+    if (pendingAdvance) {
+      void advanceRegion().then((ok) => {
+        if (ok) toast.push('已自动进入下一地区', 'info')
+        // 推进失败（例如已是最后一个地区）：留在当前地区重新挂机
+        else void startBattle()
+      })
     }
   }
 
@@ -491,14 +515,16 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  async function advanceRegion() {
+  async function advanceRegion(): Promise<boolean> {
     try {
       if (running.value) await stopBattle(true)
       const res = await api.advanceRegion()
       await loadState()
       await startBattle((res as { region: { id: number } }).region.id)
+      return true
     } catch (e) {
       pushError(e)
+      return false
     }
   }
 
@@ -530,6 +556,8 @@ export const useGameStore = defineStore('game', () => {
     battleLog,
     floating,
     bossResult,
+    autoAdvance,
+    setAutoAdvance,
     lastError,
     lastDraw,
     loggedIn,

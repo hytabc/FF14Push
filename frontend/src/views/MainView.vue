@@ -100,6 +100,22 @@ function openBossDialog() {
         <div class="ml-auto flex items-center gap-2">
           <span class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-200">{{ phaseLabel }}</span>
           <button
+            class="rounded-md border px-3 py-1.5 text-xs transition"
+            :class="
+              game.autoAdvance
+                ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200'
+                : 'border-ink-600 text-ink-400 hover:border-ink-400'
+            "
+            :title="
+              game.autoAdvance
+                ? '击杀 BOSS 后自动前往下一地区（点击关闭）'
+                : '开启后击杀 BOSS 自动前往下一地区'
+            "
+            @click="game.setAutoAdvance(!game.autoAdvance)"
+          >
+            自动进入下一阶段{{ game.autoAdvance ? ' · 开' : ' · 关' }}
+          </button>
+          <button
             class="rounded-md px-3 py-1.5 text-xs font-medium transition"
             :class="
               game.isRunning
