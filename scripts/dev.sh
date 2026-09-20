@@ -50,6 +50,8 @@ usage() {
 
 配置文件：仓库根目录的 .env.local（首次运行会自动从 .env.local.example 生成）
   可配置 BACKEND_PORT / FRONTEND_PORT / DATABASE_URL / JWT_SECRET 等。
+  依赖默认走国内镜像（pip 用清华，npm 用 npmmirror），
+  可用 PIP_INDEX_URL / NPM_REGISTRY 覆盖，改为官方源或其它镜像。
   本地默认使用 SQLite，无需安装数据库；若本机已有 PostgreSQL，
   把 DATABASE_URL 改成 postgresql+asyncpg://... 即可。
 
@@ -77,6 +79,17 @@ JWT_SECRET="${JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}"
 JWT_EXPIRE_HOURS="${JWT_EXPIRE_HOURS:-24}"
 REPORT_TOLERANCE="${REPORT_TOLERANCE:-1.10}"
 AUTO_CREATE_TABLES="${AUTO_CREATE_TABLES:-true}"
+
+# 依赖下载源：默认走国内镜像，可在 .env.local 中覆盖（改为官方源或其它镜像）
+PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
+# pip / npm 都会自动读取这两个环境变量
+if [ -n "$PIP_INDEX_URL" ]; then
+  export PIP_INDEX_URL
+fi
+if [ -n "$NPM_REGISTRY" ]; then
+  export npm_config_registry="$NPM_REGISTRY"
+fi
 
 # 后端允许的来源必须与前端实际访问地址一致，否则浏览器会被 CORS 拦截
 export CORS_ORIGINS="http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}"

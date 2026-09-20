@@ -2,3 +2,6 @@
 - Prefers Docker Compose for server/production deployment, kept separate from the local dev workflow. Confidence: 0.8
 - Prefers ports and deployment configuration to be supplied via environment variables (`.env` files) rather than hardcoded in code or config. Confidence: 0.75
 - Prefers persistent data (e.g. database files) to be bind-mounted to a local directory path rather than kept in Docker managed volumes, so instance rebuilds/updates don't lose data. Confidence: 0.8
+- Prefers Chinese/domestic mirror endpoints for everything fetched from external sources (Docker base images, pip, npm, apt, etc.) instead of upstream registries, so the project is deployable on mainland China servers. Confidence: 0.9
+- Prefers these mirror/source selectors to be overridable via environment variables (with an empty value falling back to the official upstream source) rather than hardcoded. Confidence: 0.7
+- Prefers a plan-first workflow: explore the codebase, ask clarifying questions on ambiguous requirements, write a plan file for approval, then implement and verify with the test suites. Confidence: 0.7

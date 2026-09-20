@@ -5,12 +5,15 @@
 #   3. 访问 http://<服务器地址>:${FRONTEND_PORT}
 #
 # 所有对外端口都在 .env 中配置。
+#
+# 国内部署：基础镜像与 pip / npm / apt 源默认走国内镜像，
+# 可在 .env 中通过 DOCKER_IMAGE_MIRROR / PIP_INDEX_URL / NPM_REGISTRY / APT_MIRROR 覆盖。
 
 name: eorzea-idle-chronicle
 
 services:
   db:
-    image: postgres:16-alpine
+    image: ${DOCKER_IMAGE_MIRROR-docker.m.daocloud.io/library/}postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-eorzea}
@@ -36,6 +39,10 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        PYTHON_IMAGE: ${DOCKER_IMAGE_MIRROR-docker.m.daocloud.io/library/}python:3.12-slim
+        APT_MIRROR: ${APT_MIRROR-mirrors.tuna.tsinghua.edu.cn}
+        PIP_INDEX_URL: ${PIP_INDEX_URL-https://pypi.tuna.tsinghua.edu.cn/simple}
     image: eorzea-backend:latest
     restart: unless-stopped
     environment:
@@ -60,6 +67,9 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
+        NODE_IMAGE: ${DOCKER_IMAGE_MIRROR-docker.m.daocloud.io/library/}node:22-alpine
+        NGINX_IMAGE: ${DOCKER_IMAGE_MIRROR-docker.m.daocloud.io/library/}nginx:1.27-alpine
+        NPM_REGISTRY: ${NPM_REGISTRY-https://registry.npmmirror.com}
         VITE_API_BASE: /api/v1
     image: eorzea-frontend:latest
     restart: unless-stopped

@@ -30,6 +30,7 @@ FF14Push/
 ├── docker-compose.yml          服务器部署编排（db + backend + frontend）
 ├── .env.example                部署环境变量模板
 ├── .env.local.example          本地开发环境变量模板
+├── .npmrc                      npm 国内镜像源（npmmirror）
 ├── scripts/dev.sh              ★ 本地一键启动脚本（无需 Docker）
 ├── shared/                     ★ 前后端共享配置层（唯一事实来源）
 │   ├── data/*.json           品阶/栏位/职业/底材/词条/怪物/BOSS/地区/箱子/合成/经济/资质/指引
@@ -58,6 +59,28 @@ FF14Push/
         ├── components/         通用组件（物品卡、弹窗、指引、日志）
         └── views/              12 个页面
 ```
+
+---
+
+## 国内网络环境（依赖源）
+
+默认全部走国内镜像，开箱即用于国内服务器：
+
+| 用途 | 默认源 | 覆盖变量 |
+| --- | --- | --- |
+| Docker 基础镜像 | `docker.m.daocloud.io/library/` | `DOCKER_IMAGE_MIRROR`（`.env`） |
+| pip（后端依赖） | `pypi.tuna.tsinghua.edu.cn` | `PIP_INDEX_URL`（`.env` / `.env.local`） |
+| npm（前端依赖） | `registry.npmmirror.com` | `NPM_REGISTRY`（`.env` / `.env.local`）或根目录 `.npmrc` |
+| Debian apt（镜像内装 curl） | `mirrors.tuna.tsinghua.edu.cn` | `APT_MIRROR`（`.env`） |
+
+- **Docker 部署**：`docker compose up -d --build` 会用上述源拉基础镜像并安装依赖。
+  把对应变量在 `.env` 中设为**空值**即回退官方源——例如服务器已在
+  `/etc/docker/daemon.json` 配好 `registry-mirrors` 时，留 `DOCKER_IMAGE_MIRROR=` 空着即可，
+  镜像名会回到 `postgres:16-alpine` 这种官方写法。
+- **本地开发**：`./scripts/dev.sh` 安装依赖时默认走清华 pip 与 npmmirror；
+  直接 `npm install` 则由仓库根目录的 `.npmrc` 生效。
+- 绕过 compose 直接 `docker build` 时，用 `--build-arg` 传同名参数
+  （`PYTHON_IMAGE` / `NODE_IMAGE` / `NGINX_IMAGE` / `PIP_INDEX_URL` / `NPM_REGISTRY` / `APT_MIRROR`）。
 
 ---
 
@@ -186,7 +209,7 @@ docker compose up -d --build                         # 更新实例（数据保�
 ```bash
 # 后端
 cd backend
-python3.12 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+python3.12 -m venv .venv && .venv/bin/pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -e ".[dev]"
 cp .env.example .env
 .venv/bin/alembic upgrade head          # 或设 AUTO_CREATE_TABLES=true 自动建表
 .venv/bin/uvicorn app.main:app --reload --port 8000
