@@ -22,10 +22,21 @@ router = APIRouter(prefix="/economy", tags=["economy"])
 MAX_AUTO_ENCHANT_ATTEMPTS = 100
 
 
+_DEDICATED_CATEGORIES = {"doh_tool", "doh_gear", "dol_tool", "dol_gear"}
+
+
 async def _user_items(db: DbSession, user_id: int) -> list[Item]:
     return list(
         (await db.execute(select(Item).where(Item.user_id == user_id))).scalars().all()
     )
+
+
+def _require_combat_item(item: Item) -> None:
+    """重造 / 附魔仅适用于战斗装备；专用装备不在此列（底材不在 base-items 内）。"""
+    if item.category in _DEDICATED_CATEGORIES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="生产/采集专用装备无法重造或附魔"
+        )
 
 
 @router.post("/craft/preview")
@@ -106,6 +117,7 @@ async def refine(
     ).scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
+    _require_combat_item(item)
 
     cost = refine_cost(item.rarity, int(item.refine_count), payload.mode)
     if int(user.gold) < cost:
@@ -137,6 +149,7 @@ async def enchant(
     ).scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
+    _require_combat_item(item)
 
     rng = random.Random()
     before = item_to_dict(item, sell_price_range(item))

@@ -162,18 +162,19 @@ BONUS_NAMES = {
     "gatherYieldPct": "采集产量",
     "gatherSpeedPct": "采集速度",
     "craftQualityPct": "制造品质",
+    "craftRarityPct": "制造品阶幸运",
     "craftSpeedPct": "制造速度",
     "fishInsightPct": "捕鱼人之识时长",
     "fishChancePct": "鱼王/鱼皇概率",
 }
 SLOT_BONUS = {
-    ("doh", "Tool"): {"craftQualityPct": 4.0},
-    ("doh", "OffTool"): {"craftSpeedPct": 6.0},
-    ("doh", "Head"): {"craftQualityPct": 1.2},
-    ("doh", "Body"): {"craftQualityPct": 1.8, "craftSpeedPct": 2.0},
-    ("doh", "Hands"): {"craftSpeedPct": 1.6},
-    ("doh", "Legs"): {"craftSpeedPct": 2.0},
-    ("doh", "Feet"): {"craftQualityPct": 1.0},
+    ("doh", "Tool"): {"craftQualityPct": 4.0, "craftRarityPct": 3.0},
+    ("doh", "OffTool"): {"craftSpeedPct": 6.0, "craftRarityPct": 1.5},
+    ("doh", "Head"): {"craftQualityPct": 1.2, "craftRarityPct": 0.6},
+    ("doh", "Body"): {"craftQualityPct": 1.8, "craftSpeedPct": 2.0, "craftRarityPct": 0.9},
+    ("doh", "Hands"): {"craftSpeedPct": 1.6, "craftRarityPct": 0.5},
+    ("doh", "Legs"): {"craftSpeedPct": 2.0, "craftRarityPct": 0.5},
+    ("doh", "Feet"): {"craftQualityPct": 1.0, "craftRarityPct": 0.5},
     ("dol", "Tool"): {"gatherYieldPct": 6.0, "fishChancePct": 3.0},
     ("dol", "OffTool"): {"gatherSpeedPct": 6.0, "fishInsightPct": 5.0},
     ("dol", "Head"): {"gatherYieldPct": 1.5},
@@ -182,6 +183,37 @@ SLOT_BONUS = {
     ("dol", "Legs"): {"gatherSpeedPct": 2.0},
     ("dol", "Feet"): {"gatherYieldPct": 1.2},
 }
+
+# 专用装备 Buff/Debuff 词条池（普通/稀有/太古品质规则与战斗词条共用 terms.json）。
+# slots 限定为专用栏位：战斗装备生成（roll_terms）只读 terms.json，因此两套词条互不串味。
+DOH_SLOTS = [f"doh{s}" for s in ("Tool", "OffTool", "Head", "Body", "Hands", "Legs", "Feet")]
+DOL_SLOTS = [f"dol{s}" for s in ("Tool", "OffTool", "Head", "Body", "Hands", "Legs", "Feet")]
+DOHDOL_TERMS = [
+    {"id": "dohRarityLuck", "name": "品阶幸运", "type": "buff", "trigger": "常驻",
+     "stat": "craftRarityPct", "range": [2, 10], "slots": DOH_SLOTS, "desc": "制造品阶概率 +{v}%"},
+    {"id": "dohQualityInsight", "name": "品质洞察", "type": "buff", "trigger": "常驻",
+     "stat": "craftQualityPct", "range": [3, 12], "slots": DOH_SLOTS, "desc": "制造品质概率 +{v}%"},
+    {"id": "dohDexterous", "name": "巧手", "type": "buff", "trigger": "常驻",
+     "stat": "craftSpeedPct", "range": [3, 15], "slots": DOH_SLOTS, "desc": "制造速度 +{v}%"},
+    {"id": "dohRarityMisaligned", "name": "品阶失衡", "type": "debuff", "trigger": "常驻",
+     "stat": "craftRarityPct", "range": [-8, -2], "slots": DOH_SLOTS, "desc": "制造品阶概率 {v}%"},
+    {"id": "dohQualityDull", "name": "品质钝化", "type": "debuff", "trigger": "常驻",
+     "stat": "craftQualityPct", "range": [-10, -3], "slots": DOH_SLOTS, "desc": "制造品质概率 {v}%"},
+    {"id": "dohClumsy", "name": "笨拙", "type": "debuff", "trigger": "常驻",
+     "stat": "craftSpeedPct", "range": [-12, -3], "slots": DOH_SLOTS, "desc": "制造速度 {v}%"},
+    {"id": "dolHarvest", "name": "丰收", "type": "buff", "trigger": "常驻",
+     "stat": "gatherYieldPct", "range": [3, 15], "slots": DOL_SLOTS, "desc": "采集产量 +{v}%"},
+    {"id": "dolSwiftGather", "name": "疾采", "type": "buff", "trigger": "常驻",
+     "stat": "gatherSpeedPct", "range": [3, 12], "slots": DOL_SLOTS, "desc": "采集速度 +{v}%"},
+    {"id": "dolAnglingJoy", "name": "钓趣", "type": "buff", "trigger": "常驻",
+     "stat": "fishInsightPct", "range": [5, 20], "slots": DOL_SLOTS, "desc": "捕鱼人之识时长 +{v}%"},
+    {"id": "dolKingInstinct", "name": "渔王的直觉", "type": "buff", "trigger": "常驻",
+     "stat": "fishChancePct", "range": [3, 10], "slots": DOL_SLOTS, "desc": "鱼王 / 鱼皇概率 +{v}%"},
+    {"id": "dolPoorHarvest", "name": "歉收", "type": "debuff", "trigger": "常驻",
+     "stat": "gatherYieldPct", "range": [-12, -3], "slots": DOL_SLOTS, "desc": "采集产量 {v}%"},
+    {"id": "dolSluggishGather", "name": "迟缓", "type": "debuff", "trigger": "常驻",
+     "stat": "gatherSpeedPct", "range": [-10, -3], "slots": DOL_SLOTS, "desc": "采集速度 {v}%"},
+]
 
 dohdol_items = []
 for kind in ("doh", "dol"):
@@ -226,6 +258,7 @@ dump("dohdol-equipment.json", {
         {"id": "dol_gear", "name": "采集防具", "kind": "dol"},
     ],
     "bonusNames": BONUS_NAMES,
+    "terms": DOHDOL_TERMS,
     "items": dohdol_items,
 })
 
@@ -429,12 +462,25 @@ for c in consumables:
 
 dump("recipes.json", {
     "$comment": "生产配方。按生产等级解锁；inputs 引用材料/半成品/鱼，output 可为材料/半成品/装备/消耗品。",
-    "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；同时按 rarityWeights 抽品阶。",
+    "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（四项来源满值 → 神话 50%）。",
     "equipment": {
         "highQualityMultiplier": 1.15,
         "guaranteedAncientTerms": 1,
         "rarityWeights": {
             "common": 0.30, "uncommon": 0.30, "rare": 0.22, "epic": 0.12, "legendary": 0.05, "mythic": 0.01,
+        },
+        "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)；分布 = 基准 ×(1−t) + 目标 × t。四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备 craftRarityPct 合计）全部拉满 → t=1 → 神话 = mythicCap（50%，硬上限）。",
+        "rarityScaling": {
+            "mythicCap": 0.5,
+            "sources": {
+                "heroLevel": {"weight": 0.25, "ref": 100},
+                "clearedRegions": {"weight": 0.25, "ref": 40},
+                "prodLevel": {"weight": 0.25, "ref": 50},
+                "gearPct": {"weight": 0.25, "ref": 60},
+            },
+            "targetWeights": {
+                "common": 0.01, "uncommon": 0.02, "rare": 0.09, "epic": 0.18, "legendary": 0.20, "mythic": 0.50,
+            },
         },
     },
     "recipes": recipes,

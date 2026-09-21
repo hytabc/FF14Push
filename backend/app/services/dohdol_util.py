@@ -113,7 +113,7 @@ def sellable_kind(item_id: str) -> str | None:
 
 # ------------------------------------------------------------------ 专用装备加成
 def equipped_bonus(items: Iterable[Any]) -> dict[str, float]:
-    """汇总已穿戴的生产/采集专用装备加成。"""
+    """汇总已穿戴的生产/采集专用装备加成（固定加成 + Buff/Debuff 词条）。"""
     out: dict[str, float] = {}
     for item in items:
         if getattr(item, "equipped_slot", None) is None:
@@ -123,6 +123,10 @@ def equipped_bonus(items: Iterable[Any]) -> dict[str, float]:
             continue
         for stat, value in base["bonus"].items():
             out[stat] = out.get(stat, 0.0) + float(value)
+        for term in item.terms or []:
+            stat = term.get("stat")
+            if stat:
+                out[stat] = out.get(stat, 0.0) + float(term.get("value", 0.0))
     return out
 
 

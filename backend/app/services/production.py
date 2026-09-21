@@ -12,11 +12,11 @@ from typing import Any, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ActivitySession, DohDolProgress, Item, User
-from app.services import consumables, dohdol_util
+from app.models import ActivitySession, DohDolProgress, Hero, Item, User
+from app.services import consumables, dohdol_util, drop_luck
 from app.services.game_config import CONFIG
 from app.services.grants import insert_items
-from app.services.item_factory import generate_crafted_item
+from app.services.item_factory import craft_rarity_luck, generate_crafted_item
 from app.services.playtime import add_play_ms
 
 MAX_CRAFTS_PER_REPORT = 200
@@ -97,6 +97,13 @@ async def report_produce(
         "craftQualityPct", 0.0
     ) / 100.0
 
+    # 制造品阶概率随进度提升：英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运。
+    hero_level = await db.scalar(select(Hero.level).where(Hero.user_id == user.id))
+    cleared_regions = await drop_luck.cleared_region_count(db, user.id)
+    rarity_luck, _ = craft_rarity_luck(
+        int(hero_level or 0), cleared_regions, int(progress.level), equip.get("craftRarityPct", 0.0)
+    )
+
     craft_seconds_value = craft_seconds(recipe, items)
     total = float(session.credit) + window
     by_time = int(total // craft_seconds_value)
@@ -120,7 +127,9 @@ async def report_produce(
                 db, user.id, dohdol_util.STACK_MATERIAL, entry["itemId"], int(entry["count"])
             )
         if output["kind"] == "equipment":
-            equipment_out.append(generate_crafted_item(output["baseId"], rng, quality_bonus))
+            equipment_out.append(
+                generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
+            )
         elif output["kind"] == "consumable":
             spec = dohdol_util.consumable_def(output["itemId"])
             kind = spec["kind"] if spec else "potion"

@@ -38,9 +38,10 @@ const materials = computed(() => dohdol.state?.materials ?? [])
 const consumables = computed(() => dohdol.state?.consumables ?? [])
 const bonus = computed(() => dohdol.state?.bonus ?? {})
 
-const craftInfo = craftRarityExplain()
+const craft = computed(() => dohdol.state?.craft ?? null)
+const craftInfo = computed(() => craftRarityExplain(craft.value))
 const craftWeightRows = computed(() =>
-  data.rarities.order.map((rarity) => ({ rarity: rarity as RarityId, weight: data.recipes.equipment.rarityWeights[rarity] ?? 0 })),
+  data.rarities.order.map((rarity) => ({ rarity: rarity as RarityId, weight: craft.value?.odds?.[rarity] ?? 0 })),
 )
 const qualityBonusInfo = computed(() => craftQualityExplain((bonus.value.craftQualityPct ?? 0) / 100))
 function fmtWeight(weight: number): string {
@@ -108,15 +109,20 @@ async function stop() {
         <span v-if="progress" class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-300">
           生产等级 Lv.{{ progress.level }} · {{ progress.exp }}/{{ progress.expToNext }}
         </span>
-        <span class="ml-auto flex items-center text-xs text-ink-400">
-          制造品质 +{{ (bonus.craftQualityPct ?? 0).toFixed(0) }}%
-          <InfoTip :title="qualityBonusInfo.title">
-            <p v-for="(line, i) in qualityBonusInfo.lines" :key="i">{{ line }}</p>
-          </InfoTip>
+        <span class="ml-auto flex flex-wrap items-center gap-3 text-xs text-ink-400">
+          <span class="flex items-center">
+            制造品阶幸运 {{ (bonus.craftRarityPct ?? 0) >= 0 ? '+' : '' }}{{ (bonus.craftRarityPct ?? 0).toFixed(1) }}%
+          </span>
+          <span class="flex items-center">
+            制造品质 +{{ (bonus.craftQualityPct ?? 0).toFixed(0) }}%
+            <InfoTip :title="qualityBonusInfo.title">
+              <p v-for="(line, i) in qualityBonusInfo.lines" :key="i">{{ line }}</p>
+            </InfoTip>
+          </span>
         </span>
       </div>
       <p class="mt-1 text-[11px] text-ink-500">
-        制造装备恒为「高品质」：属性区间上移、必带太古词条，并按概率抽品阶；专用装备仅能通过生产获取。
+        制造装备恒为「高品质」：属性区间上移、必带太古词条；品阶概率随英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运提升（极限时神话 50%），专用装备还会带 Buff/Debuff 词条。
       </p>
       <p class="mt-0.5 text-[11px] text-ink-500">
         制造品阶概率：

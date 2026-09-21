@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
@@ -11,7 +12,16 @@ from sqlalchemy import select
 from app.models import ActiveConsumable, DohDolProgress, FishRecord, StackItem
 from app.services import dohdol_util
 from app.services.game_config import CONFIG
-from app.services.item_factory import generate_crafted_item
+from app.services.item_factory import (
+    craft_rarity_distribution,
+    craft_rarity_luck,
+    generate_crafted_item,
+)
+from app.services.valuation import sell_price
+
+
+def _luck(hero: int = 0, cleared: int = 0, prod: int = 0, gear: float = 0.0) -> float:
+    return craft_rarity_luck(hero, cleared, prod, gear)[0]
 
 
 def _backdate(session, seconds: float) -> None:
@@ -140,6 +150,159 @@ class TestCraftedItem:
         assert item["highQuality"] is True
         assert item["category"] == "doh_tool"
         assert item["baseAttrs"]
+
+
+class TestCraftRarityScaling:
+    """制造品阶概率抽奖化：单调提升、神话硬上限 50%、四项全满 = 50%。"""
+
+    def _scaling(self):
+        return CONFIG.recipes["equipment"]["rarityScaling"]
+
+    def test_zero_progress_equals_base_weights(self):
+        base = CONFIG.recipes["equipment"]["rarityWeights"]
+        dist = craft_rarity_distribution(0.0)
+        for rarity in CONFIG.rarity_order:
+            assert abs(dist[rarity] - base[rarity]) < 1e-9, rarity
+
+    def test_full_progress_reaches_mythic_cap(self):
+        refs = self._scaling()["sources"]
+        luck = _luck(
+            int(refs["heroLevel"]["ref"]),
+            int(refs["clearedRegions"]["ref"]),
+            int(refs["prodLevel"]["ref"]),
+            float(refs["gearPct"]["ref"]),
+        )
+        assert luck == pytest.approx(1.0)
+        assert craft_rarity_distribution(luck)["mythic"] == pytest.approx(0.5)
+
+    def test_mythic_never_exceeds_cap(self):
+        cap = float(self._scaling()["mythicCap"])
+        assert cap == pytest.approx(0.5)
+        for t in (0.0, 0.25, 0.5, 0.75, 1.0, 2.0):
+            dist = craft_rarity_distribution(t)
+            assert dist["mythic"] <= cap + 1e-9
+            assert abs(sum(dist.values()) - 1.0) < 1e-9
+
+    def test_each_source_increases_mythic_and_lowers_common(self):
+        refs = self._scaling()["sources"]
+        base = craft_rarity_distribution(_luck())
+        cases = {
+            "heroLevel": _luck(hero=int(refs["heroLevel"]["ref"])),
+            "clearedRegions": _luck(cleared=int(refs["clearedRegions"]["ref"])),
+            "prodLevel": _luck(prod=int(refs["prodLevel"]["ref"])),
+            "gearPct": _luck(gear=float(refs["gearPct"]["ref"])),
+        }
+        for key, luck in cases.items():
+            dist = craft_rarity_distribution(luck)
+            assert dist["mythic"] > base["mythic"], key
+            assert dist["common"] < base["common"], key
+
+    def test_luck_factors_expose_normalized_inputs(self):
+        refs = self._scaling()["sources"]
+        _, factors = craft_rarity_luck(50, 20, 25, 30.0)
+        assert {f["key"] for f in factors} == set(refs)
+        for factor in factors:
+            assert 0.0 <= factor["norm"] <= 1.0
+            assert factor["weight"] > 0
+
+
+class TestDedicatedTerms:
+    """专用装备 Buff/Debuff 词条系统。"""
+
+    def _dedicated_term_ids(self):
+        return {t["id"] for t in CONFIG.dohdol_equipment["terms"]}
+
+    def test_term_pool_is_valid(self):
+        slots = {s["id"] for s in CONFIG.dohdol_equipment["slots"]}
+        bonus_names = CONFIG.dohdol_equipment["bonusNames"]
+        terms = CONFIG.dohdol_equipment["terms"]
+        assert terms, "专用装备词条池不能为空"
+        assert len({t["id"] for t in terms}) == len(terms)
+        for term in terms:
+            assert term["type"] in ("buff", "debuff")
+            assert term["stat"] in bonus_names, term["stat"]
+            assert term["slots"] and set(term["slots"]) <= slots, term["id"]
+            low, high = term["range"]
+            if term["type"] == "buff":
+                assert low > 0 and high > 0, term["id"]
+            else:
+                assert low < 0 and high < 0, term["id"]
+
+    def test_pool_does_not_overlap_combat_terms(self):
+        combat = {t["id"] for t in CONFIG.terms["terms"]}
+        assert combat.isdisjoint(self._dedicated_term_ids())
+
+    def test_crafted_dedicated_item_gets_terms(self):
+        item = generate_crafted_item("dh_dohTool_2", random.Random(5), 0.0, 0.5)
+        assert item["terms"], "专用装备应带 Buff/Debuff 词条"
+        assert any(t["type"] == "buff" and t["quality"] == "ancient" for t in item["terms"])
+        for term in item["terms"]:
+            assert term["id"] in self._dedicated_term_ids()
+
+    def test_combat_equipment_never_gets_dedicated_terms(self):
+        dedicated = self._dedicated_term_ids()
+        for seed in range(20):
+            item = generate_crafted_item("w_bow_2", random.Random(seed))
+            for term in item["terms"]:
+                assert term["id"] not in dedicated
+
+    def test_equipped_bonus_includes_terms(self):
+        class _FakeItem:
+            def __init__(self):
+                self.base_id = "dh_dohTool_0"
+                self.equipped_slot = "dohTool"
+                self.terms = [{"type": "buff", "stat": "craftRarityPct", "value": 7.5}]
+
+        bonus = dohdol_util.equipped_bonus([_FakeItem()])
+        # 固定加成 craftRarityPct 3.0 + 词条 7.5
+        assert bonus["craftRarityPct"] == pytest.approx(10.5)
+        assert bonus["craftQualityPct"] == pytest.approx(4.0)
+
+
+class TestCraftEconomy:
+    """制造装备出售不得成为比打怪更快的金币来源（防刷）。"""
+
+    def test_craft_sell_never_outearns_endgame_combat(self):
+        # 终局战斗金币下限：地区 40 普通怪 × 金币浮动下限 ÷ 保守击杀耗时（8s，实际更快）。
+        region40 = CONFIG.region_by_id[40]
+        gold_floor = (
+            float(region40["baseGold"])
+            * float(CONFIG.regions["goldMultipliers"]["normal"])
+            * (1.0 - float(CONFIG.regions["goldFloat"]))
+        )
+        combat_gold_per_sec = gold_floor / 8.0
+
+        rng = random.Random(2024)
+        worst_rate = 0.0
+        worst_id = ""
+        samples = 120
+        for recipe in CONFIG.recipes["recipes"]:
+            output = recipe["output"]
+            if output["kind"] != "equipment":
+                continue
+            if output["baseId"] not in CONFIG.base_item_by_id:
+                continue  # 专用装备
+            material_sell = sum(
+                int((CONFIG.material_by_id.get(e["itemId"]) or {}).get("sell", 0)) * int(e["count"])
+                for e in recipe["inputs"]
+            )
+            total = 0.0
+            for _ in range(samples):
+                gen = generate_crafted_item(output["baseId"], rng, 0.0, 1.0)
+                item = SimpleNamespace(
+                    rarity=gen["rarity"],
+                    base_attrs=gen["baseAttrs"],
+                    sub_attrs=gen["subAttrs"],
+                    terms=gen["terms"],
+                )
+                total += sell_price(item)
+            rate = (total / samples - material_sell) / float(recipe["craftSeconds"])
+            if rate > worst_rate:
+                worst_rate, worst_id = rate, output["baseId"]
+
+        assert worst_rate < combat_gold_per_sec, (
+            f"{worst_id} 制造出售 {worst_rate:.0f} 金币/秒，不应超过终局战斗下限 {combat_gold_per_sec:.0f} 金币/秒"
+        )
 
 
 class TestGatherApi:
@@ -436,6 +599,29 @@ class TestActivityCycle:
         assert fstart.json()["cycle"]["seconds"] > 0
 
 
+class TestDedicatedItemGuards:
+    @pytest.mark.asyncio
+    async def test_dedicated_gear_cannot_be_refined_or_enchanted(self, auth_client, session_factory):
+        from app.models import User
+        from app.services.grants import insert_items
+
+        async with session_factory() as db:
+            user = (await db.execute(select(User))).scalars().first()
+            generated = generate_crafted_item("dh_dohTool_0", random.Random(1))
+            created = await insert_items(db, user, [generated], source="craft")
+            await db.commit()
+        item_id = created[0]["id"]
+
+        refine = await auth_client.post(
+            "/api/v1/economy/refine", json={"itemId": item_id, "mode": "random"}
+        )
+        assert refine.status_code == 400, refine.text
+        enchant = await auth_client.post(
+            "/api/v1/economy/enchant", json={"itemId": item_id, "mode": "random"}
+        )
+        assert enchant.status_code == 400, enchant.text
+
+
 class TestDohDolState:
     @pytest.mark.asyncio
     async def test_state_block(self, auth_client):
@@ -450,6 +636,16 @@ class TestDohDolState:
         for r in dohdol["recipes"]:
             key = r["output"]["itemId"] or r["output"]["baseId"]
             assert r["output"]["name"] != key, r["id"]
+
+        # 制造品阶概率块：四项来源 + 归一分布 + 神话硬上限
+        craft = dohdol["craft"]
+        assert len(craft["sources"]) == 4
+        assert {s["key"] for s in craft["sources"]} == {
+            "heroLevel", "clearedRegions", "prodLevel", "gearPct"
+        }
+        assert abs(sum(craft["odds"].values()) - 1.0) < 1e-6
+        assert craft["odds"]["mythic"] <= craft["mythicCap"] + 1e-9
+        assert craft["mythicCap"] == 0.5
 
 
 class TestMaterialAndFishCodex:

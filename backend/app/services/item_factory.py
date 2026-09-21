@@ -207,19 +207,46 @@ def roll_terms(
 
     force_ancient>0 时，保证其中至少这么多条 Buff 为太古（制造装备的「必带太古词条」）。
     """
-    spec = CONFIG.rarities[rarity]
-    count = rng.randint(int(spec["termMin"]), int(spec["termMax"]))
-    count = max(count, int(force_ancient))
-    if count <= 0:
-        return []
-
     slots = set(possible_slots(base))
     eligible = [
         t
         for t in CONFIG.terms["terms"]
         if not t.get("slots") or slots & set(t["slots"])
     ]
-    if not eligible:
+    return _roll_terms_from_pool(eligible, rarity, rng, quality_bonus, force_ancient)
+
+
+def roll_dedicated_terms(
+    slot: str,
+    rarity: str,
+    rng: random.Random,
+    quality_bonus: float = 0.0,
+    force_ancient: int = 0,
+) -> list[dict[str, Any]]:
+    """生成生产/采集专用装备的 0-4 个 Buff/Debuff。
+
+    词条池为 `dohdol-equipment.json:terms`，按专用栏位过滤；品质规则与战斗词条一致
+    （普通/稀有/太古，Debuff 恒为普通）。
+    """
+    eligible = [
+        t
+        for t in CONFIG.dohdol_equipment.get("terms", [])
+        if not t.get("slots") or slot in t["slots"]
+    ]
+    return _roll_terms_from_pool(eligible, rarity, rng, quality_bonus, force_ancient)
+
+
+def _roll_terms_from_pool(
+    eligible: list[dict[str, Any]],
+    rarity: str,
+    rng: random.Random,
+    quality_bonus: float = 0.0,
+    force_ancient: int = 0,
+) -> list[dict[str, Any]]:
+    spec = CONFIG.rarities[rarity]
+    count = rng.randint(int(spec["termMin"]), int(spec["termMax"]))
+    count = max(count, int(force_ancient))
+    if count <= 0 or not eligible:
         return []
 
     buffs = [t for t in eligible if t["type"] == "buff"]
@@ -352,18 +379,68 @@ def generate_item(
     return item, pity
 
 
-def crafted_rarity(rng: random.Random) -> str:
-    """制造装备的品阶抽取（白/绿/蓝/紫/橙/红）。"""
-    weights = CONFIG.recipes["equipment"]["rarityWeights"]
+def craft_rarity_scaling() -> dict[str, Any]:
+    return CONFIG.recipes["equipment"].get("rarityScaling") or {}
+
+
+def craft_rarity_luck(
+    hero_level: int, cleared_regions: int, prod_level: int, gear_pct: float
+) -> tuple[float, list[dict[str, Any]]]:
+    """制造品阶「幸运进度」t 与各来源明细。
+
+    t = Σ weight × clamp(值 / ref, 0, 1)；四项来源全部取满 → t = 1。
+    """
+    values = {
+        "heroLevel": max(0.0, float(hero_level)),
+        "clearedRegions": max(0.0, float(cleared_regions)),
+        "prodLevel": max(0.0, float(prod_level)),
+        "gearPct": max(0.0, float(gear_pct)),
+    }
+    factors: list[dict[str, Any]] = []
+    total = 0.0
+    for key, spec in craft_rarity_scaling().get("sources", {}).items():
+        weight = float(spec.get("weight", 0.0))
+        ref = float(spec.get("ref", 1.0)) or 1.0
+        value = values.get(key, 0.0)
+        norm = min(1.0, value / ref)
+        total += weight * norm
+        factors.append({"key": key, "value": value, "ref": ref, "norm": norm, "weight": weight})
+    return min(1.0, max(0.0, total)), factors
+
+
+def craft_rarity_distribution(luck: float = 0.0) -> dict[str, float]:
+    """制造品阶概率分布：基准分布与目标分布按 t 线性插值，神话受 mythicCap 硬上限约束。"""
+    scaling = craft_rarity_scaling()
+    base = CONFIG.recipes["equipment"]["rarityWeights"]
+    target = scaling.get("targetWeights") or base
+    cap = float(scaling.get("mythicCap", 1.0))
+    t = min(1.0, max(0.0, float(luck)))
     order = list(CONFIG.rarity_order)
-    probs = [float(weights.get(r, 0.0)) for r in order]
-    total = sum(probs)
+
+    probs = {r: float(base.get(r, 0.0)) * (1.0 - t) + float(target.get(r, base.get(r, 0.0))) * t for r in order}
+    total = sum(probs.values())
     if total <= 0:
-        return order[0]
-    roll = rng.random() * total
+        return {r: (1.0 if r == order[0] else 0.0) for r in order}
+    probs = {r: v / total for r, v in probs.items()}
+
+    if "mythic" in probs and probs["mythic"] > cap:
+        excess = probs["mythic"] - cap
+        probs["mythic"] = cap
+        others = [r for r in order if r != "mythic"]
+        other_total = sum(probs[r] for r in others)
+        for r in others:
+            probs[r] += excess * (probs[r] / other_total if other_total > 0 else 1.0 / len(others))
+    return probs
+
+
+def crafted_rarity(rng: random.Random, luck: float = 0.0) -> str:
+    """制造装备的品阶抽取（白/绿/蓝/紫/橙/红），概率随进度提升。"""
+    dist = craft_rarity_distribution(luck)
+    order = list(CONFIG.rarity_order)
+    roll = rng.random()
     cumulative = 0.0
-    for rarity, chance in zip(order, probs):
-        cumulative += chance
+    for rarity in order:
+        cumulative += dist.get(rarity, 0.0)
         if roll < cumulative:
             return rarity
     return order[-1]
@@ -373,13 +450,15 @@ def generate_crafted_item(
     base_id: str,
     rng: random.Random | None = None,
     quality_bonus: float = 0.0,
+    rarity_luck: float = 0.0,
 ) -> dict[str, Any]:
-    """生产一件装备：恒为「高品质」，并按配方权重抽品阶。
+    """生产一件装备：恒为「高品质」，品阶按进度概率抽取。
 
     产出可为战斗装备（走 CONFIG.base_item_by_id）或生产/采集专用装备（走 dohdol 配置）。
+    专用装备会额外按 `dohdol-equipment.json:terms` 抽出 Buff/Debuff 词条。
     """
     rng = rng or random.Random()
-    rarity = crafted_rarity(rng)
+    rarity = crafted_rarity(rng, rarity_luck)
 
     dohdol = CONFIG.dohdol_item_by_id.get(base_id)
     if dohdol is not None:
@@ -389,6 +468,7 @@ def generate_crafted_item(
             {"attr": stat, "value": round(float(value) * mult * (1.0 + 0.15 * rarity_tier), 2)}
             for stat, value in dohdol["bonus"].items()
         ]
+        force_ancient = int(CONFIG.recipes["equipment"]["guaranteedAncientTerms"])
         return {
             "baseId": dohdol["id"],
             "name": dohdol["name"],
@@ -399,7 +479,9 @@ def generate_crafted_item(
             "highQuality": True,
             "baseAttrs": base_attrs,
             "subAttrs": [],
-            "terms": [],
+            "terms": roll_dedicated_terms(
+                dohdol["slot"], rarity, rng, quality_bonus, force_ancient
+            ),
         }
 
     item, _ = generate_item(

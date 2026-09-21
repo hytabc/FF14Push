@@ -187,3 +187,53 @@ def test_three_attribute_ranges_follow_prd() -> None:
         attr = CONFIG.attribute_by_id[attr_id]
         for rarity, rng in expected.items():
             assert list(attr["ranges"][rarity]) == rng, f"{attr_id}/{rarity}"
+
+
+def test_craft_rarity_scaling_is_consistent() -> None:
+    """制造品阶进度缩放配置：权重/分布归一，神话目标 = 硬上限，参考值有效。"""
+    equip = CONFIG.recipes["equipment"]
+    scaling = equip["rarityScaling"]
+    cap = float(scaling["mythicCap"])
+    assert 0 < cap <= 1
+    assert abs(cap - 0.5) < 1e-9, "极限神话概率应为 50%"
+
+    assert abs(sum(float(s["weight"]) for s in scaling["sources"].values()) - 1.0) < 1e-9
+    assert abs(sum(float(v) for v in scaling["targetWeights"].values()) - 1.0) < 1e-9
+    assert abs(float(scaling["targetWeights"]["mythic"]) - cap) < 1e-9
+    for spec in scaling["sources"].values():
+        assert float(spec["ref"]) > 0
+
+    def expected_tier(weights: dict) -> float:
+        return sum(i * float(weights.get(r, 0.0)) for i, r in enumerate(CONFIG.rarity_order))
+
+    assert expected_tier(scaling["targetWeights"]) > expected_tier(equip["rarityWeights"])
+
+
+def test_dedicated_terms_are_scoped_and_valid() -> None:
+    """专用装备词条池：仅限专用栏位、stat 为生产加成键、正负号与类型一致，且不与战斗词条重名。"""
+    slots = {s["id"] for s in CONFIG.dohdol_equipment["slots"]}
+    bonus_names = CONFIG.dohdol_equipment["bonusNames"]
+    terms = CONFIG.dohdol_equipment["terms"]
+    assert terms
+
+    ids = [t["id"] for t in terms]
+    assert len(ids) == len(set(ids))
+    assert set(ids).isdisjoint({t["id"] for t in CONFIG.terms["terms"]})
+
+    for term in terms:
+        assert term["type"] in ("buff", "debuff")
+        assert term["stat"] in bonus_names, term["stat"]
+        assert term["slots"] and set(term["slots"]) <= slots, term["id"]
+        low, high = term["range"]
+        if term["type"] == "buff":
+            assert low > 0 and high > 0, term["id"]
+        else:
+            assert low < 0 and high < 0, term["id"]
+
+
+def test_dohdol_bonus_names_cover_item_bonuses() -> None:
+    """每个专用装备加成键都要有中文名，避免原始 key 泄漏到界面。"""
+    names = CONFIG.dohdol_equipment["bonusNames"]
+    for item in CONFIG.dohdol_equipment["items"]:
+        for stat in item["bonus"]:
+            assert stat in names, f"{item['id']}/{stat}"

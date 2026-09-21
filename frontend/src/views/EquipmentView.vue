@@ -6,6 +6,7 @@ import { api } from '@/api'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
+import TermBadges from '@/components/TermBadges.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { Item, SlotId } from '@/game/types'
@@ -162,6 +163,7 @@ async function unequipDohdol(slot: string) {
                 {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
               </p>
             </div>
+            <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
           </template>
           <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择</p>
         </button>
@@ -250,6 +252,7 @@ async function unequipDohdol(slot: string) {
                   {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
                 </p>
               </div>
+              <TermBadges class="mt-1" :terms="item.terms" />
             </div>
           </div>
         </div>

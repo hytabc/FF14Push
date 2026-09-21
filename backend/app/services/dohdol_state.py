@@ -7,9 +7,14 @@ from typing import Any, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DohDolProgress, FishRecord, Item, StackItem, UserTitle
-from app.services import consumables, dohdol_util
+from app.models import DohDolProgress, FishRecord, Hero, Item, StackItem, UserTitle
+from app.services import consumables, dohdol_util, drop_luck
 from app.services.game_config import CONFIG
+from app.services.item_factory import (
+    craft_rarity_distribution,
+    craft_rarity_luck,
+    craft_rarity_scaling,
+)
 from app.services.serialization import item_to_dict
 
 
@@ -99,7 +104,11 @@ def _recipe_view(recipe: dict[str, Any], level: int, stock: dict[str, int]) -> d
 
 
 async def build_dohdol_state(
-    db: AsyncSession, user_id: int, items: Sequence[Item] | None = None
+    db: AsyncSession,
+    user_id: int,
+    items: Sequence[Item] | None = None,
+    hero_level: int | None = None,
+    cleared_regions: int | None = None,
 ) -> dict[str, Any]:
     progress = await _progress_map(db, user_id)
     stacks = await _stacks(db, user_id)
@@ -112,6 +121,19 @@ async def build_dohdol_state(
     # 专用装备（仅生产/采集装备）
     if items is None:
         items = (await db.execute(select(Item).where(Item.user_id == user_id))).scalars().all()
+    equip_bonus = dohdol_util.equipped_bonus(items)
+
+    # 制造品阶概率（随进度提升）：与 report_produce 用同一套公式，保证展示与实际结算一致。
+    if hero_level is None:
+        hero_level = await db.scalar(select(Hero.level).where(Hero.user_id == user_id))
+    if cleared_regions is None:
+        cleared_regions = await drop_luck.cleared_region_count(db, user_id)
+    luck, factors = craft_rarity_luck(
+        int(hero_level or 0),
+        int(cleared_regions or 0),
+        int(progress["doh"]["level"]),
+        float(equip_bonus.get("craftRarityPct", 0.0)),
+    )
     dedicated_loadout: dict[str, dict[str, Any]] = {}
     for item in items:
         if item.category in ("doh_tool", "doh_gear", "dol_tool", "dol_gear") and item.equipped_slot:
@@ -140,7 +162,13 @@ async def build_dohdol_state(
         "active": await consumables.active_state(db, user_id),
         "recipes": recipes,
         "loadout": dedicated_loadout,
-        "bonus": dohdol_util.equipped_bonus(items),
+        "bonus": equip_bonus,
+        "craft": {
+            "odds": craft_rarity_distribution(luck),
+            "luck": round(luck, 6),
+            "mythicCap": float(craft_rarity_scaling().get("mythicCap", 1.0)),
+            "sources": factors,
+        },
         "titles": titles,
         "fishStats": {
             "species": fish_species,

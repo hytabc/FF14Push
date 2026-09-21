@@ -1,6 +1,6 @@
 {
   "$comment": "生产配方。按生产等级解锁；inputs 引用材料/半成品/鱼，output 可为材料/半成品/装备/消耗品。",
-  "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；同时按 rarityWeights 抽品阶。",
+  "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（四项来源满值 → 神话 50%）。",
   "equipment": {
     "highQualityMultiplier": 1.15,
     "guaranteedAncientTerms": 1,
@@ -11,6 +11,24 @@
       "epic": 0.12,
       "legendary": 0.05,
       "mythic": 0.01
+    },
+    "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)；分布 = 基准 ×(1−t) + 目标 × t。四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备 craftRarityPct 合计）全部拉满 → t=1 → 神话 = mythicCap（50%，硬上限）。",
+    "rarityScaling": {
+      "mythicCap": 0.5,
+      "sources": {
+        "heroLevel": { "weight": 0.25, "ref": 100 },
+        "clearedRegions": { "weight": 0.25, "ref": 40 },
+        "prodLevel": { "weight": 0.25, "ref": 50 },
+        "gearPct": { "weight": 0.25, "ref": 60 }
+      },
+      "targetWeights": {
+        "common": 0.01,
+        "uncommon": 0.02,
+        "rare": 0.09,
+        "epic": 0.18,
+        "legendary": 0.2,
+        "mythic": 0.5
+      }
     }
   },
   "recipes": [

@@ -155,6 +155,23 @@ export interface DohDolProgressView {
   levelCap: number
 }
 
+/** 制造品阶概率的一项来源（展示用：当前值 / 参考值 / 归一值 / 权重）。 */
+export interface CraftOddsSource {
+  key: string
+  value: number
+  ref: number
+  norm: number
+  weight: number
+}
+
+/** 服务端结算的制造品阶概率分布（随进度提升）。 */
+export interface CraftOdds {
+  odds: Record<RarityId, number>
+  luck: number
+  mythicCap: number
+  sources: CraftOddsSource[]
+}
+
 export interface DohDolState {
   progress: Record<string, DohDolProgressView>
   materials: MaterialStackItem[]
@@ -163,6 +180,7 @@ export interface DohDolState {
   recipes: RecipeView[]
   loadout: Record<string, Item>
   bonus: Record<string, number>
+  craft: CraftOdds
   titles: TitleView[]
   fishStats: {
     species: number

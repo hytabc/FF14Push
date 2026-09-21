@@ -7,6 +7,7 @@ import { api } from '@/api'
 import { toApiError } from '@/api/client'
 import ItemCard from '@/components/ItemCard.vue'
 import Modal from '@/components/Modal.vue'
+import TermBadges from '@/components/TermBadges.vue'
 import { useToastStore } from '@/stores/toast'
 import type { PlayerProfile } from '@/game/types'
 import { formatNumber, formatPlaytime, jobName, rarityBg, rarityClass, rarityName } from '@/utils/format'
@@ -136,6 +137,7 @@ watch(
                 {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
               </p>
             </div>
+            <TermBadges class="mt-1" :terms="profile.dohdolLoadout[slot.id]!.terms" />
           </template>
           <p v-else class="mt-1 text-xs text-ink-600">空</p>
         </div>

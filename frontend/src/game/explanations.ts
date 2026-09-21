@@ -1,7 +1,7 @@
 import data from '@shared/schema'
 import type { GatherNodeDef } from '@shared/schema'
 
-import type { RarityId } from '@/game/types'
+import type { CraftOdds, RarityId } from '@/game/types'
 
 /**
  * 「概率 / 数值如何计算」的说明文案。
@@ -253,20 +253,53 @@ export function fishChanceExplain(region: {
   }
 }
 
-/** 制造品阶。真源：后端 services/item_factory.py::crafted_rarity + recipes.json.equipment.rarityWeights */
-export function craftRarityExplain(): Explain {
-  const weights = data.recipes.equipment.rarityWeights as Record<string, number>
+const CRAFT_SOURCE_LABELS: Record<string, string> = {
+  heroLevel: '英雄等级',
+  clearedRegions: '通关地区数',
+  prodLevel: '生产等级',
+  gearPct: '专用装备品阶幸运(%)',
+}
+
+/**
+ * 制造品阶。真源：后端 services/item_factory.py::craft_rarity_luck / craft_rarity_distribution
+ * + recipes.json.equipment.rarityScaling。传服务端下发的 craft（含当前来源与最终概率）即展示当前玩家口径。
+ */
+export function craftRarityExplain(craft?: CraftOdds | null): Explain {
+  const scaling = data.recipes.equipment.rarityScaling
+  const base = data.recipes.equipment.rarityWeights as Record<string, number>
+  const target = scaling.targetWeights as Record<string, number>
   const order = data.rarities.order as RarityId[]
-  return {
-    title: '制造品阶概率如何计算',
-    lines: [
-      `制造装备按固定权重抽品阶：${order
-        .map((r) => `${data.rarities.byId[r].name} ${pctSmart(weights[r] ?? 0)}`)
-        .join(' / ')}`,
-      '制造装备恒为「高品质」：属性区间上移且必带太古词条；「制造品质 +X%」只提升稀有 / 太古词条判定，不改变品阶权重。',
-      '依据：服务端 item_factory.crafted_rarity()，配置 shared/data/recipes.json 的 rarityWeights。',
-    ],
+  const nameOf = (r: RarityId) => data.rarities.byId[r].name
+  const fmtValue = (v: number) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))
+
+  if (!craft) {
+    return {
+      title: '制造品阶概率如何计算',
+      lines: [
+        `制造装备的品阶概率随进度提升，基准分布：${order
+          .map((r) => `${nameOf(r)} ${pctSmart(base[r] ?? 0)}`)
+          .join(' / ')}`,
+        `四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运）全部拉满时，神话概率 = ${pct(scaling.mythicCap, 0)}（硬上限）。`,
+        '依据：服务端 item_factory.craft_rarity_luck() / craft_rarity_distribution()，配置 shared/data/recipes.json 的 rarityScaling。',
+      ],
+    }
   }
+
+  const lines = [
+    `幸运进度 t = Σ 权重 × min(当前值 / 参考值, 1) = ${(craft.luck * 100).toFixed(1)}%`,
+    ...craft.sources.map(
+      (s) =>
+        `${CRAFT_SOURCE_LABELS[s.key] ?? s.key}：${fmtValue(s.value)} / ${fmtValue(s.ref)}（达标 ${(s.norm * 100).toFixed(0)}%，权重 ${(s.weight * 100).toFixed(0)}%）`,
+    ),
+    `分布 = 基准 ×(1 − t) + 目标 × t；四项全满（t=1）时目标分布：${order
+      .map((r) => `${nameOf(r)} ${pctSmart(target[r] ?? 0)}`)
+      .join(' / ')}`,
+    `当前各品阶概率：${order.map((r) => `${nameOf(r)} ${pctSmart(craft.odds[r] ?? 0)}`).join(' / ')}`,
+    `神话概率 ${pctSmart(craft.odds.mythic ?? 0)}，硬上限 ${pct(craft.mythicCap, 0)}（永不超出）。`,
+    '制造装备恒为「高品质」：属性区间上移且必带太古词条；「制造品质 +X%」提升稀有 / 太古词条判定。',
+    '依据：服务端 item_factory.craft_rarity_luck() / craft_rarity_distribution()，配置 shared/data/recipes.json 的 rarityScaling。',
+  ]
+  return { title: '制造品阶概率如何计算', lines }
 }
 
 /** 附魔词条品质。真源：后端 services/item_factory.py::_roll_quality + economy.json.termQuality */

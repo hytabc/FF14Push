@@ -102,6 +102,18 @@ export interface TermDef {
   desc: string
 }
 
+/** 生产/采集专用装备词条（slots 为专用栏位，stat 为生产加成键）。 */
+export interface ProductionTermDef {
+  id: string
+  name: string
+  type: 'buff' | 'debuff'
+  trigger: string
+  stat: string
+  range: [number, number]
+  slots: string[]
+  desc: string
+}
+
 export interface SkillEffect {
   type: string
   value?: number
@@ -683,6 +695,7 @@ export const gameData = {
     slots: DohDolSlotDef[]
     categories: Array<{ id: DohDolCategory; name: string; kind: DohDolJobKind }>
     bonusNames: Record<string, string>
+    terms: ProductionTermDef[]
     items: DohDolItemDef[]
   },
   dohdolItemById: Object.fromEntries(
@@ -701,6 +714,11 @@ export const gameData = {
       highQualityMultiplier: number
       guaranteedAncientTerms: number
       rarityWeights: Record<RarityId, number>
+      rarityScaling: {
+        mythicCap: number
+        sources: Record<string, { weight: number; ref: number }>
+        targetWeights: Record<RarityId, number>
+      }
     }
     recipes: RecipeDef[]
   },

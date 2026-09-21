@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
+import TermBadges from '@/components/TermBadges.vue'
 import { useGameStore } from '@/stores/game'
 import { useItemActions } from '@/stores/itemActions'
 import { useTagsStore } from '@/stores/tags'
@@ -20,8 +21,6 @@ import {
   slotName,
   subAttrQualityClass,
   tagColorHex,
-  termLabel,
-  termQualityClass,
 } from '@/utils/format'
 
 const props = withDefaults(
@@ -50,9 +49,6 @@ const style = computed(() => ({
   borderColor: rarityHex(props.item.rarity),
   backgroundColor: 'transparent',
 }))
-
-const buffs = computed(() => props.item.terms.filter((t) => t.type === 'buff'))
-const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff'))
 
 const itemTags = computed<ItemTag[]>(() => {
   const ids = props.item.tagIds ?? []
@@ -114,25 +110,7 @@ function tagStyle(colorId: string) {
       </li>
     </ul>
 
-    <div v-if="item.terms.length" class="mt-2 flex flex-wrap gap-1">
-      <span
-        v-for="term in buffs"
-        :key="term.id"
-        class="rounded border px-1.5 py-0.5 text-[10px]"
-        :class="termQualityClass(term.quality)"
-        :title="term.desc.replace('{v}', String(term.value))"
-      >
-        {{ termLabel(term) }}
-      </span>
-      <span
-        v-for="term in debuffs"
-        :key="term.id"
-        class="rounded border border-rose-500/40 px-1.5 py-0.5 text-[10px] text-rose-300"
-        :title="term.desc.replace('{v}', String(term.value))"
-      >
-        {{ termLabel(term) }}
-      </span>
-    </div>
+    <TermBadges class="mt-2" :terms="item.terms" />
 
     <div v-if="itemTags.length" class="mt-2 flex flex-wrap gap-1">
       <button

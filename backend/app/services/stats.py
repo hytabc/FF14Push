@@ -11,6 +11,8 @@ from typing import Any, Iterable
 from app.services.game_config import CONFIG
 
 CORE_ATTRS = ("str", "dex", "int")
+# 生产/采集专用装备：只影响采集/制造/钓鱼，不参与战斗结算。
+_DEDICATED_CATEGORIES = {"doh_tool", "doh_gear", "dol_tool", "dol_gear"}
 
 
 @dataclass
@@ -95,10 +97,15 @@ class HeroStats:
 
 
 def aggregate_equipment(items: Iterable[Any]) -> EquipmentAggregate:
-    """汇总已穿戴装备的基础属性、副属性与词条。"""
+    """汇总已穿戴装备的基础属性、副属性与词条。
+
+    生产/采集专用装备（doh_* / dol_*）不参与战斗结算，直接跳过。
+    """
     agg = EquipmentAggregate()
     for item in items:
         if getattr(item, "equipped_slot", None) is None:
+            continue
+        if getattr(item, "category", None) in _DEDICATED_CATEGORIES:
             continue
         for entry in item.base_attrs or []:
             attr = entry["attr"]

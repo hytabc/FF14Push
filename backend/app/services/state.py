@@ -156,5 +156,7 @@ async def build_game_state(
                 else list(CONFIG.economy["sell"]["autoSellRarities"]),
             }
         },
-        "dohdol": await build_dohdol_state(db, user.id, items),
+        "dohdol": await build_dohdol_state(
+            db, user.id, items, hero.level, cleared_count
+        ),
     }

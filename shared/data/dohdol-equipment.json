@@ -112,10 +112,265 @@
     "gatherYieldPct": "采集产量",
     "gatherSpeedPct": "采集速度",
     "craftQualityPct": "制造品质",
+    "craftRarityPct": "制造品阶幸运",
     "craftSpeedPct": "制造速度",
     "fishInsightPct": "捕鱼人之识时长",
     "fishChancePct": "鱼王/鱼皇概率"
   },
+  "terms": [
+    {
+      "id": "dohRarityLuck",
+      "name": "品阶幸运",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "craftRarityPct",
+      "range": [
+        2,
+        10
+      ],
+      "slots": [
+        "dohTool",
+        "dohOffTool",
+        "dohHead",
+        "dohBody",
+        "dohHands",
+        "dohLegs",
+        "dohFeet"
+      ],
+      "desc": "制造品阶概率 +{v}%"
+    },
+    {
+      "id": "dohQualityInsight",
+      "name": "品质洞察",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "craftQualityPct",
+      "range": [
+        3,
+        12
+      ],
+      "slots": [
+        "dohTool",
+        "dohOffTool",
+        "dohHead",
+        "dohBody",
+        "dohHands",
+        "dohLegs",
+        "dohFeet"
+      ],
+      "desc": "制造品质概率 +{v}%"
+    },
+    {
+      "id": "dohDexterous",
+      "name": "巧手",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "craftSpeedPct",
+      "range": [
+        3,
+        15
+      ],
+      "slots": [
+        "dohTool",
+        "dohOffTool",
+        "dohHead",
+        "dohBody",
+        "dohHands",
+        "dohLegs",
+        "dohFeet"
+      ],
+      "desc": "制造速度 +{v}%"
+    },
+    {
+      "id": "dohRarityMisaligned",
+      "name": "品阶失衡",
+      "type": "debuff",
+      "trigger": "常驻",
+      "stat": "craftRarityPct",
+      "range": [
+        -8,
+        -2
+      ],
+      "slots": [
+        "dohTool",
+        "dohOffTool",
+        "dohHead",
+        "dohBody",
+        "dohHands",
+        "dohLegs",
+        "dohFeet"
+      ],
+      "desc": "制造品阶概率 {v}%"
+    },
+    {
+      "id": "dohQualityDull",
+      "name": "品质钝化",
+      "type": "debuff",
+      "trigger": "常驻",
+      "stat": "craftQualityPct",
+      "range": [
+        -10,
+        -3
+      ],
+      "slots": [
+        "dohTool",
+        "dohOffTool",
+        "dohHead",
+        "dohBody",
+        "dohHands",
+        "dohLegs",
+        "dohFeet"
+      ],
+      "desc": "制造品质概率 {v}%"
+    },
+    {
+      "id": "dohClumsy",
+      "name": "笨拙",
+      "type": "debuff",
+      "trigger": "常驻",
+      "stat": "craftSpeedPct",
+      "range": [
+        -12,
+        -3
+      ],
+      "slots": [
+        "dohTool",
+        "dohOffTool",
+        "dohHead",
+        "dohBody",
+        "dohHands",
+        "dohLegs",
+        "dohFeet"
+      ],
+      "desc": "制造速度 {v}%"
+    },
+    {
+      "id": "dolHarvest",
+      "name": "丰收",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "gatherYieldPct",
+      "range": [
+        3,
+        15
+      ],
+      "slots": [
+        "dolTool",
+        "dolOffTool",
+        "dolHead",
+        "dolBody",
+        "dolHands",
+        "dolLegs",
+        "dolFeet"
+      ],
+      "desc": "采集产量 +{v}%"
+    },
+    {
+      "id": "dolSwiftGather",
+      "name": "疾采",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "gatherSpeedPct",
+      "range": [
+        3,
+        12
+      ],
+      "slots": [
+        "dolTool",
+        "dolOffTool",
+        "dolHead",
+        "dolBody",
+        "dolHands",
+        "dolLegs",
+        "dolFeet"
+      ],
+      "desc": "采集速度 +{v}%"
+    },
+    {
+      "id": "dolAnglingJoy",
+      "name": "钓趣",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "fishInsightPct",
+      "range": [
+        5,
+        20
+      ],
+      "slots": [
+        "dolTool",
+        "dolOffTool",
+        "dolHead",
+        "dolBody",
+        "dolHands",
+        "dolLegs",
+        "dolFeet"
+      ],
+      "desc": "捕鱼人之识时长 +{v}%"
+    },
+    {
+      "id": "dolKingInstinct",
+      "name": "渔王的直觉",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "fishChancePct",
+      "range": [
+        3,
+        10
+      ],
+      "slots": [
+        "dolTool",
+        "dolOffTool",
+        "dolHead",
+        "dolBody",
+        "dolHands",
+        "dolLegs",
+        "dolFeet"
+      ],
+      "desc": "鱼王 / 鱼皇概率 +{v}%"
+    },
+    {
+      "id": "dolPoorHarvest",
+      "name": "歉收",
+      "type": "debuff",
+      "trigger": "常驻",
+      "stat": "gatherYieldPct",
+      "range": [
+        -12,
+        -3
+      ],
+      "slots": [
+        "dolTool",
+        "dolOffTool",
+        "dolHead",
+        "dolBody",
+        "dolHands",
+        "dolLegs",
+        "dolFeet"
+      ],
+      "desc": "采集产量 {v}%"
+    },
+    {
+      "id": "dolSluggishGather",
+      "name": "迟缓",
+      "type": "debuff",
+      "trigger": "常驻",
+      "stat": "gatherSpeedPct",
+      "range": [
+        -10,
+        -3
+      ],
+      "slots": [
+        "dolTool",
+        "dolOffTool",
+        "dolHead",
+        "dolBody",
+        "dolHands",
+        "dolLegs",
+        "dolFeet"
+      ],
+      "desc": "采集速度 {v}%"
+    }
+  ],
   "items": [
     {
       "id": "dh_dohTool_0",
@@ -126,7 +381,8 @@
       "tierIndex": 0,
       "levelReq": 1,
       "bonus": {
-        "craftQualityPct": 4.0
+        "craftQualityPct": 4.0,
+        "craftRarityPct": 3.0
       }
     },
     {
@@ -138,7 +394,8 @@
       "tierIndex": 1,
       "levelReq": 25,
       "bonus": {
-        "craftQualityPct": 8.8
+        "craftQualityPct": 8.8,
+        "craftRarityPct": 6.6
       }
     },
     {
@@ -150,7 +407,8 @@
       "tierIndex": 2,
       "levelReq": 50,
       "bonus": {
-        "craftQualityPct": 16.0
+        "craftQualityPct": 16.0,
+        "craftRarityPct": 12.0
       }
     },
     {
@@ -162,7 +420,8 @@
       "tierIndex": 0,
       "levelReq": 1,
       "bonus": {
-        "craftSpeedPct": 6.0
+        "craftSpeedPct": 6.0,
+        "craftRarityPct": 1.5
       }
     },
     {
@@ -174,7 +433,8 @@
       "tierIndex": 1,
       "levelReq": 25,
       "bonus": {
-        "craftSpeedPct": 13.2
+        "craftSpeedPct": 13.2,
+        "craftRarityPct": 3.3
       }
     },
     {
@@ -186,7 +446,8 @@
       "tierIndex": 2,
       "levelReq": 50,
       "bonus": {
-        "craftSpeedPct": 24.0
+        "craftSpeedPct": 24.0,
+        "craftRarityPct": 6.0
       }
     },
     {
@@ -198,7 +459,8 @@
       "tierIndex": 0,
       "levelReq": 1,
       "bonus": {
-        "craftQualityPct": 1.2
+        "craftQualityPct": 1.2,
+        "craftRarityPct": 0.6
       }
     },
     {
@@ -210,7 +472,8 @@
       "tierIndex": 1,
       "levelReq": 25,
       "bonus": {
-        "craftQualityPct": 2.6
+        "craftQualityPct": 2.6,
+        "craftRarityPct": 1.3
       }
     },
     {
@@ -222,7 +485,8 @@
       "tierIndex": 2,
       "levelReq": 50,
       "bonus": {
-        "craftQualityPct": 4.8
+        "craftQualityPct": 4.8,
+        "craftRarityPct": 2.4
       }
     },
     {
@@ -235,7 +499,8 @@
       "levelReq": 1,
       "bonus": {
         "craftQualityPct": 1.8,
-        "craftSpeedPct": 2.0
+        "craftSpeedPct": 2.0,
+        "craftRarityPct": 0.9
       }
     },
     {
@@ -248,7 +513,8 @@
       "levelReq": 25,
       "bonus": {
         "craftQualityPct": 4.0,
-        "craftSpeedPct": 4.4
+        "craftSpeedPct": 4.4,
+        "craftRarityPct": 2.0
       }
     },
     {
@@ -261,7 +527,8 @@
       "levelReq": 50,
       "bonus": {
         "craftQualityPct": 7.2,
-        "craftSpeedPct": 8.0
+        "craftSpeedPct": 8.0,
+        "craftRarityPct": 3.6
       }
     },
     {
@@ -273,7 +540,8 @@
       "tierIndex": 0,
       "levelReq": 1,
       "bonus": {
-        "craftSpeedPct": 1.6
+        "craftSpeedPct": 1.6,
+        "craftRarityPct": 0.5
       }
     },
     {
@@ -285,7 +553,8 @@
       "tierIndex": 1,
       "levelReq": 25,
       "bonus": {
-        "craftSpeedPct": 3.5
+        "craftSpeedPct": 3.5,
+        "craftRarityPct": 1.1
       }
     },
     {
@@ -297,7 +566,8 @@
       "tierIndex": 2,
       "levelReq": 50,
       "bonus": {
-        "craftSpeedPct": 6.4
+        "craftSpeedPct": 6.4,
+        "craftRarityPct": 2.0
       }
     },
     {
@@ -309,7 +579,8 @@
       "tierIndex": 0,
       "levelReq": 1,
       "bonus": {
-        "craftSpeedPct": 2.0
+        "craftSpeedPct": 2.0,
+        "craftRarityPct": 0.5
       }
     },
     {
@@ -321,7 +592,8 @@
       "tierIndex": 1,
       "levelReq": 25,
       "bonus": {
-        "craftSpeedPct": 4.4
+        "craftSpeedPct": 4.4,
+        "craftRarityPct": 1.1
       }
     },
     {
@@ -333,7 +605,8 @@
       "tierIndex": 2,
       "levelReq": 50,
       "bonus": {
-        "craftSpeedPct": 8.0
+        "craftSpeedPct": 8.0,
+        "craftRarityPct": 2.0
       }
     },
     {
@@ -345,7 +618,8 @@
       "tierIndex": 0,
       "levelReq": 1,
       "bonus": {
-        "craftQualityPct": 1.0
+        "craftQualityPct": 1.0,
+        "craftRarityPct": 0.5
       }
     },
     {
@@ -357,7 +631,8 @@
       "tierIndex": 1,
       "levelReq": 25,
       "bonus": {
-        "craftQualityPct": 2.2
+        "craftQualityPct": 2.2,
+        "craftRarityPct": 1.1
       }
     },
     {
@@ -369,7 +644,8 @@
       "tierIndex": 2,
       "levelReq": 50,
       "bonus": {
-        "craftQualityPct": 4.0
+        "craftQualityPct": 4.0,
+        "craftRarityPct": 2.0
       }
     },
     {
