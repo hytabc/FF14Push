@@ -60,17 +60,17 @@ def ancient_pity_count() -> int:
     return max(1, int(CONFIG.talents["ancientPityCount"]))
 
 
-def roll_ancient(counter: int, rng: random.Random) -> tuple[bool, int]:
-    """判定下一个候选是否带太古属性。返回 (是否太古, 新的保底计数)。
+def roll_ancient(counter: int, rng: random.Random) -> tuple[bool, int, bool]:
+    """判定下一个候选是否带太古属性。返回 (是否太古, 新的保底计数, 是否保底触发)。
 
     每 ancientPityCount 个候选至少出一个太古：计数满则必出；否则按 ancientChance 随机。
-    出太古后计数归零。
+    出太古后计数归零。保底触发的太古必定为神话（红色）资质，见 `generate_candidates`。
     """
     if counter + 1 >= ancient_pity_count():
-        return True, 0
+        return True, 0, True
     if rng.random() < float(CONFIG.talents["ancientChance"]):
-        return True, 0
-    return False, counter + 1
+        return True, 0, False
+    return False, counter + 1, False
 
 
 def generate_candidates(
@@ -83,8 +83,17 @@ def generate_candidates(
     rng = rng or random.Random()
     candidates: list[dict[str, Any]] = []
     for _ in range(max(0, count)):
-        is_ancient, counter = roll_ancient(counter, rng)
-        candidates.append(generate_candidate(current_hero_level, rng, ancient=is_ancient))
+        is_ancient, counter, is_pity = roll_ancient(counter, rng)
+        candidates.append(
+            generate_candidate(
+                current_hero_level,
+                rng,
+                ancient=is_ancient,
+                # 太古保底必定为神话（红色）资质：总点数因此落在 220-260，
+                # 太古 ×1.25 计算后总值可超出该区间。
+                talent="mythic" if is_pity else None,
+            )
+        )
     return candidates, counter
 
 
@@ -93,14 +102,18 @@ def generate_candidate(
     rng: random.Random | None = None,
     *,
     ancient: bool | None = None,
+    talent: str | None = None,
 ) -> dict[str, Any]:
     """生成候选英雄：资质决定总点数，偏向决定三维分配。
 
     ancient 显式指定是否带太古（由 `roll_ancient` 的保底结果决定）；省略时按 ancientChance 随机。
+    talent 显式指定资质（太古保底强制神话）；省略时按资质权重随机。
     """
     rng = rng or random.Random()
-    talent = talent_weights(rng)
-    spec = CONFIG.talents["talents"][talent]
+    # 无论是否指定 talent 都消耗一次资质随机，避免改变后续随机序列。
+    rolled_talent = talent_weights(rng)
+    talent_id = talent or rolled_talent
+    spec = CONFIG.talents["talents"][talent_id]
     total_points = rng.randint(int(spec["pointMin"]), int(spec["pointMax"]))
 
     bias_id = rng.choice(["str", "dex", "int", "balanced"])
@@ -135,7 +148,7 @@ def generate_candidate(
     attr_main = bias_id if bias_id != "balanced" else max(attrs, key=lambda k: attrs[k])
     return {
         "name": rng.choice(NAME_POOL),
-        "talent": talent,
+        "talent": talent_id,
         "attrBias": bias_id,
         "attrBiasLabel": BIAS_LABELS[bias_id],
         "strength": attrs["str"],
@@ -143,7 +156,7 @@ def generate_candidate(
         "intellect": attrs["int"],
         "ancientAttr": ancient_attr,
         "totalPoints": total_points,
-        "recruitCost": recruit_cost(talent, current_hero_level),
+        "recruitCost": recruit_cost(talent_id, current_hero_level),
         "recommendedJobs": recommended_jobs(attr_main),
     }
 

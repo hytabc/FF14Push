@@ -786,7 +786,7 @@ class TestTavern:
         assert 0 <= pity["count"] <= pity["threshold"]
 
     async def test_ancient_pity_guarantees_ancient_candidate(self, auth_client, session_factory) -> None:
-        """保底计数满时，下一个候选必定带太古属性，且计数归零。"""
+        """保底计数满时，下一个候选必定带太古属性（神话资质、总点数 220-260），且计数归零。"""
         threshold = int(CONFIG.talents["ancientPityCount"])
         me = (await auth_client.get(f"{API}/auth/me")).json()
         async with session_factory() as db:
@@ -799,7 +799,11 @@ class TestTavern:
         resp = await auth_client.post(f"{API}/tavern/refresh", json={"useGold": False})
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert body["candidate"]["ancientAttr"] in ("str", "dex", "int")
+        candidate = body["candidate"]
+        assert candidate["ancientAttr"] in ("str", "dex", "int")
+        assert candidate["talent"] == "mythic"
+        spec = CONFIG.talents["talents"]["mythic"]
+        assert int(spec["pointMin"]) <= candidate["totalPoints"] <= int(spec["pointMax"])
         assert body["ancientPity"]["count"] == 0
 
     async def test_shown_recruit_cost_matches_charge_after_level_up(self, auth_client, session_factory) -> None:

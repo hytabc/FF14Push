@@ -767,6 +767,25 @@ class TestRecruitingAncient:
         assert hits == [threshold - 1], "只有第 threshold 个由保底触发"
         assert counter == 0
 
+    def test_pity_ancient_is_mythic_with_top_band_points(self) -> None:
+        """保底太古必定为神话（红色）资质，计算前总点数落在神话区间 220-260。"""
+        spec = CONFIG.talents["talents"]["mythic"]
+        threshold = ancient_pity_count()
+        candidates, _ = generate_candidates(1, threshold, 0, self._Forced(0.999))
+        hero = candidates[-1]
+        assert hero["ancientAttr"] in ("str", "dex", "int")
+        assert hero["talent"] == "mythic"
+        assert int(spec["pointMin"]) <= hero["totalPoints"] <= int(spec["pointMax"])
+        # 太古 ×1.25 计算后，三维实际总和可超出计算前的总点数（乃至区间上限）
+        total = hero["strength"] + hero["agility"] + hero["intellect"]
+        assert total > hero["totalPoints"]
+
+    def test_natural_ancient_keeps_rolled_talent(self) -> None:
+        """自然命中（非保底）不强制资质：仍按权重随机。"""
+        candidate = generate_candidate(1, self._Forced(0.0))
+        assert candidate["ancientAttr"] in ("str", "dex", "int")
+        assert candidate["talent"] == "common"  # roll=0.0 落在 common 权重区间
+
     def test_pity_counter_advances_and_resets(self) -> None:
         rng = self._Forced(0.999)
         _, counter = generate_candidates(1, 10, 0, rng)
