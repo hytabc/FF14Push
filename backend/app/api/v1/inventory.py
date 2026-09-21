@@ -8,8 +8,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
-from app.models import Item
-from app.schemas.game import SellRequest, UnequipRequest
+from app.models import Item, ItemTag
+from app.schemas.game import SellRequest, SetItemTagsRequest, UnequipRequest
 from app.services.game_config import CONFIG
 from app.services.serialization import item_to_dict
 from app.services.slots_util import SLOT_BY_ID, accepts
@@ -110,3 +110,21 @@ async def sell(
     user.gold = int(user.gold) + total
     await db.commit()
     return {"gold": int(user.gold), "goldGained": total, "sold": detail}
+
+
+@router.post("/tags")
+async def set_item_tags(
+    payload: SetItemTagsRequest, db: DbSession, user: CurrentUser
+) -> dict:
+    """给装备设置标签（覆盖式）。只接受属于当前用户的标签 id。来源：装备颜色标签。"""
+    item = await _owned_item(db, user.id, payload.itemId)
+
+    owned_ids = set(
+        (
+            await db.execute(select(ItemTag.id).where(ItemTag.user_id == user.id))
+        ).scalars().all()
+    )
+    # 去重并只保留本人标签，避免越权引用他人标签
+    item.tag_ids = [tid for tid in dict.fromkeys(payload.tagIds) if tid in owned_ids]
+    await db.commit()
+    return {"item": item_to_dict(item, sell_price_range(item))}

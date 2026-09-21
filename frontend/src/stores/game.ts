@@ -112,6 +112,7 @@ export const useGameStore = defineStore('game', () => {
   const hero = computed(() => state.value?.hero ?? null)
   const gold = computed(() => state.value?.user.gold ?? 0)
   const items = computed(() => state.value?.items ?? [])
+  const tags = computed(() => state.value?.tags ?? [])
   const loadout = computed(() => state.value?.loadout ?? {})
   const isRunning = computed(() => running.value && sim.value !== null)
   const battleLog = computed(() => {
@@ -526,6 +527,58 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  // ---------- 装备标签 ----------
+
+  async function createTag(name: string, color: string) {
+    try {
+      const res = await api.createTag(name, color)
+      await loadState()
+      return res.tag
+    } catch (e) {
+      pushError(e)
+      return null
+    }
+  }
+
+  async function updateTag(id: number, patch: { name?: string; color?: string }) {
+    try {
+      const res = await api.updateTag(id, patch)
+      await loadState()
+      return res.tag
+    } catch (e) {
+      pushError(e)
+      return null
+    }
+  }
+
+  async function deleteTag(id: number) {
+    try {
+      await api.deleteTag(id)
+      await loadState()
+      return true
+    } catch (e) {
+      pushError(e)
+      return false
+    }
+  }
+
+  async function setItemTags(itemId: number, tagIds: number[]) {
+    try {
+      const res = await api.setItemTags(itemId, tagIds)
+      // 就地更新，避免整包刷新导致列表滚动位置丢失
+      if (state.value) {
+        const idx = state.value.items.findIndex((i) => i.id === itemId)
+        if (idx >= 0) state.value.items[idx] = res.item
+        const slot = res.item.equippedSlot
+        if (slot && state.value.loadout[slot]) state.value.loadout[slot] = res.item
+      }
+      return res.item
+    } catch (e) {
+      pushError(e)
+      return null
+    }
+  }
+
   // ---------- 抽箱 ----------
 
   const lastDraw = ref<Item[]>([])
@@ -657,6 +710,7 @@ export const useGameStore = defineStore('game', () => {
     hero,
     gold,
     items,
+    tags,
     loadout,
     raid,
     raidResult,
@@ -678,6 +732,10 @@ export const useGameStore = defineStore('game', () => {
     equip,
     unequip,
     sell,
+    createTag,
+    updateTag,
+    deleteTag,
+    setItemTags,
     openChest,
     craft,
     refine,

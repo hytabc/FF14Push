@@ -16,6 +16,7 @@ from app.api.v1 import (
     redeem,
     region,
     settings,
+    tags,
     tavern,
     tutorial,
 )
@@ -33,6 +34,7 @@ api_router.include_router(codex.router)
 api_router.include_router(ranking.router)
 api_router.include_router(tutorial.router)
 api_router.include_router(settings.router)
+api_router.include_router(tags.router)
 api_router.include_router(redeem.router)
 api_router.include_router(raid.router)
 api_router.include_router(admin.router)

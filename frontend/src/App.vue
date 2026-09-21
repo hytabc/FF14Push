@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import ItemActionDialogs from '@/components/ItemActionDialogs.vue'
 import LootBubbles from '@/components/LootBubbles.vue'
+import TagDialog from '@/components/TagDialog.vue'
 import ToastStack from '@/components/ToastStack.vue'
 import TutorialOverlay from '@/components/TutorialOverlay.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -126,6 +127,7 @@ async function logout() {
     <ToastStack />
     <LootBubbles />
     <ItemActionDialogs />
+    <TagDialog />
     <TutorialOverlay />
   </div>
 </template>

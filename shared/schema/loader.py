@@ -67,6 +67,7 @@ class GameConfig:
     heroes: dict[str, Any]
     combat: dict[str, Any]
     tutorial: dict[str, Any]
+    tag_colors: dict[str, Any]
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -157,6 +158,7 @@ def load_game_data() -> GameConfig:
         "heroes": _load("heroes.json"),
         "combat": _load("combat.json"),
         "tutorial": _load("tutorial.json"),
+        "tags": _load("tags.json"),
     }
 
     jobs = raw["jobs"]
@@ -198,5 +200,6 @@ def load_game_data() -> GameConfig:
         heroes=raw["heroes"],
         combat=raw["combat"],
         tutorial=raw["tutorial"],
+        tag_colors=raw["tags"],
         raw=raw,
     )

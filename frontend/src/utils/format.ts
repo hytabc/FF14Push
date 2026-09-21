@@ -79,6 +79,29 @@ export function attrRangeLabel(min?: number, max?: number, digits = 0): string {
   return `【${min.toFixed(digits)}-${max.toFixed(digits)}】`
 }
 
+const TAG_COLOR_FALLBACK = { name: '灰', hex: '#9ca3af' }
+
+function tagColorById(colorId: string): { name: string; hex: string } {
+  const byId = data.tagColors.byId as Record<string, { name: string; hex: string } | undefined>
+  return byId[colorId] ?? TAG_COLOR_FALLBACK
+}
+
+/** 标签颜色 id → 颜色 hex（未知回退灰色）。 */
+export function tagColorHex(colorId: string): string {
+  return tagColorById(colorId).hex
+}
+
+/** 标签颜色 id → 中文名。 */
+export function tagColorName(colorId: string): string {
+  return tagColorById(colorId).name
+}
+
+/** 调色板顺序（新建标签时的颜色选择器）。 */
+export const TAG_COLORS = data.tagColors.order.map((id) => {
+  const { name, hex } = tagColorById(id)
+  return { id, name, hex }
+})
+
 /**
  * 属性 id → 中文名。
  * 饰品底材用的是副属性 id（str/dex/int/vit），武器与防具用的是底材属性 id（attack/physDef…），

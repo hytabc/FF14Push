@@ -13,6 +13,7 @@ from app.models import (
     Hero,
     HeroSkillStat,
     Item,
+    ItemTag,
     RegionProgress,
     TavernState,
     TutorialProgress,
@@ -25,7 +26,7 @@ from app.services.loot import drop_rate_multiplier
 from app.services.progression import exp_to_next
 from app.services.recruiting import initial_hero, recruit_cost, with_recruit_cost
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
-from app.services.serialization import hero_to_dict, item_to_dict, loadout
+from app.services.serialization import hero_to_dict, item_to_dict, loadout, tag_to_dict
 from app.services.stats import compute_stats
 from app.services.qualification import region_access
 from app.services.balance import power_audit
@@ -101,6 +102,11 @@ async def build_game_state(
     auto_sell = (
         await db.execute(select(AutoSellSetting).where(AutoSellSetting.user_id == user.id))
     ).scalar_one_or_none()
+    tag_rows = (
+        await db.execute(
+            select(ItemTag).where(ItemTag.user_id == user.id).order_by(ItemTag.id)
+        )
+    ).scalars().all()
 
     region = CONFIG.region_by_id.get(hero.current_region_id) if hero.current_region_id else None
     if region and access[region["id"]]:
@@ -125,6 +131,7 @@ async def build_game_state(
         "loadout": loadout(items),
         "items": [item_to_dict(item, sell_price_range(item)) for item in items],
         "itemCounts": count_by_rarity(items),
+        "tags": [tag_to_dict(t) for t in tag_rows],
         "regionProgress": progress,
         "currentRegion": region_detail,
         "clearedRegions": cleared_count,

@@ -33,11 +33,28 @@ class Item(Base):
     enchant_count: Mapped[int] = mapped_column(sa.Integer, default=0)
     equipped_slot: Mapped[str | None] = mapped_column(sa.String(16), nullable=True, index=True)
     source: Mapped[str] = mapped_column(sa.String(32), default="chest")
+    # 玩家自定义标签（ItemTag.id 列表），用于背包筛选
+    tag_ids: Mapped[list] = mapped_column(JsonType, default=list)
     acquired_at: Mapped[sa.DateTime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now()
     )
 
     user: Mapped["User"] = relationship(back_populates="items")
+
+
+class ItemTag(Base):
+    """玩家自定义的装备标签（命名 + 调色板颜色），用于给装备打标并按标签筛选。"""
+
+    __tablename__ = "item_tags"
+    __table_args__ = (sa.UniqueConstraint("user_id", "name", name="uq_item_tags_user_name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(sa.String(16))
+    color: Mapped[str] = mapped_column(sa.String(16))
+    created_at: Mapped[sa.DateTime] = mapped_column(
+        sa.DateTime(timezone=True), server_default=sa.func.now()
+    )
 
 
 class ChestPity(Base):

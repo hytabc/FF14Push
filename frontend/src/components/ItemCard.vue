@@ -2,8 +2,10 @@
 import { computed } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
+import { useGameStore } from '@/stores/game'
 import { useItemActions } from '@/stores/itemActions'
-import type { Item } from '@/game/types'
+import { useTagsStore } from '@/stores/tags'
+import type { Item, ItemTag } from '@/game/types'
 import {
   attrName,
   attrRangeLabel,
@@ -17,6 +19,7 @@ import {
   rarityName,
   slotName,
   subAttrQualityClass,
+  tagColorHex,
   termLabel,
   termQualityClass,
 } from '@/utils/format'
@@ -36,9 +39,12 @@ const emit = defineEmits<{
   select: [item: Item]
   equip: [item: Item]
   unequip: [item: Item]
+  filterTag: [tagId: number]
 }>()
 
 const itemActions = useItemActions()
+const tagsStore = useTagsStore()
+const game = useGameStore()
 
 const style = computed(() => ({
   borderColor: rarityHex(props.item.rarity),
@@ -47,6 +53,18 @@ const style = computed(() => ({
 
 const buffs = computed(() => props.item.terms.filter((t) => t.type === 'buff'))
 const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff'))
+
+const itemTags = computed<ItemTag[]>(() => {
+  const ids = props.item.tagIds ?? []
+  if (!ids.length) return []
+  const byId = new Map(game.tags.map((t) => [t.id, t]))
+  return ids.map((id) => byId.get(id)).filter((t): t is ItemTag => t != null)
+})
+
+function tagStyle(colorId: string) {
+  const hex = tagColorHex(colorId)
+  return { color: hex, borderColor: hex, backgroundColor: `${hex}22` }
+}
 
 </script>
 
@@ -115,6 +133,19 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
       </span>
     </div>
 
+    <div v-if="itemTags.length" class="mt-2 flex flex-wrap gap-1">
+      <button
+        v-for="tag in itemTags"
+        :key="tag.id"
+        class="rounded border px-1.5 py-0.5 text-[10px] transition hover:opacity-80"
+        :style="tagStyle(tag.color)"
+        :title="`按「${tag.name}」筛选`"
+        @click.stop="emit('filterTag', tag.id)"
+      >
+        {{ tag.name }}
+      </button>
+    </div>
+
     <div
       v-if="showActions"
       class="mt-3 flex flex-wrap gap-1.5 opacity-90 transition group-hover:opacity-100"
@@ -145,6 +176,12 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
         @click="itemActions.requestEnchant(item)"
       >
         附魔
+      </button>
+      <button
+        class="rounded bg-teal-600/70 px-2 py-1 text-[11px] text-white hover:bg-teal-500"
+        @click="tagsStore.openAssign(item)"
+      >
+        标签
       </button>
       <button
         v-if="!item.equippedSlot"

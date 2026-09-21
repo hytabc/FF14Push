@@ -19,6 +19,7 @@ import talentsJson from '../data/talents.json'
 import heroesJson from '../data/heroes.json'
 import combatJson from '../data/combat.json'
 import tutorialJson from '../data/tutorial.json'
+import tagsJson from '../data/tags.json'
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
@@ -57,6 +58,17 @@ export interface SlotDef {
   accepts: string[]
   order: number
 }
+
+export type TagColorId = keyof typeof tagsJson.colors
+
+export interface TagColorDef {
+  id: string
+  name: string
+  hex: string
+}
+
+/** 标签颜色调色板顺序（id 列表）。 */
+export const TAG_COLOR_ORDER = tagsJson.order as TagColorId[]
 
 export interface AttributeDef {
   id: AttrId
@@ -354,6 +366,10 @@ const baseItems = expandBaseItems()
 
 export const gameData = {
   rarities: { order: raritiesData.order, byId: raritiesData.rarities },
+  tagColors: {
+    order: TAG_COLOR_ORDER,
+    byId: tagsJson.colors as Record<TagColorId, TagColorDef>,
+  },
   slots: slotsData.slots,
   slotCategories: slotsData.categories,
   attributes: subAttrData.attributes,

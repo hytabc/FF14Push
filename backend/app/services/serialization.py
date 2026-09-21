@@ -50,10 +50,16 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "source": item.source,
         "weaponType": base.weapon_type if base else None,
         "jobId": base.job_id if base else None,
+        "tagIds": list(item.tag_ids or []),
     }
     if price_range is not None:
         data["sellPriceMin"], data["sellPriceMax"] = price_range
     return data
+
+
+def tag_to_dict(tag: Any) -> dict[str, Any]:
+    """装备标签 → 前端字典。"""
+    return {"id": tag.id, "name": tag.name, "color": tag.color}
 
 
 def item_from_generated(generated: dict[str, Any], source: str) -> dict[str, Any]:

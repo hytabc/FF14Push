@@ -4,6 +4,7 @@ import type {
   CraftPlan,
   GameState,
   Item,
+  ItemTag,
   RankingEntry,
   RegionListEntry,
   RerollMode,
@@ -89,6 +90,26 @@ export const api = {
 
   async sell(itemIds: number[]) {
     return (await http.post<{ gold: number; goldGained: number }>('/inventory/sell', { itemIds })).data
+  },
+
+  async tags() {
+    return (await http.get<{ tags: ItemTag[] }>('/tags')).data
+  },
+
+  async createTag(name: string, color: string) {
+    return (await http.post<{ tag: ItemTag }>('/tags', { name, color })).data
+  },
+
+  async updateTag(id: number, patch: { name?: string; color?: string }) {
+    return (await http.post<{ tag: ItemTag }>(`/tags/${id}`, patch)).data
+  },
+
+  async deleteTag(id: number) {
+    return (await http.delete<{ ok: boolean }>(`/tags/${id}`)).data
+  },
+
+  async setItemTags(itemId: number, tagIds: number[]) {
+    return (await http.post<{ item: Item }>('/inventory/tags', { itemId, tagIds })).data
   },
 
   async openChest(chestId: string, count: number, level?: number) {

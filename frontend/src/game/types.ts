@@ -39,6 +39,13 @@ export interface RerollChange {
   delta: number | null
 }
 
+/** 玩家自建的装备标签（命名 + 调色板颜色 id）。 */
+export interface ItemTag {
+  id: number
+  name: string
+  color: string
+}
+
 export interface TermEntry {
   id: string
   name: string
@@ -73,6 +80,8 @@ export interface Item {
   source: string
   weaponType: string | null
   jobId: string | null
+  /** 玩家给该装备贴的标签 id 列表。 */
+  tagIds: number[]
   sellPriceMin: number
   sellPriceMax: number
 }
@@ -352,6 +361,8 @@ export interface GameState {
   loadout: Partial<Record<SlotId, Item>>
   items: Item[]
   itemCounts: Record<RarityId, number>
+  /** 玩家自建的装备标签列表。 */
+  tags: ItemTag[]
   regionProgress: Record<string, RegionProgressEntry>
   currentRegion: CurrentRegion | null
   /** 已通关地区数。 */

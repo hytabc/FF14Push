@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.main import app
-from app.models import RaidSession, BattleSession, Hero, Item, RegionProgress, TavernState, User
+from app.models import RaidSession, BattleSession, Hero, Item, ItemTag, RegionProgress, TavernState, User
 from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
@@ -774,6 +774,90 @@ class TestEconomy:
         )
         assert resp.status_code == 200, resp.text
         assert resp.json()["cost"] == int(base * mult)
+
+
+class TestItemTags:
+    """装备颜色标签：自建命名标签、贴到装备、按标签筛选（筛选在前端，这里验证数据往返）。"""
+
+    async def _make_tag(self, auth_client, name: str = "保留", color: str = "red") -> dict:
+        resp = await auth_client.post(f"{API}/tags", json={"name": name, "color": color})
+        assert resp.status_code == 200, resp.text
+        return resp.json()["tag"]
+
+    async def test_create_list_and_state(self, auth_client) -> None:
+        tag = await self._make_tag(auth_client)
+        assert tag["name"] == "保留" and tag["color"] == "red"
+
+        listed = (await auth_client.get(f"{API}/tags")).json()["tags"]
+        assert [t["id"] for t in listed] == [tag["id"]]
+
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        assert [t["id"] for t in state["tags"]] == [tag["id"]]
+
+    async def test_validation(self, auth_client) -> None:
+        await self._make_tag(auth_client, name="保留", color="red")
+
+        dup = await auth_client.post(f"{API}/tags", json={"name": "保留", "color": "blue"})
+        assert dup.status_code == 400
+
+        blank = await auth_client.post(f"{API}/tags", json={"name": "   ", "color": "red"})
+        assert blank.status_code == 400
+
+        bad_color = await auth_client.post(f"{API}/tags", json={"name": "新", "color": "mauve"})
+        assert bad_color.status_code == 400
+
+    async def test_update_and_delete(self, auth_client) -> None:
+        tag = await self._make_tag(auth_client)
+
+        upd = await auth_client.post(
+            f"{API}/tags/{tag['id']}", json={"name": "核心", "color": "green"}
+        )
+        assert upd.status_code == 200, upd.text
+        assert upd.json()["tag"]["name"] == "核心"
+        assert upd.json()["tag"]["color"] == "green"
+
+        assert (await auth_client.delete(f"{API}/tags/{tag['id']}")).status_code == 200
+        assert (await auth_client.get(f"{API}/tags")).json()["tags"] == []
+
+    async def test_assign_filters_foreign_ids_and_delete_cleans_items(
+        self, auth_client, session_factory
+    ) -> None:
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        tag = await self._make_tag(auth_client, name="待强化", color="blue")
+
+        # 未知 tagId 会被过滤，只保留本人标签
+        resp = await auth_client.post(
+            f"{API}/inventory/tags", json={"itemId": item["id"], "tagIds": [tag["id"], 999999]}
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["item"]["tagIds"] == [tag["id"]]
+
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        stored = next(i for i in state["items"] if i["id"] == item["id"])
+        assert stored["tagIds"] == [tag["id"]]
+
+        # 删除标签后应自动从装备上移除
+        assert (await auth_client.delete(f"{API}/tags/{tag['id']}")).status_code == 200
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        stored = next(i for i in state["items"] if i["id"] == item["id"])
+        assert stored["tagIds"] == []
+
+    async def test_cannot_touch_others_tag(self, auth_client, session_factory) -> None:
+        async with session_factory() as db:
+            other_user = User(username="other", password_hash="x", nickname="他人")
+            db.add(other_user)
+            await db.flush()
+            other_tag = ItemTag(user_id=other_user.id, name="他人标签", color="red")
+            db.add(other_tag)
+            await db.flush()
+            other_id = other_tag.id
+            await db.commit()
+
+        assert (
+            await auth_client.post(f"{API}/tags/{other_id}", json={"name": "改"})
+        ).status_code == 404
+        assert (await auth_client.delete(f"{API}/tags/{other_id}")).status_code == 404
 
 
 class TestTavern:

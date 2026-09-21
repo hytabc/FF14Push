@@ -83,6 +83,21 @@ class ChestOpenRequest(BaseModel):
     level: int | None = None
 
 
+class TagCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=16)
+    color: str = Field(min_length=1, max_length=16)
+
+
+class TagUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=16)
+    color: str | None = Field(default=None, min_length=1, max_length=16)
+
+
+class SetItemTagsRequest(BaseModel):
+    itemId: int
+    tagIds: list[int] = Field(default_factory=list)
+
+
 class CraftRequest(BaseModel):
     category: str
     auto: bool = True

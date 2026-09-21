@@ -2,7 +2,7 @@
 
 from app.models.account import Hero, HeroSkillStat, User
 from app.models.base import Base, JsonType, TimestampMixin, utcnow
-from app.models.equipment import ChestPity, Item
+from app.models.equipment import ChestPity, Item, ItemTag
 from app.models.progress import (
     AutoSellSetting,
     CodexEquipment,
@@ -25,6 +25,7 @@ __all__ = [
     "Hero",
     "HeroSkillStat",
     "Item",
+    "ItemTag",
     "ChestPity",
     "RegionProgress",
     "CodexEquipment",

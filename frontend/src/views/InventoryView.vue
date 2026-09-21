@@ -3,14 +3,17 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import ItemCard from '@/components/ItemCard.vue'
 import { useGameStore } from '@/stores/game'
+import { useTagsStore } from '@/stores/tags'
 import type { Category, Item, RarityId } from '@/game/types'
-import { RARITY_ORDER, formatNumber, rarityName } from '@/utils/format'
+import { RARITY_ORDER, formatNumber, rarityName, tagColorHex } from '@/utils/format'
 
 const game = useGameStore()
+const tagsStore = useTagsStore()
 
 const category = ref<'all' | Category>('all')
 const rarityFilter = ref<'all' | RarityId>('all')
 const sortBy = ref<'rarity' | 'level' | 'name' | 'power'>('rarity')
+const tagFilter = ref<Set<number>>(new Set())
 const selected = ref<Set<number>>(new Set())
 const page = ref(1)
 const PAGE_SIZE = 24
@@ -20,6 +23,10 @@ const filtered = computed(() => {
   let list = game.items.filter((i) => !i.equippedSlot)
   if (category.value !== 'all') list = list.filter((i) => i.category === category.value)
   if (rarityFilter.value !== 'all') list = list.filter((i) => i.rarity === rarityFilter.value)
+  if (tagFilter.value.size) {
+    // 多选标签：命中任一即显示（OR）
+    list = list.filter((i) => (i.tagIds ?? []).some((id) => tagFilter.value.has(id)))
+  }
 
   const rarityIndex = (r: RarityId) => RARITY_ORDER.indexOf(r)
   return list.sort((a, b) => {
@@ -30,9 +37,25 @@ const filtered = computed(() => {
   })
 })
 
-watch([sortBy, category, rarityFilter], () => {
+watch([sortBy, category, rarityFilter, tagFilter], () => {
   page.value = 1
 })
+
+function toggleTagFilter(tagId: number) {
+  const next = new Set(tagFilter.value)
+  if (next.has(tagId)) next.delete(tagId)
+  else next.add(tagId)
+  tagFilter.value = next
+}
+
+function clearTagFilter() {
+  tagFilter.value = new Set()
+}
+
+function tagChipStyle(colorId: string) {
+  const hex = tagColorHex(colorId)
+  return { color: hex, borderColor: hex, backgroundColor: `${hex}22` }
+}
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
 const pageItems = computed(() => filtered.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
@@ -119,6 +142,28 @@ async function batchSell() {
           </button>
         </div>
       </div>
+
+      <div class="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+        <template v-if="game.tags.length">
+          <span class="text-ink-400">标签：</span>
+          <button
+            v-for="tag in game.tags"
+            :key="tag.id"
+            class="rounded-full border px-2.5 py-1 transition"
+            :class="tagFilter.has(tag.id) ? '' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
+            :style="tagFilter.has(tag.id) ? tagChipStyle(tag.color) : undefined"
+            @click="toggleTagFilter(tag.id)"
+          >
+            {{ tag.name }}
+          </button>
+          <button v-if="tagFilter.size" class="px-2 py-1 text-ink-400 hover:text-white" @click="clearTagFilter">
+            清除筛选
+          </button>
+        </template>
+        <button class="ml-auto rounded bg-ink-700 px-2 py-1.5 hover:bg-ink-600" @click="tagsStore.openManage()">
+          管理标签
+        </button>
+      </div>
     </section>
 
     <section class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -129,6 +174,7 @@ async function batchSell() {
         :selected="selected.has(item.id)"
         @select="toggle(item)"
         @equip="(i) => game.equip(i.id, i.equipSlots[0])"
+        @filter-tag="toggleTagFilter"
       />
       <p v-if="!pageItems.length" class="col-span-full py-10 text-center text-xs text-ink-600">
         背包是空的，去「抽箱」页面获取装备吧。

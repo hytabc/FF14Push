@@ -1,0 +1,15 @@
+{
+  "$comment": "装备标签的颜色调色板（唯一事实来源）。玩家自建命名标签时从 colors 中选一个颜色。",
+  "order": ["red", "orange", "amber", "green", "teal", "blue", "purple", "pink", "gray"],
+  "colors": {
+    "red": { "id": "red", "name": "红", "hex": "#ef4444" },
+    "orange": { "id": "orange", "name": "橙", "hex": "#f97316" },
+    "amber": { "id": "amber", "name": "黄", "hex": "#eab308" },
+    "green": { "id": "green", "name": "绿", "hex": "#22c55e" },
+    "teal": { "id": "teal", "name": "青", "hex": "#14b8a6" },
+    "blue": { "id": "blue", "name": "蓝", "hex": "#3b82f6" },
+    "purple": { "id": "purple", "name": "紫", "hex": "#a855f7" },
+    "pink": { "id": "pink", "name": "粉", "hex": "#ec4899" },
+    "gray": { "id": "gray", "name": "灰", "hex": "#9ca3af" }
+  }
+}
