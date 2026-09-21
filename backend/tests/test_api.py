@@ -348,6 +348,25 @@ class TestBattleLoop:
         assert resp.status_code == 200, resp.text
         assert resp.json()["goldGained"] > 0
 
+    async def test_background_gap_is_credited(self, auth_client, session_factory) -> None:
+        """页面切到后台约 2 分钟后回来：整段窗口的击杀都应入账（窗口上限放宽到 catchUpSeconds）。"""
+        started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
+        session_id = started.json()["sessionId"]
+        await _age_session(session_factory, session_id, 120_000)
+
+        resp = await auth_client.post(
+            f"{API}/battle/session/report",
+            json={
+                "sessionId": session_id,
+                "regionId": 1,
+                "elapsedMs": 1500,
+                "kills": [{"monsterId": "normal", "gold": 15, "exp": 20} for _ in range(10)],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        # 10 只全部入账（旧的 20 秒上限只认约 7 只，金币会明显偏低）
+        assert 140 <= resp.json()["goldGained"] <= 150
+
     async def test_client_elapsed_cannot_buy_window(self, auth_client) -> None:
         """防加速：客户端谎报超长 elapsedMs 换不来击杀额度（窗口只认服务端时钟）。
 

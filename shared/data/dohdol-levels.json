@@ -6,5 +6,7 @@
     "doh": { "id": "doh", "name": "生产等级", "desc": "由制造获得经验，等级越高可解锁更高阶配方" },
     "dol": { "id": "dol", "name": "采集等级", "desc": "由采集与钓鱼获得经验，等级越高可采集更高阶地区" }
   },
-  "actionXp": { "gather": 6, "fish": 8, "craftBase": 12 }
+  "actionXp": { "gather": 6, "fish": 8, "craftBase": 12 },
+  "$commentWindow": "单次上报最多结算的真实时长（秒）：页面切到后台时定时器被浏览器节流，放宽窗口以免后台产出被截断；关闭页面后不再上报，因此不产生离线收益（不做离线收益）。",
+  "maxWindowSeconds": 300
 }

@@ -20,8 +20,9 @@ STACK_MATERIAL = "material"
 STACK_POTION = "potion"
 STACK_FOOD = "food"
 
-# 单次上报允许结算的最大窗口（秒）：离开页面即暂停，不做离线收益。
-MAX_WINDOW_SECONDS = 30.0
+# 单次上报允许结算的最大窗口（秒）：页面切到后台时定时器被浏览器节流，放宽窗口以免
+# 后台产出被截断；关闭页面后不再上报，所以窗口再大也不会产生离线收益。来源：dohdol-levels.json。
+MAX_WINDOW_SECONDS = float(CONFIG.dohdol_levels["maxWindowSeconds"])
 MIN_WINDOW_SECONDS = 0.2
 
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import ItemActionDialogs from '@/components/ItemActionDialogs.vue'
@@ -40,10 +40,6 @@ const navItems = computed(() =>
   auth.isAdmin ? [...NAV, { to: '/admin', label: '管理', icon: '🔧' }] : NAV,
 )
 
-function onVisibilityChange() {
-  game.handleVisibility()
-}
-
 // 命中封号：立即停止本地战斗循环，页面只保留空白（不展示任何文案）。
 watch(
   () => auth.banned,
@@ -59,12 +55,7 @@ onMounted(async () => {
   if (auth.isLoggedIn) {
     await auth.loadProfile()
     await game.loadState()
-    document.addEventListener('visibilitychange', onVisibilityChange)
   }
-})
-
-onUnmounted(() => {
-  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
 async function logout() {

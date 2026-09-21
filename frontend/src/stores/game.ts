@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 
+import data from '@shared/schema'
+
 import { api, type KillPayload } from '@/api'
 import { toApiError } from '@/api/client'
 import { BattleSimulator } from '@/game/core/battle'
@@ -12,8 +14,10 @@ import { useToastStore } from './toast'
 
 const TICK_MS = 100
 const REPORT_MS = 1500
-/** 单帧最多推进的模拟时间；同时也是「防加速」预算的上限。 */
+/** 单帧最多推进的模拟时间（毫秒），把后台补算分摊到多帧，避免卡住主线程。 */
 const MAX_FRAME_MS = 400
+/** 后台补算上限（毫秒）：页面存活期间按真实墙钟累计，切回前台后最多补齐这么多。 */
+const CATCH_UP_MS = Number(data.combat.catchUpSeconds ?? 300) * 1000
 const AUTO_ADVANCE_KEY = 'eorzea.autoAdvance'
 const STAY_REGION_KEY = 'eorzea.stayRegion'
 
@@ -97,7 +101,6 @@ export const useGameStore = defineStore('game', () => {
 
   let rafId = 0
   let tickTimer = 0
-  let lastTs = 0
   // 防加速：上次真实墙钟时间与尚未消耗的模拟时间预算
   let lastWallMs = 0
   let simBudgetMs = 0
@@ -207,24 +210,23 @@ export const useGameStore = defineStore('game', () => {
 
   function startLoop() {
     if (rafId) return
-    lastTs = performance.now()
-    // 防加速：模拟时间按真实墙钟发放预算。浏览器插件 / 开发者工具可以篡改
-    // requestAnimationFrame 的时间戳（如「视频加速」类扩展），若直接采信帧间隔，
-    // 本地模拟就会被拉快。以 Date.now 累积预算后，长跑下来模拟时间不可能超过真实时间。
+    // 防加速 + 后台补算：模拟时间只能来自真实墙钟（Date.now），不采信
+    // requestAnimationFrame 的时间戳（可被扩展篡改）。页面切到后台时 rAF 暂停，
+    // 切回后把这段时间一次性计入预算，单次上限 CATCH_UP_MS（同时限制系统时钟跳变作弊）；
+    // 关闭页面后不再有上报，也就不会有补算。
     lastWallMs = Date.now()
     simBudgetMs = 0
     tickTimer = window.setInterval(() => {
       uiTick.value += 1
     }, TICK_MS)
-    const step = (ts: number) => {
+    const step = () => {
       const wallNow = Date.now()
-      const wallDelta = Math.min(MAX_FRAME_MS, Math.max(0, wallNow - lastWallMs))
+      const wallDelta = Math.min(CATCH_UP_MS, Math.max(0, wallNow - lastWallMs))
       lastWallMs = wallNow
-      simBudgetMs = Math.min(MAX_FRAME_MS, simBudgetMs + wallDelta)
+      simBudgetMs = Math.min(CATCH_UP_MS, simBudgetMs + wallDelta)
 
-      const frameDelta = Math.max(0, ts - lastTs)
-      lastTs = ts
-      const dtMs = Math.min(MAX_FRAME_MS, frameDelta, simBudgetMs)
+      // 单帧最多推进 MAX_FRAME_MS，剩余预算在后续帧补齐。
+      const dtMs = Math.min(MAX_FRAME_MS, simBudgetMs)
       simBudgetMs -= dtMs
       const dt = dtMs / 1000
 
@@ -483,22 +485,6 @@ export const useGameStore = defineStore('game', () => {
     raidResult.value = null
   }
 
-  // ---------- 页面可见性：离开即暂停，不做离线收益 ----------
-
-  function handleVisibility() {
-    if (document.hidden) {
-      // 副本留在客户端继续跑（不主动结束会话），地区战斗则离开即暂停
-      if (running.value && !raid.value) void stopBattle(true)
-    } else if (!running.value && sim.value && sessionId.value === null) {
-      if (raid.value) {
-        // 副本中途中断则重开一次挑战
-        void startRaid(raid.value.raidId)
-      } else if (state.value?.hero.currentRegionId) {
-        void startBattle(sim.value.region?.id)
-      }
-    }
-  }
-
   // ---------- 装备 ----------
 
   async function equip(itemId: number, slot: SlotId) {
@@ -730,7 +716,6 @@ export const useGameStore = defineStore('game', () => {
     stopRaid,
     selectRaidTarget,
     dismissRaidResult,
-    handleVisibility,
     equip,
     unequip,
     sell,

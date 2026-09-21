@@ -12,10 +12,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.combat_model import max_gold_for_kill
+from app.services.game_config import CONFIG
 from app.services.regions_util import kills_required
 from app.services.stats import HeroStats
 
-MAX_ELAPSED_MS = 20_000
+# 单次上报最多结算的真实窗口（毫秒）：页面切到后台时客户端会按墙钟补算这段时间，
+# 服务端同步放宽窗口，合法上报才不会被截断。关闭页面后不再上报，窗口再大也换不来
+# 离线收益；同时这个上限也限制了单次系统时钟跳变最多能换取的额度（防作弊）。
+MAX_ELAPSED_MS = int(float(CONFIG.combat["catchUpSeconds"]) * 1000)
 MIN_ELAPSED_MS = 300
 ALLOWED_TEMPLATES = {"normal", "highAtk", "highDef", "fast", "elite"}
 

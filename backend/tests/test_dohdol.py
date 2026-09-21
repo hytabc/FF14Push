@@ -82,6 +82,14 @@ class TestSharedData:
         missing = sorted(region_mats - used)
         assert not missing, f"未被任何配方使用的地区材料：{missing}"
 
+    def test_background_window_is_not_truncated(self):
+        """页面在后台较长时间后上报：窗口按真实时长结算，不再被旧的 30 秒上限截断。"""
+        now = datetime.now(timezone.utc)
+        assert dohdol_util.window_seconds(now - timedelta(seconds=120), now) == 120.0
+        # 上限仍存在，避免超长时间间隔（或时钟跳变）一次性换取过多产出
+        assert dohdol_util.window_seconds(now - timedelta(days=1), now) == dohdol_util.MAX_WINDOW_SECONDS
+        assert dohdol_util.MAX_WINDOW_SECONDS >= 120
+
     def test_dohdol_equipment(self):
         ids = [i["id"] for i in CONFIG.dohdol_equipment["items"]]
         assert len(ids) == len(set(ids))

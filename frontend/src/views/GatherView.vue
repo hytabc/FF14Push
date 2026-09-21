@@ -71,16 +71,10 @@ function sellAll() {
 onMounted(async () => {
   if (auth.isLoggedIn) await game.loadState()
   if (availableNodes.value.length && regionId.value === null) regionId.value = availableNodes.value[0].regionId
-  document.addEventListener('visibilitychange', onVisibility)
 })
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', onVisibility)
   void dohdol.stop(true)
 })
-
-function onVisibility() {
-  dohdol.handleVisibility()
-}
 
 function pickJob(id: string) {
   job.value = id

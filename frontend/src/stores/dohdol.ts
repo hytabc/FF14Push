@@ -235,12 +235,6 @@ export const useDohDolStore = defineStore('dohdol', () => {
     }
   }
 
-  function handleVisibility() {
-    if (document.hidden && isRunning.value) {
-      void stop(true)
-    }
-  }
-
   return {
     mode,
     sessionId,
@@ -262,6 +256,5 @@ export const useDohDolStore = defineStore('dohdol', () => {
     useConsumable,
     sellStack,
     sellStacks,
-    handleVisibility,
   }
 })

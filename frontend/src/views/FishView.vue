@@ -57,16 +57,10 @@ function sellAllFish() {
 onMounted(async () => {
   if (auth.isLoggedIn) await game.loadState()
   if (regionOptions.value.length && regionId.value === null) regionId.value = regionOptions.value[0].id
-  document.addEventListener('visibilitychange', onVisibility)
 })
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', onVisibility)
   void dohdol.stop(true)
 })
-
-function onVisibility() {
-  dohdol.handleVisibility()
-}
 
 function kindLabel(kind: string) {
   return kind === 'king' ? '鱼王' : kind === 'emperor' ? '鱼皇' : '普通'

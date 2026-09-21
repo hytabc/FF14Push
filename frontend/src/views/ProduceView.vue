@@ -47,16 +47,10 @@ function fmtWeight(weight: number): string {
 
 onMounted(async () => {
   if (auth.isLoggedIn) await game.loadState()
-  document.addEventListener('visibilitychange', onVisibility)
 })
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', onVisibility)
   void dohdol.stop(true)
 })
-
-function onVisibility() {
-  dohdol.handleVisibility()
-}
 
 async function startRecipe(recipeId: string) {
   error.value = ''
