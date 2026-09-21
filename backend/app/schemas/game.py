@@ -194,6 +194,8 @@ class GatherStartRequest(BaseModel):
 class ProduceStartRequest(BaseModel):
     jobId: str = Field(min_length=2, max_length=8)
     recipeId: str = Field(min_length=1, max_length=48)
+    # 制造件数：None = 制作全部（按当前材料上限）；>=1 = 制作 X 个（不足时按材料上限结算）
+    count: int | None = Field(default=None, ge=1, le=100000)
 
 
 class FishStartRequest(BaseModel):

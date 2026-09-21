@@ -36,6 +36,9 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const insightRemaining = ref(0)
   /** 当前生产会话选中的配方（用于判断材料是否耗尽）。 */
   const recipeId = ref<string | null>(null)
+  /** 本次生产的目标件数（null = 不限）与已制造件数。 */
+  const targetCount = ref<number | null>(null)
+  const producedCount = ref(0)
 
   // 单次动作进度：与服务端下发的 cycle（秒/余额）对齐，用单调时钟插值展示。
   const progress = ref(0)
@@ -126,7 +129,15 @@ export const useDohDolStore = defineStore('dohdol', () => {
       } else if (mode.value === 'produce') {
         const [r, rtt] = await timed(() => api.produceReport(sessionId.value!))
         lastGained.value = r.materials
-        syncCycle(r.cycle, rtt)
+        targetCount.value = r.targetActions
+        producedCount.value = r.producedTotal
+        if (r.finished) {
+          // 达到目标件数：服务端已结束会话，本地直接收尾（不再调用 stop 接口）。
+          settle()
+          toast.push(`制造完成，共 ${r.producedTotal} 件`, 'success')
+        } else {
+          syncCycle(r.cycle, rtt)
+        }
         if (r.items.length) {
           lastProduced.value = r.items.map((i) => ({ name: i.name, rarity: i.rarity }))
           for (const item of r.items) {
@@ -163,13 +174,16 @@ export const useDohDolStore = defineStore('dohdol', () => {
     startLoop()
   }
 
-  async function startProduce(jobId: string, recipeId_: string) {
+  /** 开始生产。count=null 表示「制作全部」（按当前材料上限）。 */
+  async function startProduce(jobId: string, recipeId_: string, count: number | null = null) {
     await stop(true)
     await game.stopBattle(true)
-    const [res, rtt] = await timed(() => api.produceStart(jobId, recipeId_))
+    const [res, rtt] = await timed(() => api.produceStart(jobId, recipeId_, count))
     sessionId.value = res.sessionId
     mode.value = 'produce'
     recipeId.value = res.recipeId
+    targetCount.value = res.targetActions
+    producedCount.value = 0
     lastGained.value = []
     lastProduced.value = []
     syncCycle(res.cycle, rtt)
@@ -189,14 +203,19 @@ export const useDohDolStore = defineStore('dohdol', () => {
     startLoop()
   }
 
-  async function stop(silent = false) {
+  /** 本地收尾：清空会话状态但不调用 stop 接口（服务端已自动结束会话时用）。 */
+  function settle() {
     stopLoop()
     clock.reset()
-    const id = sessionId.value
-    const current = mode.value
     mode.value = 'idle'
     sessionId.value = null
     recipeId.value = null
+  }
+
+  async function stop(silent = false) {
+    const id = sessionId.value
+    const current = mode.value
+    settle()
     if (id === null) return
     try {
       if (current === 'gather') await api.gatherStop(id)
@@ -249,6 +268,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
     lastCaught,
     insightRemaining,
     recipeId,
+    targetCount,
+    producedCount,
     progressPct,
     starved,
     state,

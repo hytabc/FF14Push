@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import data from '@shared/schema'
@@ -82,14 +82,32 @@ onUnmounted(() => {
   void dohdol.stop(true)
 })
 
-async function startRecipe(recipeId: string) {
+/** 每个配方卡片上的「制作 X 个」数量，默认 1。 */
+const amounts = ref<Record<string, number>>({})
+watch(
+  () => dohdol.state?.recipes,
+  (list) => {
+    if (!list) return
+    const next = { ...amounts.value }
+    for (const r of list) if (next[r.id] === undefined) next[r.id] = 1
+    amounts.value = next
+  },
+  { immediate: true },
+)
+
+function amountOf(recipeId: string): number {
+  const value = amounts.value[recipeId]
+  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : 1
+}
+
+async function startRecipe(recipeId: string, count: number | null) {
   error.value = ''
   if (running.value) {
     await dohdol.stop()
   }
   try {
-    await dohdol.startProduce(job.value, recipeId)
-    toast.push('开始生产', 'success')
+    await dohdol.startProduce(job.value, recipeId, count)
+    toast.push(count === null ? '开始制作全部' : `开始制作 ${count} 个`, 'success')
   } catch (e) {
     error.value = e instanceof Error ? e.message : '生产失败'
     toast.push(error.value, 'error')
@@ -165,6 +183,9 @@ async function stop() {
         <div class="mb-1 flex justify-between text-[11px] text-ink-400">
           <span>
             正在制造…
+            <span v-if="dohdol.targetCount !== null" class="text-ink-300">
+              （{{ dohdol.producedCount }}/{{ dohdol.targetCount }}）
+            </span>
             <span v-if="dohdol.starved" class="text-rose-400">材料不足，已暂停（补充材料后自动继续）</span>
           </span>
           <span class="font-mono" :class="dohdol.starved ? 'text-rose-400' : 'text-emerald-300'">
@@ -200,14 +221,33 @@ async function stop() {
             v-if="!r.unlocked"
             class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400"
           >需生产等级 Lv.{{ r.requiredLevel }}</span>
-          <button
-            class="ml-auto rounded-md px-3 py-1 text-xs transition"
-            :class="r.unlocked && r.craftable > 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-ink-800 text-ink-500'"
-            :disabled="!r.unlocked || r.craftable <= 0"
-            @click="startRecipe(r.id)"
-          >
-            制造
-          </button>
+          <div class="ml-auto flex items-center gap-1.5">
+            <input
+              v-model.number="amounts[r.id]"
+              type="number"
+              min="1"
+              step="1"
+              class="w-16 rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-right text-xs text-ink-100 disabled:opacity-40"
+              :disabled="!r.unlocked || r.craftable <= 0"
+              title="要制作的数量"
+            >
+            <button
+              class="rounded-md px-2.5 py-1 text-xs transition"
+              :class="r.unlocked && r.craftable > 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-ink-800 text-ink-500'"
+              :disabled="!r.unlocked || r.craftable <= 0"
+              @click="startRecipe(r.id, amountOf(r.id))"
+            >
+              制作{{ amountOf(r.id) }}个
+            </button>
+            <button
+              class="rounded-md px-2.5 py-1 text-xs transition"
+              :class="r.unlocked && r.craftable > 0 ? 'bg-sky-500/20 text-sky-300' : 'bg-ink-800 text-ink-500'"
+              :disabled="!r.unlocked || r.craftable <= 0"
+              @click="startRecipe(r.id, null)"
+            >
+              制作全部
+            </button>
+          </div>
         </div>
         <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
           <span

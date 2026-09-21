@@ -217,6 +217,12 @@ export interface ProduceReportResponse {
   items: Item[]
   xp: number
   level: { levelsGained: number; level: number; exp: number }
+  /** 本次会话目标制造件数（null = 不限）。 */
+  targetActions: number | null
+  /** 本次会话已制造总件数。 */
+  producedTotal: number
+  /** 达到目标、服务端已自动结束会话。 */
+  finished: boolean
   cycle: ActivityCycle
 }
 

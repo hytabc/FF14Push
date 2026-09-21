@@ -96,7 +96,9 @@ async def produce_start(
     payload: ProduceStartRequest, db: DbSession, user: CurrentUser, items: CurrentItems
 ) -> dict:
     try:
-        result = await production.start_produce(db, user, items, payload.jobId, payload.recipeId)
+        result = await production.start_produce(
+            db, user, items, payload.jobId, payload.recipeId, payload.count
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()

@@ -62,6 +62,8 @@ class ActivitySession(Base):
     credit: Mapped[float] = mapped_column(sa.Float, default=0.0)
     active: Mapped[bool] = mapped_column(sa.Boolean, default=True, index=True)
     total_actions: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    # 生产：本次会话要制造的总件数（「制作X个」/「制作全部」）。None = 不设上限（旧会话）。
+    target_actions: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     # 钓鱼：捕鱼人之识到期时间（服务端时钟）与本次会话已钓起的普通鱼 id
     insight_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     session_fish: Mapped[list] = mapped_column(JsonType, default=list)

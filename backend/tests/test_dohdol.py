@@ -388,6 +388,9 @@ class TestProduceApi:
                 )
             await db.commit()
 
+        # 专用装备不进战斗装备图鉴
+        before = (await auth_client.get("/api/v1/game/state")).json()["codex"]["equipment"]["unlocked"]
+
         resp = await auth_client.post(
             "/api/v1/produce/session/start", json={"jobId": "CRP", "recipeId": "r_dh_dohTool_0"}
         )
@@ -407,10 +410,6 @@ class TestProduceApi:
         assert items, "应产出专用装备"
         assert items[0]["highQuality"] is True
 
-        # 专用装备不进战斗装备图鉴
-        before = (await auth_client.get("/api/v1/game/state")).json()["codex"]["equipment"]["unlocked"]
-        rep2 = await auth_client.post("/api/v1/produce/session/report", json={"sessionId": session_id})
-        assert rep2.status_code == 200
         after = (await auth_client.get("/api/v1/game/state")).json()["codex"]["equipment"]["unlocked"]
         assert after == before
 
@@ -420,6 +419,86 @@ class TestProduceApi:
             "/api/v1/produce/session/start", json={"jobId": "CRP", "recipeId": "r_w_bow_2"}
         )
         assert resp.status_code == 400
+
+
+class TestProduceCount:
+    """「制作 X 个」/「制作全部」：目标件数由服务端结算并在达成后自动结束会话。"""
+
+    async def _give(self, session_factory, item_id: str, count: int) -> None:
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            db.add(StackItem(user_id=user_id, kind="material", item_id=item_id, count=count))
+            await db.commit()
+
+    async def _backdate_session(self, session_factory, session_id: int, seconds: float) -> None:
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, seconds)
+            await db.commit()
+
+    @pytest.mark.asyncio
+    async def test_craft_exactly_count_then_finishes(self, auth_client, session_factory):
+        await self._give(session_factory, "g_wood", 20)  # 最多可制造 6 次
+
+        start = await auth_client.post(
+            "/api/v1/produce/session/start",
+            json={"jobId": "CRP", "recipeId": "r_h_plank", "count": 2},
+        )
+        assert start.status_code == 200, start.text
+        assert start.json()["targetActions"] == 2
+        session_id = start.json()["sessionId"]
+
+        await self._backdate_session(session_factory, session_id, 20)  # by_time 充足
+        rep = await auth_client.post("/api/v1/produce/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        body = rep.json()
+        assert body["crafts"] == 2
+        assert body["targetActions"] == 2
+        assert body["producedTotal"] == 2
+        assert body["finished"] is True
+
+        # 达成目标后会话自动结束：再次上报 404
+        again = await auth_client.post("/api/v1/produce/session/report", json={"sessionId": session_id})
+        assert again.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_count_is_clamped_to_available_materials(self, auth_client, session_factory):
+        await self._give(session_factory, "g_wood", 6)  # 最多 2 次
+
+        start = await auth_client.post(
+            "/api/v1/produce/session/start",
+            json={"jobId": "CRP", "recipeId": "r_h_plank", "count": 99},
+        )
+        assert start.status_code == 200, start.text
+        assert start.json()["targetActions"] == 2
+
+    @pytest.mark.asyncio
+    async def test_craft_all_uses_material_cap(self, auth_client, session_factory):
+        await self._give(session_factory, "g_wood", 9)  # 最多 3 次
+
+        start = await auth_client.post(
+            "/api/v1/produce/session/start", json={"jobId": "CRP", "recipeId": "r_h_plank"}
+        )
+        assert start.status_code == 200, start.text
+        assert start.json()["targetActions"] == 3
+        session_id = start.json()["sessionId"]
+
+        await self._backdate_session(session_factory, session_id, 20)
+        rep = await auth_client.post("/api/v1/produce/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        body = rep.json()
+        assert body["crafts"] == 3
+        assert body["finished"] is True
+
+    @pytest.mark.asyncio
+    async def test_no_materials_rejected(self, auth_client):
+        start = await auth_client.post(
+            "/api/v1/produce/session/start",
+            json={"jobId": "CRP", "recipeId": "r_h_plank", "count": 1},
+        )
+        assert start.status_code == 400
 
 
 class TestFishApi:
@@ -571,7 +650,7 @@ class TestFishingRanking:
 
 class TestActivityCycle:
     @pytest.mark.asyncio
-    async def test_cycle_reported_for_progress_bars(self, auth_client):
+    async def test_cycle_reported_for_progress_bars(self, auth_client, session_factory):
         # 采集：开始与上报都带 cycle（供前端画进度条）
         start = await auth_client.post("/api/v1/gather/session/start", json={"jobId": "MIN", "regionId": 1})
         assert start.status_code == 200, start.text
@@ -586,7 +665,11 @@ class TestActivityCycle:
 
         await auth_client.post("/api/v1/gather/session/stop", json={"sessionId": body["sessionId"]})
 
-        # 生产
+        # 生产（需先备料）
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            db.add(StackItem(user_id=user_id, kind="material", item_id="g_wood", count=3))
+            await db.commit()
         pstart = await auth_client.post(
             "/api/v1/produce/session/start", json={"jobId": "CRP", "recipeId": "r_h_plank"}
         )

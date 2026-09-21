@@ -384,14 +384,16 @@ export const api = {
     return (await http.post<{ ok: boolean; message: string }>('/gather/session/stop', { sessionId })).data
   },
 
-  async produceStart(jobId: string, recipeId: string) {
+  /** count=null 表示「制作全部」（按当前材料上限）。 */
+  async produceStart(jobId: string, recipeId: string, count: number | null = null) {
     return (
       await http.post<{
         sessionId: number
         jobId: string
         recipeId: string
+        targetActions: number
         cycle: import('@/game/types').ActivityCycle
-      }>('/produce/session/start', { jobId, recipeId })
+      }>('/produce/session/start', { jobId, recipeId, count })
     ).data
   },
 

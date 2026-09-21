@@ -44,8 +44,14 @@ def craft_seconds(recipe: dict[str, Any], items: Sequence[Item]) -> float:
 
 
 async def start_produce(
-    db: AsyncSession, user: User, items: Sequence[Item], job_id: str, recipe_id: str
+    db: AsyncSession,
+    user: User,
+    items: Sequence[Item],
+    job_id: str,
+    recipe_id: str,
+    count: int | None = None,
 ) -> dict[str, Any]:
+    """开始生产。count=None 表示「制作全部」（按当前材料上限），否则制造 min(count, 材料上限) 件。"""
     recipe = dohdol_util.recipe_def(recipe_id)
     if recipe is None:
         raise ValueError("配方不存在")
@@ -55,10 +61,22 @@ async def start_produce(
     if int(progress.level) < int(recipe["requiredLevel"]):
         raise ValueError(f"生产等级不足，需要生产等级 {recipe['requiredLevel']}")
 
+    stock = await dohdol_util.stack_counts(db, user.id, dohdol_util.STACK_MATERIAL)
+    max_by_materials = _max_crafts_by_materials(stock, recipe["inputs"])
+    if max_by_materials <= 0:
+        raise ValueError("材料不足，无法制造")
+    target = max_by_materials if count is None else min(int(count), max_by_materials)
+
     await dohdol_util.end_active_sessions(db, user.id)
     await dohdol_util.end_other_battle_sessions(db, user.id)
     session = ActivitySession(
-        user_id=user.id, kind="produce", job_id=job_id, recipe_id=recipe_id, active=True, credit=0.0
+        user_id=user.id,
+        kind="produce",
+        job_id=job_id,
+        recipe_id=recipe_id,
+        active=True,
+        credit=0.0,
+        target_actions=target,
     )
     db.add(session)
     await db.flush()
@@ -66,6 +84,7 @@ async def start_produce(
         "sessionId": session.id,
         "jobId": job_id,
         "recipeId": recipe_id,
+        "targetActions": target,
         "cycle": dohdol_util.cycle_info(craft_seconds(recipe, items), 0.0),
     }
 
@@ -104,17 +123,26 @@ async def report_produce(
         int(hero_level or 0), cleared_regions, int(progress.level), equip.get("craftRarityPct", 0.0)
     )
 
+    target = int(session.target_actions) if session.target_actions is not None else None
     craft_seconds_value = craft_seconds(recipe, items)
     total = float(session.credit) + window
     by_time = int(total // craft_seconds_value)
 
     stock = await dohdol_util.stack_counts(db, user.id, dohdol_util.STACK_MATERIAL)
     by_materials = _max_crafts_by_materials(stock, recipe["inputs"])
-    crafts = min(by_time, by_materials or 0, MAX_CRAFTS_PER_REPORT)
+    remaining = (
+        MAX_CRAFTS_PER_REPORT if target is None else max(0, target - int(session.total_actions))
+    )
+    crafts = min(by_time, by_materials or 0, remaining, MAX_CRAFTS_PER_REPORT)
 
     session.credit = total - by_time * craft_seconds_value
     session.last_report_at = now
     session.total_actions = int(session.total_actions) + crafts
+    produced_total = int(session.total_actions)
+    finished = target is not None and produced_total >= target
+    if finished:
+        session.active = False
+        session.ended_at = now
 
     rng = random.Random()
     produced: list[dict[str, Any]] = []
@@ -157,6 +185,9 @@ async def report_produce(
         "items": produced if equipment_out else [],
         "xp": xp,
         "level": level_info,
+        "targetActions": target,
+        "producedTotal": produced_total,
+        "finished": finished,
         "cycle": dohdol_util.cycle_info(craft_seconds_value, float(session.credit), now),
     }
 
