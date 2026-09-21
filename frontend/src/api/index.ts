@@ -160,6 +160,7 @@ export const api = {
         refreshCost: number
         tenPullCost: number
         multiCandidates: import('@/game/types').TavernCandidate[]
+        ancientPity: { count: number; threshold: number }
         freeRefreshIntervalSec: number
         freeRefreshAvailable: boolean
         nextFreeRefreshAt: string | null
@@ -187,6 +188,7 @@ export const api = {
         cost: number
         tenPullCost: number
         candidates: import('@/game/types').TavernCandidate[]
+        ancientPity: { count: number; threshold: number }
       }>('/tavern/ten-pull', {})
     ).data
   },

@@ -17,6 +17,7 @@ const currentHero = ref<Record<string, unknown> | null>(null)
 const refreshCost = ref(200)
 const tenPullCost = ref(2000)
 const multiCandidates = ref<TavernCandidate[]>([])
+const ancientPity = ref({ count: 0, threshold: 500 })
 const loading = ref(false)
 const busy = ref(false)
 const confirmRecruit = ref(false)
@@ -52,6 +53,7 @@ async function load() {
     refreshCost.value = res.refreshCost
     tenPullCost.value = res.tenPullCost
     multiCandidates.value = res.multiCandidates ?? []
+    ancientPity.value = res.ancientPity
     nextFreeAt.value = res.nextFreeRefreshAt ? Date.parse(res.nextFreeRefreshAt) : null
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
@@ -76,6 +78,7 @@ async function refresh(useGold: boolean) {
   try {
     const res = await api.tavernRefresh(useGold)
     candidate.value = res.candidate
+    if (res.ancientPity) ancientPity.value = res.ancientPity
     if (game.state) game.state.user.gold = res.gold
     nextFreeAt.value = res.nextFreeRefreshAt ? Date.parse(res.nextFreeRefreshAt) : null
     toast.push(res.cost > 0 ? `消耗 ${res.cost} 金币刷新` : '已免费刷新候选英雄', 'info')
@@ -92,6 +95,7 @@ async function tenPull() {
   try {
     const res = await api.tavernTenPull()
     multiCandidates.value = res.candidates
+    if (res.ancientPity) ancientPity.value = res.ancientPity
     if (game.state) game.state.user.gold = res.gold
     toast.push(`十连抽完成，消耗 ${formatNumber(res.cost)} 金币，可选择 1 名英雄招募`, 'success')
   } catch (e) {
@@ -236,6 +240,11 @@ function attrBar(value: number, total: number) {
             </button>
           </div>
         </div>
+
+        <p class="mt-2 text-[11px] text-term-ancient">
+          🌟 太古保底：{{ ancientPity.count }} / {{ ancientPity.threshold }}
+          （每 {{ ancientPity.threshold }} 个候选必出一次「太古属性英雄」）
+        </p>
 
         <div v-if="candidate" class="mt-3 space-y-3">
           <div class="flex items-center gap-2">

@@ -80,6 +80,8 @@ class TavernState(Base):
     multi_candidates: Mapped[list | None] = mapped_column(JsonType, nullable=True)
     refreshed_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
     free_refresh_used_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    # 太古属性保底：距上次出太古已生成的候选数；满 talents.ancientPityCount 则下一个必出
+    ancient_pity: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default="0")
 
 
 class AutoSellSetting(Base):

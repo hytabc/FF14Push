@@ -30,7 +30,7 @@ from app.services.loot import (
     roll_rarity,
 )
 from app.services.combat_model import theoretical_dps
-from app.services.recruiting import generate_candidate
+from app.services.recruiting import ancient_pity_count, generate_candidate, generate_candidates
 from app.services.regions_util import (
     apply_exp_bonus,
     exp_bonus_from_terms,
@@ -758,6 +758,24 @@ class TestRecruitingAncient:
     def test_no_ancient_when_roll_misses(self) -> None:
         candidate = generate_candidate(1, self._Forced(0.999))
         assert candidate["ancientAttr"] is None
+
+    def test_pity_guarantees_ancient_within_threshold(self) -> None:
+        """每 ancientPityCount 个候选至少出一个太古：自然判定全不中时由保底兜底。"""
+        threshold = ancient_pity_count()
+        candidates, counter = generate_candidates(1, threshold, 0, self._Forced(0.999))
+        hits = [index for index, c in enumerate(candidates) if c["ancientAttr"]]
+        assert hits == [threshold - 1], "只有第 threshold 个由保底触发"
+        assert counter == 0
+
+    def test_pity_counter_advances_and_resets(self) -> None:
+        rng = self._Forced(0.999)
+        _, counter = generate_candidates(1, 10, 0, rng)
+        assert counter == 10, "未出太古时计数逐次累加"
+        _, counter = generate_candidates(1, 1, ancient_pity_count() - 1, rng)
+        assert counter == 0, "保底命中后计数归零"
+
+    def test_pity_threshold_is_positive(self) -> None:
+        assert ancient_pity_count() >= 1
 
 
 class TestBasedOnCurrentReroll:

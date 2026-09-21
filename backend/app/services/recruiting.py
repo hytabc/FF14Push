@@ -56,8 +56,48 @@ def recommended_jobs(attr: str) -> list[str]:
     return [j["id"] for j in CONFIG.jobs["jobs"] if j["mainAttr"] == attr]
 
 
-def generate_candidate(current_hero_level: int, rng: random.Random | None = None) -> dict[str, Any]:
-    """生成候选英雄：资质决定总点数，偏向决定三维分配。"""
+def ancient_pity_count() -> int:
+    return max(1, int(CONFIG.talents["ancientPityCount"]))
+
+
+def roll_ancient(counter: int, rng: random.Random) -> tuple[bool, int]:
+    """判定下一个候选是否带太古属性。返回 (是否太古, 新的保底计数)。
+
+    每 ancientPityCount 个候选至少出一个太古：计数满则必出；否则按 ancientChance 随机。
+    出太古后计数归零。
+    """
+    if counter + 1 >= ancient_pity_count():
+        return True, 0
+    if rng.random() < float(CONFIG.talents["ancientChance"]):
+        return True, 0
+    return False, counter + 1
+
+
+def generate_candidates(
+    current_hero_level: int,
+    count: int,
+    counter: int = 0,
+    rng: random.Random | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    """批量生成候选并推进太古保底计数。返回 (候选列表, 新计数)。"""
+    rng = rng or random.Random()
+    candidates: list[dict[str, Any]] = []
+    for _ in range(max(0, count)):
+        is_ancient, counter = roll_ancient(counter, rng)
+        candidates.append(generate_candidate(current_hero_level, rng, ancient=is_ancient))
+    return candidates, counter
+
+
+def generate_candidate(
+    current_hero_level: int,
+    rng: random.Random | None = None,
+    *,
+    ancient: bool | None = None,
+) -> dict[str, Any]:
+    """生成候选英雄：资质决定总点数，偏向决定三维分配。
+
+    ancient 显式指定是否带太古（由 `roll_ancient` 的保底结果决定）；省略时按 ancientChance 随机。
+    """
     rng = rng or random.Random()
     talent = talent_weights(rng)
     spec = CONFIG.talents["talents"][talent]
@@ -85,9 +125,10 @@ def generate_candidate(current_hero_level: int, rng: random.Random | None = None
             diff += 1
         i += 1
 
-    # 太古：极低概率使随机 1 条三维变为「三条中最高值 × ancientMultiplier」，每名英雄最多 1 条
+    # 太古：使随机 1 条三维变为「三条中最高值 × ancientMultiplier」，每名英雄最多 1 条
     ancient_attr = None
-    if rng.random() < float(CONFIG.talents["ancientChance"]):
+    hit = rng.random() < float(CONFIG.talents["ancientChance"]) if ancient is None else ancient
+    if hit:
         ancient_attr = rng.choice(["str", "dex", "int"])
         attrs[ancient_attr] = max(1, int(round(max(attrs.values()) * float(CONFIG.talents["ancientMultiplier"]))))
 

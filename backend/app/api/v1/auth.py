@@ -21,7 +21,7 @@ from app.services.admin import admin_username, is_admin
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
 from app.services.item_factory import generate_item
-from app.services.recruiting import generate_candidate, initial_hero
+from app.services.recruiting import generate_candidates, initial_hero
 from app.services.serialization import item_from_generated
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -57,7 +57,8 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
         )
 
     db.add(TutorialProgress(user_id=user.id, current_step=1))
-    db.add(TavernState(user_id=user.id, candidate=generate_candidate(1)))
+    tavern_candidates, tavern_pity = generate_candidates(1, 1)
+    db.add(TavernState(user_id=user.id, candidate=tavern_candidates[0], ancient_pity=tavern_pity))
     db.add(
         AutoSellSetting(
             user_id=user.id,

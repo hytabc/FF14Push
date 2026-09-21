@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.main import app
-from app.models import BattleSession, Hero, Item, RegionProgress, User
+from app.models import BattleSession, Hero, Item, RegionProgress, TavernState, User
 from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
@@ -774,6 +774,30 @@ class TestTavern:
         body = resp.json()
         assert body["cost"] == int(CONFIG.talents["refreshCost"])
         assert body["gold"] == 1000 - int(CONFIG.talents["refreshCost"])
+
+    async def test_ancient_pity_threshold_and_counter_exposed(self, auth_client) -> None:
+        """太古保底进度对外可见：新账号从 0 开始，阈值为配置值。"""
+        info = (await auth_client.get(f"{API}/tavern")).json()
+        pity = info["ancientPity"]
+        assert pity["threshold"] == int(CONFIG.talents["ancientPityCount"])
+        assert 0 <= pity["count"] <= pity["threshold"]
+
+    async def test_ancient_pity_guarantees_ancient_candidate(self, auth_client, session_factory) -> None:
+        """保底计数满时，下一个候选必定带太古属性，且计数归零。"""
+        threshold = int(CONFIG.talents["ancientPityCount"])
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            row = (
+                await db.execute(select(TavernState).where(TavernState.user_id == me["id"]))
+            ).scalar_one()
+            row.ancient_pity = threshold - 1
+            await db.commit()
+
+        resp = await auth_client.post(f"{API}/tavern/refresh", json={"useGold": False})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["candidate"]["ancientAttr"] in ("str", "dex", "int")
+        assert body["ancientPity"]["count"] == 0
 
     async def test_shown_recruit_cost_matches_charge_after_level_up(self, auth_client, session_factory) -> None:
         """候选生成后英雄升级，页面显示价仍须等于招募时的实际扣费。"""

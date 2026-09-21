@@ -11,7 +11,12 @@ from app.core.deps import CurrentItems, CurrentUser, DbSession, OptionalHero
 from app.models import Hero, Item, TavernState, User
 from app.schemas.game import TavernRecruitRequest, TavernRefreshRequest, TavernTenPullRecruitRequest
 from app.services.game_config import CONFIG
-from app.services.recruiting import generate_candidate, recruit_cost, with_recruit_cost
+from app.services.recruiting import (
+    ancient_pity_count,
+    generate_candidates,
+    recruit_cost,
+    with_recruit_cost,
+)
 from app.services.serialization import hero_to_dict
 from app.services.stats import compute_stats
 
@@ -23,10 +28,21 @@ MAX_HEROES = 1
 async def _tavern(db: DbSession, user_id: int) -> TavernState:
     row = (await db.execute(select(TavernState).where(TavernState.user_id == user_id))).scalar_one_or_none()
     if row is None:
-        row = TavernState(user_id=user_id, candidate=generate_candidate(1))
+        candidates, pity = generate_candidates(1, 1)
+        row = TavernState(user_id=user_id, candidate=candidates[0], ancient_pity=pity)
         db.add(row)
         await db.flush()
     return row
+
+
+def _next_candidates(row: TavernState, level: int, count: int = 1) -> list[dict]:
+    """生成候选并推进太古保底计数（保底计数随候选一起落库）。"""
+    candidates, row.ancient_pity = generate_candidates(level, count, int(row.ancient_pity or 0))
+    return candidates
+
+
+def _ancient_pity(row: TavernState) -> dict:
+    return {"count": int(row.ancient_pity or 0), "threshold": ancient_pity_count()}
 
 
 def _hero_level(hero: Hero | None) -> int:
@@ -85,7 +101,7 @@ def _free_refresh_state(row: TavernState, now: datetime, interval: int) -> tuple
 async def tavern_state(db: DbSession, user: CurrentUser, hero: OptionalHero) -> dict:
     row = await _tavern(db, user.id)
     if row.candidate is None:
-        row.candidate = generate_candidate(hero.level if hero else 1)
+        row.candidate = _next_candidates(row, hero.level if hero else 1)[0]
         await db.commit()
     level = hero.level if hero else 1
     candidate = with_recruit_cost(row.candidate, level) if row.candidate else None
@@ -99,6 +115,7 @@ async def tavern_state(db: DbSession, user: CurrentUser, hero: OptionalHero) -> 
         "refreshCost": int(CONFIG.talents["refreshCost"]),
         "tenPullCost": int(CONFIG.talents["tenPullCost"]),
         "multiCandidates": multi,
+        "ancientPity": _ancient_pity(row),
         "freeRefreshIntervalSec": interval,
         "freeRefreshAvailable": free_available,
         "nextFreeRefreshAt": next_at.isoformat() if next_at else None,
@@ -143,7 +160,7 @@ async def refresh(
         cost = 0
         row.free_refresh_used_at = now
 
-    row.candidate = generate_candidate(hero.level if hero else 1)
+    row.candidate = _next_candidates(row, hero.level if hero else 1)[0]
     row.refreshed_at = now
     await db.commit()
 
@@ -153,6 +170,7 @@ async def refresh(
         "gold": int(user.gold),
         "cost": cost,
         "recruitCost": recruit_cost(row.candidate["talent"], hero.level if hero else 1),
+        "ancientPity": _ancient_pity(row),
         "freeRefreshAvailable": free_available,
         "nextFreeRefreshAt": next_free_at.isoformat() if next_free_at else None,
     }
@@ -179,7 +197,7 @@ async def recruit(
     old_hero_id = hero.id if hero else None
     new_hero = await _replace_hero(db, user, hero, candidate, cost)
 
-    row.candidate = generate_candidate(new_hero.level)
+    row.candidate = _next_candidates(row, new_hero.level)[0]
     await db.commit()
 
     stats = compute_stats(new_hero, [])
@@ -189,6 +207,7 @@ async def recruit(
         "previousHeroId": old_hero_id,
         "hero": hero_to_dict(new_hero, stats),
         "nextCandidate": row.candidate,
+        "ancientPity": _ancient_pity(row),
     }
 
 
@@ -202,7 +221,7 @@ async def ten_pull(db: DbSession, user: CurrentUser, hero: OptionalHero) -> dict
 
     level = _hero_level(hero)
     user.gold = int(user.gold) - cost
-    row.multi_candidates = [generate_candidate(level) for _ in range(10)]
+    row.multi_candidates = _next_candidates(row, level, 10)
     row.refreshed_at = datetime.now(timezone.utc)
     await db.commit()
 
@@ -211,6 +230,7 @@ async def ten_pull(db: DbSession, user: CurrentUser, hero: OptionalHero) -> dict
         "cost": cost,
         "tenPullCost": cost,
         "candidates": [with_recruit_cost(c, level) for c in row.multi_candidates],
+        "ancientPity": _ancient_pity(row),
     }
 
 
@@ -241,7 +261,7 @@ async def ten_pull_recruit(
     old_hero_id = hero.id if hero else None
     new_hero = await _replace_hero(db, user, hero, candidate, cost)
     row.multi_candidates = None
-    row.candidate = generate_candidate(new_hero.level)
+    row.candidate = _next_candidates(row, new_hero.level)[0]
     await db.commit()
 
     stats = compute_stats(new_hero, [])
@@ -251,6 +271,7 @@ async def ten_pull_recruit(
         "previousHeroId": old_hero_id,
         "hero": hero_to_dict(new_hero, stats),
         "nextCandidate": row.candidate,
+        "ancientPity": _ancient_pity(row),
     }
 
 
