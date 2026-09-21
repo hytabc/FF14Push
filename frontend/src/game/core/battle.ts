@@ -282,6 +282,22 @@ export class BattleSimulator {
     return Math.max(0, Math.min(100, (this.heroMp / this.stats.maxMp) * 100))
   }
 
+  /** 各技能的 CD 状态（剩余秒数 / 总时长 / 已就绪百分比），供 UI 画倒计时进度条。 */
+  get skillStates(): Array<{ id: string; remaining: number; total: number; pct: number }> {
+    const stats = this.stats
+    const cooldownMultiplier = this.penalty.cooldownMultiplier ?? 1
+    return this.skills.map((skill) => {
+      const total = Math.max(0.01, skillCooldown(stats, skill.cd) * cooldownMultiplier)
+      const remaining = Math.max(0, this.cooldowns[skill.id] ?? 0)
+      return {
+        id: skill.id,
+        remaining,
+        total,
+        pct: Math.max(0, Math.min(100, ((total - remaining) / total) * 100)),
+      }
+    })
+  }
+
   /** 推进 dt 秒。 */
   tick(dt: number): void {
     if (this.phase === 'idle' || this.phase === 'cleared') return

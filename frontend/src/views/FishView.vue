@@ -32,6 +32,20 @@ const regionOptions = computed(() =>
 
 const currentRegion = computed(() => data.fish.regions.find((r) => r.regionId === regionId.value) ?? null)
 
+/** 鱼获库存（鱼作为可出售材料存储）。 */
+const fishBag = computed(() =>
+  (dohdol.state?.materials ?? []).filter((m) => m.materialKind === 'fish').sort((a, b) => b.count - a.count),
+)
+const fishBagValue = computed(() => fishBag.value.reduce((sum, f) => sum + (f.sell ?? 0) * f.count, 0))
+
+function sellAllFish() {
+  void dohdol.sellStacks(
+    fishBag.value
+      .filter((f) => (f.sell ?? 0) > 0)
+      .map((f) => ({ kind: f.kind, itemId: f.itemId, count: f.count })),
+  )
+}
+
 onMounted(async () => {
   if (auth.isLoggedIn) await game.loadState()
   if (regionOptions.value.length && regionId.value === null) regionId.value = regionOptions.value[0].id
@@ -110,6 +124,19 @@ async function toggle() {
         </button>
       </div>
       <p v-if="error" class="mt-2 text-xs text-red-400">{{ error }}</p>
+
+      <div v-if="running" class="mt-3">
+        <div class="mb-1 flex justify-between text-[11px] text-ink-400">
+          <span>正在抛竿…</span>
+          <span class="font-mono text-sky-300">{{ dohdol.progressPct }}%</span>
+        </div>
+        <div class="h-2 overflow-hidden rounded-full bg-ink-800">
+          <div
+            class="h-full rounded-full bg-sky-500 transition-[width] duration-100 ease-linear"
+            :style="{ width: `${dohdol.progressPct}%` }"
+          />
+        </div>
+      </div>
       <div v-if="currentRegion" class="mt-2 text-[11px] text-ink-500">
         鱼王：{{ currentRegion.king.name }}（前置：{{ currentRegion.king.prereqFishIds.length }} 种普通鱼）·
         鱼皇：{{ currentRegion.emperor.name }}
@@ -146,6 +173,39 @@ async function toggle() {
             </li>
           </ul>
         </div>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
+      <div class="mb-2 flex items-center justify-between">
+        <h2 class="text-xs font-semibold text-ink-300">鱼获库存（可出售）</h2>
+        <button
+          v-if="fishBag.length"
+          class="rounded bg-amber-600/70 px-2 py-0.5 text-[10px] text-white hover:bg-amber-500"
+          @click="sellAllFish"
+        >
+          全部出售（+{{ fishBagValue }}）
+        </button>
+      </div>
+      <div class="grid gap-1 text-xs sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-for="f in fishBag"
+          :key="f.itemId"
+          class="flex items-center justify-between gap-2 rounded border border-ink-800 bg-ink-950/40 px-2 py-1"
+        >
+          <span class="truncate text-ink-200">{{ f.name }}</span>
+          <span class="flex shrink-0 items-center gap-2">
+            <span class="font-mono text-ink-400">×{{ f.count }}</span>
+            <span class="font-mono text-ink-500">{{ (f.sell ?? 0) * f.count }}</span>
+            <button
+              class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700"
+              @click="dohdol.sellStack(f.kind, f.itemId, f.count)"
+            >
+              出售
+            </button>
+          </span>
+        </div>
+        <p v-if="!fishBag.length" class="text-ink-500">暂无鱼获。</p>
       </div>
     </section>
   </div>

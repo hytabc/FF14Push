@@ -47,17 +47,19 @@ const phaseLabel = computed(() => {
 })
 
 const killProgress = computed(() => {
+  // sim 是 shallowRef：必须显式依赖 0.1s 节拍，否则该 computed 会一直是首次缓存的 0。
+  void game.uiTick
   const s = game.sim
   if (!s) return 0
   return Math.min(100, (s.killCount / Math.max(1, s.killsRequired)) * 100)
 })
 
-/** 技能剩余 CD：量化到 0.1s，并由 0.1s 节拍（uiTick）驱动刷新。 */
-const cdRemaining = computed<Record<string, number>>(() => {
+/** 技能 CD：剩余秒数与进度（同样由 0.1s 节拍驱动刷新）。 */
+const skillStates = computed<Record<string, { remaining: number; pct: number }>>(() => {
   void game.uiTick
-  const out: Record<string, number> = {}
-  for (const skill of sim.value?.skills ?? []) {
-    out[skill.id] = Math.max(0, Math.round((sim.value?.cooldowns[skill.id] ?? 0) * 10) / 10)
+  const out: Record<string, { remaining: number; pct: number }> = {}
+  for (const state of sim.value?.skillStates ?? []) {
+    out[state.id] = { remaining: Math.round(state.remaining * 10) / 10, pct: state.pct }
   }
   return out
 })
@@ -280,10 +282,18 @@ function openBossDialog() {
           </p>
           <p class="text-[10px] text-ink-600">
             CD {{ skill.cd }}s
-            <span v-if="cdRemaining[skill.id] > 0" class="text-amber-300">
-              · 剩 {{ cdRemaining[skill.id].toFixed(1) }}s
+            <span v-if="skillStates[skill.id]?.remaining > 0" class="text-amber-300">
+              · 剩 {{ skillStates[skill.id].remaining.toFixed(1) }}s
             </span>
+            <span v-else class="text-emerald-300">· 就绪</span>
           </p>
+          <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-900">
+            <div
+              class="h-full rounded-full transition-[width] duration-100 ease-linear"
+              :class="skillStates[skill.id]?.remaining > 0 ? 'bg-amber-400' : 'bg-emerald-500'"
+              :style="{ width: `${skillStates[skill.id]?.pct ?? 100}%` }"
+            />
+          </div>
         </div>
       </div>
     </section>

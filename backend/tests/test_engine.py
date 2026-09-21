@@ -628,19 +628,28 @@ def _starter_weapon() -> FakeItem:
 
 
 class TestCombatPacing:
-    """数值平衡：起始英雄能推进地区 1；等级匹配 + 装备到位时单怪约 2.5 秒、BOSS 约 20 秒。"""
+    """数值平衡：起始英雄能推进地区 1；等级匹配 + 装备到位时约「小怪 3 下 / 精英 5 下 / BOSS 10 下」。
+
+    手感以命中次数为准（见 monsters.json:reference.$commentHits），此处的耗时区间只是
+    粗守卫；命中次数的回归保护见 frontend/src/game/core.spec.ts 的「地区击杀手感」。
+    """
 
     def test_starter_hero_can_clear_first_region(self) -> None:
-        """起始武器必须让 Lv1 英雄在阵亡重置前打满地区 1 的击杀要求。"""
+        """起始武器必须让 Lv1 英雄在阵亡重置前打满地区 1 的击杀要求。
+
+        小怪血量按「普通怪约 3 下」上调后，单怪耗时比旧版更长（实测约 9.9s，
+        真实模拟器整轮 0 阵亡），此处只守卫「不至于慢到打不满 8 杀」。
+        """
         stats = compute_stats(FakeHero(level=1), [_starter_weapon()])
         kill = theoretical_kill_seconds(stats, 1)
-        assert 3.0 <= kill <= 9.0, f"起始英雄单怪耗时 {kill:.1f}s"
+        assert 3.0 <= kill <= 12.0, f"起始英雄单怪耗时 {kill:.1f}s"
 
     @pytest.mark.parametrize("level,region", [(20, 5), (45, 10), (80, 23), (100, 40)])
     def test_kill_time_is_playable(self, level: int, region: int) -> None:
         stats = compute_stats(FakeHero(level=level), _expected_gear(level))
         kill = theoretical_kill_seconds(stats, region)
-        assert 1.5 <= kill <= 6.0, f"Lv{level} r{region} 击杀耗时 {kill:.1f}s"
+        # 小怪血量按「普通怪约 3 下」上调后，稳态耗时约 5-6s（下限防「秒杀」回归）
+        assert 3.0 <= kill <= 8.0, f"Lv{level} r{region} 击杀耗时 {kill:.1f}s"
 
     @pytest.mark.parametrize("level,region", [(20, 5), (45, 10), (80, 23), (100, 40)])
     def test_boss_time_is_playable(self, level: int, region: int) -> None:

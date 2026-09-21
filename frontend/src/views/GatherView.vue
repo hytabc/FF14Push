@@ -39,6 +39,18 @@ const materials = computed(() =>
 const bonus = computed(() => dohdol.state?.bonus ?? {})
 const running = computed(() => dohdol.isRunning && dohdol.mode === 'gather')
 
+const totalValue = computed(() =>
+  materials.value.reduce((sum, m) => sum + (m.sell ?? 0) * m.count, 0),
+)
+
+function sellAll() {
+  void dohdol.sellStacks(
+    materials.value
+      .filter((m) => (m.sell ?? 0) > 0)
+      .map((m) => ({ kind: m.kind, itemId: m.itemId, count: m.count })),
+  )
+}
+
 onMounted(async () => {
   if (auth.isLoggedIn) await game.loadState()
   if (availableNodes.value.length && regionId.value === null) regionId.value = availableNodes.value[0].regionId
@@ -120,6 +132,19 @@ async function toggle() {
         </button>
       </div>
       <p v-if="error" class="mt-2 text-xs text-red-400">{{ error }}</p>
+
+      <div v-if="running" class="mt-3">
+        <div class="mb-1 flex justify-between text-[11px] text-ink-400">
+          <span>正在采集…</span>
+          <span class="font-mono text-emerald-300">{{ dohdol.progressPct }}%</span>
+        </div>
+        <div class="h-2 overflow-hidden rounded-full bg-ink-800">
+          <div
+            class="h-full rounded-full bg-emerald-500 transition-[width] duration-100 ease-linear"
+            :style="{ width: `${dohdol.progressPct}%` }"
+          />
+        </div>
+      </div>
     </section>
 
     <section class="grid gap-3 md:grid-cols-2">
@@ -135,11 +160,30 @@ async function toggle() {
       </div>
 
       <div class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
-        <h2 class="mb-2 text-xs font-semibold text-ink-300">材料库存</h2>
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-xs font-semibold text-ink-300">材料库存</h2>
+          <button
+            v-if="materials.length"
+            class="rounded bg-amber-600/70 px-2 py-0.5 text-[10px] text-white hover:bg-amber-500"
+            @click="sellAll"
+          >
+            全部出售（+{{ totalValue }}）
+          </button>
+        </div>
         <div class="max-h-64 space-y-1 overflow-y-auto text-xs">
-          <div v-for="m in materials" :key="m.itemId" class="flex justify-between text-ink-200">
+          <div v-for="m in materials" :key="m.itemId" class="flex items-center justify-between text-ink-200">
             <span>{{ m.name }}</span>
-            <span class="font-mono text-ink-400">×{{ m.count }}</span>
+            <span class="flex items-center gap-2">
+              <span class="font-mono text-ink-400">×{{ m.count }}</span>
+              <span class="font-mono text-ink-500">{{ (m.sell ?? 0) * m.count }}</span>
+              <button
+                class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
+                :disabled="(m.sell ?? 0) <= 0"
+                @click="dohdol.sellStack(m.kind, m.itemId, m.count)"
+              >
+                出售
+              </button>
+            </span>
           </div>
           <p v-if="!materials.length" class="text-ink-500">暂无材料。</p>
         </div>

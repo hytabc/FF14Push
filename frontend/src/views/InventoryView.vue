@@ -136,6 +136,13 @@ async function batchSell() {
           >
             使用
           </button>
+          <button
+            class="rounded bg-amber-600/70 px-2 py-0.5 text-white hover:bg-amber-500 disabled:opacity-40"
+            :disabled="(c.sell ?? 0) <= 0"
+            @click="dohdol.sellStack(c.kind, c.itemId, 1)"
+          >
+            出售
+          </button>
         </div>
       </div>
     </section>

@@ -36,8 +36,14 @@ async def _progress(db: AsyncSession, user_id: int) -> DohDolProgress:
     return row
 
 
+def craft_seconds(recipe: dict[str, Any], items: Sequence[Item]) -> float:
+    """单次制造耗时（受专用装备制造速度加成影响）。"""
+    speed = dohdol_util.equipped_bonus(items).get("craftSpeedPct", 0.0)
+    return max(0.2, float(recipe["craftSeconds"]) * (1.0 - min(0.6, speed / 100.0)))
+
+
 async def start_produce(
-    db: AsyncSession, user: User, job_id: str, recipe_id: str
+    db: AsyncSession, user: User, items: Sequence[Item], job_id: str, recipe_id: str
 ) -> dict[str, Any]:
     recipe = dohdol_util.recipe_def(recipe_id)
     if recipe is None:
@@ -55,7 +61,12 @@ async def start_produce(
     )
     db.add(session)
     await db.flush()
-    return {"sessionId": session.id, "jobId": job_id, "recipeId": recipe_id}
+    return {
+        "sessionId": session.id,
+        "jobId": job_id,
+        "recipeId": recipe_id,
+        "cycle": {"seconds": craft_seconds(recipe, items), "credit": 0.0},
+    }
 
 
 def _max_crafts_by_materials(stock: dict[str, int], inputs: list[dict[str, Any]]) -> int:
@@ -84,15 +95,15 @@ async def report_produce(
         "craftQualityPct", 0.0
     ) / 100.0
 
-    craft_seconds = max(0.2, float(recipe["craftSeconds"]) * (1.0 - min(0.6, equip.get("craftSpeedPct", 0.0) / 100.0)))
+    craft_seconds_value = craft_seconds(recipe, items)
     total = float(session.credit) + window
-    by_time = int(total // craft_seconds)
+    by_time = int(total // craft_seconds_value)
 
     stock = await dohdol_util.stack_counts(db, user.id, dohdol_util.STACK_MATERIAL)
     by_materials = _max_crafts_by_materials(stock, recipe["inputs"])
     crafts = min(by_time, by_materials or 0, MAX_CRAFTS_PER_REPORT)
 
-    session.credit = total - by_time * craft_seconds
+    session.credit = total - by_time * craft_seconds_value
     session.last_report_at = now
     session.total_actions = int(session.total_actions) + crafts
 
@@ -135,6 +146,7 @@ async def report_produce(
         "items": produced if equipment_out else [],
         "xp": xp,
         "level": level_info,
+        "cycle": {"seconds": craft_seconds_value, "credit": float(session.credit)},
     }
 
 

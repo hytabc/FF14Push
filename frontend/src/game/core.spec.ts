@@ -715,3 +715,90 @@ describe('蓝量经济（持续战斗不退化为「普攻循环」）', () => {
     expect(sim.heroMp).toBe(Math.floor(maxMp * data.heroes.mp.basicAttackRestorePct))
   })
 })
+
+describe('地区击杀手感（小怪 3 下 / 精英 5 下 / BOSS 10 下）', () => {
+  beforeEach(() => {
+    // 0.1：不触发精英判定（< 0.08 才出精英）、必中、不暴击、随机浮动固定；同时普通怪模板取到 normal。
+    vi.spyOn(Math, 'random').mockReturnValue(0.1)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  // 等级匹配的期望英雄（地区 19 · Lv65），面板由后端 compute_stats 导出。
+  // 生命 / 防御刻意拉高，只观察「击杀所需命中次数」，不受阵亡重置干扰。
+  function expectedHero(overrides: Partial<HeroStats> = {}): HeroStats {
+    return makeStats({
+      level: 66,
+      jobId: 'DRG',
+      mainAttr: 'str',
+      attack: 3517.35,
+      magicAttack: 2330.36,
+      maxMp: 551.11,
+      mpRegen: 12.08,
+      maxHp: 1e9,
+      hpRegen: 0,
+      physDef: 1e6,
+      magicDef: 1e6,
+      dodgePct: 0,
+      attackSpeedPct: 24.75,
+      hitRatePct: 1.32,
+      critRatePct: 0,
+      critDamagePct: 134.11,
+      dhRatePct: 0,
+      detBonusPct: 0,
+      ...overrides,
+    })
+  }
+
+  /** 模拟整轮刷怪，按怪物种类收集「击杀所需命中次数」。 */
+  function collectHits(killsRequired: number, stats: HeroStats): Record<string, number[]> {
+    const sim = new BattleSimulator({ stats, regionId: 19, killsRequired, spawnInterval: 1, killCount: 0 })
+    sim.start()
+    const byKind: Record<string, number[]> = { normal: [], elite: [], boss: [] }
+    const seen = new Set<number>()
+    let hits = 0
+    let prev: MonsterStats | null = null
+    for (let i = 0; i < 20000 && sim.phase !== 'cleared'; i += 1) {
+      sim.tick(0.05)
+      for (const float of sim.floating) {
+        if (seen.has(float.id)) continue
+        seen.add(float.id)
+        if (float.side === 'monster' && /^\d/.test(float.text)) hits += 1
+      }
+      const current = sim.monster
+      if (current !== prev) {
+        if (prev) byKind[prev.kind].push(hits)
+        prev = current
+        hits = 0
+      }
+    }
+    return byKind
+  }
+
+  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+
+  // 按地区 19 真实的 20 杀额度取样：开局大招会秒掉最早几只，随后才进入稳定节奏。
+  const KILLS_REQUIRED = 20
+
+  it('普通小怪平均约 3 下', () => {
+    const hits = collectHits(KILLS_REQUIRED, expectedHero()).normal
+    expect(hits.length).toBeGreaterThanOrEqual(KILLS_REQUIRED)
+    expect(avg(hits)).toBeGreaterThanOrEqual(2.5)
+    expect(avg(hits)).toBeLessThanOrEqual(4.5)
+  })
+
+  it('精英怪平均约 5 下', () => {
+    const hits = collectHits(KILLS_REQUIRED, expectedHero({ termMods: { eliteChancePct: 100 } })).elite
+    expect(hits.length).toBeGreaterThanOrEqual(KILLS_REQUIRED)
+    expect(avg(hits)).toBeGreaterThanOrEqual(4)
+    expect(avg(hits)).toBeLessThanOrEqual(7)
+  })
+
+  it('关底 BOSS 约 10 下', () => {
+    const hits = collectHits(KILLS_REQUIRED, expectedHero()).boss
+    expect(hits).toHaveLength(1)
+    expect(hits[0]).toBeGreaterThanOrEqual(6)
+    expect(hits[0]).toBeLessThanOrEqual(14)
+  })
+})

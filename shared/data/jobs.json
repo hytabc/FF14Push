@@ -1,6 +1,6 @@
 {
   "$comment": "21 个战斗职业与技能。来源：PRD 2.5.2（武器→职业映射）、2.6（技能规则与示例）、招募 5.1（推荐主属性）",
-  "$commentRules": "所有技能自动释放；GCD 1.5s；优先级 1=增益 2=高伤 3=普通。耗蓝随威力递增：填充普攻约 15-20，中威力 25-45，大奖技能 65-105；新增究极技能 200、辅助增伤技能 150。蓝量不足时只能普攻（零耗蓝）。",
+  "$commentRules": "所有技能自动释放；GCD 1.5s；优先级 1=增益 2=高伤 3=普通。耗蓝随威力递增：填充普攻约 15-20，中威力 25-45，大奖技能 65-105；新增究极技能 200、辅助增伤技能 150。蓝量不足时只能普攻（零耗蓝）。技能名称以 FF14 国服对应职业技能为准。",
   "gcd": 1.5,
   "maxSkills": 7,
   "skillPriorityOrder": [1, 2, 3],
@@ -20,8 +20,8 @@
         { "id": "holySpirit", "name": "圣灵", "cd": 20, "mpCost": 30, "potency": 180, "damageType": "physical", "target": "single", "priority": 2, "effects": [{ "type": "heal", "value": 0.05 }] },
         { "id": "holySheltron", "name": "圣盾阵", "cd": 45, "mpCost": 20, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.15, "duration": 10 }] },
         { "id": "confiteor", "name": "悔罪", "cd": 60, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "pldSwordOfLight", "name": "光之战士", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "pldOath", "name": "骑士的誓言", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "pldSwordOfLight", "name": "荣耀之剑", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "pldOath", "name": "安魂祈祷", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
@@ -29,35 +29,35 @@
       "skills": [
         { "id": "heavySwing", "name": "重劈", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
         { "id": "stormPath", "name": "暴风斩", "cd": 15, "mpCost": 25, "potency": 150, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "battleShout", "name": "战吼", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.25, "duration": 15 }] },
+        { "id": "battleShout", "name": "战嚎", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.25, "duration": 15 }] },
         { "id": "innerRelease", "name": "原初的解放", "cd": 45, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "critRateBuff", "value": 0.20, "duration": 10 }] },
         { "id": "decimate", "name": "地毁人亡", "cd": 60, "mpCost": 80, "potency": 500, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "warPrimalRuin", "name": "原初的混沌", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "warBloodbath", "name": "血之盛宴", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "warPrimalRuin", "name": "尽毁", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "warBloodbath", "name": "狂暴", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "DRK", "name": "暗黑骑士", "enName": "Dark Knight", "role": "tank", "weaponType": "greatsword", "mainAttr": "str",
       "skills": [
-        { "id": "hardSlash", "name": "坚毅斩", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "souleater", "name": "回环斩", "cd": 15, "mpCost": 25, "potency": 160, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "darkside", "name": "暗黑之力", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.20, "duration": 15 }] },
+        { "id": "hardSlash", "name": "重斩", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "souleater", "name": "噬魂斩", "cd": 15, "mpCost": 25, "potency": 160, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "darkside", "name": "血乱", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.20, "duration": 15 }] },
         { "id": "livingDead", "name": "行尸走肉", "cd": 60, "mpCost": 25, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "damageReduction", "value": 0.50, "duration": 10 }] },
-        { "id": "bloodspiller", "name": "血溅乱舞", "cd": 60, "mpCost": 80, "potency": 500, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "bloodspiller", "name": "血溅", "cd": 60, "mpCost": 80, "potency": 500, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "drkShadowbringer", "name": "暗影使者", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "drkBloodWeapon", "name": "血之武器", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "drkBloodWeapon", "name": "嗜血", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "GNB", "name": "绝枪战士", "enName": "Gunbreaker", "role": "tank", "weaponType": "gunblade", "mainAttr": "str",
       "skills": [
-        { "id": "keenshot", "name": "急速射击", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "brutalShell", "name": "烈炎斩", "cd": 15, "mpCost": 25, "potency": 170, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "noMercy", "name": "野性本能", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.20, "duration": 15 }] },
-        { "id": "blastingZone", "name": "波动弹", "cd": 45, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "gnashingFang", "name": "无我乱舞", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "gnbTerminalBlade", "name": "终结之刃", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "gnbRoyalGuard", "name": "王者守护", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "keenshot", "name": "利刃斩", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "brutalShell", "name": "残暴弹", "cd": 15, "mpCost": 25, "potency": 170, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "noMercy", "name": "无情", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.20, "duration": 15 }] },
+        { "id": "blastingZone", "name": "爆破领域", "cd": 45, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "gnashingFang", "name": "烈牙", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "gnbTerminalBlade", "name": "倍攻", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "gnbRoyalGuard", "name": "王室亲卫", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
@@ -68,7 +68,7 @@
         { "id": "medica", "name": "医济", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.12 }, { "type": "healOverTime", "value": 0.015, "duration": 5 }] },
         { "id": "holy", "name": "神圣", "cd": 45, "mpCost": 30, "potency": 200, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "stun", "duration": 2 }] },
         { "id": "benediction", "name": "天赐祝福", "cd": 180, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.5 }] },
-        { "id": "whmDivineJudgment", "name": "神圣裁决", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "whmDivineJudgment", "name": "苦难之心", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
         { "id": "whmPresence", "name": "神速咏唱", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
@@ -77,107 +77,107 @@
       "skills": [
         { "id": "ruin", "name": "毁灭", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
         { "id": "physick", "name": "医术", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
-        { "id": "adloquium", "name": "鼓舞激励", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.12, "duration": 10 }] },
-        { "id": "bio", "name": "生化", "cd": 30, "mpCost": 30, "potency": 180, "damageType": "magical", "target": "single", "priority": 2, "effects": [{ "type": "dot", "value": 0.15, "duration": 10 }] },
-        { "id": "chainStratagem", "name": "连锁战略", "cd": 90, "mpCost": 40, "potency": 250, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "schChainAnnihilation", "name": "连锁毁灭", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "schFeyIllumination", "name": "精灵秘光", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "adloquium", "name": "鼓舞激励之策", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.12, "duration": 10 }] },
+        { "id": "bio", "name": "毒菌", "cd": 30, "mpCost": 30, "potency": 180, "damageType": "magical", "target": "single", "priority": 2, "effects": [{ "type": "dot", "value": 0.15, "duration": 10 }] },
+        { "id": "chainStratagem", "name": "连环计", "cd": 90, "mpCost": 40, "potency": 250, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "schChainAnnihilation", "name": "炽天附体", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "schFeyIllumination", "name": "异想的幻光", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "AST", "name": "占星术士", "enName": "Astrologian", "role": "healer", "weaponType": "globe", "mainAttr": "int",
       "skills": [
-        { "id": "malefic", "name": "灼烧", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "benefic", "name": "治疗", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
-        { "id": "divination", "name": "王冠之纹", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.15, "duration": 15 }] },
-        { "id": "stellarExplosion", "name": "星辉", "cd": 20, "mpCost": 30, "potency": 200, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "macrocosmos", "name": "天体逆行", "cd": 100, "mpCost": 50, "potency": 300, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.10 }] },
+        { "id": "malefic", "name": "凶星", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "benefic", "name": "吉星", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
+        { "id": "divination", "name": "占卜", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.15, "duration": 15 }] },
+        { "id": "stellarExplosion", "name": "星体爆轰", "cd": 20, "mpCost": 30, "potency": 200, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "macrocosmos", "name": "大宇宙", "cd": 100, "mpCost": 50, "potency": 300, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.10 }] },
         { "id": "astWheelOfFortune", "name": "命运之轮", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "astDivineSeal", "name": "星之封印", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "astDivineSeal", "name": "太阳星座", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "SGE", "name": "贤者", "enName": "Sage", "role": "healer", "weaponType": "noulith", "mainAttr": "int",
       "skills": [
-        { "id": "dosis", "name": "德鲁西拉", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "dosis", "name": "注药", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
         { "id": "diagnosis", "name": "诊断", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
-        { "id": "eukrasianDiagnosis", "name": "欧洛斯", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.10, "duration": 10 }] },
-        { "id": "phlegma", "name": "毒蛇之刺", "cd": 20, "mpCost": 30, "potency": 180, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "pneuma", "name": "帕纳西尔斯", "cd": 100, "mpCost": 55, "potency": 350, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.08 }] },
-        { "id": "sgePanhaima", "name": "帕纳海玛", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "sgeZoe", "name": "佐伊之秘", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "eukrasianDiagnosis", "name": "均衡诊断", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.10, "duration": 10 }] },
+        { "id": "phlegma", "name": "发炎", "cd": 20, "mpCost": 30, "potency": 180, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "pneuma", "name": "魂灵风息", "cd": 100, "mpCost": 55, "potency": 350, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.08 }] },
+        { "id": "sgePanhaima", "name": "泛输血", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "sgeZoe", "name": "活化", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "MNK", "name": "武僧", "enName": "Monk", "role": "melee", "weaponType": "fist", "mainAttr": "dex",
       "skills": [
-        { "id": "bootshine", "name": "崩拳", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "bootshine", "name": "连击", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
         { "id": "twinSnakes", "name": "双掌打", "cd": 15, "mpCost": 25, "potency": 150, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "riddleOfFire", "name": "破坏一击", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackSpeedBuff", "value": 0.15, "duration": 15 }] },
-        { "id": "dragonKick", "name": "旋风脚", "cd": 25, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "phantomRush", "name": "演武", "cd": 60, "mpCost": 80, "potency": 500, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "mnkFinalFist", "name": "究极拳", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "mnkBrotherhood", "name": "兄弟之情", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "riddleOfFire", "name": "红莲极意", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackSpeedBuff", "value": 0.15, "duration": 15 }] },
+        { "id": "dragonKick", "name": "双龙脚", "cd": 25, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "phantomRush", "name": "梦幻斗舞", "cd": 60, "mpCost": 80, "potency": 500, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "mnkFinalFist", "name": "乾坤斗气弹", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "mnkBrotherhood", "name": "义结金兰", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "DRG", "name": "龙骑士", "enName": "Dragoon", "role": "melee", "weaponType": "lance", "mainAttr": "str",
       "skills": [
-        { "id": "trueNorth", "name": "真北刺", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "trueNorth", "name": "精准刺", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
         { "id": "fangAndClaw", "name": "龙牙龙爪", "cd": 12, "mpCost": 30, "potency": 170, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "battleLitany", "name": "战斗连祷", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "critRateBuff", "value": 0.15, "duration": 10 }] },
         { "id": "highJump", "name": "高跳", "cd": 25, "mpCost": 50, "potency": 250, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "dragonfireDive", "name": "龙炎冲", "cd": 60, "mpCost": 70, "potency": 450, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "drgFinalFlame", "name": "究极龙炎", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "drgLanceCharge", "name": "枪刃突进", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "drgFinalFlame", "name": "天龙点睛", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "drgLanceCharge", "name": "猛枪", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "NIN", "name": "忍者", "enName": "Ninja", "role": "melee", "weaponType": "dualDagger", "mainAttr": "dex",
       "skills": [
-        { "id": "spinningEdge", "name": "双刃斩", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "spinningEdge", "name": "双刃旋", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
         { "id": "shukuchi", "name": "缩地", "cd": 15, "mpCost": 30, "potency": 180, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "bunshin", "name": "分身术", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.20, "duration": 15 }] },
-        { "id": "katon", "name": "忍术·火遁", "cd": 25, "mpCost": 40, "potency": 260, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "hyoshoRanryu", "name": "风魔手里剑", "cd": 60, "mpCost": 85, "potency": 520, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "ninFinalJutsu", "name": "究极忍术", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "ninMug", "name": "抢夺", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "bunshin", "name": "分身之术", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.20, "duration": 15 }] },
+        { "id": "katon", "name": "火遁之术", "cd": 25, "mpCost": 40, "potency": 260, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "hyoshoRanryu", "name": "冰晶乱流之术", "cd": 60, "mpCost": 85, "potency": 520, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "ninFinalJutsu", "name": "天理人道", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "ninMug", "name": "夺取", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "SAM", "name": "武士", "enName": "Samurai", "role": "melee", "weaponType": "katana", "mainAttr": "str",
       "skills": [
-        { "id": "hakaze", "name": "花车", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "hakaze", "name": "刃风", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
         { "id": "yukikaze", "name": "雪风", "cd": 15, "mpCost": 25, "potency": 160, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "meikyoShisui", "name": "心眼", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "critRateBuff", "value": 0.15, "duration": 10 }] },
+        { "id": "meikyoShisui", "name": "明镜止水", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "critRateBuff", "value": 0.15, "duration": 10 }] },
         { "id": "gekko", "name": "月光", "cd": 25, "mpCost": 40, "potency": 260, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "higanbana", "name": "彼岸花", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "samFinalIai", "name": "究极居合", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "samFinalIai", "name": "奥义斩浪", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "samIkishoten", "name": "意气冲天", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "RPR", "name": "钐镰客", "enName": "Reaper", "role": "melee", "weaponType": "scythe", "mainAttr": "str",
       "skills": [
-        { "id": "slice", "name": "收割", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "waxingSlice", "name": "战栗", "cd": 15, "mpCost": 25, "potency": 170, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "arcaneCircle", "name": "灵魂浸食", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.20, "duration": 15 }] },
-        { "id": "gibbet", "name": "死之命运", "cd": 25, "mpCost": 45, "potency": 270, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "communio", "name": "死刑宣告", "cd": 90, "mpCost": 105, "potency": 650, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "rprFinalHarvest", "name": "究极收割", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "rprArcaneCrest", "name": "奥义之印", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "slice", "name": "切割", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "waxingSlice", "name": "增盈切割", "cd": 15, "mpCost": 25, "potency": 170, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "arcaneCircle", "name": "神秘环", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.20, "duration": 15 }] },
+        { "id": "gibbet", "name": "绞决", "cd": 25, "mpCost": 45, "potency": 270, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "communio", "name": "团契", "cd": 90, "mpCost": 105, "potency": 650, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "rprFinalHarvest", "name": "大丰收", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "rprArcaneCrest", "name": "神秘纹", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "VPR", "name": "蝰蛇剑士", "enName": "Viper", "role": "melee", "weaponType": "twinblade", "mainAttr": "dex",
       "skills": [
-        { "id": "steelFangs", "name": "獠牙", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "huntersCoil", "name": "蛇行", "cd": 15, "mpCost": 25, "potency": 165, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "serpentsIre", "name": "毒牙", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.18, "duration": 15 }] },
-        { "id": "swiftskinsSting", "name": "双重突刺", "cd": 25, "mpCost": 40, "potency": 255, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "worldSwell", "name": "蛇神降临", "cd": 90, "mpCost": 100, "potency": 620, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "vprFinalStrike", "name": "究极蛇击", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "vprSerpentsTail", "name": "蛇尾", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "steelFangs", "name": "咬噬尖齿", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "huntersCoil", "name": "猛袭盘蛇", "cd": 15, "mpCost": 25, "potency": 165, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "serpentsIre", "name": "蛇灵气", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.18, "duration": 15 }] },
+        { "id": "swiftskinsSting", "name": "疾速利齿", "cd": 25, "mpCost": 40, "potency": 255, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "worldSwell", "name": "祖灵降临", "cd": 90, "mpCost": 100, "potency": 620, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "vprFinalStrike", "name": "祖灵大蛇牙", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "vprSerpentsTail", "name": "蛇尾术", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
@@ -186,9 +186,9 @@
         { "id": "heavyShot", "name": "强力射击", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
         { "id": "venomousBite", "name": "毒咬箭", "cd": 15, "mpCost": 20, "potency": 120, "damageType": "physical", "target": "single", "priority": 2, "effects": [{ "type": "dot", "value": 0.15, "duration": 8 }] },
         { "id": "ragingStrikes", "name": "猛者之击", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.20, "duration": 15 }] },
-        { "id": "refulgentArrow", "name": "纷乱箭", "cd": 25, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "refulgentArrow", "name": "辉煌箭", "cd": 25, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "radiantFinale", "name": "光明神的最终乐章", "cd": 90, "mpCost": 80, "potency": 500, "damageType": "physical", "target": "single", "priority": 2, "effects": [{ "type": "cdReduceAll", "value": 0.20 }] },
-        { "id": "brdFinalMovement", "name": "究极乐章", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "brdFinalMovement", "name": "绝峰箭", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "brdBattleVoice", "name": "战斗之声", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
@@ -196,72 +196,72 @@
       "id": "MCH", "name": "机工士", "enName": "Machinist", "role": "physicalRanged", "weaponType": "gun", "mainAttr": "dex",
       "skills": [
         { "id": "splitShot", "name": "分裂弹", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "hotShot", "name": "热分裂弹", "cd": 15, "mpCost": 25, "potency": 160, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "hotShot", "name": "热弹", "cd": 15, "mpCost": 25, "potency": 160, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "drill", "name": "钻头", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackBuff", "value": 0.20, "duration": 15 }] },
         { "id": "flamethrower", "name": "火焰喷射器", "cd": 25, "mpCost": 40, "potency": 250, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "chainSaw", "name": "王者之刃", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "mchFinalBarrage", "name": "究极炮击", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "chainSaw", "name": "回转飞锯", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "mchFinalBarrage", "name": "全金属爆发", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "mchWildfire", "name": "野火", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "DNC", "name": "舞者", "enName": "Dancer", "role": "physicalRanged", "weaponType": "chakram", "mainAttr": "dex",
       "skills": [
-        { "id": "cascade", "name": "瀑布", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "reverseCascade", "name": "狂风之舞", "cd": 15, "mpCost": 25, "potency": 150, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "cascade", "name": "瀑泻", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "reverseCascade", "name": "逆瀑泻", "cd": 15, "mpCost": 25, "potency": 150, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
         { "id": "standardStep", "name": "标准舞步", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "attackSpeedBuff", "value": 0.15, "duration": 15 }] },
-        { "id": "bladeshower", "name": "剑舞", "cd": 25, "mpCost": 40, "potency": 240, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "technicalStep", "name": "技术舞步", "cd": 90, "mpCost": 90, "potency": 550, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "dncFinalDance", "name": "究极之舞", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "dncDevilment", "name": "恶魔之术", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "bladeshower", "name": "落刃雨", "cd": 25, "mpCost": 40, "potency": 240, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "technicalStep", "name": "技巧舞步", "cd": 90, "mpCost": 90, "potency": 550, "damageType": "physical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "dncFinalDance", "name": "落幕舞", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "dncDevilment", "name": "进攻之探戈", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "BLM", "name": "黑魔法师", "enName": "Black Mage", "role": "magicalRanged", "weaponType": "rod", "mainAttr": "int",
       "skills": [
-        { "id": "blizzard", "name": "冰封", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [{ "type": "mpRestore", "value": 0.03 }] },
-        { "id": "fire", "name": "爆炎", "cd": 8, "mpCost": 30, "potency": 120, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "thundercloud", "name": "雷云", "cd": 20, "mpCost": 25, "potency": 150, "damageType": "magical", "target": "single", "priority": 2, "effects": [{ "type": "dot", "value": 0.20, "duration": 10 }] },
+        { "id": "blizzard", "name": "冰结", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [{ "type": "mpRestore", "value": 0.03 }] },
+        { "id": "fire", "name": "火炎", "cd": 8, "mpCost": 30, "potency": 120, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "thundercloud", "name": "暴雷", "cd": 20, "mpCost": 25, "potency": 150, "damageType": "magical", "target": "single", "priority": 2, "effects": [{ "type": "dot", "value": 0.20, "duration": 10 }] },
         { "id": "manaward", "name": "魔罩", "cd": 40, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.20, "duration": 8 }] },
         { "id": "flare", "name": "核爆", "cd": 60, "mpCost": 65, "potency": 400, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "mpDumpPotency", "maxPotency": 600 }] },
-        { "id": "blmFinalFlare", "name": "究极核爆", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "blmLeyLines", "name": "魔纹阵", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "blmFinalFlare", "name": "耀星", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "blmLeyLines", "name": "黑魔纹", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "SMN", "name": "召唤师", "enName": "Summoner", "role": "magicalRanged", "weaponType": "grimoire", "mainAttr": "int",
       "skills": [
-        { "id": "ruin3", "name": "崩坏", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "ruin3", "name": "毁荡", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
         { "id": "crimsonCyclone", "name": "深红旋风", "cd": 15, "mpCost": 25, "potency": 170, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
         { "id": "aetherflow", "name": "以太超流", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.20, "duration": 15 }] },
         { "id": "painflare", "name": "痛苦核爆", "cd": 25, "mpCost": 40, "potency": 260, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "phoenixFlame", "name": "不死鸟之炎", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "smnFinalSummon", "name": "究极召唤", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "phoenixFlame", "name": "灵泉之炎", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "smnFinalSummon", "name": "众生离绝", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
         { "id": "smnSearingLight", "name": "灼热之光", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "RDM", "name": "赤魔法师", "enName": "Red Mage", "role": "magicalRanged", "weaponType": "rapier", "mainAttr": "int",
       "skills": [
-        { "id": "jolt", "name": "苍穹", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "verthunder", "name": "飞翔", "cd": 15, "mpCost": 25, "potency": 160, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "embolden", "name": "纷乱", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "critRateBuff", "value": 0.15, "duration": 10 }] },
-        { "id": "enchantedRedoublement", "name": "魔连击", "cd": 25, "mpCost": 40, "potency": 250, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "scorch", "name": "神速魔", "cd": 90, "mpCost": 90, "potency": 550, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "rdmFinalMagic", "name": "究极赤魔", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "rdmManafication", "name": "魔力增幅", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "jolt", "name": "摇荡", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "verthunder", "name": "赤闪雷", "cd": 15, "mpCost": 25, "potency": 160, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "embolden", "name": "鼓励", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "critRateBuff", "value": 0.15, "duration": 10 }] },
+        { "id": "enchantedRedoublement", "name": "魔连攻", "cd": 25, "mpCost": 40, "potency": 250, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "scorch", "name": "焦热", "cd": 90, "mpCost": 90, "potency": 550, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "rdmFinalMagic", "name": "决断", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "rdmManafication", "name": "魔元化", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     },
     {
       "id": "PCT", "name": "绘灵法师", "enName": "Pictomancer", "role": "magicalRanged", "weaponType": "brush", "mainAttr": "int",
       "skills": [
-        { "id": "fireInRed", "name": "火之鸟", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "stonefall", "name": "岩石崩", "cd": 15, "mpCost": 25, "potency": 165, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "starryMuse", "name": "彩绘", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.18, "duration": 15 }] },
-        { "id": "holyInWhite", "name": "圣兽", "cd": 25, "mpCost": 40, "potency": 255, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "mogOfTheAges", "name": "摩尔崩", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
-        { "id": "pctFinalMural", "name": "究极壁画", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "pctTempera", "name": "蛋彩画", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
+        { "id": "fireInRed", "name": "火炎之红", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
+        { "id": "stonefall", "name": "飞石之纯黄", "cd": 15, "mpCost": 25, "potency": 165, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "starryMuse", "name": "星空构想", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.18, "duration": 15 }] },
+        { "id": "holyInWhite", "name": "神圣之白", "cd": 25, "mpCost": 40, "potency": 255, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "mogOfTheAges", "name": "莫古力激流", "cd": 90, "mpCost": 95, "potency": 600, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
+        { "id": "pctFinalMural", "name": "天星棱光", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
+        { "id": "pctTempera", "name": "坦培拉涂层", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
     }
   ]

@@ -71,9 +71,13 @@ def material_def(item_id: str) -> dict[str, Any] | None:
 
 
 def material_name(item_id: str) -> str:
+    """材料 / 半成品 / 鱼 / 药水食物 / 装备底材 / 专用装备 的显示名。"""
     d = material_def(item_id)
     if d:
         return d["name"]
+    consumable = CONFIG.consumable_by_id.get(item_id)
+    if consumable:
+        return consumable["name"]
     base = CONFIG.base_item_by_id.get(item_id)
     if base:
         return base.name
@@ -85,6 +89,25 @@ def material_name(item_id: str) -> str:
 
 def consumable_def(item_id: str) -> dict[str, Any] | None:
     return CONFIG.consumable_by_id.get(item_id)
+
+
+def sell_price(kind: str, item_id: str) -> int:
+    """堆叠物品的出售单价（金币）。材料 / 半成品 / 鱼 / 药水食物均可出售。"""
+    if kind in (STACK_POTION, STACK_FOOD):
+        spec = consumable_def(item_id)
+        return max(0, int(spec.get("sell", 0))) if spec else 0
+    material = material_def(item_id)
+    return max(0, int(material.get("sell", 0))) if material else 0
+
+
+def sellable_kind(item_id: str) -> str | None:
+    """按物品 id 推断其堆叠种类（potion / food / material），未知返回 None。"""
+    spec = consumable_def(item_id)
+    if spec is not None:
+        return str(spec["kind"])
+    if material_def(item_id) is not None:
+        return STACK_MATERIAL
+    return None
 
 
 # ------------------------------------------------------------------ 专用装备加成

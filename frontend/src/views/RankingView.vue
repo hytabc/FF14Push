@@ -22,6 +22,8 @@ const BOARDS = [
   { id: 'stage', label: '关卡榜', hint: '同关卡按通关时间升序（越早越靠前）' },
   { id: 'power', label: '战力榜', hint: '英雄总战力降序' },
   { id: 'gold', label: '金币榜', hint: '当前持有金币降序' },
+  { id: 'fish_species', label: '钓鱼种类榜', hint: '钓到的鱼类种类数降序' },
+  { id: 'fish_count', label: '钓鱼数量榜', hint: '累计钓鱼数量降序' },
 ]
 
 const board = ref('level')
@@ -61,18 +63,12 @@ watch([board, page], load)
 function valueText(entry: RankingEntry): string {
   if (board.value === 'gold') return formatNumber(entry.value)
   if (board.value === 'stage') return entry.value > 0 ? `第 ${entry.value} 关` : '未通关'
+  if (board.value === 'fish_species') return `${entry.value} 种`
+  if (board.value === 'fish_count') return `${formatNumber(entry.value)} 条`
   return String(entry.value)
 }
 
 const profileId = ref<number | null>(null)
-
-function fishSpecies(entry: RankingEntry): number {
-  return Number(entry.payload?.fishSpecies ?? 0)
-}
-
-function fishCount(entry: RankingEntry): number {
-  return Number(entry.payload?.fishCount ?? 0)
-}
 
 function entryTitles(entry: RankingEntry): string[] {
   const ids = entry.payload?.titles
@@ -125,8 +121,6 @@ function openProfile(entry: RankingEntry) {
             <th class="px-3 py-2 text-left">玩家昵称</th>
             <th class="px-3 py-2 text-left">英雄等级</th>
             <th class="px-3 py-2 text-right">数值</th>
-            <th class="px-3 py-2 text-right">钓鱼种类</th>
-            <th class="px-3 py-2 text-right">钓鱼数量</th>
             <th class="w-14 px-3 py-2 text-right">装备</th>
           </tr>
         </thead>
@@ -151,12 +145,10 @@ function openProfile(entry: RankingEntry) {
             </td>
             <td class="px-3 py-2 text-ink-400">{{ entry.payload?.level ?? '—' }}</td>
             <td class="px-3 py-2 text-right font-mono text-ink-200">{{ valueText(entry) }}</td>
-            <td class="px-3 py-2 text-right font-mono text-ink-300">{{ fishSpecies(entry) }}</td>
-            <td class="px-3 py-2 text-right font-mono text-ink-300">{{ fishCount(entry) }}</td>
             <td class="px-3 py-2 text-right text-ink-400">查看</td>
           </tr>
           <tr v-if="!entries.length && !loading">
-            <td colspan="7" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
+            <td colspan="5" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
           </tr>
         </tbody>
       </table>

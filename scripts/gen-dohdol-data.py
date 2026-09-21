@@ -1,0 +1,421 @@
+# -*- coding: utf-8 -*-
+"""生成生产/采集 DLC 的 shared/data JSON。
+
+用法（仓库根目录）：`python scripts/gen-dohdol-data.py`
+
+生成：materials.json / gather-nodes.json / dohdol-equipment.json / fish.json /
+consumables.json / recipes.json / titles.json
+
+设计：每个地区有专属的矿物与植物各一件（FF14 风格命名，跨地区不重复），
+另加少量通用材料（半成品原料）。与 scripts/gen-icons.mjs 一样属于内容生成器，
+改动内容后重跑本脚本即可（fish/consumables/titles 也一并重写）。
+"""
+import json
+from pathlib import Path
+
+DATA = Path(__file__).resolve().parent.parent / "shared" / "data"
+
+
+def dump(name, obj):
+    (DATA / name).write_text(json.dumps(obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("wrote", name)
+
+
+regions = json.loads((DATA / "regions.json").read_text(encoding="utf-8"))["regions"]
+
+# 地区档位 → 出售单价（金币）。材料/鱼不随地区等级变强，仅种类不同，价格按档位递增。
+BAND_SELL = {1: 6, 9: 10, 17: 14, 23: 20, 29: 28, 35: 38}
+FISH_SELL = {1: 8, 9: 14, 17: 22, 23: 32, 29: 45, 35: 60}
+
+
+def _band(rid: int, table: dict[int, int]) -> int:
+    value = table[1]
+    for start, price in sorted(table.items()):
+        if rid >= start:
+            value = price
+    return value
+
+
+def mat_sell(rid: int) -> int:
+    return _band(rid, BAND_SELL)
+
+
+def fish_sell(rid: int) -> int:
+    return _band(rid, FISH_SELL)
+
+# ---------------------------------------------------------------- 材料
+materials = []
+
+# 通用材料（多地都能采到，作为半成品的原料）
+COMMONS = [
+    ("g_ore", "铁矿", "MIN"), ("g_stone", "石灰岩", "MIN"), ("g_gem", "石英", "MIN"),
+    ("g_wood", "榆木", "BTN"), ("g_herb", "薰衣草", "BTN"), ("g_fiber", "亚麻", "BTN"),
+]
+for mid, name, job in COMMONS:
+    materials.append({"id": mid, "name": name, "kind": "gather", "jobId": job, "tier": 0, "common": True, "sell": 3})
+
+# 地区专属材料：每个地区一件矿物 + 一件植物，全部不重复（FF14 风格命名）
+ORE_NAMES = [
+    "铜矿", "锡矿", "锌矿", "铅矿", "银矿", "金矿", "黄铜矿", "蓝铜矿", "辰砂", "黑曜石",
+    "花岗岩", "砂岩", "大理石", "滑石", "云母", "萤石", "硫磺", "硝石", "岩盐", "明矾",
+    "石膏", "磁铁矿", "赤铁矿", "褐铁矿", "锰矿", "钨矿", "钴矿", "镍矿", "铬矿", "钛铁矿",
+    "硬铝矿", "秘银矿", "精金矿", "星辉石", "绯红石", "天青石", "翡翠原石", "石榴石", "橄榄石", "紫水晶",
+]
+BTN_NAMES = [
+    "松木", "杉木", "橡木", "白桦", "梣木", "铁木", "红木", "桃花心木", "黑檀", "榉木",
+    "竹", "芦苇", "藤蔓", "苔藓", "蘑菇", "山金车花", "龙血草", "苜蓿", "棉花", "大麻",
+    "银叶草", "苦艾", "曼陀罗", "菊石草", "蓝铃花", "山茶", "芦荟", "椰子", "无花果", "月长石玫瑰",
+    "风茄", "秋葵", "杜松", "薄荷", "鼠尾草", "洋甘菊", "藏红花", "灵芝", "冬虫夏草", "仙人掌果",
+]
+assert len(ORE_NAMES) >= len(regions) and len(BTN_NAMES) >= len(regions)
+
+for idx, r in enumerate(regions):
+    materials.append({
+        "id": f"ore{r['id']}", "name": ORE_NAMES[idx], "kind": "gather",
+        "jobId": "MIN", "regionId": r["id"], "tier": 1, "common": False, "sell": mat_sell(r["id"]),
+    })
+    materials.append({
+        "id": f"flora{r['id']}", "name": BTN_NAMES[idx], "kind": "gather",
+        "jobId": "BTN", "regionId": r["id"], "tier": 1, "common": False, "sell": mat_sell(r["id"]),
+    })
+
+HALVES = [
+    ("h_plank", "木板", "CRP"), ("h_ingot", "铁锭", "BSM"), ("h_steel", "钢锭", "BSM"),
+    ("h_plate", "装甲板", "ARM"), ("h_alloy", "合金锭", "ARM"), ("h_gemcut", "雕琢宝石", "GSM"),
+    ("h_glass", "玻璃板", "GSM"), ("h_leather", "皮革", "LTW"), ("h_cloth", "布料", "WVR"),
+    ("h_ink", "浓缩墨水", "ALC"), ("h_oil", "精油", "ALC"), ("h_flour", "面粉", "CUL"),
+]
+for hid, name, job in HALVES:
+    materials.append({"id": hid, "name": name, "kind": "half", "jobId": job, "tier": 2, "sell": 25})
+
+dump("materials.json", {
+    "$comment": "采集材料与半成品。材料不随地区等级递增，仅按种类区分：每个地区有专属的矿物与植物各一件（regionId 标注，彼此不重复），另有少量通用材料。sell 为出售单价（金币），材料/鱼获可卖给系统换金币。",
+    "materials": materials,
+})
+
+# ---------------------------------------------------------------- 采集点
+def band_level(rid: int) -> int:
+    if rid <= 8:
+        return 1
+    if rid <= 16:
+        return 6
+    if rid <= 22:
+        return 11
+    if rid <= 28:
+        return 16
+    if rid <= 34:
+        return 21
+    return 26
+
+
+MIN_COMMONS = ["g_ore", "g_stone", "g_gem"]
+BTN_COMMONS = ["g_wood", "g_herb", "g_fiber"]
+
+nodes = []
+for r in regions:
+    rid = r["id"]
+    c1 = MIN_COMMONS[rid % 3]
+    c2 = MIN_COMMONS[(rid + 1) % 3]
+    b1 = BTN_COMMONS[rid % 3]
+    b2 = BTN_COMMONS[(rid + 1) % 3]
+    nodes.append({
+        "regionId": rid, "jobId": "MIN", "levelReq": band_level(rid),
+        "yields": [
+            {"materialId": f"ore{rid}", "weight": 5, "min": 1, "max": 2},
+            {"materialId": c1, "weight": 3, "min": 1, "max": 2},
+            {"materialId": c2, "weight": 1, "min": 1, "max": 1},
+        ],
+    })
+    nodes.append({
+        "regionId": rid, "jobId": "BTN", "levelReq": band_level(rid),
+        "yields": [
+            {"materialId": f"flora{rid}", "weight": 5, "min": 1, "max": 2},
+            {"materialId": b1, "weight": 3, "min": 1, "max": 2},
+            {"materialId": b2, "weight": 1, "min": 1, "max": 1},
+        ],
+    })
+
+dump("gather-nodes.json", {
+    "$comment": "采集点：regionId + 采集职业 → 可采材料与数量区间。地区专属材料只在对应职业下产出，权重最高。",
+    "baseSecondsPerAction": 2.5,
+    "yieldPerLevelPct": 0.5,
+    "maxYieldLevelBonusPct": 50,
+    "nodes": nodes,
+})
+
+# ---------------------------------------------------------------- 专用装备
+DOHDOL_TIERS = [
+    {"index": 0, "name": "制式", "levelReq": 1, "power": 1.0},
+    {"index": 1, "name": "精制", "levelReq": 25, "power": 2.2},
+    {"index": 2, "name": "秘传", "levelReq": 50, "power": 4.0},
+]
+SLOTS = [
+    ("Tool", "主手工具", "tool"),
+    ("OffTool", "副手工具", "tool"),
+    ("Head", "工作头饰", "gear"),
+    ("Body", "工作服", "gear"),
+    ("Hands", "工作手套", "gear"),
+    ("Legs", "工作裤", "gear"),
+    ("Feet", "工作靴", "gear"),
+]
+BONUS_NAMES = {
+    "gatherYieldPct": "采集产量",
+    "gatherSpeedPct": "采集速度",
+    "craftQualityPct": "制造品质",
+    "craftSpeedPct": "制造速度",
+    "fishInsightPct": "捕鱼人之识时长",
+    "fishChancePct": "鱼王/鱼皇概率",
+}
+SLOT_BONUS = {
+    ("doh", "Tool"): {"craftQualityPct": 4.0},
+    ("doh", "OffTool"): {"craftSpeedPct": 6.0},
+    ("doh", "Head"): {"craftQualityPct": 1.2},
+    ("doh", "Body"): {"craftQualityPct": 1.8, "craftSpeedPct": 2.0},
+    ("doh", "Hands"): {"craftSpeedPct": 1.6},
+    ("doh", "Legs"): {"craftSpeedPct": 2.0},
+    ("doh", "Feet"): {"craftQualityPct": 1.0},
+    ("dol", "Tool"): {"gatherYieldPct": 6.0, "fishChancePct": 3.0},
+    ("dol", "OffTool"): {"gatherSpeedPct": 6.0, "fishInsightPct": 5.0},
+    ("dol", "Head"): {"gatherYieldPct": 1.5},
+    ("dol", "Body"): {"gatherYieldPct": 2.0, "fishInsightPct": 2.0},
+    ("dol", "Hands"): {"gatherSpeedPct": 1.6},
+    ("dol", "Legs"): {"gatherSpeedPct": 2.0},
+    ("dol", "Feet"): {"gatherYieldPct": 1.2},
+}
+
+dohdol_items = []
+for kind in ("doh", "dol"):
+    cat_tool = f"{kind}_tool"
+    cat_gear = f"{kind}_gear"
+    for suffix, name, stype in SLOTS:
+        for t in DOHDOL_TIERS:
+            bonus = {stat: round(coef * float(t["power"]), 1) for stat, coef in SLOT_BONUS[(kind, suffix)].items()}
+            dohdol_items.append({
+                "id": f"dh_{kind}{suffix}_{t['index']}",
+                "name": f"{t['name']}{'巧匠' if kind == 'doh' else '大地'}{name}",
+                "category": cat_tool if stype == "tool" else cat_gear,
+                "slot": f"{kind}{suffix}",
+                "kind": kind,
+                "tierIndex": t["index"],
+                "levelReq": t["levelReq"],
+                "bonus": bonus,
+            })
+
+dump("dohdol-equipment.json", {
+    "$comment": "生产/采集专用装备：仅能通过生产制造获取，只影响采集/制造/钓鱼，不参与战斗结算与战力。",
+    "slots": [
+        {"id": "dohTool", "name": "生产主手工具", "category": "doh_tool", "order": 0},
+        {"id": "dohOffTool", "name": "生产副手工具", "category": "doh_tool", "order": 1},
+        {"id": "dohHead", "name": "生产头饰", "category": "doh_gear", "order": 2},
+        {"id": "dohBody", "name": "生产工作服", "category": "doh_gear", "order": 3},
+        {"id": "dohHands", "name": "生产手套", "category": "doh_gear", "order": 4},
+        {"id": "dohLegs", "name": "生产工作裤", "category": "doh_gear", "order": 5},
+        {"id": "dohFeet", "name": "生产工作靴", "category": "doh_gear", "order": 6},
+        {"id": "dolTool", "name": "采集主手工具", "category": "dol_tool", "order": 7},
+        {"id": "dolOffTool", "name": "采集副手工具", "category": "dol_tool", "order": 8},
+        {"id": "dolHead", "name": "采集头饰", "category": "dol_gear", "order": 9},
+        {"id": "dolBody", "name": "采集服", "category": "dol_gear", "order": 10},
+        {"id": "dolHands", "name": "采集手套", "category": "dol_gear", "order": 11},
+        {"id": "dolLegs", "name": "采集裤", "category": "dol_gear", "order": 12},
+        {"id": "dolFeet", "name": "采集靴", "category": "dol_gear", "order": 13},
+    ],
+    "categories": [
+        {"id": "doh_tool", "name": "生产工具", "kind": "doh"},
+        {"id": "doh_gear", "name": "生产防具", "kind": "doh"},
+        {"id": "dol_tool", "name": "采集工具", "kind": "dol"},
+        {"id": "dol_gear", "name": "采集防具", "kind": "dol"},
+    ],
+    "bonusNames": BONUS_NAMES,
+    "items": dohdol_items,
+})
+
+# ---------------------------------------------------------------- 鱼类
+FISH_NORMAL = [
+    ("幼鱼", 20, 60, 55), ("游鱼", 30, 90, 28), ("巨口鱼", 50, 130, 14), ("稀有鱼", 60, 150, 3),
+]
+fish_regions = []
+for r in regions:
+    rid = r["id"]
+    normal = []
+    for idx, (suffix, smin, smax, w) in enumerate(FISH_NORMAL, start=1):
+        normal.append({
+            "id": f"f{rid}_{idx}", "name": f"{r['name']}{suffix}",
+            "weight": w, "sizeMin": smin, "sizeMax": smax, "exp": 4 + rid // 4,
+            "sell": fish_sell(rid),
+        })
+    fish_regions.append({
+        "regionId": rid,
+        "name": r["name"],
+        "normal": normal,
+        "king": {
+            "id": f"k{rid}", "name": f"{r['name']}鱼王",
+            "prereqFishIds": [f"f{rid}_1", f"f{rid}_2"],
+            "insightSeconds": [30, 45], "chance": 0.014,
+            "sizeMin": 160, "sizeMax": 240, "exp": 40 + rid, "sell": 150 + rid * 4,
+        },
+        "emperor": {
+            "id": f"e{rid}", "name": f"{r['name']}鱼皇",
+            "prereqFishIds": [f"f{rid}_1", f"f{rid}_2", f"f{rid}_3", f"f{rid}_4"],
+            "insightSeconds": [45, 60], "chance": 0.004,
+            "sizeMin": 240, "sizeMax": 360, "exp": 120 + rid * 2, "sell": 600 + rid * 15,
+        },
+    })
+
+dump("fish.json", {
+        "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。sell 为出售单价（金币）。",
+    "castSeconds": 3.0,
+    "insightBuffName": "捕鱼人之识",
+    "regions": fish_regions,
+})
+
+# ---------------------------------------------------------------- 消耗品
+POTION_EFFECTS = [
+    ("expGainPct", 25, "经验获取"), ("goldGainPct", 25, "金币获取"),
+    ("chestLuck", 0.15, "抽箱品阶概率"), ("craftQualityPct", 10, "制造品质概率"),
+    ("fishInsightPct", 50, "捕鱼人之识时长"), ("gatherYieldPct", 30, "采集产量"),
+]
+FOOD_EFFECTS = [
+    ("expGainPct", 10, "经验获取"), ("goldGainPct", 10, "金币获取"),
+    ("chestLuck", 0.06, "抽箱品阶概率"), ("craftQualityPct", 4, "制造品质概率"),
+    ("fishInsightPct", 20, "捕鱼人之识时长"), ("gatherYieldPct", 12, "采集产量"),
+]
+consumables = []
+for stat, value, label in POTION_EFFECTS:
+    effects = [{"stat": stat, "value": value}]
+    if stat == "fishInsightPct":
+        effects.append({"stat": "fishChancePct", "value": 3.0})
+    consumables.append({
+        "id": f"p_{stat}", "name": f"{label}秘药", "kind": "potion",
+        "effects": effects, "desc": f"60 秒内{label}提升。", "sell": 120,
+    })
+for stat, value, label in FOOD_EFFECTS:
+    effects = [{"stat": stat, "value": value}]
+    if stat == "fishInsightPct":
+        effects.append({"stat": "fishChancePct", "value": 1.2})
+    consumables.append({
+        "id": f"f_{stat}", "name": f"{label}料理", "kind": "food",
+        "effects": effects, "desc": f"1800 秒内{label}小幅提升，可与药水共存。", "sell": 50,
+    })
+
+dump("consumables.json", {
+    "$comment": "药水（60s，效果强）与食物（1800s，效果弱）。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。sell 为出售单价（金币）。",
+    "kinds": {
+        "potion": {"name": "药水", "durationSec": 60},
+        "food": {"name": "食物", "durationSec": 1800},
+    },
+    "effectNames": {
+        "expGainPct": "经验获取", "goldGainPct": "金币获取", "chestLuck": "抽箱品阶概率",
+        "craftQualityPct": "制造品质概率", "fishInsightPct": "捕鱼人之识时长",
+        "fishChancePct": "鱼王/鱼皇概率", "gatherYieldPct": "采集产量",
+    },
+    "items": consumables,
+})
+
+# ---------------------------------------------------------------- 配方
+recipes = []
+
+
+def add(rid, job, level, secs, xp, inputs, output):
+    recipes.append({
+        "id": rid, "jobId": job, "requiredLevel": level, "craftSeconds": secs, "xp": xp,
+        "inputs": [{"itemId": i, "count": c} for i, c in inputs], "output": output,
+    })
+
+
+half_inputs = {
+    "h_plank": [("g_wood", 3)],
+    "h_ingot": [("g_ore", 3)],
+    "h_steel": [("h_ingot", 2), ("g_stone", 1)],
+    "h_plate": [("g_ore", 2), ("g_stone", 2)],
+    "h_alloy": [("h_plate", 2), ("g_gem", 1)],
+    "h_gemcut": [("g_gem", 2), ("g_stone", 1)],
+    "h_glass": [("g_stone", 2), ("g_gem", 1)],
+    "h_leather": [("g_fiber", 3)],
+    "h_cloth": [("g_fiber", 2), ("g_herb", 1)],
+    "h_ink": [("g_herb", 3)],
+    "h_oil": [("g_herb", 2), ("g_wood", 1)],
+    "h_flour": [("g_herb", 2), ("g_fiber", 1)],
+}
+half_job = {h[0]: h[2] for h in HALVES}
+half_level = {"h_steel": 5, "h_plate": 5, "h_alloy": 12, "h_gemcut": 8, "h_glass": 8, "h_oil": 6}
+for hid, inputs in half_inputs.items():
+    add(f"r_{hid}", half_job[hid], half_level.get(hid, 1), 2.0, 8 + half_level.get(hid, 1) * 4, inputs,
+        {"kind": "material", "itemId": hid, "count": 1})
+
+GEAR_INPUTS = {
+    "Tool": [("h_plank", 2), ("h_ingot", 2)],
+    "OffTool": [("h_leather", 2), ("h_ingot", 1)],
+    "Head": [("h_leather", 2), ("h_cloth", 1)],
+    "Body": [("h_cloth", 3), ("h_leather", 2)],
+    "Hands": [("h_leather", 2), ("h_plate", 1)],
+    "Legs": [("h_cloth", 2), ("h_leather", 2)],
+    "Feet": [("h_leather", 3)],
+}
+GEAR_JOB = {
+    ("doh", "Tool"): "CRP", ("doh", "OffTool"): "BSM", ("doh", "Head"): "LTW",
+    ("doh", "Body"): "WVR", ("doh", "Hands"): "LTW", ("doh", "Legs"): "WVR", ("doh", "Feet"): "LTW",
+    ("dol", "Tool"): "BSM", ("dol", "OffTool"): "CRP", ("dol", "Head"): "LTW",
+    ("dol", "Body"): "WVR", ("dol", "Hands"): "LTW", ("dol", "Legs"): "WVR", ("dol", "Feet"): "LTW",
+}
+for item in dohdol_items:
+    suffix = item["slot"][3:]
+    kind = item["kind"]
+    t = item["tierIndex"]
+    inputs = [(m, c * (t + 1)) for m, c in GEAR_INPUTS[suffix]]
+    if t >= 1:
+        rid = ((t * 17) % 40) + 1
+        inputs.append((("ore" if suffix in ("Tool", "Hands") else "flora") + str(rid), 2 + t))
+    add(f"r_{item['id']}", GEAR_JOB[(kind, suffix)], 1 + t * 15, 3.0 + t, 15 + t * 30,
+        inputs, {"kind": "equipment", "baseId": item["id"]})
+
+COMBAT_RECIPES = [
+    ("CRP", ["w_bow_2", "w_rod_2", "w_lance_2", "w_katana_4", "w_brush_4"]),
+    ("BSM", ["w_sword_shield_2", "w_axe_4", "w_greatsword_4", "w_gunblade_2", "w_dualDagger_2"]),
+    ("ARM", ["a_head_4", "a_body_4", "a_hands_4", "a_legs_4", "a_feet_4"]),
+    ("GSM", ["c_ring_4", "c_necklace_4", "c_earring_4", "c_bracelet_4"]),
+]
+for job, ids in COMBAT_RECIPES:
+    for base_id in ids:
+        tier = 4 if base_id.endswith("_4") else 2
+        rid = ((tier * 11) % 40) + 1
+        add(f"r_{base_id}", job, 10 + tier * 12, 4.0 + tier, 30 + tier * 25,
+            [("h_ingot", 3 + tier), ("h_alloy" if tier >= 3 else "h_plate", 2),
+             ("g_gem", 2), ("ore" + str(rid), 2 + tier)],
+            {"kind": "equipment", "baseId": base_id})
+
+CONSUMABLE_INPUTS = {
+    "p_expGainPct": [("h_ink", 2), ("g_herb", 3)], "p_goldGainPct": [("h_ink", 2), ("g_gem", 2)],
+    "p_chestLuck": [("h_gemcut", 2), ("h_ink", 2)], "p_craftQualityPct": [("h_oil", 2), ("h_ink", 2)],
+    "p_fishInsightPct": [("h_oil", 3), ("g_herb", 3)], "p_gatherYieldPct": [("h_oil", 2), ("g_fiber", 3)],
+    "f_expGainPct": [("h_flour", 2), ("g_herb", 2)], "f_goldGainPct": [("h_flour", 2), ("g_gem", 1)],
+    "f_chestLuck": [("h_flour", 2), ("h_gemcut", 1)], "f_craftQualityPct": [("h_flour", 2), ("h_oil", 1)],
+    "f_fishInsightPct": [("h_flour", 3), ("g_herb", 2)], "f_gatherYieldPct": [("h_flour", 2), ("g_fiber", 2)],
+}
+for c in consumables:
+    job = "ALC" if c["kind"] == "potion" else "CUL"
+    add(f"r_{c['id']}", job, 1, 2.5, 20, CONSUMABLE_INPUTS[c["id"]],
+        {"kind": "consumable", "itemId": c["id"], "count": 1})
+
+dump("recipes.json", {
+    "$comment": "生产配方。按生产等级解锁；inputs 引用材料/半成品/鱼，output 可为材料/半成品/装备/消耗品。",
+    "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；同时按 rarityWeights 抽品阶。",
+    "equipment": {
+        "highQualityMultiplier": 1.15,
+        "guaranteedAncientTerms": 1,
+        "rarityWeights": {
+            "common": 0.30, "uncommon": 0.30, "rare": 0.22, "epic": 0.12, "legendary": 0.05, "mythic": 0.01,
+        },
+    },
+    "recipes": recipes,
+})
+
+# ---------------------------------------------------------------- 称号
+dump("titles.json", {
+    "$comment": "称号。钓起全部地区的鱼王 / 鱼皇各解锁一个称号，展示在排行榜。",
+    "titles": [
+        {"id": "fish_king_all", "name": "鱼王猎手", "desc": "钓起全部地区的鱼王", "condition": {"type": "all_king"}},
+        {"id": "fish_emperor_all", "name": "海皇", "desc": "钓起全部地区的鱼皇", "condition": {"type": "all_emperor"}},
+    ],
+})
+
+print("done")

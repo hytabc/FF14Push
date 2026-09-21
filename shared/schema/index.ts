@@ -275,6 +275,8 @@ export interface MaterialDef {
   jobId?: string
   regionId?: number
   tier?: number
+  /** 出售单价（金币）；材料/鱼获可卖给系统。 */
+  sell?: number
 }
 
 export interface GatherYield {
@@ -316,6 +318,7 @@ export interface FishDef {
   sizeMin: number
   sizeMax: number
   exp: number
+  sell?: number
 }
 
 export interface KingFishDef {
@@ -327,6 +330,7 @@ export interface KingFishDef {
   sizeMin: number
   sizeMax: number
   exp: number
+  sell?: number
 }
 
 export interface FishRegionDef {
@@ -370,6 +374,7 @@ export interface ConsumableDef {
   kind: 'potion' | 'food'
   effects: ConsumableEffect[]
   desc: string
+  sell?: number
 }
 
 export interface TitleDef {
@@ -501,10 +506,10 @@ const materialList: MaterialDef[] = [
 ]
 for (const region of (fishJson as unknown as { regions: FishRegionDef[] }).regions) {
   for (const f of region.normal) {
-    materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId })
+    materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId, sell: f.sell })
   }
   for (const f of [region.king, region.emperor]) {
-    materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId })
+    materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId, sell: f.sell })
   }
 }
 

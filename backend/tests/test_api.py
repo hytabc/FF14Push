@@ -285,7 +285,7 @@ class TestBattleLoop:
             session_factory,
             session_id,
             1,
-            [{"monsterId": "normal", "gold": 20, "exp": 30, "dropped": True} for _ in range(4)],
+            [{"monsterId": "normal", "gold": 20, "exp": 30, "dropped": True} for _ in range(3)],
         )
         assert resp.status_code == 200, resp.text
         body = resp.json()
@@ -405,7 +405,7 @@ class TestBattleLoop:
                 session_factory,
                 session,
                 1,
-                [{"monsterId": "normal", "gold": 20, "exp": 30} for _ in range(4)],
+                [{"monsterId": "normal", "gold": 20, "exp": 30} for _ in range(3)],
             )
             assert resp.status_code == 200, resp.text
             if resp.json()["killCount"] >= resp.json()["killsRequired"]:

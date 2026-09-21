@@ -19,6 +19,7 @@ from app.schemas.game import (
     FishStartRequest,
     GatherStartRequest,
     ProduceStartRequest,
+    SellStackRequest,
 )
 from app.services import consumables, dohdol_util, fishing, gathering, production
 from app.services.dohdol_state import build_dohdol_state
@@ -91,9 +92,11 @@ async def gather_stop(payload: ActivityStopRequest, db: DbSession, user: Current
 
 # ------------------------------------------------------------------ 生产
 @router.post("/produce/session/start")
-async def produce_start(payload: ProduceStartRequest, db: DbSession, user: CurrentUser) -> dict:
+async def produce_start(
+    payload: ProduceStartRequest, db: DbSession, user: CurrentUser, items: CurrentItems
+) -> dict:
     try:
-        result = await production.start_produce(db, user, payload.jobId, payload.recipeId)
+        result = await production.start_produce(db, user, items, payload.jobId, payload.recipeId)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
@@ -129,9 +132,9 @@ async def produce_stop(payload: ActivityStopRequest, db: DbSession, user: Curren
 
 # ------------------------------------------------------------------ 钓鱼
 @router.post("/fish/session/start")
-async def fish_start(payload: FishStartRequest, db: DbSession, user: CurrentUser) -> dict:
+async def fish_start(payload: FishStartRequest, db: DbSession, user: CurrentUser, items: CurrentItems) -> dict:
     try:
-        result = await fishing.start_fish(db, user, payload.regionId)
+        result = await fishing.start_fish(db, user, items, payload.regionId)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
@@ -174,6 +177,37 @@ async def consumable_use(payload: ConsumableUseRequest, db: DbSession, user: Cur
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
     return {**result, "active": await consumables.active_state(db, user.id)}
+
+
+# ------------------------------------------------------------------ 出售
+@router.post("/dohdol/sell")
+async def sell_stack(payload: SellStackRequest, db: DbSession, user: CurrentUser) -> dict:
+    """把采集材料 / 半成品 / 鱼获 / 药水食物卖给系统换金币。"""
+    expected = dohdol_util.sellable_kind(payload.itemId)
+    if expected is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="该物品不可出售")
+    if payload.kind != expected:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="物品类型不匹配")
+
+    unit = dohdol_util.sell_price(payload.kind, payload.itemId)
+    if unit <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该物品不可出售")
+
+    ok = await dohdol_util.stack_consume(db, user.id, payload.kind, payload.itemId, payload.count)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="数量不足")
+
+    gold_gained = unit * payload.count
+    user.gold = int(user.gold) + gold_gained
+    await db.commit()
+    return {
+        "gold": int(user.gold),
+        "goldGained": gold_gained,
+        "unitPrice": unit,
+        "count": payload.count,
+        "itemId": payload.itemId,
+        "name": dohdol_util.material_name(payload.itemId),
+    }
 
 
 # ------------------------------------------------------------------ 专用装备

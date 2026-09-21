@@ -292,11 +292,15 @@
       "inputs": [
         {
           "itemId": "h_plank",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_ingot",
-          "count": 5
+          "count": 4
+        },
+        {
+          "itemId": "ore18",
+          "count": 3
         }
       ],
       "output": {
@@ -313,15 +317,15 @@
       "inputs": [
         {
           "itemId": "h_plank",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_ingot",
-          "count": 8
+          "count": 6
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "ore35",
+          "count": 4
         }
       ],
       "output": {
@@ -359,10 +363,14 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_ingot",
+          "count": 2
+        },
+        {
+          "itemId": "flora18",
           "count": 3
         }
       ],
@@ -380,15 +388,15 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_ingot",
-          "count": 5
+          "count": 3
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -426,10 +434,14 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_cloth",
+          "count": 2
+        },
+        {
+          "itemId": "flora18",
           "count": 3
         }
       ],
@@ -447,15 +459,15 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_cloth",
-          "count": 5
+          "count": 3
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -493,11 +505,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 7
+          "count": 6
         },
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
+        },
+        {
+          "itemId": "flora18",
+          "count": 3
         }
       ],
       "output": {
@@ -514,15 +530,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 11
+          "count": 9
         },
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -560,10 +576,14 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "ore18",
           "count": 3
         }
       ],
@@ -581,15 +601,15 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_plate",
-          "count": 5
+          "count": 3
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "ore35",
+          "count": 4
         }
       ],
       "output": {
@@ -627,11 +647,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
+        },
+        {
+          "itemId": "flora18",
+          "count": 3
         }
       ],
       "output": {
@@ -648,15 +672,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -690,7 +714,11 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 7
+          "count": 6
+        },
+        {
+          "itemId": "flora18",
+          "count": 3
         }
       ],
       "output": {
@@ -707,11 +735,11 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 11
+          "count": 9
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -749,11 +777,15 @@
       "inputs": [
         {
           "itemId": "h_plank",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_ingot",
-          "count": 5
+          "count": 4
+        },
+        {
+          "itemId": "ore18",
+          "count": 3
         }
       ],
       "output": {
@@ -770,15 +802,15 @@
       "inputs": [
         {
           "itemId": "h_plank",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_ingot",
-          "count": 8
+          "count": 6
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "ore35",
+          "count": 4
         }
       ],
       "output": {
@@ -816,10 +848,14 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_ingot",
+          "count": 2
+        },
+        {
+          "itemId": "flora18",
           "count": 3
         }
       ],
@@ -837,15 +873,15 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_ingot",
-          "count": 5
+          "count": 3
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -883,10 +919,14 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_cloth",
+          "count": 2
+        },
+        {
+          "itemId": "flora18",
           "count": 3
         }
       ],
@@ -904,15 +944,15 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_cloth",
-          "count": 5
+          "count": 3
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -950,11 +990,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 7
+          "count": 6
         },
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
+        },
+        {
+          "itemId": "flora18",
+          "count": 3
         }
       ],
       "output": {
@@ -971,15 +1015,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 11
+          "count": 9
         },
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -1017,10 +1061,14 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "ore18",
           "count": 3
         }
       ],
@@ -1038,15 +1086,15 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_plate",
-          "count": 5
+          "count": 3
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "ore35",
+          "count": 4
         }
       ],
       "output": {
@@ -1084,11 +1132,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 5
+          "count": 4
         },
         {
           "itemId": "h_leather",
-          "count": 5
+          "count": 4
+        },
+        {
+          "itemId": "flora18",
+          "count": 3
         }
       ],
       "output": {
@@ -1105,15 +1157,15 @@
       "inputs": [
         {
           "itemId": "h_cloth",
-          "count": 8
+          "count": 6
         },
         {
           "itemId": "h_leather",
-          "count": 8
+          "count": 6
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -1147,7 +1199,11 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 7
+          "count": 6
+        },
+        {
+          "itemId": "flora18",
+          "count": 3
         }
       ],
       "output": {
@@ -1164,11 +1220,11 @@
       "inputs": [
         {
           "itemId": "h_leather",
-          "count": 11
+          "count": 9
         },
         {
-          "itemId": "m27",
-          "count": 2
+          "itemId": "flora35",
+          "count": 4
         }
       ],
       "output": {
@@ -1194,6 +1250,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore23",
+          "count": 4
         }
       ],
       "output": {
@@ -1219,6 +1279,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore23",
+          "count": 4
         }
       ],
       "output": {
@@ -1244,6 +1308,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore23",
+          "count": 4
         }
       ],
       "output": {
@@ -1269,6 +1337,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1294,6 +1366,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1319,6 +1395,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore23",
+          "count": 4
         }
       ],
       "output": {
@@ -1344,6 +1424,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1369,6 +1453,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1394,6 +1482,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore23",
+          "count": 4
         }
       ],
       "output": {
@@ -1419,6 +1511,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore23",
+          "count": 4
         }
       ],
       "output": {
@@ -1444,6 +1540,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1469,6 +1569,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1494,6 +1598,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1519,6 +1627,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1544,6 +1656,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1569,6 +1685,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1594,6 +1714,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1619,6 +1743,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1644,6 +1772,10 @@
         {
           "itemId": "g_gem",
           "count": 2
+        },
+        {
+          "itemId": "ore5",
+          "count": 6
         }
       ],
       "output": {
@@ -1797,10 +1929,6 @@
         {
           "itemId": "g_herb",
           "count": 2
-        },
-        {
-          "itemId": "f1_1",
-          "count": 1
         }
       ],
       "output": {
@@ -1822,10 +1950,6 @@
         },
         {
           "itemId": "g_gem",
-          "count": 1
-        },
-        {
-          "itemId": "f1_1",
           "count": 1
         }
       ],
@@ -1849,10 +1973,6 @@
         {
           "itemId": "h_gemcut",
           "count": 1
-        },
-        {
-          "itemId": "f1_1",
-          "count": 1
         }
       ],
       "output": {
@@ -1874,10 +1994,6 @@
         },
         {
           "itemId": "h_oil",
-          "count": 1
-        },
-        {
-          "itemId": "f1_1",
           "count": 1
         }
       ],
@@ -1901,10 +2017,6 @@
         {
           "itemId": "g_herb",
           "count": 2
-        },
-        {
-          "itemId": "f1_1",
-          "count": 1
         }
       ],
       "output": {
@@ -1927,10 +2039,6 @@
         {
           "itemId": "g_fiber",
           "count": 2
-        },
-        {
-          "itemId": "f1_1",
-          "count": 1
         }
       ],
       "output": {

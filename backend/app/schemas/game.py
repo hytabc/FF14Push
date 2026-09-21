@@ -219,3 +219,11 @@ class DohDolEquipRequest(BaseModel):
 
 class DohDolUnequipRequest(BaseModel):
     slot: str = Field(min_length=1, max_length=24)
+
+
+class SellStackRequest(BaseModel):
+    """出售堆叠物品（采集材料 / 半成品 / 鱼 / 药水 / 食物）。"""
+
+    kind: str = Field(min_length=1, max_length=16)
+    itemId: str = Field(min_length=1, max_length=48)
+    count: int = Field(default=1, ge=1)

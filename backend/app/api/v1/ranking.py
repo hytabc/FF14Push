@@ -20,7 +20,7 @@ router = APIRouter(prefix="/ranking", tags=["ranking"])
 async def ranking(
     db: DbSession,
     user: OptionalUser,
-    board: str = Query("level", pattern="^(level|stage|power|gold)$"),
+    board: str = Query("level", pattern="^(level|stage|power|gold|fish_species|fish_count)$"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=100),
 ) -> dict:

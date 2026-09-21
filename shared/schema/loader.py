@@ -203,10 +203,16 @@ def load_game_data() -> GameConfig:
     material_by_id: dict[str, Any] = {m["id"]: m for m in raw["materials"]["materials"]}
     for region in raw["fish"]["regions"]:
         for fish in region["normal"]:
-            material_by_id[fish["id"]] = {"id": fish["id"], "name": fish["name"], "kind": "fish", "regionId": region["regionId"]}
+            material_by_id[fish["id"]] = {
+                "id": fish["id"], "name": fish["name"], "kind": "fish",
+                "regionId": region["regionId"], "sell": int(fish.get("sell", 0)),
+            }
         for key in ("king", "emperor"):
             fish = region[key]
-            material_by_id[fish["id"]] = {"id": fish["id"], "name": fish["name"], "kind": "fish", "regionId": region["regionId"]}
+            material_by_id[fish["id"]] = {
+                "id": fish["id"], "name": fish["name"], "kind": "fish",
+                "regionId": region["regionId"], "sell": int(fish.get("sell", 0)),
+            }
 
     gather_node_by = {
         (int(node["regionId"]), node["jobId"]): node for node in raw["gatherNodes"]["nodes"]

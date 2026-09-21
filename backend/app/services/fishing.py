@@ -37,7 +37,7 @@ async def _progress(db: AsyncSession, user_id: int) -> DohDolProgress:
     return row
 
 
-async def start_fish(db: AsyncSession, user: User, region_id: int) -> dict[str, Any]:
+async def start_fish(db: AsyncSession, user: User, items: Sequence[Item], region_id: int) -> dict[str, Any]:
     if region_id not in CONFIG.fish_region_by_id:
         raise ValueError("该地区没有钓场")
     if region_id > await cleared_max_region(db, user.id) + 1:
@@ -51,7 +51,12 @@ async def start_fish(db: AsyncSession, user: User, region_id: int) -> dict[str, 
     )
     db.add(session)
     await db.flush()
-    return {"sessionId": session.id, "regionId": region_id}
+    speed = dohdol_util.equipped_bonus(items).get("gatherSpeedPct", 0.0)
+    return {
+        "sessionId": session.id,
+        "regionId": region_id,
+        "cycle": {"seconds": dohdol_util.fish_seconds_per_cast(speed), "credit": 0.0},
+    }
 
 
 def _pick_normal(region: dict[str, Any], rng: random.Random) -> dict[str, Any]:
@@ -207,6 +212,7 @@ async def report_fish(
         "level": level_info,
         "insightRemainingSec": insight_remaining,
         "newTitles": new_titles,
+        "cycle": {"seconds": cast_seconds, "credit": float(session.credit)},
     }
 
 

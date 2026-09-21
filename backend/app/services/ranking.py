@@ -17,7 +17,7 @@ from app.services.admin import is_admin
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
-BOARDS = ("level", "stage", "power", "gold")
+BOARDS = ("level", "stage", "power", "gold", "fish_species", "fish_count")
 
 
 async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
@@ -69,6 +69,10 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
             _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
             _entry(user, hero, "gold", int(user.gold), 0, extra),
         ]
+        # 钓鱼榜为两个独立榜单：只让有钓鱼记录的玩家上榜
+        if fish["species"] > 0:
+            entries.append(_entry(user, hero, "fish_species", fish["species"], fish["count"], extra))
+            entries.append(_entry(user, hero, "fish_count", fish["count"], fish["species"], extra))
         for entry in entries:
             db.add(entry)
             counts[entry.board] += 1

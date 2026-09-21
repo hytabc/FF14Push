@@ -50,7 +50,14 @@ async def start_gather(
     )
     db.add(session)
     await db.flush()
-    return {"sessionId": session.id, "jobId": job_id, "regionId": region_id}
+    equip = dohdol_util.equipped_bonus(items)
+    seconds = dohdol_util.gather_seconds_per_action(equip.get("gatherSpeedPct", 0.0))
+    return {
+        "sessionId": session.id,
+        "jobId": job_id,
+        "regionId": region_id,
+        "cycle": {"seconds": seconds, "credit": 0.0},
+    }
 
 
 async def progress_level(db: AsyncSession, user_id: int, kind: str) -> int:
@@ -119,6 +126,7 @@ async def report_gather(
         "actions": actions,
         "xp": xp,
         "level": level_info,
+        "cycle": {"seconds": seconds_per, "credit": float(session.credit)},
     }
 
 

@@ -47,6 +47,7 @@ async def _stacks(db: AsyncSession, user_id: int) -> list[dict[str, Any]]:
             "kind": row.kind,
             "count": int(row.count),
             "name": spec.get("name", row.item_id),
+            "sell": dohdol_util.sell_price(row.kind, row.item_id),
         }
         if row.kind in ("potion", "food"):
             entry["consumableKind"] = row.kind

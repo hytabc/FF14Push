@@ -100,6 +100,8 @@ export interface MaterialStackItem {
   consumableKind?: string
   effects?: Array<{ stat: string; value: number }>
   desc?: string
+  /** 出售单价（金币）。 */
+  sell?: number
 }
 
 export interface ActiveConsumable {
@@ -172,11 +174,20 @@ export interface DohDolState {
   }
 }
 
+/** 后台循环的单次动作节奏（服务端下发，用于客户端画进度条）。 */
+export interface ActivityCycle {
+  /** 单次动作耗时（秒）。 */
+  seconds: number
+  /** 尚未结算的剩余秒数（跨上报保留的余额）。 */
+  credit: number
+}
+
 export interface GatherReportResponse {
   gained: Array<{ itemId: string; name: string; count: number }>
   actions: number
   xp: number
   level: { levelsGained: number; level: number; exp: number }
+  cycle: ActivityCycle
 }
 
 export interface ProduceReportResponse {
@@ -186,6 +197,7 @@ export interface ProduceReportResponse {
   items: Item[]
   xp: number
   level: { levelsGained: number; level: number; exp: number }
+  cycle: ActivityCycle
 }
 
 export interface FishCatch {
@@ -204,6 +216,7 @@ export interface FishReportResponse {
   level: { levelsGained: number; level: number; exp: number }
   insightRemainingSec: number
   newTitles: string[]
+  cycle: ActivityCycle
 }
 
 /** 排行榜点击查看的玩家资料（只含当前已装备栏位，只读）。 */

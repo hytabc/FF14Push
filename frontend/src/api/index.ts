@@ -366,7 +366,14 @@ export const api = {
   },
 
   async gatherStart(jobId: string, regionId: number) {
-    return (await http.post<{ sessionId: number; jobId: string; regionId: number }>('/gather/session/start', { jobId, regionId })).data
+    return (
+      await http.post<{
+        sessionId: number
+        jobId: string
+        regionId: number
+        cycle: import('@/game/types').ActivityCycle
+      }>('/gather/session/start', { jobId, regionId })
+    ).data
   },
 
   async gatherReport(sessionId: number) {
@@ -378,7 +385,14 @@ export const api = {
   },
 
   async produceStart(jobId: string, recipeId: string) {
-    return (await http.post<{ sessionId: number; jobId: string; recipeId: string }>('/produce/session/start', { jobId, recipeId })).data
+    return (
+      await http.post<{
+        sessionId: number
+        jobId: string
+        recipeId: string
+        cycle: import('@/game/types').ActivityCycle
+      }>('/produce/session/start', { jobId, recipeId })
+    ).data
   },
 
   async produceReport(sessionId: number) {
@@ -390,7 +404,13 @@ export const api = {
   },
 
   async fishStart(regionId: number) {
-    return (await http.post<{ sessionId: number; regionId: number }>('/fish/session/start', { regionId })).data
+    return (
+      await http.post<{
+        sessionId: number
+        regionId: number
+        cycle: import('@/game/types').ActivityCycle
+      }>('/fish/session/start', { regionId })
+    ).data
   },
 
   async fishReport(sessionId: number) {
@@ -411,5 +431,18 @@ export const api = {
 
   async dohdolUnequip(slot: string) {
     return (await http.post<{ ok: boolean; slot: string }>('/dohdol/unequip', { slot })).data
+  },
+
+  async sellStack(kind: string, itemId: string, count: number) {
+    return (
+      await http.post<{
+        gold: number
+        goldGained: number
+        unitPrice: number
+        count: number
+        itemId: string
+        name: string
+      }>('/dohdol/sell', { kind, itemId, count })
+    ).data
   },
 }

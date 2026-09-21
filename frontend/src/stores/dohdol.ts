@@ -33,18 +33,64 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const lastProduced = ref<Array<{ name: string; rarity: string }>>([])
   const lastCaught = ref<FishCatch[]>([])
   const insightRemaining = ref(0)
+  /** 当前生产会话选中的配方（用于判断材料是否耗尽）。 */
+  const recipeId = ref<string | null>(null)
+
+  // 单次动作进度：由服务端下发的 cycle（秒/余额）驱动，客户端只做插值展示。
+  const cycleSeconds = ref(0)
+  const cycleCredit = ref(0)
+  const progress = ref(0)
 
   let timer: number | null = null
+  let ticker: number | null = null
+  let syncedAtMs = 0
 
   const state = computed(() => game.state?.dohdol ?? null)
   const isRunning = computed(() => mode.value !== 'idle')
   const active = computed(() => state.value?.active ?? [])
+  const progressPct = computed(() => Math.round(progress.value * 100))
+  /** 生产时材料不足 → 循环空转，UI 需要提示。 */
+  const starved = computed(() => {
+    if (mode.value !== 'produce' || !recipeId.value) return false
+    const recipe = state.value?.recipes.find((r) => r.id === recipeId.value)
+    return recipe ? recipe.craftable <= 0 : false
+  })
+
+  function syncCycle(cycle: { seconds: number; credit: number } | undefined) {
+    cycleSeconds.value = cycle?.seconds ?? 0
+    cycleCredit.value = cycle?.credit ?? 0
+    syncedAtMs = performance.now()
+    progress.value = 0
+  }
+
+  function startTicker() {
+    if (ticker !== null) return
+    ticker = window.setInterval(() => {
+      if (cycleSeconds.value <= 0) {
+        progress.value = 0
+        return
+      }
+      const elapsed = (performance.now() - syncedAtMs) / 1000
+      const total = cycleCredit.value + elapsed
+      const frac = total / cycleSeconds.value
+      progress.value = Math.min(1, frac - Math.floor(frac))
+    }, 100)
+  }
+
+  function stopTicker() {
+    if (ticker !== null) {
+      window.clearInterval(ticker)
+      ticker = null
+    }
+    progress.value = 0
+  }
 
   function startLoop() {
     stopLoop()
     timer = window.setInterval(() => {
       void reportOnce()
     }, REPORT_MS)
+    startTicker()
   }
 
   function stopLoop() {
@@ -52,6 +98,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
       window.clearInterval(timer)
       timer = null
     }
+    stopTicker()
   }
 
   async function reportOnce() {
@@ -61,9 +108,11 @@ export const useDohDolStore = defineStore('dohdol', () => {
       if (mode.value === 'gather') {
         const r = await api.gatherReport(sessionId.value)
         lastGained.value = r.gained
+        syncCycle(r.cycle)
       } else if (mode.value === 'produce') {
         const r = await api.produceReport(sessionId.value)
         lastGained.value = r.materials
+        syncCycle(r.cycle)
         if (r.items.length) {
           lastProduced.value = r.items.map((i) => ({ name: i.name, rarity: i.rarity }))
           for (const item of r.items) {
@@ -75,6 +124,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
         lastGained.value = r.gained
         lastCaught.value = r.caught
         insightRemaining.value = r.insightRemainingSec
+        syncCycle(r.cycle)
         for (const title of r.newTitles) {
           toast.push(`达成称号「${TITLE_NAMES[title] ?? title}」`, 'success')
         }
@@ -93,18 +143,22 @@ export const useDohDolStore = defineStore('dohdol', () => {
     const res = await api.gatherStart(jobId, regionId)
     sessionId.value = res.sessionId
     mode.value = 'gather'
+    recipeId.value = null
     lastGained.value = []
+    syncCycle(res.cycle)
     startLoop()
   }
 
-  async function startProduce(jobId: string, recipeId: string) {
+  async function startProduce(jobId: string, recipeId_: string) {
     await stop(true)
     await game.stopBattle(true)
-    const res = await api.produceStart(jobId, recipeId)
+    const res = await api.produceStart(jobId, recipeId_)
     sessionId.value = res.sessionId
     mode.value = 'produce'
+    recipeId.value = res.recipeId
     lastGained.value = []
     lastProduced.value = []
+    syncCycle(res.cycle)
     startLoop()
   }
 
@@ -114,8 +168,10 @@ export const useDohDolStore = defineStore('dohdol', () => {
     const res = await api.fishStart(regionId)
     sessionId.value = res.sessionId
     mode.value = 'fish'
+    recipeId.value = null
     lastCaught.value = []
     insightRemaining.value = 0
+    syncCycle(res.cycle)
     startLoop()
   }
 
@@ -125,6 +181,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     const current = mode.value
     mode.value = 'idle'
     sessionId.value = null
+    recipeId.value = null
     if (id === null) return
     try {
       if (current === 'gather') await api.gatherStop(id)
@@ -141,6 +198,33 @@ export const useDohDolStore = defineStore('dohdol', () => {
     await game.loadState()
   }
 
+  /** 出售堆叠物品（采集材料 / 半成品 / 鱼获 / 药水食物）。 */
+  async function sellStack(kind: string, itemId: string, count: number) {
+    const res = await api.sellStack(kind, itemId, count)
+    toast.push(`出售 ${res.name} ×${res.count}，获得 ${res.goldGained} 金币`, 'success')
+    await game.loadState()
+  }
+
+  /** 批量出售：逐项结算，最后统一刷新一次状态。 */
+  async function sellStacks(entries: Array<{ kind: string; itemId: string; count: number }>) {
+    let gold = 0
+    let sold = 0
+    for (const entry of entries) {
+      if (entry.count <= 0) continue
+      try {
+        const res = await api.sellStack(entry.kind, entry.itemId, entry.count)
+        gold += res.goldGained
+        sold += res.count
+      } catch {
+        /* 单项失败（如数量不足）不影响其余 */
+      }
+    }
+    if (sold > 0) {
+      toast.push(`出售 ${sold} 件，获得 ${gold} 金币`, 'success')
+      await game.loadState()
+    }
+  }
+
   function handleVisibility() {
     if (document.hidden && isRunning.value) {
       void stop(true)
@@ -155,6 +239,9 @@ export const useDohDolStore = defineStore('dohdol', () => {
     lastProduced,
     lastCaught,
     insightRemaining,
+    recipeId,
+    progressPct,
+    starved,
     state,
     isRunning,
     active,
@@ -163,6 +250,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
     startFish,
     stop,
     useConsumable,
+    sellStack,
+    sellStacks,
     handleVisibility,
   }
 })

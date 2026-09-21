@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import select
 
 from app.models import ActiveConsumable, DohDolProgress, FishRecord, StackItem
+from app.services import dohdol_util
 from app.services.game_config import CONFIG
 from app.services.item_factory import generate_crafted_item
 
@@ -37,6 +38,28 @@ class TestSharedData:
             for y in node["yields"]:
                 assert y["materialId"] in CONFIG.material_by_id
                 assert y["min"] <= y["max"]
+
+    def test_region_material_variety(self):
+        """每个地区至少 2 件专属材料，且专属材料跨地区不重复；每地区可采 ≥3 种。"""
+        uniques = [m for m in CONFIG.materials["materials"] if m.get("regionId")]
+        names = [m["name"] for m in uniques]
+        assert len(names) == len(set(names)), "地区专属材料名称不应重复"
+        assert len(uniques) == len(CONFIG.region_by_id) * 2
+
+        per_region: dict[int, set[str]] = {}
+        for node in CONFIG.gather_nodes["nodes"]:
+            bucket = per_region.setdefault(node["regionId"], set())
+            for y in node["yields"]:
+                bucket.add(y["materialId"])
+        for region_id, bucket in per_region.items():
+            assert len(bucket) >= 3, f"地区 {region_id} 可采材料不足 3 种"
+
+    def test_recipe_outputs_have_names(self):
+        """配方产物名必须解析为中文名，不能回落成 id（如 f_expGainPct）。"""
+        for r in CONFIG.recipes["recipes"]:
+            out = r["output"]
+            key = out.get("itemId") or out.get("baseId")
+            assert dohdol_util.material_name(key) != key, f"配方 {r['id']} 产物名未解析：{key}"
 
     def test_recipes_reference_valid(self):
         for r in CONFIG.recipes["recipes"]:
@@ -250,6 +273,127 @@ class TestConsumableApi:
             assert len(rows) == 1
 
 
+class TestSellApi:
+    @pytest.mark.asyncio
+    async def test_sell_material(self, auth_client, session_factory):
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            db.add(StackItem(user_id=user_id, kind="material", item_id="g_ore", count=5))
+            await db.commit()
+
+        before = (await auth_client.get("/api/v1/game/state")).json()["user"]["gold"]
+        resp = await auth_client.post(
+            "/api/v1/dohdol/sell", json={"kind": "material", "itemId": "g_ore", "count": 3}
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["goldGained"] == body["unitPrice"] * 3
+        assert body["gold"] == before + body["goldGained"]
+
+        async with session_factory() as db:
+            row = (await db.execute(select(StackItem).where(StackItem.item_id == "g_ore"))).scalar_one()
+            assert row.count == 2
+
+    @pytest.mark.asyncio
+    async def test_sell_fish_and_guards(self, auth_client, session_factory):
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            db.add(StackItem(user_id=user_id, kind="material", item_id="f1_1", count=2))
+            await db.commit()
+
+        resp = await auth_client.post(
+            "/api/v1/dohdol/sell", json={"kind": "material", "itemId": "f1_1", "count": 1}
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["goldGained"] > 0
+
+        # 类型不匹配 / 未知物品 / 数量不足
+        bad_kind = await auth_client.post(
+            "/api/v1/dohdol/sell", json={"kind": "potion", "itemId": "f1_1", "count": 1}
+        )
+        assert bad_kind.status_code == 400
+        unknown = await auth_client.post(
+            "/api/v1/dohdol/sell", json={"kind": "material", "itemId": "nope", "count": 1}
+        )
+        assert unknown.status_code == 404
+        too_many = await auth_client.post(
+            "/api/v1/dohdol/sell", json={"kind": "material", "itemId": "f1_1", "count": 99}
+        )
+        assert too_many.status_code == 400
+
+
+class TestFishingRanking:
+    @pytest.mark.asyncio
+    async def test_fishing_boards_are_separate(self, auth_client, session_factory):
+        # 先钓几条鱼
+        start = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 1})
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 60)
+            await db.commit()
+        await auth_client.post("/api/v1/fish/session/report", json={"sessionId": session_id})
+
+        await auth_client.post("/api/v1/ranking/refresh", json={})
+
+        # 两个独立榜单：钓鱼种类榜 / 钓鱼数量榜
+        species_board = await auth_client.get("/api/v1/ranking", params={"board": "fish_species"})
+        assert species_board.status_code == 200, species_board.text
+        species_entries = species_board.json()["entries"]
+        assert species_entries, "钓鱼种类榜应有记录"
+        assert species_entries[0]["value"] >= 1
+
+        count_board = await auth_client.get("/api/v1/ranking", params={"board": "fish_count"})
+        assert count_board.status_code == 200, count_board.text
+        count_entries = count_board.json()["entries"]
+        assert count_entries, "钓鱼数量榜应有记录"
+        assert count_entries[0]["value"] >= 1
+
+        # 通用榜单仍是 4 个 + 钓鱼 2 个
+        assert species_board.json()["boards"] == [
+            "level", "stage", "power", "gold", "fish_species", "fish_count",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_no_fish_no_fishing_entry(self, auth_client):
+        """没钓鱼的玩家不应出现在钓鱼榜上。"""
+        await auth_client.post("/api/v1/ranking/refresh", json={})
+        board = await auth_client.get("/api/v1/ranking", params={"board": "fish_species"})
+        assert board.status_code == 200
+        assert board.json()["entries"] == []
+
+
+class TestActivityCycle:
+    @pytest.mark.asyncio
+    async def test_cycle_reported_for_progress_bars(self, auth_client):
+        # 采集：开始与上报都带 cycle（供前端画进度条）
+        start = await auth_client.post("/api/v1/gather/session/start", json={"jobId": "MIN", "regionId": 1})
+        assert start.status_code == 200, start.text
+        body = start.json()
+        assert body["cycle"]["seconds"] > 0
+        assert body["cycle"]["credit"] == 0
+
+        rep = await auth_client.post("/api/v1/gather/session/report", json={"sessionId": body["sessionId"]})
+        assert rep.status_code == 200, rep.text
+        assert rep.json()["cycle"]["seconds"] > 0
+
+        await auth_client.post("/api/v1/gather/session/stop", json={"sessionId": body["sessionId"]})
+
+        # 生产
+        pstart = await auth_client.post(
+            "/api/v1/produce/session/start", json={"jobId": "CRP", "recipeId": "r_h_plank"}
+        )
+        assert pstart.status_code == 200, pstart.text
+        assert pstart.json()["cycle"]["seconds"] > 0
+
+        # 钓鱼
+        fstart = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 1})
+        assert fstart.status_code == 200, fstart.text
+        assert fstart.json()["cycle"]["seconds"] > 0
+
+
 class TestDohDolState:
     @pytest.mark.asyncio
     async def test_state_block(self, auth_client):
@@ -260,3 +404,7 @@ class TestDohDolState:
         assert dohdol["progress"]["dol"]["level"] == 1
         assert dohdol["recipes"], "应下发配方"
         assert dohdol["fishStats"]["kingTotal"] == 40
+        # 配方产物名已解析（不再显示 f_expGainPct 这类 id）
+        for r in dohdol["recipes"]:
+            key = r["output"]["itemId"] or r["output"]["baseId"]
+            assert r["output"]["name"] != key, r["id"]
