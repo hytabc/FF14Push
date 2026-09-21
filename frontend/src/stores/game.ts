@@ -12,6 +12,8 @@ import { useToastStore } from './toast'
 
 const TICK_MS = 100
 const REPORT_MS = 1500
+/** 单帧最多推进的模拟时间；同时也是「防加速」预算的上限。 */
+const MAX_FRAME_MS = 400
 const AUTO_ADVANCE_KEY = 'eorzea.autoAdvance'
 const STAY_REGION_KEY = 'eorzea.stayRegion'
 
@@ -96,6 +98,9 @@ export const useGameStore = defineStore('game', () => {
   let rafId = 0
   let tickTimer = 0
   let lastTs = 0
+  // 防加速：上次真实墙钟时间与尚未消耗的模拟时间预算
+  let lastWallMs = 0
+  let simBudgetMs = 0
   let reportAccum = 0
   let reporting = false
   let raidReporting = false
@@ -201,12 +206,24 @@ export const useGameStore = defineStore('game', () => {
   function startLoop() {
     if (rafId) return
     lastTs = performance.now()
+    // 防加速：模拟时间按真实墙钟发放预算。浏览器插件 / 开发者工具可以篡改
+    // requestAnimationFrame 的时间戳（如「视频加速」类扩展），若直接采信帧间隔，
+    // 本地模拟就会被拉快。以 Date.now 累积预算后，长跑下来模拟时间不可能超过真实时间。
+    lastWallMs = Date.now()
+    simBudgetMs = 0
     tickTimer = window.setInterval(() => {
       uiTick.value += 1
     }, TICK_MS)
     const step = (ts: number) => {
-      const dtMs = Math.min(400, ts - lastTs)
+      const wallNow = Date.now()
+      const wallDelta = Math.min(MAX_FRAME_MS, Math.max(0, wallNow - lastWallMs))
+      lastWallMs = wallNow
+      simBudgetMs = Math.min(MAX_FRAME_MS, simBudgetMs + wallDelta)
+
+      const frameDelta = Math.max(0, ts - lastTs)
       lastTs = ts
+      const dtMs = Math.min(MAX_FRAME_MS, frameDelta, simBudgetMs)
+      simBudgetMs -= dtMs
       const dt = dtMs / 1000
 
       if (sim.value && running.value) {

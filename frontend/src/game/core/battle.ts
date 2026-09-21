@@ -454,6 +454,11 @@ export class BattleSimulator {
     const stats = this.stats
     const cost = this.mpCost(skill)
     this.heroMp = Math.max(0, this.heroMp - cost)
+    // 零耗蓝普攻作为兜底回蓝手段：蓝量见底时仍能缓慢回蓝，避免退化成「只剩普攻」。
+    if (cost <= 0) {
+      const restore = Math.floor(stats.maxMp * Number(data.heroes.mp.basicAttackRestorePct ?? 0))
+      if (restore > 0) this.heroMp = Math.min(stats.maxMp, this.heroMp + restore)
+    }
     this.cooldowns[skill.id] = skillCooldown(stats, skill.cd) * (this.penalty.cooldownMultiplier ?? 1)
     this.gcd = data.combat.gcdSeconds as number
     this.pendingSkillCasts[skill.id] = (this.pendingSkillCasts[skill.id] ?? 0) + 1

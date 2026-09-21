@@ -119,13 +119,32 @@ def test_healer_skills_are_nerfed() -> None:
                 assert kind != "fullHeal", (job["id"], skill["id"])
 
 
-def test_mp_pool_is_tight() -> None:
-    """蓝池与回复刻意收紧：满蓝约等于一轮技能消耗，持续施放会见底。"""
+def test_mp_is_sustainable() -> None:
+    """蓝量要「有压力但不枯竭」。
+
+    历史问题：满级物理系蓝池 664、回复却只有 0.82/s —— 放几个技能就见底，
+    之后退化成「普攻 + 最低威力技能」的循环。这里用显式数值边界锁住修复：
+    """
     attrs = CONFIG.heroes["attributes"]
-    growth = CONFIG.heroes["levelUpGain"]["maxMp"]
+    growth = CONFIG.heroes["levelUpGain"]
+
+    # 蓝池不能只由智力决定（物理职业智力低，否则蓝池小到放几个技能就空）
     assert float(attrs["maxMp"]["coef"]["int"]) <= 1.0
-    assert float(attrs["mpRegen"]["coef"]["int"]) <= 0.01
-    assert float(growth["coef"]["int"]) <= 0.1
+
+    # 回复必须随等级成长，否则满级蓝池变大而回复原地踏步
+    assert "mpRegen" in growth
+    assert float(growth["mpRegen"]["basePct"]) > 0
+
+    # 基础回复 ≥ 最密集技能消耗（耗蓝 ÷ CD）：连短 CD 技能都负担不起时只会剩普攻
+    hardest = max(
+        float(s["mpCost"]) / max(0.1, float(s["cd"]))
+        for job in CONFIG.jobs["jobs"]
+        for s in job["skills"]
+    )
+    assert float(attrs["mpRegen"]["base"]) >= hardest
+
+    # 零耗蓝普攻要能回蓝，作为见底时的兜底手段
+    assert float(CONFIG.heroes["mp"]["basicAttackRestorePct"]) > 0
 
 
 def test_level_penalty_config_is_hard() -> None:

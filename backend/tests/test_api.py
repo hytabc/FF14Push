@@ -32,30 +32,41 @@ async def _gold(client) -> int:
     return (await client.get(f"{API}/game/state")).json()["user"]["gold"]
 
 
-async def _ensure_gold(client, target: int, max_reports: int = 60) -> int:
-    """刷够目标金币（打怪是唯一金币来源）。"""
-    current = await _gold(client)
-    if current >= target:
-        return current
-    started = await client.post(f"{API}/battle/session/start", json={"regionId": 1})
-    assert started.status_code == 200, started.text
-    session_id = started.json()["sessionId"]
-    for _ in range(max_reports):
-        resp = await client.post(
-            f"{API}/battle/session/report",
-            json={
-                "sessionId": session_id,
-                "regionId": 1,
-                "elapsedMs": 20000,
-                "kills": [{"monsterId": "normal", "gold": 20, "exp": 5} for _ in range(4)],
-            },
-        )
-        assert resp.status_code == 200, resp.text
-        current = resp.json()["gold"]
-        if current >= target:
-            break
-    await client.post(f"{API}/battle/session/stop", json={"sessionId": session_id})
-    return current
+async def _age_session(session_factory, session_id: int, ms: int) -> None:
+    """把会话的「上次上报时间」往前拨 ms 毫秒。
+
+    服务端只认自己的时钟计算上报窗口（客户端改时间 / 加速插件一律无效），
+    所以测试不能再靠上报里的 elapsedMs 买窗口，必须真的让服务端看到时间间隔。
+    """
+    async with session_factory() as db:
+        row = (
+            await db.execute(select(BattleSession).where(BattleSession.id == session_id))
+        ).scalar_one()
+        row.last_report_at = datetime.now(timezone.utc) - timedelta(milliseconds=ms)
+        await db.commit()
+
+
+async def _report(
+    client,
+    session_factory,
+    session_id: int,
+    region_id: int,
+    kills: list[dict],
+    elapsed_ms: int = 15000,
+    **extra,
+):
+    """先「让时间过去」再上报。"""
+    await _age_session(session_factory, session_id, elapsed_ms)
+    return await client.post(
+        f"{API}/battle/session/report",
+        json={
+            "sessionId": session_id,
+            "regionId": region_id,
+            "elapsedMs": elapsed_ms,
+            "kills": kills,
+            **extra,
+        },
+    )
 
 
 async def _set_gold(client, session_factory, amount: int) -> None:
@@ -98,27 +109,21 @@ async def _open_one(client, session_factory, chest_id: str = "weaponBox") -> dic
     return resp.json()
 
 
-async def _farm(client, region_id: int, reports: int = 3, elapsed_ms: int = 15000) -> dict:
+async def _farm(client, session_factory, region_id: int, reports: int = 3, elapsed_ms: int = 15000) -> dict:
     """开一个会话并连续上报，返回最后一次上报结果。"""
     started = await client.post(f"{API}/battle/session/start", json={"regionId": region_id})
     assert started.status_code == 200, started.text
     session_id = started.json()["sessionId"]
-    spawn = started.json()["spawnInterval"]
 
     last = {}
     for _ in range(reports):
-        resp = await client.post(
-            f"{API}/battle/session/report",
-            json={
-                "sessionId": session_id,
-                "regionId": region_id,
-                "elapsedMs": elapsed_ms,
-                "kills": [
-                    {"monsterId": "normal", "gold": 20, "exp": 30}
-                    for _ in range(1)
-                ],
-                "killCount": 0,
-            },
+        resp = await _report(
+            client,
+            session_factory,
+            session_id,
+            region_id,
+            [{"monsterId": "normal", "gold": 20, "exp": 30}],
+            elapsed_ms,
         )
         assert resp.status_code == 200, resp.text
         last = resp.json()
@@ -238,15 +243,15 @@ class TestInitialState:
 
 
 class TestBattleLoop:
-    async def test_farming_grants_gold_and_exp(self, auth_client) -> None:
-        result = await _farm(auth_client, 1, reports=4)
+    async def test_farming_grants_gold_and_exp(self, auth_client, session_factory) -> None:
+        result = await _farm(auth_client, session_factory, 1, reports=4)
         assert result["gold"] > 0
         assert result["expGained"] > 0
         assert result["killCount"] > 0
 
     async def test_exp_gain_term_boosts_exp(self, auth_client, session_factory) -> None:
         """经验获取效率词条：服务端按百分比加成结算经验。"""
-        base = await _farm(auth_client, 1, reports=4)
+        base = await _farm(auth_client, session_factory, 1, reports=4)
         assert base["expGained"] > 0
 
         me = (await auth_client.get(f"{API}/auth/me")).json()
@@ -267,24 +272,20 @@ class TestBattleLoop:
             item.equipped_slot = "head"
             await db.commit()
 
-        boosted = await _farm(auth_client, 1, reports=4)
+        boosted = await _farm(auth_client, session_factory, 1, reports=4)
         # 击杀数会因随机浮动略有差异，用比例判断即可（50% 加成远大于抖动）
         assert boosted["expGained"] > base["expGained"] * 1.2
 
-    async def test_monster_kills_grant_no_equipment(self, auth_client) -> None:
+    async def test_monster_kills_grant_no_equipment(self, auth_client, session_factory) -> None:
         """装备只能通过抽箱获取：打怪不产装备，伪造 dropped 也一样。"""
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
         session_id = started.json()["sessionId"]
-        resp = await auth_client.post(
-            f"{API}/battle/session/report",
-            json={
-                "sessionId": session_id,
-                "regionId": 1,
-                "elapsedMs": 20000,
-                "kills": [
-                    {"monsterId": "normal", "gold": 20, "exp": 30, "dropped": True} for _ in range(4)
-                ],
-            },
+        resp = await _report(
+            auth_client,
+            session_factory,
+            session_id,
+            1,
+            [{"monsterId": "normal", "gold": 20, "exp": 30, "dropped": True} for _ in range(4)],
         )
         assert resp.status_code == 200, resp.text
         body = resp.json()
@@ -333,13 +334,7 @@ class TestBattleLoop:
         """上报窗口以服务端真实间隔为准：空闲 15 秒后的多只击杀应被接受并入账。"""
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
         session_id = started.json()["sessionId"]
-
-        async with session_factory() as db:
-            session = (
-                await db.execute(select(BattleSession).where(BattleSession.id == session_id))
-            ).scalar_one()
-            session.last_report_at = datetime.now(timezone.utc) - timedelta(seconds=15)
-            await db.commit()
+        await _age_session(session_factory, session_id, 15_000)
 
         resp = await auth_client.post(
             f"{API}/battle/session/report",
@@ -353,21 +348,35 @@ class TestBattleLoop:
         assert resp.status_code == 200, resp.text
         assert resp.json()["goldGained"] > 0
 
-    async def test_gold_is_clamped_to_region_cap(self, auth_client) -> None:
+    async def test_client_elapsed_cannot_buy_window(self, auth_client) -> None:
+        """防加速：客户端谎报超长 elapsedMs 换不来击杀额度（窗口只认服务端时钟）。
+
+        改前这里取 max(客户端 elapsedMs, 服务端间隔)，谎报 20s 就能凭空拿到 20s 的额度，
+        等于把游戏加速；现在必须被服务端真实间隔拦下。
+        """
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
-        session = started.json()["sessionId"]
-        await auth_client.post(
-            f"{API}/battle/session/report",
-            json={"sessionId": session, "regionId": 1, "elapsedMs": 20000, "kills": []},
-        )
+        session_id = started.json()["sessionId"]
         resp = await auth_client.post(
             f"{API}/battle/session/report",
             json={
-                "sessionId": session,
+                "sessionId": session_id,
                 "regionId": 1,
                 "elapsedMs": 20000,
-                "kills": [{"monsterId": "normal", "gold": 100000, "exp": 100000} for _ in range(3)],
+                "kills": [{"monsterId": "normal", "gold": 20, "exp": 30} for _ in range(4)],
             },
+        )
+        assert resp.status_code == 422, resp.text
+        assert "rejected" in str(resp.json()["detail"])
+
+    async def test_gold_is_clamped_to_region_cap(self, auth_client, session_factory) -> None:
+        started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
+        session = started.json()["sessionId"]
+        resp = await _report(
+            auth_client,
+            session_factory,
+            session,
+            1,
+            [{"monsterId": "normal", "gold": 100000, "exp": 100000} for _ in range(3)],
         )
         assert resp.status_code == 200
         assert resp.json()["goldGained"] < 1000
@@ -376,8 +385,8 @@ class TestBattleLoop:
         resp = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 20})
         assert resp.status_code == 403
 
-    async def test_death_resets_progress(self, auth_client) -> None:
-        await _farm(auth_client, 1, reports=2)
+    async def test_death_resets_progress(self, auth_client, session_factory) -> None:
+        await _farm(auth_client, session_factory, 1, reports=2)
         before = (await auth_client.get(f"{API}/game/state")).json()["hero"]["regionKillCount"]
         resp = await auth_client.post(f"{API}/battle/death")
         assert resp.status_code == 200
@@ -385,33 +394,30 @@ class TestBattleLoop:
         assert after == 0
         assert isinstance(before, int)
 
-    async def test_boss_clear_unlocks_next_region(self, auth_client) -> None:
+    async def test_boss_clear_unlocks_next_region(self, auth_client, session_factory) -> None:
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
         session = started.json()["sessionId"]
 
         cleared = None
         for _ in range(100):
-            resp = await auth_client.post(
-                f"{API}/battle/session/report",
-                json={
-                    "sessionId": session,
-                    "regionId": 1,
-                    "elapsedMs": 20000,
-                    "kills": [{"monsterId": "normal", "gold": 20, "exp": 30} for _ in range(4)],
-                },
+            resp = await _report(
+                auth_client,
+                session_factory,
+                session,
+                1,
+                [{"monsterId": "normal", "gold": 20, "exp": 30} for _ in range(4)],
             )
             assert resp.status_code == 200, resp.text
             if resp.json()["killCount"] >= resp.json()["killsRequired"]:
-                cleared = await auth_client.post(
-                    f"{API}/battle/session/report",
-                    json={
-                        "sessionId": session,
-                        "regionId": 1,
-                        "elapsedMs": 1000,
-                        "kills": [],
-                        "bossKilled": True,
-                        "bossFightMs": 21000,
-                    },
+                cleared = await _report(
+                    auth_client,
+                    session_factory,
+                    session,
+                    1,
+                    [],
+                    elapsed_ms=1000,
+                    bossKilled=True,
+                    bossFightMs=21000,
                 )
                 break
         assert cleared is not None, "未能积累到 BOSS 出现条件"
@@ -434,8 +440,8 @@ class TestBattleLoop:
         assert resp.status_code == 200
         assert "离线收益" in resp.json()["message"]
 
-    async def test_switch_region_resets_counter(self, auth_client) -> None:
-        await _farm(auth_client, 1, reports=3)
+    async def test_switch_region_resets_counter(self, auth_client, session_factory) -> None:
+        await _farm(auth_client, session_factory, 1, reports=3)
         await auth_client.post(f"{API}/region/enter", json={"regionId": 1})
         state = (await auth_client.get(f"{API}/game/state")).json()
         assert state["hero"]["regionKillCount"] == 0
@@ -1444,8 +1450,8 @@ class TestCodexAndRanking:
         assert {e["baseId"] for e in unlocked} == expected
         assert body["progress"]["equipment"]["unlocked"] == len(expected)
 
-    async def test_codex_progress_after_battle(self, auth_client) -> None:
-        await _farm(auth_client, 1, reports=5)
+    async def test_codex_progress_after_battle(self, auth_client, session_factory) -> None:
+        await _farm(auth_client, session_factory, 1, reports=5)
         resp = await auth_client.get(f"{API}/codex?category=monster")
         assert resp.status_code == 200
         body = resp.json()

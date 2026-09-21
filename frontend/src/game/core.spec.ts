@@ -645,3 +645,73 @@ describe('普通副本多维软惩罚', () => {
     expect(rollIncoming(1000,100,500,0,0,30)).toBe(Math.floor(rollIncoming(1000,100,500)*1.3))
   })
 })
+
+describe('蓝量经济（持续战斗不退化为「普攻循环」）', () => {
+  // 持久木桩：全程处于战斗中，能测出真实「持续轮转」的耗蓝与技能分布。
+  const dummy: MonsterStats = {
+    id: 'dummy', regionId: 0, name: '木桩', templateId: 'dummy', kind: 'boss',
+    hp: 1e12, attack: 0, defense: 0, attackInterval: 999, level: 100, resistancePct: 0,
+  }
+
+  function runRotation(jobId: string, maxMp: number, mpRegen: number, seconds = 180) {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId, maxMp, mpRegen, attack: 50000, maxHp: 1e7, hpRegen: 1000 }),
+      raid: { bosses: [dummy], enrage: null },
+    })
+    sim.start()
+    let basic = 0
+    let total = 0
+    let minMpPct = 100
+    for (let i = 0; i < seconds * 10; i += 1) {
+      sim.tick(0.1)
+      for (const [id, count] of Object.entries(sim.drainPending().skillCasts)) {
+        total += count
+        if (id === ADVENTURER_SKILL.id) basic += count
+      }
+      minMpPct = Math.min(minMpPct, (sim.heroMp / maxMp) * 100)
+    }
+    return { basicShare: basic / total, total, minMpPct }
+  }
+
+  it('满级持续战斗：普攻不是主要手段，蓝条也不会被清空', () => {
+    const r = runRotation('PLD', 1485, 14.2)
+    expect(r.total).toBeGreaterThan(0)
+    expect(r.basicShare).toBeLessThan(0.1)
+    expect(r.minMpPct).toBeGreaterThan(20)
+  })
+
+  it('中低等级仍有蓝量压力，但轮转仍以技能为主', () => {
+    const r = runRotation('PLD', 391, 11.6)
+    expect(r.basicShare).toBeLessThan(0.25)
+  })
+
+  it('蓝量见底后仍能持续释放技能（普攻回蓝 + 自然回复）', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'PLD', maxMp: 1485, mpRegen: 14.2, attack: 50000, maxHp: 1e7, hpRegen: 1000 }),
+      raid: { bosses: [dummy], enrage: null },
+    })
+    sim.start()
+    sim.heroMp = 0
+    let skillCasts = 0
+    for (let i = 0; i < 300; i += 1) {
+      sim.tick(0.1) // 30s
+      for (const [id, count] of Object.entries(sim.drainPending().skillCasts)) {
+        if (id !== ADVENTURER_SKILL.id) skillCasts += count
+      }
+    }
+    // 不是「只能普攻」：蓝量见底后依然能稳定释放技能
+    expect(skillCasts).toBeGreaterThanOrEqual(10)
+  })
+
+  it('零耗蓝普攻会按配置回复蓝量', () => {
+    const maxMp = 1000
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'PLD', maxMp, mpRegen: 0, maxHp: 1e7 }),
+      raid: { bosses: [dummy], enrage: null },
+    })
+    sim.start()
+    sim.heroMp = 0
+    ;(sim as unknown as { cast(s: unknown): void }).cast(ADVENTURER_SKILL)
+    expect(sim.heroMp).toBe(Math.floor(maxMp * data.heroes.mp.basicAttackRestorePct))
+  })
+})

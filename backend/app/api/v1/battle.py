@@ -128,12 +128,16 @@ async def report(
 
     # 客户端只在有事件时才上报，上报间隔并不固定：窗口必须以服务端时钟为准，
     # 否则额度永远只能按固定短窗口核算，合法单杀会被判超速。
+    #
+    # 但「以服务端时钟为准」必须是**只认服务端时钟**：客户端上报的 elapsedMs 可被
+    # 篡改（改系统时间 / 浏览器加速插件），一旦采信它就能凭空放大击杀额度——
+    # 等于允许把游戏加速。这里只使用服务端记录的真实间隔。
     now = datetime.now(timezone.utc)
     last_at = session.last_report_at or session.started_at
     if last_at.tzinfo is None:  # SQLite 会返回 naive datetime
         last_at = last_at.replace(tzinfo=timezone.utc)
     server_elapsed_ms = int(max(0.0, (now - last_at).total_seconds() * 1000))
-    window_ms = max(MIN_ELAPSED_MS, min(MAX_ELAPSED_MS, max(payload.elapsedMs, server_elapsed_ms)))
+    window_ms = max(MIN_ELAPSED_MS, min(MAX_ELAPSED_MS, server_elapsed_ms))
 
     # 击杀额度：按理论上限随上报累积，跨上报保留余额，避免短上报把合法击杀全部截断。
     # 传入英雄等级，使越级英雄的额度同步受等级压制收紧。
@@ -205,7 +209,7 @@ async def report(
 
     boss_result = None
     if payload.bossKilled:
-        boss_result = await _settle_boss(db, user, hero, items, payload, rng, stats.term_mods)
+        boss_result = await _settle_boss(db, user, hero, items, payload, rng, stats.term_mods, window_ms)
 
     session.last_report_at = now
     session.total_kills = int(session.total_kills) + len(result.kills)
@@ -237,6 +241,7 @@ async def _settle_boss(
     payload: BattleReportRequest,
     rng: random.Random,
     term_mods: dict[str, float] | None = None,
+    window_ms: int = 0,
 ) -> dict | None:
     required = kills_required(payload.regionId)
     if int(hero.region_kill_count) < required:
@@ -267,7 +272,9 @@ async def _settle_boss(
     if first_clear:
         progress.cleared = True
         progress.cleared_at = datetime.now(timezone.utc)
-        progress.best_clear_ms = payload.bossFightMs
+        # 通关耗时同样以服务端窗口为上限：客户端可以少报，但不能谎报超短耗时刷榜
+        if payload.bossFightMs is not None:
+            progress.best_clear_ms = max(0, min(int(payload.bossFightMs), window_ms))
         next_region = payload.regionId + 1
         if next_region in CONFIG.region_by_id:
             nxt = await _progress(db, user.id, next_region)

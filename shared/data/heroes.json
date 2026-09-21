@@ -17,9 +17,9 @@
       }
     },
     "maxMp": {
-      "base": 40,
+      "base": 220,
       "coef": {
-        "int": 0.7
+        "int": 0.4
       }
     },
     "hpRegen": {
@@ -29,9 +29,9 @@
       }
     },
     "mpRegen": {
-      "base": 0.5,
+      "base": 11,
       "coef": {
-        "int": 0.008
+        "int": 0.01
       }
     },
     "attack": {
@@ -100,10 +100,13 @@
       }
     },
     "maxMp": {
-      "basePct": 0.006,
+      "basePct": 0.018,
       "coef": {
-        "int": 0.05
+        "int": 0.02
       }
+    },
+    "mpRegen": {
+      "basePct": 0.001
     },
     "attack": {
       "basePct": 0.03,
@@ -142,11 +145,13 @@
     "mpCostPct": -0.1,
     "equipMainAttrPct": 0.15
   },
-  "$commentMp": "MP 系统。来源：PRD 7.2。技能 mpCost 已按威力重排，两种伤害类型统一按 1.0 结算。蓝池与回复刻意收紧：满蓝约等于「一整轮技能」的消耗，持续施放约 30-60s 见底，见底后只能普攻（零耗蓝）。",
+  "$commentMp": "MP 系统。来源：PRD 7.2。技能 mpCost 已按威力重排。蓝量是「节奏」而非「硬墙」：蓝池随等级成长（物理职业不再因为智力低而只有指甲盖大的蓝条），回复也必须随等级成长（mpRegen 在 levelUpGain 里），使持续回复足以覆盖填充技能的消耗 —— 否则蓝条见底后只剩「普攻 + 最低威力技能」的循环。基本攻击（零耗蓝）额外回复少量蓝量，作为见底时的兜底回蓝手段。",
   "mp": {
     "physicalSkillCostScale": 1.0,
     "magicalSkillCostScale": 1.0,
-    "regenTickSeconds": 1
+    "regenTickSeconds": 1,
+    "$commentBasicAttackRestore": "普攻（零耗蓝）施放时回复的最大蓝量比例，避免蓝量见底后彻底退化为纯普攻。",
+    "basicAttackRestorePct": 0.03
   },
   "$commentDeath": "复活等待与 BOSS 出现延迟。来源：PRD 地区 3.2 / 4.1",
   "reviveDelaySeconds": 3,

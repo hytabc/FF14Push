@@ -49,6 +49,7 @@ class BattleStartRequest(BaseModel):
 class BattleReportRequest(BaseModel):
     sessionId: int
     regionId: int
+    # 仅作参考：上报窗口一律以服务端时钟计算（客户端时间可被篡改，采信即等于允许加速）
     elapsedMs: int
     kills: list[KillEvent] = Field(default_factory=list)
     skillCasts: list[SkillCast] = Field(default_factory=list)
