@@ -404,17 +404,18 @@ describe('高难副本模拟器', () => {
     expect(sim.phase).toBe('dead')
   })
 
-  it('高难 BOSS 减伤技能生效：相同输出下掉血更慢', () => {
+  it('BOSS 减伤技能生效：相同输出下掉血更慢', () => {
     const plain = makeBoss('plain', '无技能', 1_000_000)
     const guarded: MonsterStats = {
       ...makeBoss('guarded', '坚壁', 1_000_000),
+      skillInterval: 1,
       skills: [
-        { id: 'hardBulwark', name: '坚壁', cd: 1, effect: 'shield', damageReduce: 0.8, duration: 999, desc: '' },
+        { id: 'bulwark', name: '坚壁', effect: 'shield', damageReduce: 0.8, duration: 999, desc: '' },
       ],
     }
     const heroStats = makeStats({ attack: 1000, maxHp: 100000 })
-    const simPlain = new BattleSimulator({ stats: heroStats, raid: { bosses: [plain], enrage: null, hard: true } })
-    const simGuard = new BattleSimulator({ stats: heroStats, raid: { bosses: [guarded], enrage: null, hard: true } })
+    const simPlain = new BattleSimulator({ stats: heroStats, raid: { bosses: [plain], enrage: null } })
+    const simGuard = new BattleSimulator({ stats: heroStats, raid: { bosses: [guarded], enrage: null } })
     simPlain.start()
     simGuard.start()
     for (let i = 0; i < 50; i += 1) {
@@ -424,18 +425,19 @@ describe('高难副本模拟器', () => {
     expect(simGuard.bossEntries()[0].hp).toBeGreaterThan(simPlain.bossEntries()[0].hp)
   })
 
-  it('高难 BOSS 增伤技能生效：英雄承受更多伤害', () => {
+  it('BOSS 增伤技能生效：英雄承受更多伤害', () => {
     const plain = makeBoss('plain2', '无技能', 1_000_000)
     const frenzied: MonsterStats = {
-      ...makeBoss('frenzied', '狂乱', 1_000_000),
+      ...makeBoss('frenzied', '战吼', 1_000_000),
       attack: 100,
+      skillInterval: 1,
       skills: [
-        { id: 'hardFrenzy', name: '狂乱', cd: 1, effect: 'enrage', attackBuff: 0.6, duration: 999, desc: '' },
+        { id: 'warCry', name: '战吼', effect: 'enrage', attackBuff: 0.6, duration: 999, desc: '' },
       ],
     }
     const heroStats = makeStats({ attack: 1000, maxHp: 100000, physDef: 0, tenacityPct: 0, hpRegen: 0 })
-    const simPlain = new BattleSimulator({ stats: heroStats, raid: { bosses: [plain], enrage: null, hard: true } })
-    const simFrenzy = new BattleSimulator({ stats: heroStats, raid: { bosses: [frenzied], enrage: null, hard: true } })
+    const simPlain = new BattleSimulator({ stats: heroStats, raid: { bosses: [plain], enrage: null } })
+    const simFrenzy = new BattleSimulator({ stats: heroStats, raid: { bosses: [frenzied], enrage: null } })
     simPlain.start()
     simFrenzy.start()
     for (let i = 0; i < 50; i += 1) {
@@ -445,19 +447,81 @@ describe('高难副本模拟器', () => {
     expect(simFrenzy.heroHp).toBeLessThan(simPlain.heroHp)
   })
 
-  it('非高难（普通副本/地区）不触发 BOSS 技能', () => {
+  it('BOSS 技能走共享 CD：间隔内只释放一次，到点再释放', () => {
     const boss: MonsterStats = {
-      ...makeBoss('normal', '普通副本', 100000),
-      skills: [
-        { id: 'hardBulwark', name: '坚壁', cd: 1, effect: 'shield', damageReduce: 0.8, duration: 999, desc: '' },
-      ],
+      ...makeBoss('cd', '共享CD', 1_000_000),
+      skillInterval: 5,
+      skills: [{ id: 'ironWall', name: '铁壁', effect: 'shield', damageReduce: 0.3, duration: 1, desc: '' }],
     }
     const sim = new BattleSimulator({
       stats: makeStats({ attack: 1000, maxHp: 100000 }),
-      raid: { bosses: [boss], enrage: null, hard: false },
+      raid: { bosses: [boss], enrage: null },
     })
     sim.start()
-    for (let i = 0; i < 50; i += 1) sim.tick(0.1)
-    expect(sim.log.map((e) => e.text).join('\n')).not.toContain('坚壁')
+    const casts = () => sim.log.filter((e) => e.text.includes('施放 铁壁')).length
+    sim.tick(1)
+    expect(casts()).toBe(0)
+    sim.tick(4.5) // 累计 5.5s，越过 5s 共享 CD
+    expect(casts()).toBe(1)
+    sim.tick(4)
+    expect(casts()).toBe(1)
+    sim.tick(1.5) // 累计越过第二个 5s
+    expect(casts()).toBe(2)
+  })
+
+  it('BOSS 技能随机抽取：按随机数选中对应技能', () => {
+    const boss = makeBoss('rng', '随机', 1_000_000)
+    boss.skillInterval = 1
+    boss.skills = [
+      { id: 'a', name: '技能甲', effect: 'nuke', potency: 100, desc: '' },
+      { id: 'b', name: '技能乙', effect: 'nuke', potency: 100, desc: '' },
+      { id: 'c', name: '技能丙', effect: 'nuke', potency: 100, desc: '' },
+    ]
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1000, maxHp: 100000 }),
+      raid: { bosses: [boss], enrage: null },
+    })
+    vi.spyOn(Math, 'random').mockReturnValue(0.9) // floor(0.9 * 3) = 2 → 技能丙
+    sim.start()
+    sim.tick(1.1)
+    const text = sim.log.map((e) => e.text).join('\n')
+    expect(text).toContain('技能丙')
+    expect(text).not.toContain('技能甲')
+  })
+
+  it('地区战斗不触发 BOSS 技能（副本战斗会触发）', () => {
+    const skillBoss: MonsterStats = {
+      ...makeBoss('raidBoss', '副本BOSS', 100000),
+      skillInterval: 1,
+      skills: [{ id: 'bulwark', name: '坚壁', effect: 'shield', damageReduce: 0.8, duration: 999, desc: '' }],
+    }
+    const raidSim = new BattleSimulator({
+      stats: makeStats({ attack: 1000, maxHp: 100000 }),
+      raid: { bosses: [skillBoss], enrage: null },
+    })
+    raidSim.start()
+    for (let i = 0; i < 30; i += 1) raidSim.tick(0.1)
+    expect(raidSim.log.map((e) => e.text).join('\n')).toContain('坚壁')
+
+    // 地区战斗：即便关底 BOSS 自带技能也不触发
+    const regionSim = new BattleSimulator({
+      stats: makeStats({ attack: 100000, maxHp: 200000 }),
+      regionId: 1,
+      killsRequired: 1,
+      spawnInterval: 0.1,
+      killCount: 0,
+    })
+    regionSim.start()
+    let guard = 0
+    while (regionSim.phase !== 'cleared' && guard < 20000) {
+      regionSim.tick(0.1)
+      guard += 1
+    }
+    expect(regionSim.phase).toBe('cleared')
+    expect(regionSim.log.map((e) => e.text).join('\n')).not.toContain('」施放')
+  })
+
+  it('副本共享技能池不少于 10 个技能', () => {
+    expect(data.raids.bossSkillPool.length).toBeGreaterThanOrEqual(10)
   })
 })

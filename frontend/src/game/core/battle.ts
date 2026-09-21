@@ -66,8 +66,8 @@ interface EnemyState {
   maxHp: number
   attackTimer: number
   enraged: boolean
-  /** 高难副本 BOSS 技能冷却（按技能 id）。 */
-  skillCd: Record<string, number>
+  /** 副本 BOSS 共享技能冷却：归零后从技能池随机抽一个释放。 */
+  skillTimer: number
   /** BOSS 自身增益：减伤（damageReduce）/ 增伤（attackBuff）。 */
   selfBuffs: Array<{ stat: string; value: number; remaining: number }>
 }
@@ -107,8 +107,6 @@ export class BattleSimulator {
 
   /** 高难副本模式：仅 BOSS、可切换目标、一方阵亡后另一方狂暴。 */
   readonly isRaid: boolean
-  /** 高难（hard）副本：BOSS 技能生效。地区与普通副本不受影响。 */
-  readonly raidHard: boolean
   private enemies: EnemyState[] = []
   private targetIndex = 0
   private readonly raidEnrage: RaidEnrage | null
@@ -128,11 +126,10 @@ export class BattleSimulator {
     killsRequired?: number
     spawnInterval?: number
     killCount?: number
-    raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null; hard?: boolean }
+    raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null }
   }) {
     this.baseStats = options.stats
     this.isRaid = options.raid !== undefined
-    this.raidHard = Boolean(options.raid?.hard)
     this.raidEnrage = options.raid?.enrage ?? null
     this.killsRequired = options.killsRequired ?? 0
     this.spawnInterval = options.spawnInterval ?? 1
@@ -368,19 +365,22 @@ export class BattleSimulator {
     this.pushLog(`关底 BOSS「${this.boss!.name}」出现！`, 'boss')
   }
 
-  /** 构造敌方单位：初始化 BOSS 技能冷却与自身增益容器。 */
+  /** 构造敌方单位：初始化共享技能冷却与自身增益容器。 */
   private makeEnemy(stats: MonsterStats): EnemyState {
-    const skillCd: Record<string, number> = {}
-    for (const skill of stats.skills ?? []) skillCd[skill.id] = Math.max(1, Number(skill.cd ?? 10))
     return {
       stats,
       hp: stats.hp,
       maxHp: stats.hp,
       attackTimer: stats.attackInterval,
       enraged: false,
-      skillCd,
+      skillTimer: this.bossSkillInterval(stats),
       selfBuffs: [],
     }
+  }
+
+  /** 共享技能 CD（秒）：来自 BOSS 数据，缺省 6 秒。 */
+  private bossSkillInterval(stats: MonsterStats): number {
+    return Math.max(1, Number(stats.skillInterval ?? 6))
   }
 
   private setMonster(monster: MonsterStats): void {
@@ -605,27 +605,26 @@ export class BattleSimulator {
     if (this.heroHp <= 0) this.heroDies()
   }
 
-  // ---------- 高难副本 BOSS 技能（仅 raidHard 生效） ----------
+  // ---------- 副本 BOSS 技能（仅副本生效，地区战斗不受影响） ----------
 
-  /** 推进 BOSS 技能冷却与自身增益，冷却就绪即释放。 */
+  /** 推进 BOSS 共享技能 CD 与自身增益；CD 归零后从技能池随机抽一个释放。 */
   private tickBossSkills(dt: number): void {
-    if (!this.isRaid || !this.raidHard) return
+    if (!this.isRaid) return
     const enemy = this.current
     if (!enemy) return
 
     for (const buff of enemy.selfBuffs) buff.remaining -= dt
     enemy.selfBuffs = enemy.selfBuffs.filter((b) => b.remaining > 0)
 
-    for (const skill of enemy.stats.skills ?? []) {
-      const remaining = (enemy.skillCd[skill.id] ?? 0) - dt
-      if (remaining > 0) {
-        enemy.skillCd[skill.id] = remaining
-        continue
-      }
-      enemy.skillCd[skill.id] = Math.max(1, Number(skill.cd ?? 10))
-      this.castBossSkill(enemy, skill)
-      if (this.phase === 'dead' || this.phase === 'cleared') return
-    }
+    const skills = enemy.stats.skills ?? []
+    if (skills.length === 0) return
+
+    enemy.skillTimer -= dt
+    if (enemy.skillTimer > 0) return
+
+    enemy.skillTimer = this.bossSkillInterval(enemy.stats)
+    const skill = skills[Math.floor(Math.random() * skills.length)]
+    if (skill) this.castBossSkill(enemy, skill)
   }
 
   private castBossSkill(enemy: EnemyState, skill: BossSkill): void {
@@ -677,7 +676,10 @@ export class BattleSimulator {
       case 'charge':
       case 'debuff': {
         const potency = Number(skill.potency ?? 0)
-        if (potency > 0) this.bossSkillDamage(enemy, skill, potency)
+        if (potency > 0) {
+          this.pushLog(`「${enemy.stats.name}」施放 ${skill.name}`, 'danger')
+          this.bossSkillDamage(enemy, skill, potency)
+        }
         const speedDebuff = Number(skill.attackSpeedDebuff ?? 0)
         if (effect === 'debuff' && speedDebuff > 0 && this.phase !== 'dead') {
           const seconds = duration || 5

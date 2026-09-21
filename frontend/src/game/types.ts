@@ -134,6 +134,8 @@ export interface MonsterStats {
   level: number
   bossType?: string
   skills?: BossSkill[]
+  /** 副本 BOSS：共享技能 CD（秒），到点后从技能池随机抽一个释放。 */
+  skillInterval?: number
   /** 高难副本：BOSS 自带抗性（削减受到的伤害 %）。 */
   resistancePct?: number
   raidId?: string
@@ -142,7 +144,8 @@ export interface MonsterStats {
 export interface BossSkill {
   id: string
   name: string
-  cd: number
+  /** @deprecated 副本 BOSS 已改为共享 CD（`MonsterStats.skillInterval`）+ 随机抽取，此字段不再使用。 */
+  cd?: number
   effect: string
   potency?: number
   desc: string

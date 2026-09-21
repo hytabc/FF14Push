@@ -1,6 +1,6 @@
 """开发用：按真实战斗模型推导 `economy.json` 的 `power.weights`。
 
-以「Lv80 + 门槛装」为参考，衡量每点属性对战斗力的边际贡献：
+以「Lv80 + 固定参考装备」为参考（不是副本门槛装），衡量每点属性对战斗力的边际贡献：
 
     combat_value(stats) = theoretical_dps(stats) × survival_seconds(stats)
 
@@ -31,7 +31,7 @@ from app.services.stats import HeroStats, compute_stats, three_attr_tier  # noqa
 
 REFERENCE_LEVEL = 80
 REFERENCE_REGION = 23
-GATE_MIX = ["epic"] * 6 + ["rare"] * 5  # 与 TestRaidPressure 的 normal 门槛一致
+GATE_MIX = ["epic"] * 6 + ["rare"] * 5  # 固定参考装备（Lv80 中后期水准），与副本门槛无关
 DELTA = 1.0
 
 PANEL_FIELD = {

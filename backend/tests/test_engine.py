@@ -31,7 +31,12 @@ from app.services.loot import (
 )
 from app.services.combat_model import theoretical_dps
 from app.services.recruiting import generate_candidate
-from app.services.regions_util import apply_exp_bonus, exp_bonus_from_terms, level_penalty
+from app.services.regions_util import (
+    apply_exp_bonus,
+    exp_bonus_from_terms,
+    level_penalty,
+    monster_base_stats,
+)
 from app.services.raid_util import all_raids, boss_stats_for_raid
 from app.services.slots_util import possible_slots
 from app.services.stats import compute_stats, convert_three_attrs
@@ -410,12 +415,13 @@ class TestRaidScaling:
     """副本 BOSS 需随玩家战力缩放，避免装备超模后碾压。"""
 
     def test_boss_grows_with_player_power(self) -> None:
-        raid = CONFIG.raid_by_id["raid_1"]
-        weak = compute_stats(FakeHero(level=20), [])
-        strong = compute_stats(FakeHero(level=20, strength=400, agility=400, intellect=400), [])
+        raid = CONFIG.raid_by_id["raid_h1"]
+        pressure = TestRaidPressure()
+        weak = compute_stats(FakeHero(level=100), pressure._bar_items(100, 2))
+        strong = compute_stats(FakeHero(level=100), pressure._bar_items(100, 4))
 
-        weak_boss = boss_stats_for_raid(raid, 20, weak)[0]
-        strong_boss = boss_stats_for_raid(raid, 20, strong)[0]
+        weak_boss = boss_stats_for_raid(raid, 100, weak)[0]
+        strong_boss = boss_stats_for_raid(raid, 100, strong)[0]
         assert strong_boss["hp"] > weak_boss["hp"]
         assert strong_boss["attack"] > weak_boss["attack"]
 
@@ -451,17 +457,13 @@ class TestExpTerm:
 
 
 class TestRaidPressure:
-    """副本必须能打死人。
+    """副本必须能打死人，且门槛（requiredPower）必须可达。
 
-    门槛装备（刚好够进本的那一套）的承伤必须高于它的被动回复（生命回复 + 吸血），
-    否则英雄永远不会掉血，普通玩家可以靠无限拖时间通关。
+    「达标装」（达到该副本 requiredPower 的装备：全神话 + 太古词条 + 太古副属性）的承伤
+    必须高于它的被动回复（生命回复 + 吸血），否则英雄永远不会掉血，可以无限拖时间通关。
     """
 
     RAID_SLOTS = [s["id"] for s in CONFIG.slots]
-    GATE_MIX = {
-        "normal": ["epic"] * 6 + ["rare"] * 5,
-        "hard": ["mythic"] * 6 + ["legendary"] * 5,
-    }
 
     class _Item:
         def __init__(self, generated: dict[str, Any], slot: str) -> None:
@@ -472,46 +474,123 @@ class TestRaidPressure:
             self.level_req = generated["levelReq"]
             self.base_attrs = generated["baseAttrs"]
             self.sub_attrs = generated["subAttrs"]
-            self.terms = generated["terms"]
+            self.terms = [dict(t) for t in generated["terms"]]
             self.equipped_slot = slot
 
-    def _gate_items(self, level: int, difficulty: str) -> list[Any]:
-        mix = self.GATE_MIX[difficulty]
+    def _bar_items(self, level: int, ancient: int) -> list[Any]:
+        """达标装：全神话底材 + ancient 个攻击类太古词条 + 全部副属性取太古上限。"""
         rng = random.Random(11)
         items = []
-        for index, slot in enumerate(self.RAID_SLOTS):
+        for slot in self.RAID_SLOTS:
             usable = [
                 b for b in CONFIG.base_items if slot in possible_slots(b) and b.level_req <= level
             ]
             base = max(usable, key=lambda b: (b.tier_index, b.level_req))
             generated, _ = generate_item(
-                base.category, level, rarity=mix[index], base_id=base.id, rng=rng
+                base.category, level, rarity="mythic", base_id=base.id, rng=rng
             )
-            items.append(self._Item(generated, slot))
+            item = self._Item(generated, slot)
+            item.terms = [
+                {
+                    "id": f"ancient{index}",
+                    "name": "力量增幅",
+                    "type": "buff",
+                    "stat": "attackPct",
+                    "trigger": "passive",
+                    "value": 18.75,
+                    "quality": "ancient",
+                    "desc": "攻击力 +{v}%",
+                }
+                for index in range(ancient)
+            ]
+            scale = float(getattr(base, "sub_attr_scale", 1.0))
+            for entry in item.sub_attrs:
+                spec = CONFIG.attribute_by_id[entry["attr"]]
+                lo, hi = spec["ranges"][item.rarity]
+                entry["value"] = round(max(abs(float(lo) * scale), abs(float(hi) * scale)) * 1.25, 2)
+                entry["quality"] = "ancient"
+            items.append(item)
         return items
+
+    def _bar_ancient(self, level: int) -> int:
+        """达标装的太古词条数（与 refDpsMultiplier / BOSS 倍率标定时一致）。"""
+        return 2 if level <= 60 else 3
+
+    def test_required_power_is_reachable(self) -> None:
+        """门槛必须是可达到的：满配（3 太古 + 太古副属性）战力不得低于 requiredPower。"""
+        for raid in all_raids():
+            level = int(raid["requiredLevel"])
+            power = hero_power(compute_stats(FakeHero(level=level), self._bar_items(level, 3)))
+            required = int(raid["requiredPower"])
+            assert power >= required, f"{raid['id']} 达标装战力 {power} < 门槛 {required}"
+
+    def test_required_power_scales_with_level(self) -> None:
+        tiers = sorted(
+            (int(r["requiredLevel"]), int(r["requiredPower"]))
+            for r in all_raids()
+            if r.get("difficulty") == "normal"
+        )
+        powers = [power for _, power in tiers]
+        assert powers == sorted(powers)
+        assert len(set(powers)) == len(powers), powers
+
+    def test_ref_dps_matches_bar_gear(self) -> None:
+        """refDpsMultiplier 应接近达标装 DPS ÷ 等级锚定 DPS，否则战力缩放会失真。"""
+        balance = CONFIG.raids["balance"]["refDpsMultiplier"]
+        for raid in all_raids():
+            level = int(raid["requiredLevel"])
+            stats = compute_stats(FakeHero(level=level), self._bar_items(level, self._bar_ancient(level)))
+            anchor = monster_base_stats(level)["hp"] / float(
+                CONFIG.monsters["reference"]["targetKillSeconds"]
+            )
+            ratio = theoretical_dps(stats, 0.0, None) / anchor
+            ref = float(balance[str(raid["difficulty"])])
+            assert 0.7 * ref <= ratio <= 1.4 * ref, (
+                f"{raid['id']} 达标装 DPS/锚定 = {ratio:.2f}，refDpsMultiplier = {ref}"
+            )
 
     def test_incoming_damage_beats_passive_healing(self) -> None:
         for raid in all_raids():
             level = int(raid["requiredLevel"])
-            difficulty = str(raid["difficulty"])
-            stats = compute_stats(FakeHero(level=level), self._gate_items(level, difficulty))
+            stats = compute_stats(FakeHero(level=level), self._bar_items(level, self._bar_ancient(level)))
             bosses = boss_stats_for_raid(raid, level, stats)
+            enrage = raid.get("enrage")
+            # 双 BOSS 一方阵亡后存活者狂暴，按其攻击倍率保守估算承伤
+            enrage_mult = (
+                float(enrage["attackMultiplier"])
+                if enrage and len(bosses) > 1
+                else 1.0
+            )
 
             taken = 1 + stats.term_mods.get("damageTakenPct", 0.0) / 100.0
             tenacity = 1 - min(0.6, stats.tenacity_pct / 100.0)
             dodge = 1 - min(60.0, stats.dodge_pct) / 100.0
 
+            def per_hit(attack: float) -> float:
+                raw = attack * taken * tenacity
+                return max(raw * 0.1, raw - stats.phys_def)
+
             incoming = 0.0
             dealt = 0.0
             for boss in bosses:
-                raw = float(boss["attack"]) * taken * tenacity
-                per_hit = max(raw * 0.1, raw - stats.phys_def)
-                incoming += per_hit / float(boss["attackInterval"]) * dodge
-                dealt += theoretical_dps(stats, float(boss["defense"]), None)
+                atk = float(boss["attack"]) * enrage_mult
+                rate = per_hit(atk) / float(boss["attackInterval"]) * dodge
+                dps = theoretical_dps(stats, float(boss["defense"]), None)
+                interval = float(boss.get("skillInterval", 6) or 6)
+                for skill in boss.get("skills", []):
+                    effect = skill.get("effect")
+                    if effect == "shield":
+                        dps *= 1 - float(skill["damageReduce"]) * float(skill["duration"]) / interval
+                    elif effect == "enrage":
+                        rate *= 1 + float(skill["attackBuff"]) * float(skill["duration"]) / interval
+                    elif effect in ("nuke", "aoe", "charge") and skill.get("potency"):
+                        rate += per_hit(atk * float(skill["potency"]) / 100.0) / interval
+                incoming += rate
+                dealt += dps
             healing = stats.hp_regen + (dealt / len(bosses)) * (stats.lifesteal_pct / 100.0)
 
             assert incoming > healing, (
-                f"{raid['id']} 门槛装备承伤 {incoming:.0f}/s 未超过被动回复 {healing:.0f}/s，可以无限拖时间"
+                f"{raid['id']} 达标装承伤 {incoming:.0f}/s 未超过被动回复 {healing:.0f}/s，可以无限拖时间"
             )
 
 

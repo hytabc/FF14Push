@@ -178,8 +178,6 @@ export interface RaidDef {
   requiredPower: number
   requiresAllSlots: boolean
   enrage: RaidEnrageDef | null
-  /** 高难副本专属技能：附加到该副本所有 BOSS 上。 */
-  extraSkills?: unknown[]
   bosses: RaidBossDef[]
   reward: {
     firstGold: number
@@ -404,7 +402,10 @@ export const gameData = {
       powerScaleExponent: number
       attackScaleExponent: number
       refDpsMultiplier: Record<string, number>
+      bossSkillIntervalSeconds: number
     }
+    /** 副本 BOSS 共享技能池：附加到每个副本 BOSS 上。 */
+    bossSkillPool: unknown[]
     raids: RaidDef[]
   },
   chests: chestsJson as unknown as {

@@ -75,16 +75,25 @@ def boss_stats_for_raid(
     """按英雄等级锚定 BOSS 属性，再乘副本倍率与「战力缩放」。
 
     怪物属性与玩家等级一致；装备超出本等级参考水平时 BOSS 同步变强（见 power_scale）。
+    每个 BOSS 都附带共享技能池（`bossSkillPool`），由客户端按共享 CD + 随机数释放。
     """
     base = monster_base_stats(hero_level)
     difficulty = str(raid.get("difficulty", "normal"))
     hp_scale = power_scale(stats, hero_level, difficulty)
     atk_scale = attack_scale(stats, hero_level, difficulty)
-    extra_skills = list(raid.get("extraSkills", []) or [])
+    pool = list(CONFIG.raids.get("bossSkillPool", []) or [])
+    skill_interval = float(BALANCE.get("bossSkillIntervalSeconds", 6.0))
     out: list[dict[str, Any]] = []
     for boss in raid["bosses"]:
         boss_type = BOSS_TYPE_BY_ID.get(str(boss.get("type", "")))
-        skills = list(boss_type["skills"] if boss_type else []) + extra_skills
+        skills: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for skill in list(boss_type["skills"] if boss_type else []) + pool:
+            skill_id = str(skill.get("id", ""))
+            if skill_id and skill_id in seen:
+                continue
+            seen.add(skill_id)
+            skills.append(skill)
         out.append(
             {
                 "id": boss["id"],
@@ -99,6 +108,7 @@ def boss_stats_for_raid(
                 "level": hero_level,
                 "resistancePct": float(boss["resistancePct"]),
                 "bossType": boss.get("type"),
+                "skillInterval": skill_interval,
                 "skills": skills,
             }
         )
@@ -108,15 +118,14 @@ def boss_stats_for_raid(
 def eligibility(
     raid: dict[str, Any], hero_level: int, stats: HeroStats, items: Iterable[Any]
 ) -> tuple[bool, str | None]:
-    """进入门槛：栏位穿满 → 装备品阶 → 太古词条 → 战力。返回 (是否可进入, 拦截原因)。
+    """进入门槛：等级 → 栏位穿满 → 装备品阶 → 太古词条 → 战力。返回 (是否可进入, 拦截原因)。
 
-    高难副本（difficulty=hard）不设等级门槛：等级始终同步为玩家当前英雄等级，
-    BOSS 数值按当前等级锚定；难度由装备/战力门槛与极高倍率承担。
+    全部副本都按 `requiredLevel` 开放（普通高难 20/40/60/80，高难度高难满级 100）；
+    BOSS 数值仍按英雄当前等级锚定。
     """
-    if str(raid.get("difficulty", "normal")) != "hard":
-        required_level = int(raid["requiredLevel"])
-        if hero_level < required_level:
-            return False, f"需要英雄等级 {required_level}"
+    required_level = int(raid["requiredLevel"])
+    if hero_level < required_level:
+        return False, f"需要英雄等级 {required_level}"
 
     equipped = [item for item in items if getattr(item, "equipped_slot", None)]
     if bool(raid.get("requiresAllSlots", True)) and len(equipped) < SLOT_COUNT:

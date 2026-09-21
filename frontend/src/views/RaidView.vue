@@ -119,7 +119,7 @@ async function closeResult() {
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">高难副本</h2>
         <span class="text-xs text-ink-400">
-          无小怪，只有 BOSS；属性按你的等级锚定并大幅强化。双 BOSS 需同步击杀，否则存活者会狂暴。
+          无小怪，只有 BOSS；属性按你的等级锚定并大幅强化，BOSS 每 6 秒随机释放一个技能。双 BOSS 需同步击杀，否则存活者会狂暴。
         </span>
         <span class="ml-auto font-mono text-xs text-amber-300">当前战力 {{ formatNumber(game.state?.power ?? 0) }}</span>
       </div>
@@ -169,10 +169,7 @@ async function closeResult() {
         <p class="mt-2 text-[11px] text-ink-400">{{ raid.bossNames.join(' / ') }}</p>
 
         <ul class="mt-2 space-y-0.5 text-[11px] text-ink-400">
-          <li v-if="raid.difficulty === 'hard'">
-            · 等级同步当前 Lv.{{ game.hero?.level ?? '—' }}（高难副本不设等级门槛）
-          </li>
-          <li v-else>· 需要等级 Lv.{{ raid.requiredLevel }}</li>
+          <li>· 需要等级 Lv.{{ raid.requiredLevel }}</li>
           <li>· 需要战力 {{ formatNumber(raid.requiredPower) }}</li>
           <li v-if="raid.requiresAllSlots">· 需要穿满全部装备栏位</li>
           <li>
@@ -267,7 +264,7 @@ async function closeResult() {
               <div class="h-full rounded-full bg-rose-500 transition-all" :style="{ width: `${boss.hpPct}%` }" />
             </div>
             <p v-if="boss.skillNames.length" class="mt-2 text-[10px] text-fuchsia-300">
-              技能：{{ boss.skillNames.join('、') }}
+              技能池：{{ boss.skillNames.length }} 个随机释放（{{ boss.skillNames.slice(0, 3).join('、') }} 等）
             </p>
           </button>
         </div>
