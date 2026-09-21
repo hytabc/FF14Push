@@ -3,9 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import data from '@shared/schema'
+import ItemIcon from '@/components/ItemIcon.vue'
+import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
-import type { Category, CraftPlan } from '@/game/types'
-import { RARITY_ORDER, formatNumber, rarityClass, rarityName } from '@/utils/format'
+import type { Category, CraftPlan, Item } from '@/game/types'
+import { RARITY_ORDER, attrName, attrSuffix, baseAttrName, formatNumber, rarityBg, rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
 
@@ -13,6 +15,9 @@ const category = ref<Category>('weapon')
 const plan = ref<CraftPlan | null>(null)
 const loading = ref(false)
 const busy = ref(false)
+
+const result = ref<{ fee: number; consumed: number; produced: Item[] } | null>(null)
+const showResult = ref(false)
 
 const CATEGORIES: Array<{ id: Category; name: string }> = [
   { id: 'weapon', name: '武器' },
@@ -58,11 +63,22 @@ async function doCraft() {
   busy.value = true
   try {
     const res = await game.craft(category.value, true)
-    if (res) await loadPlan()
+    if (res) {
+      result.value = { fee: res.fee, consumed: res.consumed, produced: res.produced }
+      showResult.value = true
+      await loadPlan()
+    }
   } finally {
     busy.value = false
   }
 }
+
+/** 合成产物按品阶从高到低展示。 */
+const producedSorted = computed(() =>
+  [...(result.value?.produced ?? [])].sort(
+    (a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || b.score - a.score,
+  ),
+)
 
 const affordable = computed(() => (plan.value?.totalFee ?? 0) <= game.gold)
 const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts > 0))
@@ -167,5 +183,57 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
         合成手续费：{{ data.crafting.routes.map((r) => `${rarityName(r.from)}→${rarityName(r.to)} ${formatNumber(r.fee)}`).join(' · ') }}
       </p>
     </section>
+
+    <Modal :open="showResult" title="合成结果" max-width="max-w-3xl" @close="showResult = false">
+      <div v-if="result" class="space-y-3">
+        <div class="rounded-lg border border-ink-700 bg-ink-800/70 p-3 text-xs text-ink-300">
+          消耗 <b class="font-mono text-ink-100">{{ result.consumed }}</b> 件装备 ·
+          手续费 <b class="font-mono text-amber-300">{{ formatNumber(result.fee) }}</b> 金币 ·
+          获得 <b class="font-mono text-emerald-300">{{ result.produced.length }}</b> 件
+        </div>
+
+        <p v-if="!result.produced.length" class="py-6 text-center text-xs text-ink-600">
+          本次没有产出装备。
+        </p>
+
+        <div v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <article
+            v-for="item in producedSorted"
+            :key="item.id"
+            class="rounded-lg border p-3"
+            :class="[rarityClass(item.rarity), rarityBg(item.rarity)]"
+          >
+            <div class="flex items-center gap-2">
+              <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="36" />
+              <div class="min-w-0">
+                <p class="truncate text-xs font-medium">{{ item.name }}</p>
+                <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>
+              </div>
+            </div>
+            <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+              <p v-for="entry in item.baseAttrs" :key="`b-${entry.attr}`">
+                {{ baseAttrName(entry.attr) }} +{{ Math.round(entry.value) }}
+              </p>
+              <p v-for="entry in item.subAttrs" :key="`s-${entry.attr}`">
+                {{ attrName(entry.attr) }} +{{ entry.value.toFixed(2) }}{{ attrSuffix(entry.attr) }}
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <template #footer>
+        <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="showResult = false">
+          关闭
+        </button>
+        <RouterLink
+          to="/inventory"
+          class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950 hover:bg-amber-400"
+          @click="showResult = false"
+        >
+          去背包查看
+        </RouterLink>
+      </template>
+    </Modal>
   </div>
 </template>

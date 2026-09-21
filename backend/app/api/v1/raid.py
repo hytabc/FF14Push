@@ -24,6 +24,7 @@ from app.services import consumables
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item, generate_item_for_slot
 from app.services.loot import chest_by_id
+from app.services.playtime import MAX_RAID_PLAY_MS, add_play_ms
 from app.services.progression import apply_exp
 from app.services.raid_util import (
     all_raids,
@@ -187,6 +188,8 @@ async def report_session(
 
     now = datetime.now(timezone.utc)
     server_elapsed_ms = int(max(0.0, (now - _as_utc(session.started_at)).total_seconds() * 1000))
+    # 累计在线时长：副本会话可能被长时间挂着，单次计入按上限封顶。
+    add_play_ms(user, min(server_elapsed_ms, MAX_RAID_PLAY_MS))
 
     session.active = False
     session.ended_at = now

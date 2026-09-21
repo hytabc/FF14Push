@@ -8,7 +8,7 @@ import PlayerProfileDialog from '@/components/PlayerProfileDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import type { RankingEntry } from '@/game/types'
-import { formatNumber } from '@/utils/format'
+import { formatNumber, formatPlaytime } from '@/utils/format'
 
 const auth = useAuthStore()
 const toast = useToastStore()
@@ -22,6 +22,7 @@ const BOARDS = [
   { id: 'stage', label: '关卡榜', hint: '同关卡按通关时间升序（越早越靠前）' },
   { id: 'power', label: '战力榜', hint: '英雄总战力降序' },
   { id: 'gold', label: '金币榜', hint: '当前持有金币降序' },
+  { id: 'playtime', label: '游玩时间榜', hint: '累计在线时长降序' },
   { id: 'fish_species', label: '钓鱼种类榜', hint: '钓到的鱼类种类数降序' },
   { id: 'fish_count', label: '钓鱼数量榜', hint: '累计钓鱼数量降序' },
 ]
@@ -63,9 +64,15 @@ watch([board, page], load)
 function valueText(entry: RankingEntry): string {
   if (board.value === 'gold') return formatNumber(entry.value)
   if (board.value === 'stage') return entry.value > 0 ? `第 ${entry.value} 关` : '未通关'
+  if (board.value === 'playtime') return formatPlaytime(entry.value)
   if (board.value === 'fish_species') return `${entry.value} 种`
   if (board.value === 'fish_count') return `${formatNumber(entry.value)} 条`
   return String(entry.value)
+}
+
+/** 每行都展示的累计在线时长（所有榜单通用，来自 payload）。 */
+function playtimeText(entry: RankingEntry): string {
+  return formatPlaytime(Number(entry.payload?.playSeconds ?? 0))
 }
 
 const profileId = ref<number | null>(null)
@@ -132,6 +139,7 @@ function openProfile(entry: RankingEntry) {
             <th class="px-3 py-2 text-left">玩家昵称</th>
             <th class="px-3 py-2 text-left">英雄等级</th>
             <th class="px-3 py-2 text-right">数值</th>
+            <th class="px-3 py-2 text-right">游玩时间</th>
             <th class="w-14 px-3 py-2 text-right">装备</th>
           </tr>
         </thead>
@@ -163,10 +171,11 @@ function openProfile(entry: RankingEntry) {
                 鱼皇 {{ fishBreakdown(entry).emperor }}/{{ FISH_REGION_TOTAL }}
               </div>
             </td>
+            <td class="whitespace-nowrap px-3 py-2 text-right text-ink-400">{{ playtimeText(entry) }}</td>
             <td class="px-3 py-2 text-right text-ink-400">查看</td>
           </tr>
           <tr v-if="!entries.length && !loading">
-            <td colspan="5" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
+            <td colspan="6" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
           </tr>
         </tbody>
       </table>

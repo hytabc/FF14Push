@@ -22,6 +22,8 @@ class User(Base, TimestampMixin):
     # 注意：对外只返回机器码，不返回任何封禁文案（见 `core/security.BANNED_DETAIL`）。
     banned: Mapped[bool] = mapped_column(sa.Boolean, default=False, server_default=sa.false())
     banned_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    # 累计在线时长（毫秒）：由战斗 / 采集 / 生产 / 钓鱼 / 副本的服务端上报窗口累加，离线不计入。
+    play_ms: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default="0")
 
     hero: Mapped["Hero | None"] = relationship(back_populates="user", uselist=False)
     items: Mapped[list["Item"]] = relationship(back_populates="user", cascade="all, delete-orphan")

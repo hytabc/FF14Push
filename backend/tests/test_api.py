@@ -1617,6 +1617,30 @@ class TestCodexAndRanking:
         assert resp.status_code == 200
         assert resp.json()["loggedIn"] is False
 
+    async def test_playtime_tracked_and_ranked(self, auth_client, session_factory) -> None:
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        await _farm(auth_client, session_factory, 1, reports=3, elapsed_ms=15000)
+
+        # 服务端累计：3 次上报窗口（每次 15s）都应计入
+        async with session_factory() as db:
+            user = (await db.execute(select(User).where(User.id == me["id"]))).scalar_one()
+            assert user.play_ms >= 30_000, user.play_ms
+
+        await auth_client.post(f"{API}/ranking/refresh")
+
+        playtime = (await auth_client.get(f"{API}/ranking", params={"board": "playtime"})).json()
+        assert playtime["board"] == "playtime"
+        row = next(e for e in playtime["entries"] if e["userId"] == me["id"])
+        assert row["payload"]["playSeconds"] >= 30
+
+        # 其余榜单的行内也带游玩时间
+        level = (await auth_client.get(f"{API}/ranking", params={"board": "level"})).json()
+        level_row = next(e for e in level["entries"] if e["userId"] == me["id"])
+        assert level_row["payload"]["playSeconds"] >= 30
+
+        profile = (await auth_client.get(f"{API}/ranking/players/{me['id']}")).json()
+        assert profile["playSeconds"] >= 30
+
 
 class TestPlayerProfile:
     """排行榜点击查看他人「当前装备」：需登录、仅已装备栏位、不含私有标签。"""

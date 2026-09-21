@@ -9,7 +9,7 @@ import ItemCard from '@/components/ItemCard.vue'
 import Modal from '@/components/Modal.vue'
 import { useToastStore } from '@/stores/toast'
 import type { PlayerProfile } from '@/game/types'
-import { formatNumber, jobName, rarityBg, rarityClass, rarityName } from '@/utils/format'
+import { formatNumber, formatPlaytime, jobName, rarityBg, rarityClass, rarityName } from '@/utils/format'
 import { equipmentSlotGroups } from '@/utils/slots'
 
 const props = defineProps<{ userId: number | null }>()
@@ -60,6 +60,7 @@ watch(
           <span class="text-ink-500">#{{ profile.username }}</span>
           <span class="ml-auto font-mono text-amber-300">战力 {{ formatNumber(profile.power) }}</span>
         </div>
+        <p class="mt-1 text-ink-400">游玩时间 {{ formatPlaytime(profile.playSeconds) }}</p>
         <template v-if="profile.hero">
           <p class="mt-1 text-ink-400">
             Lv.{{ profile.hero.level }} · {{ jobName(profile.hero.jobId) }} ·

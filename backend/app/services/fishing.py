@@ -18,6 +18,7 @@ from app.models import ActivitySession, DohDolProgress, FishRecord, Item, User, 
 from app.services import consumables, dohdol_util
 from app.services.game_config import CONFIG
 from app.services.gathering import cleared_max_region
+from app.services.playtime import add_play_ms
 
 MAX_CASTS_PER_REPORT = 200
 
@@ -135,6 +136,7 @@ async def report_fish(
     progress = await _progress(db, user.id)
     now = datetime.now(timezone.utc)
     window = dohdol_util.window_seconds(session.last_report_at, now)
+    add_play_ms(user, int(window * 1000))
 
     equip = dohdol_util.equipped_bonus(items)
     potion = await consumables.fish_bonus(db, user.id)

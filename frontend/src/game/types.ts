@@ -228,6 +228,8 @@ export interface PlayerProfile {
   username: string
   hero: Hero | null
   power: number
+  /** 累计在线时长（秒）。 */
+  playSeconds: number
   loadout: Partial<Record<SlotId, Item>>
   /** 生产 / 采集专用装备（仅含已装备栏位，跨账号只读）。 */
   dohdolLoadout: Partial<Record<string, Item>>

@@ -32,7 +32,7 @@ _DEDICATED_CATEGORIES = {"doh_tool", "doh_gear", "dol_tool", "dol_gear"}
 async def ranking(
     db: DbSession,
     user: OptionalUser,
-    board: str = Query("level", pattern="^(level|stage|power|gold|fish_species|fish_count)$"),
+    board: str = Query("level", pattern="^(level|stage|power|gold|playtime|fish_species|fish_count)$"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=100),
 ) -> dict:
@@ -89,6 +89,7 @@ async def player_profile(user_id: int, db: DbSession, viewer: CurrentUser) -> di
         "username": target.username,
         "hero": hero_to_dict(hero, stats),
         "power": hero_power(stats),
+        "playSeconds": int(target.play_ms or 0) // 1000,
         "loadout": combat,
         "dohdolLoadout": dedicated,
     }

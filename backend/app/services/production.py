@@ -17,6 +17,7 @@ from app.services import consumables, dohdol_util
 from app.services.game_config import CONFIG
 from app.services.grants import insert_items
 from app.services.item_factory import generate_crafted_item
+from app.services.playtime import add_play_ms
 
 MAX_CRAFTS_PER_REPORT = 200
 
@@ -89,6 +90,7 @@ async def report_produce(
     progress = await _progress(db, user.id)
     now = datetime.now(timezone.utc)
     window = dohdol_util.window_seconds(session.last_report_at, now)
+    add_play_ms(user, int(window * 1000))
 
     equip = dohdol_util.equipped_bonus(items)
     quality_bonus = await consumables.craft_quality_bonus(db, user.id) + equip.get(

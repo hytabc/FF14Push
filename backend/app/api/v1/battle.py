@@ -35,6 +35,7 @@ from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import boss_box_for_region, chest_by_id
 from app.services.progression import apply_exp
+from app.services.playtime import add_play_ms
 from app.services.regions_util import apply_exp_bonus, kills_required, roll_gold, spawn_interval
 from app.services.stats import compute_stats
 from app.services.validator import MAX_ELAPSED_MS, MIN_ELAPSED_MS, validate_report
@@ -172,6 +173,8 @@ async def report(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"rejected": result.issues})
 
     session.kill_credit = max(0.0, allowance - result.consumed_credit)
+    # 累计在线时长：只计入通过校验的上报窗口（服务端时钟，已按上限封顶）。
+    add_play_ms(user, window_ms)
 
     rng = random.Random()
 

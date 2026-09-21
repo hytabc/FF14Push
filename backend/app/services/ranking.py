@@ -20,7 +20,7 @@ from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
 # 走缓存刷新（每 5 分钟）的榜单
-CACHED_BOARDS = ("level", "stage", "power", "gold")
+CACHED_BOARDS = ("level", "stage", "power", "gold", "playtime")
 # 实时聚合的钓鱼榜单
 FISH_BOARDS = ("fish_species", "fish_count")
 # 对外暴露的全部榜单
@@ -65,6 +65,7 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
             _entry(user, hero, "stage", max_region, -int((cleared_at or datetime.now(timezone.utc)).timestamp()), extra),
             _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
             _entry(user, hero, "gold", int(user.gold), 0, extra),
+            _entry(user, hero, "playtime", _play_seconds(user), 0, extra),
         ]
         for entry in entries:
             db.add(entry)
@@ -124,6 +125,7 @@ async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
                 "username": user.username,
                 "level": user.hero.level,
                 "titles": title_map.get(user.id, []),
+                "playSeconds": _play_seconds(user),
                 "fishSpecies": stat["species"],
                 "fishCount": stat["count"],
                 "fishNormal": stat["normal"],
@@ -154,6 +156,7 @@ async def fetch_fish_board(
             "payload": {
                 "nickname": row["nickname"],
                 "level": row["level"],
+                "playSeconds": row["playSeconds"],
                 "fishSpecies": row["fishSpecies"],
                 "fishCount": row["fishCount"],
                 "fishNormal": row["fishNormal"],
@@ -183,6 +186,11 @@ async def fetch_fish_user_rank(
     return None
 
 
+def _play_seconds(user: User) -> int:
+    """累计在线时长（秒）。内部按毫秒累加，展示 / 排名按秒。"""
+    return int(user.play_ms or 0) // 1000
+
+
 def _entry(
     user: User,
     hero: Hero,
@@ -198,6 +206,7 @@ def _entry(
         "jobId": None,
         "fishSpecies": 0,
         "fishCount": 0,
+        "playSeconds": _play_seconds(user),
         "titles": [],
     }
     if extra:

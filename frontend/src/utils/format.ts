@@ -221,3 +221,16 @@ export function formatDuration(ms: number): string {
   const s = total % 60
   return m > 0 ? `${m}分${s}秒` : `${s}秒`
 }
+
+/** 累计时长（秒）→「3天5小时」「5小时12分」「12分34秒」（用于累计在线时长）。 */
+export function formatPlaytime(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds))
+  const days = Math.floor(total / 86400)
+  const hours = Math.floor((total % 86400) / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+  if (days > 0) return `${days}天${hours}小时`
+  if (hours > 0) return `${hours}小时${minutes}分`
+  if (minutes > 0) return `${minutes}分${secs}秒`
+  return `${secs}秒`
+}

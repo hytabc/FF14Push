@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import ActivitySession, Item, RegionProgress, User
 from app.services import consumables, dohdol_util
 from app.services.game_config import CONFIG
+from app.services.playtime import add_play_ms
 
 
 async def cleared_max_region(db: AsyncSession, user_id: int) -> int:
@@ -94,6 +95,7 @@ async def report_gather(
 
     now = datetime.now(timezone.utc)
     window = dohdol_util.window_seconds(session.last_report_at, now)
+    add_play_ms(user, int(window * 1000))
 
     equip = dohdol_util.equipped_bonus(items)
     potion = await consumables.gather_bonus(db, user.id)
