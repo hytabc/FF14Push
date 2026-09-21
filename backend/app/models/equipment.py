@@ -31,6 +31,10 @@ class Item(Base):
     terms: Mapped[list] = mapped_column(JsonType, default=list)
     refine_count: Mapped[int] = mapped_column(sa.Integer, default=0)
     enchant_count: Mapped[int] = mapped_column(sa.Integer, default=0)
+    # 制造装备恒为「高品质」：属性区间整体上移且必带太古词条（与抽奖装备区分）
+    high_quality: Mapped[bool] = mapped_column(
+        sa.Boolean, default=False, server_default=sa.false()
+    )
     equipped_slot: Mapped[str | None] = mapped_column(sa.String(16), nullable=True, index=True)
     source: Mapped[str] = mapped_column(sa.String(32), default="chest")
     # 玩家自定义标签（ItemTag.id 列表），用于背包筛选

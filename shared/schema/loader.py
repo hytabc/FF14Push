@@ -49,6 +49,22 @@ class GameConfig:
     term_by_id: dict[str, Any]
     jobs: dict[str, Any]
     job_by_id: dict[str, Any]
+    dohdol_jobs: dict[str, Any]
+    dohdol_job_by_id: dict[str, Any]
+    dohdol_levels: dict[str, Any]
+    materials: dict[str, Any]
+    material_by_id: dict[str, Any]
+    gather_nodes: dict[str, Any]
+    gather_node_by: dict[tuple[int, str], dict[str, Any]]
+    dohdol_equipment: dict[str, Any]
+    dohdol_item_by_id: dict[str, Any]
+    fish: dict[str, Any]
+    fish_region_by_id: dict[int, dict[str, Any]]
+    recipes: dict[str, Any]
+    recipe_by_id: dict[str, Any]
+    consumables: dict[str, Any]
+    consumable_by_id: dict[str, Any]
+    titles: dict[str, Any]
     base_items: list[BaseItem]
     base_item_by_id: dict[str, BaseItem]
     base_item_tiers: list[dict[str, Any]]
@@ -159,6 +175,15 @@ def load_game_data() -> GameConfig:
         "combat": _load("combat.json"),
         "tutorial": _load("tutorial.json"),
         "tags": _load("tags.json"),
+        "dohdolJobs": _load("dohdol-jobs.json"),
+        "dohdolLevels": _load("dohdol-levels.json"),
+        "materials": _load("materials.json"),
+        "gatherNodes": _load("gather-nodes.json"),
+        "dohdolEquipment": _load("dohdol-equipment.json"),
+        "fish": _load("fish.json"),
+        "recipes": _load("recipes.json"),
+        "consumables": _load("consumables.json"),
+        "titles": _load("titles.json"),
     }
 
     jobs = raw["jobs"]
@@ -171,6 +196,23 @@ def load_game_data() -> GameConfig:
     attributes = raw["subAttributes"]["attributes"]
     terms = raw["terms"]
 
+    dohdol_jobs = raw["dohdolJobs"]
+    dohdol_item_by_id = {it["id"]: it for it in raw["dohdolEquipment"]["items"]}
+
+    # 材料注册表：采集材料 + 半成品 + 鱼（鱼也是烹饪材料）
+    material_by_id: dict[str, Any] = {m["id"]: m for m in raw["materials"]["materials"]}
+    for region in raw["fish"]["regions"]:
+        for fish in region["normal"]:
+            material_by_id[fish["id"]] = {"id": fish["id"], "name": fish["name"], "kind": "fish", "regionId": region["regionId"]}
+        for key in ("king", "emperor"):
+            fish = region[key]
+            material_by_id[fish["id"]] = {"id": fish["id"], "name": fish["name"], "kind": "fish", "regionId": region["regionId"]}
+
+    gather_node_by = {
+        (int(node["regionId"]), node["jobId"]): node for node in raw["gatherNodes"]["nodes"]
+    }
+    fish_region_by_id = {int(r["regionId"]): r for r in raw["fish"]["regions"]}
+
     return GameConfig(
         rarities=raw["rarities"]["rarities"],
         rarity_order=raw["rarities"]["order"],
@@ -182,6 +224,22 @@ def load_game_data() -> GameConfig:
         term_by_id={t["id"]: t for t in terms["terms"]},
         jobs=jobs,
         job_by_id=job_by_id,
+        dohdol_jobs=dohdol_jobs,
+        dohdol_job_by_id={j["id"]: j for j in dohdol_jobs["jobs"]},
+        dohdol_levels=raw["dohdolLevels"],
+        materials=raw["materials"],
+        material_by_id=material_by_id,
+        gather_nodes=raw["gatherNodes"],
+        gather_node_by=gather_node_by,
+        dohdol_equipment=raw["dohdolEquipment"],
+        dohdol_item_by_id=dohdol_item_by_id,
+        fish=raw["fish"],
+        fish_region_by_id=fish_region_by_id,
+        recipes=raw["recipes"],
+        recipe_by_id={r["id"]: r for r in raw["recipes"]["recipes"]},
+        consumables=raw["consumables"],
+        consumable_by_id={c["id"]: c for c in raw["consumables"]["items"]},
+        titles=raw["titles"],
         base_items=base_items,
         base_item_by_id={b.id: b for b in base_items},
         base_item_tiers=base_items_data["tiers"],

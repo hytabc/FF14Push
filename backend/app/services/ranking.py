@@ -12,7 +12,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Hero, RankingEntry, RegionProgress, User
+from app.models import FishRecord, Hero, RankingEntry, RegionProgress, User, UserTitle
 from app.services.admin import is_admin
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
@@ -31,6 +31,16 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         if row.cleared:
             cleared.setdefault(row.user_id, []).append(row)
 
+    # 钓鱼统计（排行榜新增两列）与称号
+    fish_stats: dict[int, dict[str, int]] = {}
+    for row in (await db.execute(select(FishRecord))).scalars().all():
+        stat = fish_stats.setdefault(row.user_id, {"species": 0, "count": 0})
+        stat["species"] += 1
+        stat["count"] += int(row.count)
+    title_map: dict[int, list[str]] = {}
+    for row in (await db.execute(select(UserTitle))).scalars().all():
+        title_map.setdefault(row.user_id, []).append(row.title_id)
+
     await db.execute(delete(RankingEntry))
 
     counts = {board: 0 for board in BOARDS}
@@ -46,12 +56,18 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         cleared_list = cleared.get(user.id, [])
         max_region = max((r.region_id for r in cleared_list), default=0)
         cleared_at = max((r.cleared_at for r in cleared_list if r.cleared_at), default=None)
+        fish = fish_stats.get(user.id, {"species": 0, "count": 0})
+        extra = {
+            "fishSpecies": fish["species"],
+            "fishCount": fish["count"],
+            "titles": title_map.get(user.id, []),
+        }
 
         entries = [
-            _entry(user, hero, "level", hero.level, hero.exp),
-            _entry(user, hero, "stage", max_region, -int((cleared_at or datetime.now(timezone.utc)).timestamp())),
-            _entry(user, hero, "power", hero_power(stats), 0, stats.to_dict()),
-            _entry(user, hero, "gold", int(user.gold), 0),
+            _entry(user, hero, "level", hero.level, hero.exp, extra),
+            _entry(user, hero, "stage", max_region, -int((cleared_at or datetime.now(timezone.utc)).timestamp()), extra),
+            _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
+            _entry(user, hero, "gold", int(user.gold), 0, extra),
         ]
         for entry in entries:
             db.add(entry)
@@ -74,9 +90,19 @@ def _entry(
         "level": hero.level,
         "maxRegion": None,
         "jobId": None,
+        "fishSpecies": 0,
+        "fishCount": 0,
+        "titles": [],
     }
     if extra:
-        payload.update({"jobId": extra.get("jobId")})
+        payload.update(
+            {
+                "jobId": extra.get("jobId"),
+                "fishSpecies": extra.get("fishSpecies", 0),
+                "fishCount": extra.get("fishCount", 0),
+                "titles": extra.get("titles", []),
+            }
+        )
     return RankingEntry(
         user_id=user.id,
         board=board,

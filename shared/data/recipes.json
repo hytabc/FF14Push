@@ -1,0 +1,1943 @@
+{
+  "$comment": "生产配方。按生产等级解锁；inputs 引用材料/半成品/鱼，output 可为材料/半成品/装备/消耗品。",
+  "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；同时按 rarityWeights 抽品阶。",
+  "equipment": {
+    "highQualityMultiplier": 1.15,
+    "guaranteedAncientTerms": 1,
+    "rarityWeights": {
+      "common": 0.3,
+      "uncommon": 0.3,
+      "rare": 0.22,
+      "epic": 0.12,
+      "legendary": 0.05,
+      "mythic": 0.01
+    }
+  },
+  "recipes": [
+    {
+      "id": "r_h_plank",
+      "jobId": "CRP",
+      "requiredLevel": 1,
+      "craftSeconds": 2.0,
+      "xp": 12,
+      "inputs": [
+        {
+          "itemId": "g_wood",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_plank",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_ingot",
+      "jobId": "BSM",
+      "requiredLevel": 1,
+      "craftSeconds": 2.0,
+      "xp": 12,
+      "inputs": [
+        {
+          "itemId": "g_ore",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_ingot",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_steel",
+      "jobId": "BSM",
+      "requiredLevel": 5,
+      "craftSeconds": 2.0,
+      "xp": 28,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 2
+        },
+        {
+          "itemId": "g_stone",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_steel",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_plate",
+      "jobId": "ARM",
+      "requiredLevel": 5,
+      "craftSeconds": 2.0,
+      "xp": 28,
+      "inputs": [
+        {
+          "itemId": "g_ore",
+          "count": 2
+        },
+        {
+          "itemId": "g_stone",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_plate",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_alloy",
+      "jobId": "ARM",
+      "requiredLevel": 12,
+      "craftSeconds": 2.0,
+      "xp": 56,
+      "inputs": [
+        {
+          "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_alloy",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_gemcut",
+      "jobId": "GSM",
+      "requiredLevel": 8,
+      "craftSeconds": 2.0,
+      "xp": 40,
+      "inputs": [
+        {
+          "itemId": "g_gem",
+          "count": 2
+        },
+        {
+          "itemId": "g_stone",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_gemcut",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_glass",
+      "jobId": "GSM",
+      "requiredLevel": 8,
+      "craftSeconds": 2.0,
+      "xp": 40,
+      "inputs": [
+        {
+          "itemId": "g_stone",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_glass",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_leather",
+      "jobId": "LTW",
+      "requiredLevel": 1,
+      "craftSeconds": 2.0,
+      "xp": 12,
+      "inputs": [
+        {
+          "itemId": "g_fiber",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_leather",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_cloth",
+      "jobId": "WVR",
+      "requiredLevel": 1,
+      "craftSeconds": 2.0,
+      "xp": 12,
+      "inputs": [
+        {
+          "itemId": "g_fiber",
+          "count": 2
+        },
+        {
+          "itemId": "g_herb",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_cloth",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_ink",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.0,
+      "xp": 12,
+      "inputs": [
+        {
+          "itemId": "g_herb",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_ink",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_oil",
+      "jobId": "ALC",
+      "requiredLevel": 6,
+      "craftSeconds": 2.0,
+      "xp": 32,
+      "inputs": [
+        {
+          "itemId": "g_herb",
+          "count": 2
+        },
+        {
+          "itemId": "g_wood",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_oil",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_h_flour",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.0,
+      "xp": 12,
+      "inputs": [
+        {
+          "itemId": "g_herb",
+          "count": 2
+        },
+        {
+          "itemId": "g_fiber",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "material",
+        "itemId": "h_flour",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_dh_dohTool_0",
+      "jobId": "CRP",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_plank",
+          "count": 2
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohTool_0"
+      }
+    },
+    {
+      "id": "r_dh_dohTool_1",
+      "jobId": "CRP",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_plank",
+          "count": 5
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohTool_1"
+      }
+    },
+    {
+      "id": "r_dh_dohTool_2",
+      "jobId": "CRP",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_plank",
+          "count": 8
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 8
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohTool_2"
+      }
+    },
+    {
+      "id": "r_dh_dohOffTool_0",
+      "jobId": "BSM",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohOffTool_0"
+      }
+    },
+    {
+      "id": "r_dh_dohOffTool_1",
+      "jobId": "BSM",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 5
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohOffTool_1"
+      }
+    },
+    {
+      "id": "r_dh_dohOffTool_2",
+      "jobId": "BSM",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohOffTool_2"
+      }
+    },
+    {
+      "id": "r_dh_dohHead_0",
+      "jobId": "LTW",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "h_cloth",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohHead_0"
+      }
+    },
+    {
+      "id": "r_dh_dohHead_1",
+      "jobId": "LTW",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 5
+        },
+        {
+          "itemId": "h_cloth",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohHead_1"
+      }
+    },
+    {
+      "id": "r_dh_dohHead_2",
+      "jobId": "LTW",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "h_cloth",
+          "count": 5
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohHead_2"
+      }
+    },
+    {
+      "id": "r_dh_dohBody_0",
+      "jobId": "WVR",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 3
+        },
+        {
+          "itemId": "h_leather",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohBody_0"
+      }
+    },
+    {
+      "id": "r_dh_dohBody_1",
+      "jobId": "WVR",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 7
+        },
+        {
+          "itemId": "h_leather",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohBody_1"
+      }
+    },
+    {
+      "id": "r_dh_dohBody_2",
+      "jobId": "WVR",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 11
+        },
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohBody_2"
+      }
+    },
+    {
+      "id": "r_dh_dohHands_0",
+      "jobId": "LTW",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "h_plate",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohHands_0"
+      }
+    },
+    {
+      "id": "r_dh_dohHands_1",
+      "jobId": "LTW",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohHands_1"
+      }
+    },
+    {
+      "id": "r_dh_dohHands_2",
+      "jobId": "LTW",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "h_plate",
+          "count": 5
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohHands_2"
+      }
+    },
+    {
+      "id": "r_dh_dohLegs_0",
+      "jobId": "WVR",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 2
+        },
+        {
+          "itemId": "h_leather",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohLegs_0"
+      }
+    },
+    {
+      "id": "r_dh_dohLegs_1",
+      "jobId": "WVR",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 5
+        },
+        {
+          "itemId": "h_leather",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohLegs_1"
+      }
+    },
+    {
+      "id": "r_dh_dohLegs_2",
+      "jobId": "WVR",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 8
+        },
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohLegs_2"
+      }
+    },
+    {
+      "id": "r_dh_dohFeet_0",
+      "jobId": "LTW",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohFeet_0"
+      }
+    },
+    {
+      "id": "r_dh_dohFeet_1",
+      "jobId": "LTW",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 7
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohFeet_1"
+      }
+    },
+    {
+      "id": "r_dh_dohFeet_2",
+      "jobId": "LTW",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 11
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dohFeet_2"
+      }
+    },
+    {
+      "id": "r_dh_dolTool_0",
+      "jobId": "BSM",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_plank",
+          "count": 2
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolTool_0"
+      }
+    },
+    {
+      "id": "r_dh_dolTool_1",
+      "jobId": "BSM",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_plank",
+          "count": 5
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolTool_1"
+      }
+    },
+    {
+      "id": "r_dh_dolTool_2",
+      "jobId": "BSM",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_plank",
+          "count": 8
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 8
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolTool_2"
+      }
+    },
+    {
+      "id": "r_dh_dolOffTool_0",
+      "jobId": "CRP",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolOffTool_0"
+      }
+    },
+    {
+      "id": "r_dh_dolOffTool_1",
+      "jobId": "CRP",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 5
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolOffTool_1"
+      }
+    },
+    {
+      "id": "r_dh_dolOffTool_2",
+      "jobId": "CRP",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolOffTool_2"
+      }
+    },
+    {
+      "id": "r_dh_dolHead_0",
+      "jobId": "LTW",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "h_cloth",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolHead_0"
+      }
+    },
+    {
+      "id": "r_dh_dolHead_1",
+      "jobId": "LTW",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 5
+        },
+        {
+          "itemId": "h_cloth",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolHead_1"
+      }
+    },
+    {
+      "id": "r_dh_dolHead_2",
+      "jobId": "LTW",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "h_cloth",
+          "count": 5
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolHead_2"
+      }
+    },
+    {
+      "id": "r_dh_dolBody_0",
+      "jobId": "WVR",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 3
+        },
+        {
+          "itemId": "h_leather",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolBody_0"
+      }
+    },
+    {
+      "id": "r_dh_dolBody_1",
+      "jobId": "WVR",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 7
+        },
+        {
+          "itemId": "h_leather",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolBody_1"
+      }
+    },
+    {
+      "id": "r_dh_dolBody_2",
+      "jobId": "WVR",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 11
+        },
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolBody_2"
+      }
+    },
+    {
+      "id": "r_dh_dolHands_0",
+      "jobId": "LTW",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "h_plate",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolHands_0"
+      }
+    },
+    {
+      "id": "r_dh_dolHands_1",
+      "jobId": "LTW",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolHands_1"
+      }
+    },
+    {
+      "id": "r_dh_dolHands_2",
+      "jobId": "LTW",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "h_plate",
+          "count": 5
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolHands_2"
+      }
+    },
+    {
+      "id": "r_dh_dolLegs_0",
+      "jobId": "WVR",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 2
+        },
+        {
+          "itemId": "h_leather",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolLegs_0"
+      }
+    },
+    {
+      "id": "r_dh_dolLegs_1",
+      "jobId": "WVR",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 5
+        },
+        {
+          "itemId": "h_leather",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolLegs_1"
+      }
+    },
+    {
+      "id": "r_dh_dolLegs_2",
+      "jobId": "WVR",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_cloth",
+          "count": 8
+        },
+        {
+          "itemId": "h_leather",
+          "count": 8
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolLegs_2"
+      }
+    },
+    {
+      "id": "r_dh_dolFeet_0",
+      "jobId": "LTW",
+      "requiredLevel": 1,
+      "craftSeconds": 3.0,
+      "xp": 15,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolFeet_0"
+      }
+    },
+    {
+      "id": "r_dh_dolFeet_1",
+      "jobId": "LTW",
+      "requiredLevel": 16,
+      "craftSeconds": 4.0,
+      "xp": 45,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 7
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolFeet_1"
+      }
+    },
+    {
+      "id": "r_dh_dolFeet_2",
+      "jobId": "LTW",
+      "requiredLevel": 31,
+      "craftSeconds": 5.0,
+      "xp": 75,
+      "inputs": [
+        {
+          "itemId": "h_leather",
+          "count": 11
+        },
+        {
+          "itemId": "m27",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "dh_dolFeet_2"
+      }
+    },
+    {
+      "id": "r_w_bow_2",
+      "jobId": "CRP",
+      "requiredLevel": 34,
+      "craftSeconds": 6.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_bow_2"
+      }
+    },
+    {
+      "id": "r_w_rod_2",
+      "jobId": "CRP",
+      "requiredLevel": 34,
+      "craftSeconds": 6.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_rod_2"
+      }
+    },
+    {
+      "id": "r_w_lance_2",
+      "jobId": "CRP",
+      "requiredLevel": 34,
+      "craftSeconds": 6.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_lance_2"
+      }
+    },
+    {
+      "id": "r_w_katana_4",
+      "jobId": "CRP",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_katana_4"
+      }
+    },
+    {
+      "id": "r_w_brush_4",
+      "jobId": "CRP",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_brush_4"
+      }
+    },
+    {
+      "id": "r_w_sword_shield_2",
+      "jobId": "BSM",
+      "requiredLevel": 34,
+      "craftSeconds": 6.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_sword_shield_2"
+      }
+    },
+    {
+      "id": "r_w_axe_4",
+      "jobId": "BSM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_axe_4"
+      }
+    },
+    {
+      "id": "r_w_greatsword_4",
+      "jobId": "BSM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_greatsword_4"
+      }
+    },
+    {
+      "id": "r_w_gunblade_2",
+      "jobId": "BSM",
+      "requiredLevel": 34,
+      "craftSeconds": 6.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_gunblade_2"
+      }
+    },
+    {
+      "id": "r_w_dualDagger_2",
+      "jobId": "BSM",
+      "requiredLevel": 34,
+      "craftSeconds": 6.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 5
+        },
+        {
+          "itemId": "h_plate",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "w_dualDagger_2"
+      }
+    },
+    {
+      "id": "r_a_head_4",
+      "jobId": "ARM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "a_head_4"
+      }
+    },
+    {
+      "id": "r_a_body_4",
+      "jobId": "ARM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "a_body_4"
+      }
+    },
+    {
+      "id": "r_a_hands_4",
+      "jobId": "ARM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "a_hands_4"
+      }
+    },
+    {
+      "id": "r_a_legs_4",
+      "jobId": "ARM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "a_legs_4"
+      }
+    },
+    {
+      "id": "r_a_feet_4",
+      "jobId": "ARM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "a_feet_4"
+      }
+    },
+    {
+      "id": "r_c_ring_4",
+      "jobId": "GSM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "c_ring_4"
+      }
+    },
+    {
+      "id": "r_c_necklace_4",
+      "jobId": "GSM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "c_necklace_4"
+      }
+    },
+    {
+      "id": "r_c_earring_4",
+      "jobId": "GSM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "c_earring_4"
+      }
+    },
+    {
+      "id": "r_c_bracelet_4",
+      "jobId": "GSM",
+      "requiredLevel": 58,
+      "craftSeconds": 8.0,
+      "xp": 130,
+      "inputs": [
+        {
+          "itemId": "h_ingot",
+          "count": 7
+        },
+        {
+          "itemId": "h_alloy",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "equipment",
+        "baseId": "c_bracelet_4"
+      }
+    },
+    {
+      "id": "r_p_expGainPct",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "g_herb",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_expGainPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_goldGainPct",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_goldGainPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_chestLuck",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_gemcut",
+          "count": 2
+        },
+        {
+          "itemId": "h_ink",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_chestLuck",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_craftQualityPct",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "h_ink",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_craftQualityPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_fishInsightPct",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 3
+        },
+        {
+          "itemId": "g_herb",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_fishInsightPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_gatherYieldPct",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "g_fiber",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_gatherYieldPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_expGainPct",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "g_herb",
+          "count": 2
+        },
+        {
+          "itemId": "f1_1",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_expGainPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_goldGainPct",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "g_gem",
+          "count": 1
+        },
+        {
+          "itemId": "f1_1",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_goldGainPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_chestLuck",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "h_gemcut",
+          "count": 1
+        },
+        {
+          "itemId": "f1_1",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_chestLuck",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_craftQualityPct",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "h_oil",
+          "count": 1
+        },
+        {
+          "itemId": "f1_1",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_craftQualityPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_fishInsightPct",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 3
+        },
+        {
+          "itemId": "g_herb",
+          "count": 2
+        },
+        {
+          "itemId": "f1_1",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_fishInsightPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_gatherYieldPct",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 20,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "g_fiber",
+          "count": 2
+        },
+        {
+          "itemId": "f1_1",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_gatherYieldPct",
+        "count": 1
+      }
+    }
+  ]
+}

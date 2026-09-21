@@ -28,6 +28,7 @@ from app.models import (
 from app.schemas.game import BattleReportRequest, BattleStartRequest, BattleStopRequest
 from app.services.codex import unlock_monster
 from app.services.combat_model import effective_penalty, boss_stats, max_kills_in_seconds, resolve_job_skills
+from app.services import consumables
 from app.services.drop_luck import rarity_luck, user_drop_rate
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
@@ -81,6 +82,10 @@ async def start_session(
         progress.unlocked = True
 
     await _end_active_sessions(db, user.id)
+    # 四活动互斥：开始战斗即停止进行中的采集/生产/钓鱼
+    from app.services.dohdol_util import end_active_sessions as _end_activity
+
+    await _end_activity(db, user.id)
 
     hero.current_region_id = payload.regionId
     hero.region_kill_count = 0  # PRD 地区 6.2：切换地区后计数从 0 开始
@@ -170,12 +175,19 @@ async def report(
 
     rng = random.Random()
 
+    # 药水/食物加成（只影响结算，不影响战力与门槛）
+    potion_mods = await consumables.exp_gold_mods(db, user.id)
+    merged_mods = dict(stats.term_mods)
+    for key, value in potion_mods.items():
+        merged_mods[key] = merged_mods.get(key, 0.0) + float(value)
+
     # 金币与经验（服务端重新结算）
     reward_multiplier = effective_penalty(stats,payload.regionId)["rewardMultiplier"]
     result.total_gold = int(result.total_gold * reward_multiplier)
+    result.total_gold = int(result.total_gold * (1.0 + potion_mods.get("goldGainPct", 0.0) / 100.0))
     result.total_exp = int(result.total_exp * reward_multiplier)
     user.gold = int(user.gold) + result.total_gold
-    gained_exp = apply_exp_bonus(result.total_exp, stats.term_mods)  # 经验获取效率 Buff
+    gained_exp = apply_exp_bonus(result.total_exp, merged_mods)  # 经验获取效率 Buff
     level_info = apply_exp(hero, gained_exp)
 
     # 装备：怪物不掉落，仅能通过抽箱获取（BOSS 宝箱见 _settle_boss）
@@ -209,7 +221,7 @@ async def report(
 
     boss_result = None
     if payload.bossKilled:
-        boss_result = await _settle_boss(db, user, hero, items, payload, rng, stats.term_mods, window_ms)
+        boss_result = await _settle_boss(db, user, hero, items, payload, rng, merged_mods, window_ms)
 
     session.last_report_at = now
     session.total_kills = int(session.total_kills) + len(result.kills)
@@ -252,7 +264,8 @@ async def _settle_boss(
         return None
 
     region = CONFIG.region_by_id[payload.regionId]
-    boss_gold = int(roll_gold(payload.regionId, "boss", 0.0, rng) * effective_penalty(compute_stats(hero,items),payload.regionId)["rewardMultiplier"])
+    gold_potion = float((term_mods or {}).get("goldGainPct", 0.0)) / 100.0
+    boss_gold = int(roll_gold(payload.regionId, "boss", 0.0, rng) * effective_penalty(compute_stats(hero,items),payload.regionId)["rewardMultiplier"] * (1.0 + gold_potion))
     boss_exp = apply_exp_bonus(max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"]))), term_mods or {})
 
     user.gold = int(user.gold) + boss_gold
@@ -263,7 +276,7 @@ async def _settle_boss(
     box = chest_by_id(box_id)
     generated = []
     if box:
-        luck = rarity_luck(await user_drop_rate(db, user.id))
+        luck = rarity_luck(await user_drop_rate(db, user.id)) + await consumables.chest_luck(db, user.id)
         item, _ = generate_item(box["category"], hero.level, box_tier=box["tier"], rng=rng, luck=luck)
         generated.append(item)
     grant = await grant_generated_items(db, user, generated, source="boss", rng=rng)

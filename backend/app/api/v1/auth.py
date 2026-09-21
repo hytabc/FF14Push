@@ -10,6 +10,7 @@ from app.core.deps import CurrentUser, DbSession, client_ip, guard_rate
 from app.core.security import BANNED_DETAIL, create_access_token, hash_password, verify_password
 from app.models import (
     AutoSellSetting,
+    DohDolProgress,
     Hero,
     Item,
     RegionProgress,
@@ -68,6 +69,9 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
         )
 
     db.add(TutorialProgress(user_id=user.id, current_step=1))
+    # 生产 / 采集等级：新账号从 1 级开始
+    db.add(DohDolProgress(user_id=user.id, kind="doh", level=1, exp=0))
+    db.add(DohDolProgress(user_id=user.id, kind="dol", level=1, exp=0))
     tavern_candidates, tavern_pity = generate_candidates(1, 1)
     db.add(TavernState(user_id=user.id, candidate=tavern_candidates[0], ancient_pity=tavern_pity))
     db.add(

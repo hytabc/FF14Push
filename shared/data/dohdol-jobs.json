@@ -1,0 +1,20 @@
+{
+  "$comment": "生产（能工巧匠 DoH）与采集（大地使者 DoL）职业。来源：FF14 生产采集职业。",
+  "kinds": {
+    "doh": { "id": "doh", "name": "能工巧匠", "enName": "Disciple of the Hand" },
+    "dol": { "id": "dol", "name": "大地使者", "enName": "Disciple of the Land" }
+  },
+  "jobs": [
+    { "id": "CRP", "name": "刻木匠", "enName": "Carpenter", "kind": "doh", "role": "木材 · 弓矢 · 工具" },
+    { "id": "BSM", "name": "锻铁匠", "enName": "Blacksmith", "kind": "doh", "role": "金属武器 · 工具" },
+    { "id": "ARM", "name": "铸甲匠", "enName": "Armorer", "kind": "doh", "role": "铠甲 · 盾 · 板金" },
+    { "id": "GSM", "name": "雕金匠", "enName": "Goldsmith", "kind": "doh", "role": "饰品 · 宝石加工" },
+    { "id": "LTW", "name": "制革匠", "enName": "Leatherworker", "kind": "doh", "role": "皮革 · 轻甲" },
+    { "id": "WVR", "name": "裁衣匠", "enName": "Weaver", "kind": "doh", "role": "布甲 · 法袍" },
+    { "id": "ALC", "name": "炼金术士", "enName": "Alchemist", "kind": "doh", "role": "药水 · 墨水" },
+    { "id": "CUL", "name": "烹调师", "enName": "Culinarian", "kind": "doh", "role": "食物 · 料理" },
+    { "id": "MIN", "name": "采矿工", "enName": "Miner", "kind": "dol", "role": "矿石 · 石料 · 宝石原石" },
+    { "id": "BTN", "name": "园艺工", "enName": "Botanist", "kind": "dol", "role": "原木 · 药草 · 纤维" },
+    { "id": "FSH", "name": "捕鱼人", "enName": "Fisher", "kind": "dol", "role": "钓鱼（特殊场景）" }
+  ]
+}

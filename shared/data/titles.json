@@ -1,0 +1,21 @@
+{
+  "$comment": "称号。钓起全部地区的鱼王 / 鱼皇各解锁一个称号，展示在排行榜。",
+  "titles": [
+    {
+      "id": "fish_king_all",
+      "name": "鱼王猎手",
+      "desc": "钓起全部地区的鱼王",
+      "condition": {
+        "type": "all_king"
+      }
+    },
+    {
+      "id": "fish_emperor_all",
+      "name": "海皇",
+      "desc": "钓起全部地区的鱼皇",
+      "condition": {
+        "type": "all_emperor"
+      }
+    }
+  ]
+}

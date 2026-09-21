@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
+import data from '@shared/schema'
+
 import { api } from '@/api'
 import PlayerProfileDialog from '@/components/PlayerProfileDialog.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -10,6 +12,10 @@ import { formatNumber } from '@/utils/format'
 
 const auth = useAuthStore()
 const toast = useToastStore()
+
+const TITLE_NAMES: Record<string, string> = Object.fromEntries(
+  data.titles.titles.map((t) => [t.id, t.name]),
+)
 
 const BOARDS = [
   { id: 'level', label: '等级榜', hint: '同等级按经验降序' },
@@ -60,6 +66,20 @@ function valueText(entry: RankingEntry): string {
 
 const profileId = ref<number | null>(null)
 
+function fishSpecies(entry: RankingEntry): number {
+  return Number(entry.payload?.fishSpecies ?? 0)
+}
+
+function fishCount(entry: RankingEntry): number {
+  return Number(entry.payload?.fishCount ?? 0)
+}
+
+function entryTitles(entry: RankingEntry): string[] {
+  const ids = entry.payload?.titles
+  if (!Array.isArray(ids)) return []
+  return ids.map((id) => TITLE_NAMES[String(id)] ?? String(id))
+}
+
 function openProfile(entry: RankingEntry) {
   if (!auth.isLoggedIn) {
     toast.push('登录后可查看他人装备', 'info')
@@ -105,6 +125,8 @@ function openProfile(entry: RankingEntry) {
             <th class="px-3 py-2 text-left">玩家昵称</th>
             <th class="px-3 py-2 text-left">英雄等级</th>
             <th class="px-3 py-2 text-right">数值</th>
+            <th class="px-3 py-2 text-right">钓鱼种类</th>
+            <th class="px-3 py-2 text-right">钓鱼数量</th>
             <th class="w-14 px-3 py-2 text-right">装备</th>
           </tr>
         </thead>
@@ -121,13 +143,20 @@ function openProfile(entry: RankingEntry) {
             </td>
             <td class="px-3 py-2 text-ink-100">
               {{ entry.nickname }}<span class="opacity-60">#{{ entry.username }}</span>
+              <span
+                v-for="t in entryTitles(entry)"
+                :key="t"
+                class="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
+              >{{ t }}</span>
             </td>
             <td class="px-3 py-2 text-ink-400">{{ entry.payload?.level ?? '—' }}</td>
             <td class="px-3 py-2 text-right font-mono text-ink-200">{{ valueText(entry) }}</td>
+            <td class="px-3 py-2 text-right font-mono text-ink-300">{{ fishSpecies(entry) }}</td>
+            <td class="px-3 py-2 text-right font-mono text-ink-300">{{ fishCount(entry) }}</td>
             <td class="px-3 py-2 text-right text-ink-400">查看</td>
           </tr>
           <tr v-if="!entries.length && !loading">
-            <td colspan="5" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
+            <td colspan="7" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
           </tr>
         </tbody>
       </table>

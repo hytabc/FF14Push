@@ -4,6 +4,9 @@ import type { RarityId, TermEntry, TermQuality } from '@/game/types'
 
 export const RARITY_ORDER = data.rarities.order as RarityId[]
 
+/** 生产/采集专用装备加成 id → 中文名。 */
+const DOHDOL_BONUS_NAMES: Record<string, string> = data.dohdolEquipment.bonusNames
+
 const RARITY_CLASS: Record<RarityId, string> = {
   common: 'text-rarity-common border-rarity-common/50',
   uncommon: 'text-rarity-uncommon border-rarity-uncommon/50',
@@ -108,11 +111,21 @@ export const TAG_COLORS = data.tagColors.order.map((id) => {
  * 因此两张表要互相兜底，否则会回落成英文 id。
  */
 export function attrName(attrId: string): string {
-  return ATTR_NAMES[attrId] ?? BASE_ATTR_NAMES[attrId as keyof typeof BASE_ATTR_NAMES] ?? attrId
+  return (
+    ATTR_NAMES[attrId] ??
+    BASE_ATTR_NAMES[attrId as keyof typeof BASE_ATTR_NAMES] ??
+    DOHDOL_BONUS_NAMES[attrId] ??
+    attrId
+  )
 }
 
 export function baseAttrName(attrId: string): string {
-  return BASE_ATTR_NAMES[attrId as keyof typeof BASE_ATTR_NAMES] ?? ATTR_NAMES[attrId] ?? attrId
+  return (
+    BASE_ATTR_NAMES[attrId as keyof typeof BASE_ATTR_NAMES] ??
+    ATTR_NAMES[attrId] ??
+    DOHDOL_BONUS_NAMES[attrId] ??
+    attrId
+  )
 }
 
 export function attrSuffix(attrId: string): string {
@@ -121,7 +134,11 @@ export function attrSuffix(attrId: string): string {
 }
 
 export function slotName(slot: string): string {
-  return data.slots.find((s) => s.id === slot)?.name ?? slot
+  return (
+    data.slots.find((s) => s.id === slot)?.name ??
+    data.dohdolEquipment.slots.find((s) => s.id === slot)?.name ??
+    slot
+  )
 }
 
 /** 底材 slot（自选装备种类）→ 中文名。 */
@@ -144,11 +161,15 @@ export function baseSlotName(slot: string): string {
 
 export function jobName(jobId: string): string {
   if (jobId === 'adventurer') return '冒险者'
-  return data.jobById[jobId]?.name ?? jobId
+  return data.jobById[jobId]?.name ?? data.dohdolJobById[jobId]?.name ?? jobId
 }
 
 export function categoryName(category: string): string {
-  return { weapon: '武器', armor: '防具', accessory: '饰品' }[category] ?? category
+  return (
+    { weapon: '武器', armor: '防具', accessory: '饰品' }[category] ??
+    data.dohdolEquipment.categories.find((c) => c.id === category)?.name ??
+    category
+  )
 }
 
 function durationSuffix(seconds: number): string {

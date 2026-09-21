@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import ItemCard from '@/components/ItemCard.vue'
+import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useTagsStore } from '@/stores/tags'
 import type { Category, Item, RarityId } from '@/game/types'
@@ -9,6 +10,10 @@ import { RARITY_ORDER, formatNumber, rarityName, tagColorHex } from '@/utils/for
 
 const game = useGameStore()
 const tagsStore = useTagsStore()
+const dohdol = useDohDolStore()
+
+const consumables = computed(() => game.state?.dohdol?.consumables ?? [])
+const activeBuffs = computed(() => game.state?.dohdol?.active ?? [])
 
 const category = ref<'all' | Category>('all')
 const rarityFilter = ref<'all' | RarityId>('all')
@@ -103,6 +108,38 @@ async function batchSell() {
 
 <template>
   <div class="space-y-4">
+    <section v-if="consumables.length || activeBuffs.length" class="card p-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <h2 class="text-sm font-semibold text-white">药水 / 食物</h2>
+        <div class="flex flex-wrap gap-2 text-[11px]">
+          <span
+            v-for="b in activeBuffs"
+            :key="b.kind"
+            class="rounded bg-emerald-500/20 px-2 py-1 text-emerald-200"
+          >
+            生效中：{{ b.name }} · {{ b.remainingSec }}s
+          </span>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <div
+          v-for="c in consumables"
+          :key="c.itemId"
+          class="flex items-center gap-2 rounded border border-ink-700 bg-ink-900/50 px-2 py-1 text-[11px]"
+          :title="c.desc"
+        >
+          <span class="text-ink-200">{{ c.name }}</span>
+          <span class="font-mono text-ink-400">×{{ c.count }}</span>
+          <button
+            class="rounded bg-emerald-600/80 px-2 py-0.5 text-white hover:bg-emerald-500"
+            @click="dohdol.useConsumable(c.itemId)"
+          >
+            使用
+          </button>
+        </div>
+      </div>
+    </section>
+
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">背包</h2>

@@ -183,3 +183,39 @@ class ApiMessage(BaseModel):
     ok: bool = True
     message: str = "ok"
     data: dict[str, Any] | None = None
+
+
+# --------------------------------------------------------------- 生产 / 采集 DLC
+class GatherStartRequest(BaseModel):
+    jobId: str = Field(min_length=2, max_length=8)
+    regionId: int
+
+
+class ProduceStartRequest(BaseModel):
+    jobId: str = Field(min_length=2, max_length=8)
+    recipeId: str = Field(min_length=1, max_length=48)
+
+
+class FishStartRequest(BaseModel):
+    regionId: int
+
+
+class ActivityReportRequest(BaseModel):
+    sessionId: int
+
+
+class ActivityStopRequest(BaseModel):
+    sessionId: int
+
+
+class ConsumableUseRequest(BaseModel):
+    itemId: str = Field(min_length=1, max_length=48)
+
+
+class DohDolEquipRequest(BaseModel):
+    itemId: int
+    slot: str = Field(min_length=1, max_length=24)
+
+
+class DohDolUnequipRequest(BaseModel):
+    slot: str = Field(min_length=1, max_length=24)

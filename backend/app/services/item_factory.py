@@ -162,7 +162,9 @@ def float_near_current(
     return min(max(value, band_lo), band_hi)
 
 
-def pick_sub_attrs(base: BaseItem, rarity: str, rng: random.Random) -> list[dict[str, Any]]:
+def pick_sub_attrs(
+    base: BaseItem, rarity: str, rng: random.Random, quality_bonus: float = 0.0
+) -> list[dict[str, Any]]:
     spec = CONFIG.rarities[rarity]
     count = rng.randint(int(spec["subAttrMin"]), int(spec["subAttrMax"]))
     pool = [a for a in base.sub_attr_pool if a in SUB_ATTR_IDS]
@@ -177,7 +179,7 @@ def pick_sub_attrs(base: BaseItem, rarity: str, rng: random.Random) -> list[dict
     for attr_id in chosen:
         attr = CONFIG.attribute_by_id[attr_id]
         lo, hi = attr["ranges"][rarity]
-        quality = _roll_quality(rng)
+        quality = _roll_quality(rng, quality_bonus)
         value = roll_sub_attr_value(rng, float(lo) * scale, float(hi) * scale, quality)
         out.append(
             {
@@ -194,10 +196,20 @@ def _extreme_value(lo: float, hi: float) -> float:
     return hi if abs(hi) >= abs(lo) else lo
 
 
-def roll_terms(base: BaseItem, rarity: str, rng: random.Random) -> list[dict[str, Any]]:
-    """生成 0-4 个 Buff/Debuff。来源：PRD 2.4"""
+def roll_terms(
+    base: BaseItem,
+    rarity: str,
+    rng: random.Random,
+    quality_bonus: float = 0.0,
+    force_ancient: int = 0,
+) -> list[dict[str, Any]]:
+    """生成 0-4 个 Buff/Debuff。来源：PRD 2.4
+
+    force_ancient>0 时，保证其中至少这么多条 Buff 为太古（制造装备的「必带太古词条」）。
+    """
     spec = CONFIG.rarities[rarity]
     count = rng.randint(int(spec["termMin"]), int(spec["termMax"]))
+    count = max(count, int(force_ancient))
     if count <= 0:
         return []
 
@@ -210,28 +222,38 @@ def roll_terms(base: BaseItem, rarity: str, rng: random.Random) -> list[dict[str
     if not eligible:
         return []
 
+    buffs = [t for t in eligible if t["type"] == "buff"]
     debuff_chance = float(spec["debuffChance"])
     out: list[dict[str, Any]] = []
     used: set[str] = set()
     attempts = 0
-    while len(out) < count and attempts < 40:
+    remaining_forced = int(force_ancient)
+    while len(out) < count and attempts < 60:
         attempts += 1
-        want_debuff = rng.random() < debuff_chance
-        pool = [t for t in eligible if (t["type"] == "debuff") == want_debuff and t["id"] not in used]
-        if not pool:
-            pool = [t for t in eligible if t["id"] not in used]
+        if remaining_forced > 0 and buffs:
+            pool = [t for t in buffs if t["id"] not in used]
+            force_quality = "ancient"
+        else:
+            want_debuff = rng.random() < debuff_chance
+            pool = [t for t in eligible if (t["type"] == "debuff") == want_debuff and t["id"] not in used]
+            if not pool:
+                pool = [t for t in eligible if t["id"] not in used]
+            force_quality = None
         if not pool:
             break
         term = rng.choice(pool)
         used.add(term["id"])
 
         # 始终消耗一次品质判定（保持 RNG 序列稳定），再决定是否允许稀有/太古。
-        quality = _roll_quality(rng)
+        quality = _roll_quality(rng, quality_bonus)
         allow_special = term["type"] != "debuff" or bool(
             CONFIG.economy.get("debuffQualityEnabled", False)
         )
         if not allow_special:
             quality = "common"  # Debuff 仅在随机池内随机
+        elif force_quality == "ancient":
+            quality = "ancient"
+            remaining_forced -= 1
         lo, hi = term["range"]
         if quality == "common":
             value = rng.uniform(float(lo), float(hi))
@@ -255,12 +277,26 @@ def roll_terms(base: BaseItem, rarity: str, rng: random.Random) -> list[dict[str
     return out
 
 
-def _roll_quality(rng: random.Random) -> str:
+def _roll_quality(rng: random.Random, bonus: float = 0.0) -> str:
+    """词条/副属性品质掷点。
+
+    bonus>0（制造品质药水/专用装备）时提高稀有与太古的概率质量。
+    """
     chances = CONFIG.economy["termQuality"]
+    rare = float(chances["rare"])
+    ancient = float(chances["ancient"])
+    if bonus > 0:
+        rare *= 1.0 + bonus
+        ancient *= 1.0 + bonus * 5.0
+    total = rare + ancient
+    if total > 0.5:
+        scale = 0.5 / total
+        rare *= scale
+        ancient *= scale
     roll = rng.random()
-    if roll < float(chances["ancient"]):
+    if roll < ancient:
         return "ancient"
-    if roll < float(chances["ancient"]) + float(chances["rare"]):
+    if roll < ancient + rare:
         return "rare"
     return "common"
 
@@ -274,11 +310,15 @@ def generate_item(
     pity=None,
     base_id: str | None = None,
     luck: float = 0.0,
+    quality_bonus: float = 0.0,
+    high_quality: bool = False,
 ) -> tuple[dict[str, Any], Any]:
     """生成一件装备。[返回] (item_dict, 新的保底状态)
 
     base_id 用于强制指定底材（如开局赠送的起始武器），省略时按等级随机。
     luck 为品阶爆率加成（0 表示按基础概率）。
+    quality_bonus 提高副属性/词条的稀有与太古概率。
+    high_quality 为制造装备的「高品质」：属性区间整体上移，且必带太古词条。
     """
     rng = rng or random.Random()
     base = CONFIG.base_item_by_id[base_id] if base_id else pick_base_item(category, level, rng)
@@ -288,6 +328,9 @@ def generate_item(
         rarity, pity = draw_rarity(box_tier, pity or PityState(), rng, luck)
     spec = CONFIG.rarities[rarity]
     mult = float(spec["multiplier"])
+    if high_quality:
+        mult *= float(CONFIG.recipes["equipment"]["highQualityMultiplier"])
+    force_ancient = int(CONFIG.recipes["equipment"]["guaranteedAncientTerms"]) if high_quality else 0
 
     base_attrs = []
     for entry in base.base_attrs:
@@ -301,11 +344,74 @@ def generate_item(
         "slot": base.slot,
         "rarity": rarity,
         "levelReq": base.level_req,
+        "highQuality": bool(high_quality),
         "baseAttrs": base_attrs,
-        "subAttrs": pick_sub_attrs(base, rarity, rng),
-        "terms": roll_terms(base, rarity, rng),
+        "subAttrs": pick_sub_attrs(base, rarity, rng, quality_bonus),
+        "terms": roll_terms(base, rarity, rng, quality_bonus, force_ancient),
     }
     return item, pity
+
+
+def crafted_rarity(rng: random.Random) -> str:
+    """制造装备的品阶抽取（白/绿/蓝/紫/橙/红）。"""
+    weights = CONFIG.recipes["equipment"]["rarityWeights"]
+    order = list(CONFIG.rarity_order)
+    probs = [float(weights.get(r, 0.0)) for r in order]
+    total = sum(probs)
+    if total <= 0:
+        return order[0]
+    roll = rng.random() * total
+    cumulative = 0.0
+    for rarity, chance in zip(order, probs):
+        cumulative += chance
+        if roll < cumulative:
+            return rarity
+    return order[-1]
+
+
+def generate_crafted_item(
+    base_id: str,
+    rng: random.Random | None = None,
+    quality_bonus: float = 0.0,
+) -> dict[str, Any]:
+    """生产一件装备：恒为「高品质」，并按配方权重抽品阶。
+
+    产出可为战斗装备（走 CONFIG.base_item_by_id）或生产/采集专用装备（走 dohdol 配置）。
+    """
+    rng = rng or random.Random()
+    rarity = crafted_rarity(rng)
+
+    dohdol = CONFIG.dohdol_item_by_id.get(base_id)
+    if dohdol is not None:
+        mult = float(CONFIG.recipes["equipment"]["highQualityMultiplier"])
+        rarity_tier = int(CONFIG.rarities[rarity]["tier"])
+        base_attrs = [
+            {"attr": stat, "value": round(float(value) * mult * (1.0 + 0.15 * rarity_tier), 2)}
+            for stat, value in dohdol["bonus"].items()
+        ]
+        return {
+            "baseId": dohdol["id"],
+            "name": dohdol["name"],
+            "category": dohdol["category"],
+            "slot": dohdol["slot"],
+            "rarity": rarity,
+            "levelReq": int(dohdol["levelReq"]),
+            "highQuality": True,
+            "baseAttrs": base_attrs,
+            "subAttrs": [],
+            "terms": [],
+        }
+
+    item, _ = generate_item(
+        category=CONFIG.base_item_by_id[base_id].category,
+        level=CONFIG.base_item_by_id[base_id].level_req,
+        rarity=rarity,
+        rng=rng,
+        base_id=base_id,
+        quality_bonus=quality_bonus,
+        high_quality=True,
+    )
+    return item
 
 
 def generate_by_rarity(

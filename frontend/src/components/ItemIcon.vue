@@ -21,6 +21,14 @@ const props = withDefaults(
 
 const url = computed(() => itemIconUrl(props.baseId))
 
+/** 生产/采集专用装备没有像素图，回退为职业图标。 */
+const fallbackGlyph = computed(() => {
+  if (url.value) return null
+  if (props.baseId.startsWith('dh_doh')) return '🔨'
+  if (props.baseId.startsWith('dh_dol')) return '⛏'
+  return null
+})
+
 const style = computed(() => {
   const box = { width: `${props.size}px`, height: `${props.size}px` }
   if (props.silhouette) {
@@ -56,4 +64,10 @@ const style = computed(() => {
     decoding="async"
     draggable="false"
   />
+  <span
+    v-else-if="fallbackGlyph"
+    class="shrink-0 select-none text-center leading-none"
+    :style="{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.6)}px` }"
+    >{{ fallbackGlyph }}</span
+  >
 </template>

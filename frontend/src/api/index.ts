@@ -359,4 +359,57 @@ export const api = {
   async adminBanUser(userId: number, banned: boolean) {
     return (await http.post<{ ok: boolean; banned: boolean; message: string }>('/admin/ban', { userId, banned })).data
   },
+
+  // ---------------------------------------------------------------- 生产 / 采集 DLC
+  async dohdolState() {
+    return (await http.get<import('@/game/types').DohDolState>('/dohdol/state')).data
+  },
+
+  async gatherStart(jobId: string, regionId: number) {
+    return (await http.post<{ sessionId: number; jobId: string; regionId: number }>('/gather/session/start', { jobId, regionId })).data
+  },
+
+  async gatherReport(sessionId: number) {
+    return (await http.post<import('@/game/types').GatherReportResponse>('/gather/session/report', { sessionId })).data
+  },
+
+  async gatherStop(sessionId: number) {
+    return (await http.post<{ ok: boolean; message: string }>('/gather/session/stop', { sessionId })).data
+  },
+
+  async produceStart(jobId: string, recipeId: string) {
+    return (await http.post<{ sessionId: number; jobId: string; recipeId: string }>('/produce/session/start', { jobId, recipeId })).data
+  },
+
+  async produceReport(sessionId: number) {
+    return (await http.post<import('@/game/types').ProduceReportResponse>('/produce/session/report', { sessionId })).data
+  },
+
+  async produceStop(sessionId: number) {
+    return (await http.post<{ ok: boolean; message: string }>('/produce/session/stop', { sessionId })).data
+  },
+
+  async fishStart(regionId: number) {
+    return (await http.post<{ sessionId: number; regionId: number }>('/fish/session/start', { regionId })).data
+  },
+
+  async fishReport(sessionId: number) {
+    return (await http.post<import('@/game/types').FishReportResponse>('/fish/session/report', { sessionId })).data
+  },
+
+  async fishStop(sessionId: number) {
+    return (await http.post<{ ok: boolean; message: string }>('/fish/session/stop', { sessionId })).data
+  },
+
+  async consume(itemId: string) {
+    return (await http.post<{ kind: string; name: string; durationSec: number; active: import('@/game/types').ActiveConsumable[] }>('/consumable/use', { itemId })).data
+  },
+
+  async dohdolEquip(itemId: number, slot: string) {
+    return (await http.post<{ ok: boolean; slot: string; itemId: number }>('/dohdol/equip', { itemId, slot })).data
+  },
+
+  async dohdolUnequip(slot: string) {
+    return (await http.post<{ ok: boolean; slot: string }>('/dohdol/unequip', { slot })).data
+  },
 }

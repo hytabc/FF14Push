@@ -8,6 +8,7 @@ from app.api.v1 import (
     battle,
     chest,
     codex,
+    dohdol,
     economy,
     game,
     inventory,
@@ -37,4 +38,5 @@ api_router.include_router(settings.router)
 api_router.include_router(tags.router)
 api_router.include_router(redeem.router)
 api_router.include_router(raid.router)
+api_router.include_router(dohdol.router)
 api_router.include_router(admin.router)

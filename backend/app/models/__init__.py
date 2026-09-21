@@ -2,6 +2,14 @@
 
 from app.models.account import Hero, HeroSkillStat, User
 from app.models.base import Base, JsonType, TimestampMixin, utcnow
+from app.models.dohdol import (
+    ActivitySession,
+    ActiveConsumable,
+    DohDolProgress,
+    FishRecord,
+    StackItem,
+    UserTitle,
+)
 from app.models.equipment import ChestPity, Item, ItemTag
 from app.models.progress import (
     AutoSellSetting,
@@ -41,4 +49,10 @@ __all__ = [
     "RankingEntry",
     "AuditLog",
     "SecurityEvent",
+    "DohDolProgress",
+    "StackItem",
+    "ActivitySession",
+    "FishRecord",
+    "ActiveConsumable",
+    "UserTitle",
 ]

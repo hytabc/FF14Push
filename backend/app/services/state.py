@@ -20,6 +20,7 @@ from app.models import (
     User,
 )
 from app.services.codex import codex_progress
+from app.services.dohdol_state import build_dohdol_state
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
 from app.services.loot import drop_rate_multiplier
@@ -155,4 +156,5 @@ async def build_game_state(
                 else list(CONFIG.economy["sell"]["autoSellRarities"]),
             }
         },
+        "dohdol": await build_dohdol_state(db, user.id, items),
     }

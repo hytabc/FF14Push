@@ -1,0 +1,176 @@
+{
+  "$comment": "药水（60s，效果强）与食物（1800s，效果弱）。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。",
+  "kinds": {
+    "potion": {
+      "name": "药水",
+      "durationSec": 60
+    },
+    "food": {
+      "name": "食物",
+      "durationSec": 1800
+    }
+  },
+  "effectNames": {
+    "expGainPct": "经验获取",
+    "goldGainPct": "金币获取",
+    "chestLuck": "抽箱品阶概率",
+    "craftQualityPct": "制造品质概率",
+    "fishInsightPct": "捕鱼人之识时长",
+    "fishChancePct": "鱼王/鱼皇概率",
+    "gatherYieldPct": "采集产量"
+  },
+  "items": [
+    {
+      "id": "p_expGainPct",
+      "name": "经验获取秘药",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "expGainPct",
+          "value": 25
+        }
+      ],
+      "desc": "60 秒内经验获取提升。"
+    },
+    {
+      "id": "p_goldGainPct",
+      "name": "金币获取秘药",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "goldGainPct",
+          "value": 25
+        }
+      ],
+      "desc": "60 秒内金币获取提升。"
+    },
+    {
+      "id": "p_chestLuck",
+      "name": "抽箱品阶概率秘药",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "chestLuck",
+          "value": 0.15
+        }
+      ],
+      "desc": "60 秒内抽箱品阶概率提升。"
+    },
+    {
+      "id": "p_craftQualityPct",
+      "name": "制造品质概率秘药",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "craftQualityPct",
+          "value": 10
+        }
+      ],
+      "desc": "60 秒内制造品质概率提升。"
+    },
+    {
+      "id": "p_fishInsightPct",
+      "name": "捕鱼人之识时长秘药",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "fishInsightPct",
+          "value": 50
+        },
+        {
+          "stat": "fishChancePct",
+          "value": 3.0
+        }
+      ],
+      "desc": "60 秒内捕鱼人之识时长提升。"
+    },
+    {
+      "id": "p_gatherYieldPct",
+      "name": "采集产量秘药",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "gatherYieldPct",
+          "value": 30
+        }
+      ],
+      "desc": "60 秒内采集产量提升。"
+    },
+    {
+      "id": "f_expGainPct",
+      "name": "经验获取料理",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "expGainPct",
+          "value": 10
+        }
+      ],
+      "desc": "1800 秒内经验获取小幅提升，可与药水共存。"
+    },
+    {
+      "id": "f_goldGainPct",
+      "name": "金币获取料理",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "goldGainPct",
+          "value": 10
+        }
+      ],
+      "desc": "1800 秒内金币获取小幅提升，可与药水共存。"
+    },
+    {
+      "id": "f_chestLuck",
+      "name": "抽箱品阶概率料理",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "chestLuck",
+          "value": 0.06
+        }
+      ],
+      "desc": "1800 秒内抽箱品阶概率小幅提升，可与药水共存。"
+    },
+    {
+      "id": "f_craftQualityPct",
+      "name": "制造品质概率料理",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "craftQualityPct",
+          "value": 4
+        }
+      ],
+      "desc": "1800 秒内制造品质概率小幅提升，可与药水共存。"
+    },
+    {
+      "id": "f_fishInsightPct",
+      "name": "捕鱼人之识时长料理",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "fishInsightPct",
+          "value": 20
+        },
+        {
+          "stat": "fishChancePct",
+          "value": 1.2
+        }
+      ],
+      "desc": "1800 秒内捕鱼人之识时长小幅提升，可与药水共存。"
+    },
+    {
+      "id": "f_gatherYieldPct",
+      "name": "采集产量料理",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "gatherYieldPct",
+          "value": 12
+        }
+      ],
+      "desc": "1800 秒内采集产量小幅提升，可与药水共存。"
+    }
+  ]
+}

@@ -80,10 +80,130 @@ export interface Item {
   source: string
   weaponType: string | null
   jobId: string | null
+  /** 制造装备恒为「高品质」：属性区间上移且必带太古词条。 */
+  highQuality?: boolean
   /** 玩家给该装备贴的标签 id 列表。 */
   tagIds: number[]
   sellPriceMin: number
   sellPriceMax: number
+}
+
+// ------------------------------------------------------------- 生产 / 采集 DLC
+export type DohDolJobKind = 'doh' | 'dol'
+
+export interface MaterialStackItem {
+  itemId: string
+  kind: string
+  count: number
+  name: string
+  materialKind?: string
+  consumableKind?: string
+  effects?: Array<{ stat: string; value: number }>
+  desc?: string
+}
+
+export interface ActiveConsumable {
+  kind: string
+  itemId: string
+  name: string
+  effects: Array<{ stat: string; value: number }>
+  remainingSec: number
+}
+
+export interface RecipeInputView {
+  itemId: string
+  name: string
+  count: number
+  have: number
+}
+
+export interface RecipeView {
+  id: string
+  jobId: string
+  requiredLevel: number
+  unlocked: boolean
+  craftSeconds: number
+  xp: number
+  inputs: RecipeInputView[]
+  output: {
+    kind: string
+    itemId: string | null
+    baseId: string | null
+    name: string
+    count: number
+    quality: string | null
+    supply: string
+  }
+  craftable: number
+}
+
+export interface TitleView {
+  id: string
+  name: string
+  desc: string
+  owned: boolean
+}
+
+export interface DohDolProgressView {
+  kind: string
+  name: string
+  level: number
+  exp: number
+  expToNext: number
+  levelCap: number
+}
+
+export interface DohDolState {
+  progress: Record<string, DohDolProgressView>
+  materials: MaterialStackItem[]
+  consumables: MaterialStackItem[]
+  active: ActiveConsumable[]
+  recipes: RecipeView[]
+  loadout: Record<string, Item>
+  bonus: Record<string, number>
+  titles: TitleView[]
+  fishStats: {
+    species: number
+    count: number
+    king: number
+    kingTotal: number
+    emperor: number
+    emperorTotal: number
+  }
+}
+
+export interface GatherReportResponse {
+  gained: Array<{ itemId: string; name: string; count: number }>
+  actions: number
+  xp: number
+  level: { levelsGained: number; level: number; exp: number }
+}
+
+export interface ProduceReportResponse {
+  crafts: number
+  recipeId: string
+  materials: Array<{ itemId: string; name: string; count: number }>
+  items: Item[]
+  xp: number
+  level: { levelsGained: number; level: number; exp: number }
+}
+
+export interface FishCatch {
+  id: string
+  name: string
+  kind: 'normal' | 'king' | 'emperor'
+  size: number
+  exp: number
+}
+
+export interface FishReportResponse {
+  caught: FishCatch[]
+  gained: Array<{ itemId: string; name: string; count: number }>
+  casts: number
+  xp: number
+  level: { levelsGained: number; level: number; exp: number }
+  insightRemainingSec: number
+  newTitles: string[]
 }
 
 /** 排行榜点击查看的玩家资料（只含当前已装备栏位，只读）。 */
@@ -385,6 +505,7 @@ export interface GameState {
   tutorial: { currentStep: number; completed: boolean; skipped: boolean }
   tavern: { candidate: TavernCandidate | null }
   settings: { autoSell: { enabled: boolean; rarities: RarityId[] } }
+  dohdol: DohDolState
 }
 
 export interface BattleSessionStart {

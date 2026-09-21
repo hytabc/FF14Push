@@ -20,6 +20,15 @@ import heroesJson from '../data/heroes.json'
 import combatJson from '../data/combat.json'
 import tutorialJson from '../data/tutorial.json'
 import tagsJson from '../data/tags.json'
+import dohdolJobsJson from '../data/dohdol-jobs.json'
+import dohdolLevelsJson from '../data/dohdol-levels.json'
+import materialsJson from '../data/materials.json'
+import gatherNodesJson from '../data/gather-nodes.json'
+import dohdolEquipmentJson from '../data/dohdol-equipment.json'
+import fishJson from '../data/fish.json'
+import recipesJson from '../data/recipes.json'
+import consumablesJson from '../data/consumables.json'
+import titlesJson from '../data/titles.json'
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
@@ -247,6 +256,129 @@ export interface TutorialStep {
   text: string
 }
 
+export type DohDolJobKind = 'doh' | 'dol'
+export type DohDolCategory = 'doh_tool' | 'doh_gear' | 'dol_tool' | 'dol_gear'
+export type MaterialKind = 'gather' | 'half' | 'fish'
+
+export interface DohDolJobDef {
+  id: string
+  name: string
+  enName: string
+  kind: DohDolJobKind
+  role: string
+}
+
+export interface MaterialDef {
+  id: string
+  name: string
+  kind: MaterialKind
+  jobId?: string
+  regionId?: number
+  tier?: number
+}
+
+export interface GatherYield {
+  materialId: string
+  weight: number
+  min: number
+  max: number
+}
+
+export interface GatherNodeDef {
+  regionId: number
+  jobId: string
+  levelReq: number
+  yields: GatherYield[]
+}
+
+export interface DohDolSlotDef {
+  id: string
+  name: string
+  category: DohDolCategory
+  order: number
+}
+
+export interface DohDolItemDef {
+  id: string
+  name: string
+  category: DohDolCategory
+  slot: string
+  kind: DohDolJobKind
+  tierIndex: number
+  levelReq: number
+  bonus: Record<string, number>
+}
+
+export interface FishDef {
+  id: string
+  name: string
+  weight?: number
+  sizeMin: number
+  sizeMax: number
+  exp: number
+}
+
+export interface KingFishDef {
+  id: string
+  name: string
+  prereqFishIds: string[]
+  insightSeconds: [number, number]
+  chance: number
+  sizeMin: number
+  sizeMax: number
+  exp: number
+}
+
+export interface FishRegionDef {
+  regionId: number
+  name: string
+  normal: FishDef[]
+  king: KingFishDef
+  emperor: KingFishDef
+}
+
+export interface RecipeInput {
+  itemId: string
+  count: number
+}
+
+export interface RecipeOutput {
+  kind: 'material' | 'equipment' | 'consumable'
+  itemId?: string
+  baseId?: string
+  count?: number
+}
+
+export interface RecipeDef {
+  id: string
+  jobId: string
+  requiredLevel: number
+  craftSeconds: number
+  xp: number
+  inputs: RecipeInput[]
+  output: RecipeOutput
+}
+
+export interface ConsumableEffect {
+  stat: string
+  value: number
+}
+
+export interface ConsumableDef {
+  id: string
+  name: string
+  kind: 'potion' | 'food'
+  effects: ConsumableEffect[]
+  desc: string
+}
+
+export interface TitleDef {
+  id: string
+  name: string
+  desc: string
+  condition: { type: string }
+}
+
 const raritiesData = raritiesJson as unknown as {
   order: RarityId[]
   rarities: Record<RarityId, Rarity>
@@ -364,6 +496,18 @@ export function expandBaseItems(): BaseItem[] {
 
 const baseItems = expandBaseItems()
 
+const materialList: MaterialDef[] = [
+  ...(materialsJson as unknown as { materials: MaterialDef[] }).materials,
+]
+for (const region of (fishJson as unknown as { regions: FishRegionDef[] }).regions) {
+  for (const f of region.normal) {
+    materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId })
+  }
+  for (const f of [region.king, region.emperor]) {
+    materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId })
+  }
+}
+
 export const gameData = {
   rarities: { order: raritiesData.order, byId: raritiesData.rarities },
   tagColors: {
@@ -471,6 +615,64 @@ export const gameData = {
     completionReward: { gold: number; chests: Array<{ chestId: string; count: number }> }
     steps: TutorialStep[]
   },
+  dohdolJobs: dohdolJobsJson as unknown as {
+    kinds: Record<DohDolJobKind, { id: DohDolJobKind; name: string; enName: string }>
+    jobs: DohDolJobDef[]
+  },
+  dohdolJobById: Object.fromEntries(
+    (dohdolJobsJson as unknown as { jobs: DohDolJobDef[] }).jobs.map((j) => [j.id, j]),
+  ) as Record<string, DohDolJobDef>,
+  dohdolLevels: dohdolLevelsJson as unknown as {
+    levelCap: number
+    expCurve: { base: number; growth: number }
+    kinds: Record<DohDolJobKind, { id: DohDolJobKind; name: string; desc: string }>
+    actionXp: { gather: number; fish: number; craftBase: number }
+  },
+  materials: materialsJson as unknown as { materials: MaterialDef[] },
+  materialById: Object.fromEntries(materialList.map((m) => [m.id, m])) as Record<string, MaterialDef>,
+  gatherNodes: gatherNodesJson as unknown as {
+    baseSecondsPerAction: number
+    yieldPerLevelPct: number
+    maxYieldLevelBonusPct: number
+    nodes: GatherNodeDef[]
+  },
+  dohdolEquipment: dohdolEquipmentJson as unknown as {
+    slots: DohDolSlotDef[]
+    categories: Array<{ id: DohDolCategory; name: string; kind: DohDolJobKind }>
+    bonusNames: Record<string, string>
+    items: DohDolItemDef[]
+  },
+  dohdolItemById: Object.fromEntries(
+    (dohdolEquipmentJson as unknown as { items: DohDolItemDef[] }).items.map((i) => [i.id, i]),
+  ) as Record<string, DohDolItemDef>,
+  fish: fishJson as unknown as {
+    castSeconds: number
+    insightBuffName: string
+    regions: FishRegionDef[]
+  },
+  fishRegionById: Object.fromEntries(
+    (fishJson as unknown as { regions: FishRegionDef[] }).regions.map((r) => [r.regionId, r]),
+  ) as Record<number, FishRegionDef>,
+  recipes: recipesJson as unknown as {
+    equipment: {
+      highQualityMultiplier: number
+      guaranteedAncientTerms: number
+      rarityWeights: Record<RarityId, number>
+    }
+    recipes: RecipeDef[]
+  },
+  recipeById: Object.fromEntries(
+    (recipesJson as unknown as { recipes: RecipeDef[] }).recipes.map((r) => [r.id, r]),
+  ) as Record<string, RecipeDef>,
+  consumables: consumablesJson as unknown as {
+    kinds: Record<'potion' | 'food', { name: string; durationSec: number }>
+    effectNames: Record<string, string>
+    items: ConsumableDef[]
+  },
+  consumableById: Object.fromEntries(
+    (consumablesJson as unknown as { items: ConsumableDef[] }).items.map((c) => [c.id, c]),
+  ) as Record<string, ConsumableDef>,
+  titles: titlesJson as unknown as { titles: TitleDef[] },
 }
 
 export type GameData = typeof gameData

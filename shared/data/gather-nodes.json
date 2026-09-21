@@ -1,0 +1,1768 @@
+{
+  "$comment": "采集点：regionId + 采集职业 → 可采材料与数量区间。地区特产只在其「主采职业」下产出。",
+  "baseSecondsPerAction": 2.5,
+  "yieldPerLevelPct": 0.5,
+  "maxYieldLevelBonusPct": 50,
+  "nodes": [
+    {
+      "regionId": 1,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m1",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 1,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 2,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m2",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 2,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 3,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m3",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 3,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 4,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m4",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 4,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 5,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m5",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 5,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 6,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m6",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 6,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 7,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m7",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 7,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 8,
+      "jobId": "BTN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "m8",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 8,
+      "jobId": "MIN",
+      "levelReq": 1,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 9,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m9",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 9,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 10,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m10",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 10,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 11,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m11",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 11,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 12,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m12",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 12,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 13,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m13",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 13,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 14,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m14",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 14,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 15,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m15",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 15,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 16,
+      "jobId": "BTN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "m16",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 16,
+      "jobId": "MIN",
+      "levelReq": 6,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 17,
+      "jobId": "MIN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "m17",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 17,
+      "jobId": "BTN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 18,
+      "jobId": "BTN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "m18",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 18,
+      "jobId": "MIN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 19,
+      "jobId": "MIN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "m19",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 19,
+      "jobId": "BTN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 20,
+      "jobId": "BTN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "m20",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 20,
+      "jobId": "MIN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 21,
+      "jobId": "MIN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "m21",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 21,
+      "jobId": "BTN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 22,
+      "jobId": "BTN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "m22",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 22,
+      "jobId": "MIN",
+      "levelReq": 11,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 23,
+      "jobId": "MIN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "m23",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 23,
+      "jobId": "BTN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 24,
+      "jobId": "BTN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "m24",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 24,
+      "jobId": "MIN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 25,
+      "jobId": "MIN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "m25",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 25,
+      "jobId": "BTN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 26,
+      "jobId": "BTN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "m26",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 26,
+      "jobId": "MIN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 27,
+      "jobId": "MIN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "m27",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 27,
+      "jobId": "BTN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 28,
+      "jobId": "BTN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "m28",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 28,
+      "jobId": "MIN",
+      "levelReq": 16,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 29,
+      "jobId": "MIN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "m29",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 29,
+      "jobId": "BTN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 30,
+      "jobId": "BTN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "m30",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 30,
+      "jobId": "MIN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 31,
+      "jobId": "MIN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "m31",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 31,
+      "jobId": "BTN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 32,
+      "jobId": "BTN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "m32",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 32,
+      "jobId": "MIN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 33,
+      "jobId": "MIN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "m33",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 33,
+      "jobId": "BTN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 34,
+      "jobId": "BTN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "m34",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 34,
+      "jobId": "MIN",
+      "levelReq": 21,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 35,
+      "jobId": "MIN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "m35",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 35,
+      "jobId": "BTN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 36,
+      "jobId": "BTN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "m36",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 36,
+      "jobId": "MIN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 37,
+      "jobId": "MIN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "m37",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 37,
+      "jobId": "BTN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 38,
+      "jobId": "BTN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "m38",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 38,
+      "jobId": "MIN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 39,
+      "jobId": "MIN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "m39",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_stone",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 39,
+      "jobId": "BTN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_fiber",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 40,
+      "jobId": "BTN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "m40",
+          "weight": 3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "materialId": "g_wood",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_herb",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "regionId": 40,
+      "jobId": "MIN",
+      "levelReq": 26,
+      "yields": [
+        {
+          "materialId": "g_ore",
+          "weight": 5,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "materialId": "g_gem",
+          "weight": 2,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    }
+  ]
+}

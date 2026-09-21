@@ -1,0 +1,451 @@
+{
+  "$comment": "采集材料与半成品。材料不随地区等级递增，仅按种类区分：每个地区有自己的特产材料（regionId 标注）。",
+  "materials": [
+    {
+      "id": "g_ore",
+      "name": "铁矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "tier": 0
+    },
+    {
+      "id": "g_stone",
+      "name": "石料",
+      "kind": "gather",
+      "jobId": "MIN",
+      "tier": 0
+    },
+    {
+      "id": "g_gem",
+      "name": "原石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "tier": 0
+    },
+    {
+      "id": "g_wood",
+      "name": "原木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "tier": 0
+    },
+    {
+      "id": "g_herb",
+      "name": "药草",
+      "kind": "gather",
+      "jobId": "BTN",
+      "tier": 0
+    },
+    {
+      "id": "g_fiber",
+      "name": "纤维",
+      "kind": "gather",
+      "jobId": "BTN",
+      "tier": 0
+    },
+    {
+      "id": "m1",
+      "name": "中拉诺西亚矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 1,
+      "tier": 1
+    },
+    {
+      "id": "m2",
+      "name": "西拉诺西亚草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 2,
+      "tier": 1
+    },
+    {
+      "id": "m3",
+      "name": "拉诺西亚低地矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 3,
+      "tier": 1
+    },
+    {
+      "id": "m4",
+      "name": "中萨纳兰草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 4,
+      "tier": 1
+    },
+    {
+      "id": "m5",
+      "name": "西萨纳兰矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 5,
+      "tier": 1
+    },
+    {
+      "id": "m6",
+      "name": "黑衣森林中央林区草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 6,
+      "tier": 1
+    },
+    {
+      "id": "m7",
+      "name": "黑衣森林东部林区矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 7,
+      "tier": 1
+    },
+    {
+      "id": "m8",
+      "name": "东萨纳兰草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 8,
+      "tier": 1
+    },
+    {
+      "id": "m9",
+      "name": "南萨纳兰矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 9,
+      "tier": 1
+    },
+    {
+      "id": "m10",
+      "name": "摩杜纳草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 10,
+      "tier": 1
+    },
+    {
+      "id": "m11",
+      "name": "库尔札斯中央高地矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 11,
+      "tier": 1
+    },
+    {
+      "id": "m12",
+      "name": "库尔札斯西部高地草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 12,
+      "tier": 1
+    },
+    {
+      "id": "m13",
+      "name": "龙堡参天高地矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 13,
+      "tier": 1
+    },
+    {
+      "id": "m14",
+      "name": "翻云雾海草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 14,
+      "tier": 1
+    },
+    {
+      "id": "m15",
+      "name": "龙堡内陆低地矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 15,
+      "tier": 1
+    },
+    {
+      "id": "m16",
+      "name": "田园郡草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 16,
+      "tier": 1
+    },
+    {
+      "id": "m17",
+      "name": "基拉巴尼亚边区矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 17,
+      "tier": 1
+    },
+    {
+      "id": "m18",
+      "name": "基拉巴尼亚山区草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 18,
+      "tier": 1
+    },
+    {
+      "id": "m19",
+      "name": "红玉海矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 19,
+      "tier": 1
+    },
+    {
+      "id": "m20",
+      "name": "延夏草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 20,
+      "tier": 1
+    },
+    {
+      "id": "m21",
+      "name": "太阳神草原矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 21,
+      "tier": 1
+    },
+    {
+      "id": "m22",
+      "name": "黄金港草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 22,
+      "tier": 1
+    },
+    {
+      "id": "m23",
+      "name": "珂露西亚岛矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 23,
+      "tier": 1
+    },
+    {
+      "id": "m24",
+      "name": "安穆·艾兰草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 24,
+      "tier": 1
+    },
+    {
+      "id": "m25",
+      "name": "伊尔美格矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 25,
+      "tier": 1
+    },
+    {
+      "id": "m26",
+      "name": "雷克兰德草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 26,
+      "tier": 1
+    },
+    {
+      "id": "m27",
+      "name": "拉凯提卡大森林矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 27,
+      "tier": 1
+    },
+    {
+      "id": "m28",
+      "name": "黑风海草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 28,
+      "tier": 1
+    },
+    {
+      "id": "m29",
+      "name": "萨维奈岛矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 29,
+      "tier": 1
+    },
+    {
+      "id": "m30",
+      "name": "加雷马草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 30,
+      "tier": 1
+    },
+    {
+      "id": "m31",
+      "name": "叹息海矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 31,
+      "tier": 1
+    },
+    {
+      "id": "m32",
+      "name": "天外天垓草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 32,
+      "tier": 1
+    },
+    {
+      "id": "m33",
+      "name": "厄尔庇斯矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 33,
+      "tier": 1
+    },
+    {
+      "id": "m34",
+      "name": "迷津草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 34,
+      "tier": 1
+    },
+    {
+      "id": "m35",
+      "name": "图拉尔大陆·海岸矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 35,
+      "tier": 1
+    },
+    {
+      "id": "m36",
+      "name": "图拉尔大陆·丛林草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 36,
+      "tier": 1
+    },
+    {
+      "id": "m37",
+      "name": "图拉尔大陆·遗迹矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 37,
+      "tier": 1
+    },
+    {
+      "id": "m38",
+      "name": "图拉尔大陆·火山草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 38,
+      "tier": 1
+    },
+    {
+      "id": "m39",
+      "name": "图拉尔大陆·王都矿石",
+      "kind": "gather",
+      "jobId": "MIN",
+      "regionId": 39,
+      "tier": 1
+    },
+    {
+      "id": "m40",
+      "name": "图拉尔大陆·圣域草木",
+      "kind": "gather",
+      "jobId": "BTN",
+      "regionId": 40,
+      "tier": 1
+    },
+    {
+      "id": "h_plank",
+      "name": "木板",
+      "kind": "half",
+      "jobId": "CRP",
+      "tier": 2
+    },
+    {
+      "id": "h_ingot",
+      "name": "铁锭",
+      "kind": "half",
+      "jobId": "BSM",
+      "tier": 2
+    },
+    {
+      "id": "h_steel",
+      "name": "钢锭",
+      "kind": "half",
+      "jobId": "BSM",
+      "tier": 2
+    },
+    {
+      "id": "h_plate",
+      "name": "装甲板",
+      "kind": "half",
+      "jobId": "ARM",
+      "tier": 2
+    },
+    {
+      "id": "h_alloy",
+      "name": "合金锭",
+      "kind": "half",
+      "jobId": "ARM",
+      "tier": 2
+    },
+    {
+      "id": "h_gemcut",
+      "name": "雕琢宝石",
+      "kind": "half",
+      "jobId": "GSM",
+      "tier": 2
+    },
+    {
+      "id": "h_glass",
+      "name": "玻璃板",
+      "kind": "half",
+      "jobId": "GSM",
+      "tier": 2
+    },
+    {
+      "id": "h_leather",
+      "name": "皮革",
+      "kind": "half",
+      "jobId": "LTW",
+      "tier": 2
+    },
+    {
+      "id": "h_cloth",
+      "name": "布料",
+      "kind": "half",
+      "jobId": "WVR",
+      "tier": 2
+    },
+    {
+      "id": "h_ink",
+      "name": "浓缩墨水",
+      "kind": "half",
+      "jobId": "ALC",
+      "tier": 2
+    },
+    {
+      "id": "h_oil",
+      "name": "精油",
+      "kind": "half",
+      "jobId": "ALC",
+      "tier": 2
+    },
+    {
+      "id": "h_flour",
+      "name": "面粉",
+      "kind": "half",
+      "jobId": "CUL",
+      "tier": 2
+    }
+  ]
+}

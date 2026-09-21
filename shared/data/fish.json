@@ -1,0 +1,2887 @@
+{
+  "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。",
+  "castSeconds": 3.0,
+  "insightBuffName": "捕鱼人之识",
+  "regions": [
+    {
+      "regionId": 1,
+      "name": "中拉诺西亚",
+      "normal": [
+        {
+          "id": "f1_1",
+          "name": "中拉诺西亚幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 4
+        },
+        {
+          "id": "f1_2",
+          "name": "中拉诺西亚游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 4
+        },
+        {
+          "id": "f1_3",
+          "name": "中拉诺西亚巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 4
+        },
+        {
+          "id": "f1_4",
+          "name": "中拉诺西亚稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 4
+        }
+      ],
+      "king": {
+        "id": "k1",
+        "name": "中拉诺西亚鱼王",
+        "prereqFishIds": [
+          "f1_1",
+          "f1_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 41
+      },
+      "emperor": {
+        "id": "e1",
+        "name": "中拉诺西亚鱼皇",
+        "prereqFishIds": [
+          "f1_1",
+          "f1_2",
+          "f1_3",
+          "f1_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 122
+      }
+    },
+    {
+      "regionId": 2,
+      "name": "西拉诺西亚",
+      "normal": [
+        {
+          "id": "f2_1",
+          "name": "西拉诺西亚幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 4
+        },
+        {
+          "id": "f2_2",
+          "name": "西拉诺西亚游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 4
+        },
+        {
+          "id": "f2_3",
+          "name": "西拉诺西亚巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 4
+        },
+        {
+          "id": "f2_4",
+          "name": "西拉诺西亚稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 4
+        }
+      ],
+      "king": {
+        "id": "k2",
+        "name": "西拉诺西亚鱼王",
+        "prereqFishIds": [
+          "f2_1",
+          "f2_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 42
+      },
+      "emperor": {
+        "id": "e2",
+        "name": "西拉诺西亚鱼皇",
+        "prereqFishIds": [
+          "f2_1",
+          "f2_2",
+          "f2_3",
+          "f2_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 124
+      }
+    },
+    {
+      "regionId": 3,
+      "name": "拉诺西亚低地",
+      "normal": [
+        {
+          "id": "f3_1",
+          "name": "拉诺西亚低地幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 4
+        },
+        {
+          "id": "f3_2",
+          "name": "拉诺西亚低地游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 4
+        },
+        {
+          "id": "f3_3",
+          "name": "拉诺西亚低地巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 4
+        },
+        {
+          "id": "f3_4",
+          "name": "拉诺西亚低地稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 4
+        }
+      ],
+      "king": {
+        "id": "k3",
+        "name": "拉诺西亚低地鱼王",
+        "prereqFishIds": [
+          "f3_1",
+          "f3_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 43
+      },
+      "emperor": {
+        "id": "e3",
+        "name": "拉诺西亚低地鱼皇",
+        "prereqFishIds": [
+          "f3_1",
+          "f3_2",
+          "f3_3",
+          "f3_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 126
+      }
+    },
+    {
+      "regionId": 4,
+      "name": "中萨纳兰",
+      "normal": [
+        {
+          "id": "f4_1",
+          "name": "中萨纳兰幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 5
+        },
+        {
+          "id": "f4_2",
+          "name": "中萨纳兰游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 5
+        },
+        {
+          "id": "f4_3",
+          "name": "中萨纳兰巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 5
+        },
+        {
+          "id": "f4_4",
+          "name": "中萨纳兰稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 5
+        }
+      ],
+      "king": {
+        "id": "k4",
+        "name": "中萨纳兰鱼王",
+        "prereqFishIds": [
+          "f4_1",
+          "f4_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 44
+      },
+      "emperor": {
+        "id": "e4",
+        "name": "中萨纳兰鱼皇",
+        "prereqFishIds": [
+          "f4_1",
+          "f4_2",
+          "f4_3",
+          "f4_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 128
+      }
+    },
+    {
+      "regionId": 5,
+      "name": "西萨纳兰",
+      "normal": [
+        {
+          "id": "f5_1",
+          "name": "西萨纳兰幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 5
+        },
+        {
+          "id": "f5_2",
+          "name": "西萨纳兰游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 5
+        },
+        {
+          "id": "f5_3",
+          "name": "西萨纳兰巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 5
+        },
+        {
+          "id": "f5_4",
+          "name": "西萨纳兰稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 5
+        }
+      ],
+      "king": {
+        "id": "k5",
+        "name": "西萨纳兰鱼王",
+        "prereqFishIds": [
+          "f5_1",
+          "f5_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 45
+      },
+      "emperor": {
+        "id": "e5",
+        "name": "西萨纳兰鱼皇",
+        "prereqFishIds": [
+          "f5_1",
+          "f5_2",
+          "f5_3",
+          "f5_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 130
+      }
+    },
+    {
+      "regionId": 6,
+      "name": "黑衣森林中央林区",
+      "normal": [
+        {
+          "id": "f6_1",
+          "name": "黑衣森林中央林区幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 5
+        },
+        {
+          "id": "f6_2",
+          "name": "黑衣森林中央林区游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 5
+        },
+        {
+          "id": "f6_3",
+          "name": "黑衣森林中央林区巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 5
+        },
+        {
+          "id": "f6_4",
+          "name": "黑衣森林中央林区稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 5
+        }
+      ],
+      "king": {
+        "id": "k6",
+        "name": "黑衣森林中央林区鱼王",
+        "prereqFishIds": [
+          "f6_1",
+          "f6_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 46
+      },
+      "emperor": {
+        "id": "e6",
+        "name": "黑衣森林中央林区鱼皇",
+        "prereqFishIds": [
+          "f6_1",
+          "f6_2",
+          "f6_3",
+          "f6_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 132
+      }
+    },
+    {
+      "regionId": 7,
+      "name": "黑衣森林东部林区",
+      "normal": [
+        {
+          "id": "f7_1",
+          "name": "黑衣森林东部林区幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 5
+        },
+        {
+          "id": "f7_2",
+          "name": "黑衣森林东部林区游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 5
+        },
+        {
+          "id": "f7_3",
+          "name": "黑衣森林东部林区巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 5
+        },
+        {
+          "id": "f7_4",
+          "name": "黑衣森林东部林区稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 5
+        }
+      ],
+      "king": {
+        "id": "k7",
+        "name": "黑衣森林东部林区鱼王",
+        "prereqFishIds": [
+          "f7_1",
+          "f7_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 47
+      },
+      "emperor": {
+        "id": "e7",
+        "name": "黑衣森林东部林区鱼皇",
+        "prereqFishIds": [
+          "f7_1",
+          "f7_2",
+          "f7_3",
+          "f7_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 134
+      }
+    },
+    {
+      "regionId": 8,
+      "name": "东萨纳兰",
+      "normal": [
+        {
+          "id": "f8_1",
+          "name": "东萨纳兰幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 6
+        },
+        {
+          "id": "f8_2",
+          "name": "东萨纳兰游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 6
+        },
+        {
+          "id": "f8_3",
+          "name": "东萨纳兰巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 6
+        },
+        {
+          "id": "f8_4",
+          "name": "东萨纳兰稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 6
+        }
+      ],
+      "king": {
+        "id": "k8",
+        "name": "东萨纳兰鱼王",
+        "prereqFishIds": [
+          "f8_1",
+          "f8_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 48
+      },
+      "emperor": {
+        "id": "e8",
+        "name": "东萨纳兰鱼皇",
+        "prereqFishIds": [
+          "f8_1",
+          "f8_2",
+          "f8_3",
+          "f8_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 136
+      }
+    },
+    {
+      "regionId": 9,
+      "name": "南萨纳兰",
+      "normal": [
+        {
+          "id": "f9_1",
+          "name": "南萨纳兰幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 6
+        },
+        {
+          "id": "f9_2",
+          "name": "南萨纳兰游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 6
+        },
+        {
+          "id": "f9_3",
+          "name": "南萨纳兰巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 6
+        },
+        {
+          "id": "f9_4",
+          "name": "南萨纳兰稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 6
+        }
+      ],
+      "king": {
+        "id": "k9",
+        "name": "南萨纳兰鱼王",
+        "prereqFishIds": [
+          "f9_1",
+          "f9_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 49
+      },
+      "emperor": {
+        "id": "e9",
+        "name": "南萨纳兰鱼皇",
+        "prereqFishIds": [
+          "f9_1",
+          "f9_2",
+          "f9_3",
+          "f9_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 138
+      }
+    },
+    {
+      "regionId": 10,
+      "name": "摩杜纳",
+      "normal": [
+        {
+          "id": "f10_1",
+          "name": "摩杜纳幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 6
+        },
+        {
+          "id": "f10_2",
+          "name": "摩杜纳游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 6
+        },
+        {
+          "id": "f10_3",
+          "name": "摩杜纳巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 6
+        },
+        {
+          "id": "f10_4",
+          "name": "摩杜纳稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 6
+        }
+      ],
+      "king": {
+        "id": "k10",
+        "name": "摩杜纳鱼王",
+        "prereqFishIds": [
+          "f10_1",
+          "f10_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 50
+      },
+      "emperor": {
+        "id": "e10",
+        "name": "摩杜纳鱼皇",
+        "prereqFishIds": [
+          "f10_1",
+          "f10_2",
+          "f10_3",
+          "f10_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 140
+      }
+    },
+    {
+      "regionId": 11,
+      "name": "库尔札斯中央高地",
+      "normal": [
+        {
+          "id": "f11_1",
+          "name": "库尔札斯中央高地幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 6
+        },
+        {
+          "id": "f11_2",
+          "name": "库尔札斯中央高地游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 6
+        },
+        {
+          "id": "f11_3",
+          "name": "库尔札斯中央高地巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 6
+        },
+        {
+          "id": "f11_4",
+          "name": "库尔札斯中央高地稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 6
+        }
+      ],
+      "king": {
+        "id": "k11",
+        "name": "库尔札斯中央高地鱼王",
+        "prereqFishIds": [
+          "f11_1",
+          "f11_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 51
+      },
+      "emperor": {
+        "id": "e11",
+        "name": "库尔札斯中央高地鱼皇",
+        "prereqFishIds": [
+          "f11_1",
+          "f11_2",
+          "f11_3",
+          "f11_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 142
+      }
+    },
+    {
+      "regionId": 12,
+      "name": "库尔札斯西部高地",
+      "normal": [
+        {
+          "id": "f12_1",
+          "name": "库尔札斯西部高地幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 7
+        },
+        {
+          "id": "f12_2",
+          "name": "库尔札斯西部高地游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 7
+        },
+        {
+          "id": "f12_3",
+          "name": "库尔札斯西部高地巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 7
+        },
+        {
+          "id": "f12_4",
+          "name": "库尔札斯西部高地稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 7
+        }
+      ],
+      "king": {
+        "id": "k12",
+        "name": "库尔札斯西部高地鱼王",
+        "prereqFishIds": [
+          "f12_1",
+          "f12_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 52
+      },
+      "emperor": {
+        "id": "e12",
+        "name": "库尔札斯西部高地鱼皇",
+        "prereqFishIds": [
+          "f12_1",
+          "f12_2",
+          "f12_3",
+          "f12_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 144
+      }
+    },
+    {
+      "regionId": 13,
+      "name": "龙堡参天高地",
+      "normal": [
+        {
+          "id": "f13_1",
+          "name": "龙堡参天高地幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 7
+        },
+        {
+          "id": "f13_2",
+          "name": "龙堡参天高地游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 7
+        },
+        {
+          "id": "f13_3",
+          "name": "龙堡参天高地巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 7
+        },
+        {
+          "id": "f13_4",
+          "name": "龙堡参天高地稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 7
+        }
+      ],
+      "king": {
+        "id": "k13",
+        "name": "龙堡参天高地鱼王",
+        "prereqFishIds": [
+          "f13_1",
+          "f13_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 53
+      },
+      "emperor": {
+        "id": "e13",
+        "name": "龙堡参天高地鱼皇",
+        "prereqFishIds": [
+          "f13_1",
+          "f13_2",
+          "f13_3",
+          "f13_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 146
+      }
+    },
+    {
+      "regionId": 14,
+      "name": "翻云雾海",
+      "normal": [
+        {
+          "id": "f14_1",
+          "name": "翻云雾海幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 7
+        },
+        {
+          "id": "f14_2",
+          "name": "翻云雾海游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 7
+        },
+        {
+          "id": "f14_3",
+          "name": "翻云雾海巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 7
+        },
+        {
+          "id": "f14_4",
+          "name": "翻云雾海稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 7
+        }
+      ],
+      "king": {
+        "id": "k14",
+        "name": "翻云雾海鱼王",
+        "prereqFishIds": [
+          "f14_1",
+          "f14_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 54
+      },
+      "emperor": {
+        "id": "e14",
+        "name": "翻云雾海鱼皇",
+        "prereqFishIds": [
+          "f14_1",
+          "f14_2",
+          "f14_3",
+          "f14_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 148
+      }
+    },
+    {
+      "regionId": 15,
+      "name": "龙堡内陆低地",
+      "normal": [
+        {
+          "id": "f15_1",
+          "name": "龙堡内陆低地幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 7
+        },
+        {
+          "id": "f15_2",
+          "name": "龙堡内陆低地游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 7
+        },
+        {
+          "id": "f15_3",
+          "name": "龙堡内陆低地巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 7
+        },
+        {
+          "id": "f15_4",
+          "name": "龙堡内陆低地稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 7
+        }
+      ],
+      "king": {
+        "id": "k15",
+        "name": "龙堡内陆低地鱼王",
+        "prereqFishIds": [
+          "f15_1",
+          "f15_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 55
+      },
+      "emperor": {
+        "id": "e15",
+        "name": "龙堡内陆低地鱼皇",
+        "prereqFishIds": [
+          "f15_1",
+          "f15_2",
+          "f15_3",
+          "f15_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 150
+      }
+    },
+    {
+      "regionId": 16,
+      "name": "田园郡",
+      "normal": [
+        {
+          "id": "f16_1",
+          "name": "田园郡幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 8
+        },
+        {
+          "id": "f16_2",
+          "name": "田园郡游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 8
+        },
+        {
+          "id": "f16_3",
+          "name": "田园郡巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 8
+        },
+        {
+          "id": "f16_4",
+          "name": "田园郡稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 8
+        }
+      ],
+      "king": {
+        "id": "k16",
+        "name": "田园郡鱼王",
+        "prereqFishIds": [
+          "f16_1",
+          "f16_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 56
+      },
+      "emperor": {
+        "id": "e16",
+        "name": "田园郡鱼皇",
+        "prereqFishIds": [
+          "f16_1",
+          "f16_2",
+          "f16_3",
+          "f16_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 152
+      }
+    },
+    {
+      "regionId": 17,
+      "name": "基拉巴尼亚边区",
+      "normal": [
+        {
+          "id": "f17_1",
+          "name": "基拉巴尼亚边区幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 8
+        },
+        {
+          "id": "f17_2",
+          "name": "基拉巴尼亚边区游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 8
+        },
+        {
+          "id": "f17_3",
+          "name": "基拉巴尼亚边区巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 8
+        },
+        {
+          "id": "f17_4",
+          "name": "基拉巴尼亚边区稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 8
+        }
+      ],
+      "king": {
+        "id": "k17",
+        "name": "基拉巴尼亚边区鱼王",
+        "prereqFishIds": [
+          "f17_1",
+          "f17_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 57
+      },
+      "emperor": {
+        "id": "e17",
+        "name": "基拉巴尼亚边区鱼皇",
+        "prereqFishIds": [
+          "f17_1",
+          "f17_2",
+          "f17_3",
+          "f17_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 154
+      }
+    },
+    {
+      "regionId": 18,
+      "name": "基拉巴尼亚山区",
+      "normal": [
+        {
+          "id": "f18_1",
+          "name": "基拉巴尼亚山区幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 8
+        },
+        {
+          "id": "f18_2",
+          "name": "基拉巴尼亚山区游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 8
+        },
+        {
+          "id": "f18_3",
+          "name": "基拉巴尼亚山区巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 8
+        },
+        {
+          "id": "f18_4",
+          "name": "基拉巴尼亚山区稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 8
+        }
+      ],
+      "king": {
+        "id": "k18",
+        "name": "基拉巴尼亚山区鱼王",
+        "prereqFishIds": [
+          "f18_1",
+          "f18_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 58
+      },
+      "emperor": {
+        "id": "e18",
+        "name": "基拉巴尼亚山区鱼皇",
+        "prereqFishIds": [
+          "f18_1",
+          "f18_2",
+          "f18_3",
+          "f18_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 156
+      }
+    },
+    {
+      "regionId": 19,
+      "name": "红玉海",
+      "normal": [
+        {
+          "id": "f19_1",
+          "name": "红玉海幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 8
+        },
+        {
+          "id": "f19_2",
+          "name": "红玉海游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 8
+        },
+        {
+          "id": "f19_3",
+          "name": "红玉海巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 8
+        },
+        {
+          "id": "f19_4",
+          "name": "红玉海稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 8
+        }
+      ],
+      "king": {
+        "id": "k19",
+        "name": "红玉海鱼王",
+        "prereqFishIds": [
+          "f19_1",
+          "f19_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 59
+      },
+      "emperor": {
+        "id": "e19",
+        "name": "红玉海鱼皇",
+        "prereqFishIds": [
+          "f19_1",
+          "f19_2",
+          "f19_3",
+          "f19_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 158
+      }
+    },
+    {
+      "regionId": 20,
+      "name": "延夏",
+      "normal": [
+        {
+          "id": "f20_1",
+          "name": "延夏幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 9
+        },
+        {
+          "id": "f20_2",
+          "name": "延夏游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 9
+        },
+        {
+          "id": "f20_3",
+          "name": "延夏巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 9
+        },
+        {
+          "id": "f20_4",
+          "name": "延夏稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 9
+        }
+      ],
+      "king": {
+        "id": "k20",
+        "name": "延夏鱼王",
+        "prereqFishIds": [
+          "f20_1",
+          "f20_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 60
+      },
+      "emperor": {
+        "id": "e20",
+        "name": "延夏鱼皇",
+        "prereqFishIds": [
+          "f20_1",
+          "f20_2",
+          "f20_3",
+          "f20_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 160
+      }
+    },
+    {
+      "regionId": 21,
+      "name": "太阳神草原",
+      "normal": [
+        {
+          "id": "f21_1",
+          "name": "太阳神草原幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 9
+        },
+        {
+          "id": "f21_2",
+          "name": "太阳神草原游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 9
+        },
+        {
+          "id": "f21_3",
+          "name": "太阳神草原巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 9
+        },
+        {
+          "id": "f21_4",
+          "name": "太阳神草原稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 9
+        }
+      ],
+      "king": {
+        "id": "k21",
+        "name": "太阳神草原鱼王",
+        "prereqFishIds": [
+          "f21_1",
+          "f21_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 61
+      },
+      "emperor": {
+        "id": "e21",
+        "name": "太阳神草原鱼皇",
+        "prereqFishIds": [
+          "f21_1",
+          "f21_2",
+          "f21_3",
+          "f21_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 162
+      }
+    },
+    {
+      "regionId": 22,
+      "name": "黄金港",
+      "normal": [
+        {
+          "id": "f22_1",
+          "name": "黄金港幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 9
+        },
+        {
+          "id": "f22_2",
+          "name": "黄金港游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 9
+        },
+        {
+          "id": "f22_3",
+          "name": "黄金港巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 9
+        },
+        {
+          "id": "f22_4",
+          "name": "黄金港稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 9
+        }
+      ],
+      "king": {
+        "id": "k22",
+        "name": "黄金港鱼王",
+        "prereqFishIds": [
+          "f22_1",
+          "f22_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 62
+      },
+      "emperor": {
+        "id": "e22",
+        "name": "黄金港鱼皇",
+        "prereqFishIds": [
+          "f22_1",
+          "f22_2",
+          "f22_3",
+          "f22_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 164
+      }
+    },
+    {
+      "regionId": 23,
+      "name": "珂露西亚岛",
+      "normal": [
+        {
+          "id": "f23_1",
+          "name": "珂露西亚岛幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 9
+        },
+        {
+          "id": "f23_2",
+          "name": "珂露西亚岛游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 9
+        },
+        {
+          "id": "f23_3",
+          "name": "珂露西亚岛巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 9
+        },
+        {
+          "id": "f23_4",
+          "name": "珂露西亚岛稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 9
+        }
+      ],
+      "king": {
+        "id": "k23",
+        "name": "珂露西亚岛鱼王",
+        "prereqFishIds": [
+          "f23_1",
+          "f23_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 63
+      },
+      "emperor": {
+        "id": "e23",
+        "name": "珂露西亚岛鱼皇",
+        "prereqFishIds": [
+          "f23_1",
+          "f23_2",
+          "f23_3",
+          "f23_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 166
+      }
+    },
+    {
+      "regionId": 24,
+      "name": "安穆·艾兰",
+      "normal": [
+        {
+          "id": "f24_1",
+          "name": "安穆·艾兰幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 10
+        },
+        {
+          "id": "f24_2",
+          "name": "安穆·艾兰游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 10
+        },
+        {
+          "id": "f24_3",
+          "name": "安穆·艾兰巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 10
+        },
+        {
+          "id": "f24_4",
+          "name": "安穆·艾兰稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 10
+        }
+      ],
+      "king": {
+        "id": "k24",
+        "name": "安穆·艾兰鱼王",
+        "prereqFishIds": [
+          "f24_1",
+          "f24_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 64
+      },
+      "emperor": {
+        "id": "e24",
+        "name": "安穆·艾兰鱼皇",
+        "prereqFishIds": [
+          "f24_1",
+          "f24_2",
+          "f24_3",
+          "f24_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 168
+      }
+    },
+    {
+      "regionId": 25,
+      "name": "伊尔美格",
+      "normal": [
+        {
+          "id": "f25_1",
+          "name": "伊尔美格幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 10
+        },
+        {
+          "id": "f25_2",
+          "name": "伊尔美格游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 10
+        },
+        {
+          "id": "f25_3",
+          "name": "伊尔美格巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 10
+        },
+        {
+          "id": "f25_4",
+          "name": "伊尔美格稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 10
+        }
+      ],
+      "king": {
+        "id": "k25",
+        "name": "伊尔美格鱼王",
+        "prereqFishIds": [
+          "f25_1",
+          "f25_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 65
+      },
+      "emperor": {
+        "id": "e25",
+        "name": "伊尔美格鱼皇",
+        "prereqFishIds": [
+          "f25_1",
+          "f25_2",
+          "f25_3",
+          "f25_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 170
+      }
+    },
+    {
+      "regionId": 26,
+      "name": "雷克兰德",
+      "normal": [
+        {
+          "id": "f26_1",
+          "name": "雷克兰德幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 10
+        },
+        {
+          "id": "f26_2",
+          "name": "雷克兰德游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 10
+        },
+        {
+          "id": "f26_3",
+          "name": "雷克兰德巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 10
+        },
+        {
+          "id": "f26_4",
+          "name": "雷克兰德稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 10
+        }
+      ],
+      "king": {
+        "id": "k26",
+        "name": "雷克兰德鱼王",
+        "prereqFishIds": [
+          "f26_1",
+          "f26_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 66
+      },
+      "emperor": {
+        "id": "e26",
+        "name": "雷克兰德鱼皇",
+        "prereqFishIds": [
+          "f26_1",
+          "f26_2",
+          "f26_3",
+          "f26_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 172
+      }
+    },
+    {
+      "regionId": 27,
+      "name": "拉凯提卡大森林",
+      "normal": [
+        {
+          "id": "f27_1",
+          "name": "拉凯提卡大森林幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 10
+        },
+        {
+          "id": "f27_2",
+          "name": "拉凯提卡大森林游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 10
+        },
+        {
+          "id": "f27_3",
+          "name": "拉凯提卡大森林巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 10
+        },
+        {
+          "id": "f27_4",
+          "name": "拉凯提卡大森林稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 10
+        }
+      ],
+      "king": {
+        "id": "k27",
+        "name": "拉凯提卡大森林鱼王",
+        "prereqFishIds": [
+          "f27_1",
+          "f27_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 67
+      },
+      "emperor": {
+        "id": "e27",
+        "name": "拉凯提卡大森林鱼皇",
+        "prereqFishIds": [
+          "f27_1",
+          "f27_2",
+          "f27_3",
+          "f27_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 174
+      }
+    },
+    {
+      "regionId": 28,
+      "name": "黑风海",
+      "normal": [
+        {
+          "id": "f28_1",
+          "name": "黑风海幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 11
+        },
+        {
+          "id": "f28_2",
+          "name": "黑风海游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 11
+        },
+        {
+          "id": "f28_3",
+          "name": "黑风海巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 11
+        },
+        {
+          "id": "f28_4",
+          "name": "黑风海稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 11
+        }
+      ],
+      "king": {
+        "id": "k28",
+        "name": "黑风海鱼王",
+        "prereqFishIds": [
+          "f28_1",
+          "f28_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 68
+      },
+      "emperor": {
+        "id": "e28",
+        "name": "黑风海鱼皇",
+        "prereqFishIds": [
+          "f28_1",
+          "f28_2",
+          "f28_3",
+          "f28_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 176
+      }
+    },
+    {
+      "regionId": 29,
+      "name": "萨维奈岛",
+      "normal": [
+        {
+          "id": "f29_1",
+          "name": "萨维奈岛幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 11
+        },
+        {
+          "id": "f29_2",
+          "name": "萨维奈岛游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 11
+        },
+        {
+          "id": "f29_3",
+          "name": "萨维奈岛巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 11
+        },
+        {
+          "id": "f29_4",
+          "name": "萨维奈岛稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 11
+        }
+      ],
+      "king": {
+        "id": "k29",
+        "name": "萨维奈岛鱼王",
+        "prereqFishIds": [
+          "f29_1",
+          "f29_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 69
+      },
+      "emperor": {
+        "id": "e29",
+        "name": "萨维奈岛鱼皇",
+        "prereqFishIds": [
+          "f29_1",
+          "f29_2",
+          "f29_3",
+          "f29_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 178
+      }
+    },
+    {
+      "regionId": 30,
+      "name": "加雷马",
+      "normal": [
+        {
+          "id": "f30_1",
+          "name": "加雷马幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 11
+        },
+        {
+          "id": "f30_2",
+          "name": "加雷马游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 11
+        },
+        {
+          "id": "f30_3",
+          "name": "加雷马巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 11
+        },
+        {
+          "id": "f30_4",
+          "name": "加雷马稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 11
+        }
+      ],
+      "king": {
+        "id": "k30",
+        "name": "加雷马鱼王",
+        "prereqFishIds": [
+          "f30_1",
+          "f30_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 70
+      },
+      "emperor": {
+        "id": "e30",
+        "name": "加雷马鱼皇",
+        "prereqFishIds": [
+          "f30_1",
+          "f30_2",
+          "f30_3",
+          "f30_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 180
+      }
+    },
+    {
+      "regionId": 31,
+      "name": "叹息海",
+      "normal": [
+        {
+          "id": "f31_1",
+          "name": "叹息海幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 11
+        },
+        {
+          "id": "f31_2",
+          "name": "叹息海游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 11
+        },
+        {
+          "id": "f31_3",
+          "name": "叹息海巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 11
+        },
+        {
+          "id": "f31_4",
+          "name": "叹息海稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 11
+        }
+      ],
+      "king": {
+        "id": "k31",
+        "name": "叹息海鱼王",
+        "prereqFishIds": [
+          "f31_1",
+          "f31_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 71
+      },
+      "emperor": {
+        "id": "e31",
+        "name": "叹息海鱼皇",
+        "prereqFishIds": [
+          "f31_1",
+          "f31_2",
+          "f31_3",
+          "f31_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 182
+      }
+    },
+    {
+      "regionId": 32,
+      "name": "天外天垓",
+      "normal": [
+        {
+          "id": "f32_1",
+          "name": "天外天垓幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 12
+        },
+        {
+          "id": "f32_2",
+          "name": "天外天垓游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 12
+        },
+        {
+          "id": "f32_3",
+          "name": "天外天垓巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 12
+        },
+        {
+          "id": "f32_4",
+          "name": "天外天垓稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 12
+        }
+      ],
+      "king": {
+        "id": "k32",
+        "name": "天外天垓鱼王",
+        "prereqFishIds": [
+          "f32_1",
+          "f32_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 72
+      },
+      "emperor": {
+        "id": "e32",
+        "name": "天外天垓鱼皇",
+        "prereqFishIds": [
+          "f32_1",
+          "f32_2",
+          "f32_3",
+          "f32_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 184
+      }
+    },
+    {
+      "regionId": 33,
+      "name": "厄尔庇斯",
+      "normal": [
+        {
+          "id": "f33_1",
+          "name": "厄尔庇斯幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 12
+        },
+        {
+          "id": "f33_2",
+          "name": "厄尔庇斯游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 12
+        },
+        {
+          "id": "f33_3",
+          "name": "厄尔庇斯巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 12
+        },
+        {
+          "id": "f33_4",
+          "name": "厄尔庇斯稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 12
+        }
+      ],
+      "king": {
+        "id": "k33",
+        "name": "厄尔庇斯鱼王",
+        "prereqFishIds": [
+          "f33_1",
+          "f33_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 73
+      },
+      "emperor": {
+        "id": "e33",
+        "name": "厄尔庇斯鱼皇",
+        "prereqFishIds": [
+          "f33_1",
+          "f33_2",
+          "f33_3",
+          "f33_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 186
+      }
+    },
+    {
+      "regionId": 34,
+      "name": "迷津",
+      "normal": [
+        {
+          "id": "f34_1",
+          "name": "迷津幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 12
+        },
+        {
+          "id": "f34_2",
+          "name": "迷津游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 12
+        },
+        {
+          "id": "f34_3",
+          "name": "迷津巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 12
+        },
+        {
+          "id": "f34_4",
+          "name": "迷津稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 12
+        }
+      ],
+      "king": {
+        "id": "k34",
+        "name": "迷津鱼王",
+        "prereqFishIds": [
+          "f34_1",
+          "f34_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 74
+      },
+      "emperor": {
+        "id": "e34",
+        "name": "迷津鱼皇",
+        "prereqFishIds": [
+          "f34_1",
+          "f34_2",
+          "f34_3",
+          "f34_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 188
+      }
+    },
+    {
+      "regionId": 35,
+      "name": "图拉尔大陆·海岸",
+      "normal": [
+        {
+          "id": "f35_1",
+          "name": "图拉尔大陆·海岸幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 12
+        },
+        {
+          "id": "f35_2",
+          "name": "图拉尔大陆·海岸游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 12
+        },
+        {
+          "id": "f35_3",
+          "name": "图拉尔大陆·海岸巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 12
+        },
+        {
+          "id": "f35_4",
+          "name": "图拉尔大陆·海岸稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 12
+        }
+      ],
+      "king": {
+        "id": "k35",
+        "name": "图拉尔大陆·海岸鱼王",
+        "prereqFishIds": [
+          "f35_1",
+          "f35_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 75
+      },
+      "emperor": {
+        "id": "e35",
+        "name": "图拉尔大陆·海岸鱼皇",
+        "prereqFishIds": [
+          "f35_1",
+          "f35_2",
+          "f35_3",
+          "f35_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 190
+      }
+    },
+    {
+      "regionId": 36,
+      "name": "图拉尔大陆·丛林",
+      "normal": [
+        {
+          "id": "f36_1",
+          "name": "图拉尔大陆·丛林幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 13
+        },
+        {
+          "id": "f36_2",
+          "name": "图拉尔大陆·丛林游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 13
+        },
+        {
+          "id": "f36_3",
+          "name": "图拉尔大陆·丛林巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 13
+        },
+        {
+          "id": "f36_4",
+          "name": "图拉尔大陆·丛林稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 13
+        }
+      ],
+      "king": {
+        "id": "k36",
+        "name": "图拉尔大陆·丛林鱼王",
+        "prereqFishIds": [
+          "f36_1",
+          "f36_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 76
+      },
+      "emperor": {
+        "id": "e36",
+        "name": "图拉尔大陆·丛林鱼皇",
+        "prereqFishIds": [
+          "f36_1",
+          "f36_2",
+          "f36_3",
+          "f36_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 192
+      }
+    },
+    {
+      "regionId": 37,
+      "name": "图拉尔大陆·遗迹",
+      "normal": [
+        {
+          "id": "f37_1",
+          "name": "图拉尔大陆·遗迹幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 13
+        },
+        {
+          "id": "f37_2",
+          "name": "图拉尔大陆·遗迹游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 13
+        },
+        {
+          "id": "f37_3",
+          "name": "图拉尔大陆·遗迹巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 13
+        },
+        {
+          "id": "f37_4",
+          "name": "图拉尔大陆·遗迹稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 13
+        }
+      ],
+      "king": {
+        "id": "k37",
+        "name": "图拉尔大陆·遗迹鱼王",
+        "prereqFishIds": [
+          "f37_1",
+          "f37_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 77
+      },
+      "emperor": {
+        "id": "e37",
+        "name": "图拉尔大陆·遗迹鱼皇",
+        "prereqFishIds": [
+          "f37_1",
+          "f37_2",
+          "f37_3",
+          "f37_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 194
+      }
+    },
+    {
+      "regionId": 38,
+      "name": "图拉尔大陆·火山",
+      "normal": [
+        {
+          "id": "f38_1",
+          "name": "图拉尔大陆·火山幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 13
+        },
+        {
+          "id": "f38_2",
+          "name": "图拉尔大陆·火山游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 13
+        },
+        {
+          "id": "f38_3",
+          "name": "图拉尔大陆·火山巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 13
+        },
+        {
+          "id": "f38_4",
+          "name": "图拉尔大陆·火山稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 13
+        }
+      ],
+      "king": {
+        "id": "k38",
+        "name": "图拉尔大陆·火山鱼王",
+        "prereqFishIds": [
+          "f38_1",
+          "f38_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 78
+      },
+      "emperor": {
+        "id": "e38",
+        "name": "图拉尔大陆·火山鱼皇",
+        "prereqFishIds": [
+          "f38_1",
+          "f38_2",
+          "f38_3",
+          "f38_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 196
+      }
+    },
+    {
+      "regionId": 39,
+      "name": "图拉尔大陆·王都",
+      "normal": [
+        {
+          "id": "f39_1",
+          "name": "图拉尔大陆·王都幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 13
+        },
+        {
+          "id": "f39_2",
+          "name": "图拉尔大陆·王都游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 13
+        },
+        {
+          "id": "f39_3",
+          "name": "图拉尔大陆·王都巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 13
+        },
+        {
+          "id": "f39_4",
+          "name": "图拉尔大陆·王都稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 13
+        }
+      ],
+      "king": {
+        "id": "k39",
+        "name": "图拉尔大陆·王都鱼王",
+        "prereqFishIds": [
+          "f39_1",
+          "f39_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 79
+      },
+      "emperor": {
+        "id": "e39",
+        "name": "图拉尔大陆·王都鱼皇",
+        "prereqFishIds": [
+          "f39_1",
+          "f39_2",
+          "f39_3",
+          "f39_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 198
+      }
+    },
+    {
+      "regionId": 40,
+      "name": "图拉尔大陆·圣域",
+      "normal": [
+        {
+          "id": "f40_1",
+          "name": "图拉尔大陆·圣域幼鱼",
+          "weight": 55,
+          "sizeMin": 20,
+          "sizeMax": 60,
+          "exp": 14
+        },
+        {
+          "id": "f40_2",
+          "name": "图拉尔大陆·圣域游鱼",
+          "weight": 28,
+          "sizeMin": 30,
+          "sizeMax": 90,
+          "exp": 14
+        },
+        {
+          "id": "f40_3",
+          "name": "图拉尔大陆·圣域巨口鱼",
+          "weight": 14,
+          "sizeMin": 50,
+          "sizeMax": 130,
+          "exp": 14
+        },
+        {
+          "id": "f40_4",
+          "name": "图拉尔大陆·圣域稀有鱼",
+          "weight": 3,
+          "sizeMin": 60,
+          "sizeMax": 150,
+          "exp": 14
+        }
+      ],
+      "king": {
+        "id": "k40",
+        "name": "图拉尔大陆·圣域鱼王",
+        "prereqFishIds": [
+          "f40_1",
+          "f40_2"
+        ],
+        "insightSeconds": [
+          30,
+          45
+        ],
+        "chance": 0.014,
+        "sizeMin": 160,
+        "sizeMax": 240,
+        "exp": 80
+      },
+      "emperor": {
+        "id": "e40",
+        "name": "图拉尔大陆·圣域鱼皇",
+        "prereqFishIds": [
+          "f40_1",
+          "f40_2",
+          "f40_3",
+          "f40_4"
+        ],
+        "insightSeconds": [
+          45,
+          60
+        ],
+        "chance": 0.004,
+        "sizeMin": 240,
+        "sizeMax": 360,
+        "exp": 200
+      }
+    }
+  ]
+}

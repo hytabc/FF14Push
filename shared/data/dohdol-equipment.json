@@ -1,0 +1,637 @@
+{
+  "$comment": "生产/采集专用装备：仅能通过生产制造获取，只影响采集/制造/钓鱼，不参与战斗结算与战力。",
+  "slots": [
+    {
+      "id": "dohTool",
+      "name": "生产主手工具",
+      "category": "doh_tool",
+      "order": 0
+    },
+    {
+      "id": "dohOffTool",
+      "name": "生产副手工具",
+      "category": "doh_tool",
+      "order": 1
+    },
+    {
+      "id": "dohHead",
+      "name": "生产头饰",
+      "category": "doh_gear",
+      "order": 2
+    },
+    {
+      "id": "dohBody",
+      "name": "生产工作服",
+      "category": "doh_gear",
+      "order": 3
+    },
+    {
+      "id": "dohHands",
+      "name": "生产手套",
+      "category": "doh_gear",
+      "order": 4
+    },
+    {
+      "id": "dohLegs",
+      "name": "生产工作裤",
+      "category": "doh_gear",
+      "order": 5
+    },
+    {
+      "id": "dohFeet",
+      "name": "生产工作靴",
+      "category": "doh_gear",
+      "order": 6
+    },
+    {
+      "id": "dolTool",
+      "name": "采集主手工具",
+      "category": "dol_tool",
+      "order": 7
+    },
+    {
+      "id": "dolOffTool",
+      "name": "采集副手工具",
+      "category": "dol_tool",
+      "order": 8
+    },
+    {
+      "id": "dolHead",
+      "name": "采集头饰",
+      "category": "dol_gear",
+      "order": 9
+    },
+    {
+      "id": "dolBody",
+      "name": "采集服",
+      "category": "dol_gear",
+      "order": 10
+    },
+    {
+      "id": "dolHands",
+      "name": "采集手套",
+      "category": "dol_gear",
+      "order": 11
+    },
+    {
+      "id": "dolLegs",
+      "name": "采集裤",
+      "category": "dol_gear",
+      "order": 12
+    },
+    {
+      "id": "dolFeet",
+      "name": "采集靴",
+      "category": "dol_gear",
+      "order": 13
+    }
+  ],
+  "categories": [
+    {
+      "id": "doh_tool",
+      "name": "生产工具",
+      "kind": "doh"
+    },
+    {
+      "id": "doh_gear",
+      "name": "生产防具",
+      "kind": "doh"
+    },
+    {
+      "id": "dol_tool",
+      "name": "采集工具",
+      "kind": "dol"
+    },
+    {
+      "id": "dol_gear",
+      "name": "采集防具",
+      "kind": "dol"
+    }
+  ],
+  "bonusNames": {
+    "gatherYieldPct": "采集产量",
+    "gatherSpeedPct": "采集速度",
+    "craftQualityPct": "制造品质",
+    "craftSpeedPct": "制造速度",
+    "fishInsightPct": "捕鱼人之识时长",
+    "fishChancePct": "鱼王/鱼皇概率"
+  },
+  "items": [
+    {
+      "id": "dh_dohTool_0",
+      "name": "制式巧匠主手工具",
+      "category": "doh_tool",
+      "slot": "dohTool",
+      "kind": "doh",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "craftQualityPct": 4.0
+      }
+    },
+    {
+      "id": "dh_dohTool_1",
+      "name": "精制巧匠主手工具",
+      "category": "doh_tool",
+      "slot": "dohTool",
+      "kind": "doh",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "craftQualityPct": 8.8
+      }
+    },
+    {
+      "id": "dh_dohTool_2",
+      "name": "秘传巧匠主手工具",
+      "category": "doh_tool",
+      "slot": "dohTool",
+      "kind": "doh",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "craftQualityPct": 16.0
+      }
+    },
+    {
+      "id": "dh_dohOffTool_0",
+      "name": "制式巧匠副手工具",
+      "category": "doh_tool",
+      "slot": "dohOffTool",
+      "kind": "doh",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "craftSpeedPct": 6.0
+      }
+    },
+    {
+      "id": "dh_dohOffTool_1",
+      "name": "精制巧匠副手工具",
+      "category": "doh_tool",
+      "slot": "dohOffTool",
+      "kind": "doh",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "craftSpeedPct": 13.2
+      }
+    },
+    {
+      "id": "dh_dohOffTool_2",
+      "name": "秘传巧匠副手工具",
+      "category": "doh_tool",
+      "slot": "dohOffTool",
+      "kind": "doh",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "craftSpeedPct": 24.0
+      }
+    },
+    {
+      "id": "dh_dohHead_0",
+      "name": "制式巧匠工作头饰",
+      "category": "doh_gear",
+      "slot": "dohHead",
+      "kind": "doh",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "craftQualityPct": 1.2
+      }
+    },
+    {
+      "id": "dh_dohHead_1",
+      "name": "精制巧匠工作头饰",
+      "category": "doh_gear",
+      "slot": "dohHead",
+      "kind": "doh",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "craftQualityPct": 2.6
+      }
+    },
+    {
+      "id": "dh_dohHead_2",
+      "name": "秘传巧匠工作头饰",
+      "category": "doh_gear",
+      "slot": "dohHead",
+      "kind": "doh",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "craftQualityPct": 4.8
+      }
+    },
+    {
+      "id": "dh_dohBody_0",
+      "name": "制式巧匠工作服",
+      "category": "doh_gear",
+      "slot": "dohBody",
+      "kind": "doh",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "craftQualityPct": 1.8,
+        "craftSpeedPct": 2.0
+      }
+    },
+    {
+      "id": "dh_dohBody_1",
+      "name": "精制巧匠工作服",
+      "category": "doh_gear",
+      "slot": "dohBody",
+      "kind": "doh",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "craftQualityPct": 4.0,
+        "craftSpeedPct": 4.4
+      }
+    },
+    {
+      "id": "dh_dohBody_2",
+      "name": "秘传巧匠工作服",
+      "category": "doh_gear",
+      "slot": "dohBody",
+      "kind": "doh",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "craftQualityPct": 7.2,
+        "craftSpeedPct": 8.0
+      }
+    },
+    {
+      "id": "dh_dohHands_0",
+      "name": "制式巧匠工作手套",
+      "category": "doh_gear",
+      "slot": "dohHands",
+      "kind": "doh",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "craftSpeedPct": 1.6
+      }
+    },
+    {
+      "id": "dh_dohHands_1",
+      "name": "精制巧匠工作手套",
+      "category": "doh_gear",
+      "slot": "dohHands",
+      "kind": "doh",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "craftSpeedPct": 3.5
+      }
+    },
+    {
+      "id": "dh_dohHands_2",
+      "name": "秘传巧匠工作手套",
+      "category": "doh_gear",
+      "slot": "dohHands",
+      "kind": "doh",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "craftSpeedPct": 6.4
+      }
+    },
+    {
+      "id": "dh_dohLegs_0",
+      "name": "制式巧匠工作裤",
+      "category": "doh_gear",
+      "slot": "dohLegs",
+      "kind": "doh",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "craftSpeedPct": 2.0
+      }
+    },
+    {
+      "id": "dh_dohLegs_1",
+      "name": "精制巧匠工作裤",
+      "category": "doh_gear",
+      "slot": "dohLegs",
+      "kind": "doh",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "craftSpeedPct": 4.4
+      }
+    },
+    {
+      "id": "dh_dohLegs_2",
+      "name": "秘传巧匠工作裤",
+      "category": "doh_gear",
+      "slot": "dohLegs",
+      "kind": "doh",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "craftSpeedPct": 8.0
+      }
+    },
+    {
+      "id": "dh_dohFeet_0",
+      "name": "制式巧匠工作靴",
+      "category": "doh_gear",
+      "slot": "dohFeet",
+      "kind": "doh",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "craftQualityPct": 1.0
+      }
+    },
+    {
+      "id": "dh_dohFeet_1",
+      "name": "精制巧匠工作靴",
+      "category": "doh_gear",
+      "slot": "dohFeet",
+      "kind": "doh",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "craftQualityPct": 2.2
+      }
+    },
+    {
+      "id": "dh_dohFeet_2",
+      "name": "秘传巧匠工作靴",
+      "category": "doh_gear",
+      "slot": "dohFeet",
+      "kind": "doh",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "craftQualityPct": 4.0
+      }
+    },
+    {
+      "id": "dh_dolTool_0",
+      "name": "制式大地主手工具",
+      "category": "dol_tool",
+      "slot": "dolTool",
+      "kind": "dol",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "gatherYieldPct": 6.0,
+        "fishChancePct": 3.0
+      }
+    },
+    {
+      "id": "dh_dolTool_1",
+      "name": "精制大地主手工具",
+      "category": "dol_tool",
+      "slot": "dolTool",
+      "kind": "dol",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "gatherYieldPct": 13.2,
+        "fishChancePct": 6.6
+      }
+    },
+    {
+      "id": "dh_dolTool_2",
+      "name": "秘传大地主手工具",
+      "category": "dol_tool",
+      "slot": "dolTool",
+      "kind": "dol",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "gatherYieldPct": 24.0,
+        "fishChancePct": 12.0
+      }
+    },
+    {
+      "id": "dh_dolOffTool_0",
+      "name": "制式大地副手工具",
+      "category": "dol_tool",
+      "slot": "dolOffTool",
+      "kind": "dol",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "gatherSpeedPct": 6.0,
+        "fishInsightPct": 5.0
+      }
+    },
+    {
+      "id": "dh_dolOffTool_1",
+      "name": "精制大地副手工具",
+      "category": "dol_tool",
+      "slot": "dolOffTool",
+      "kind": "dol",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "gatherSpeedPct": 13.2,
+        "fishInsightPct": 11.0
+      }
+    },
+    {
+      "id": "dh_dolOffTool_2",
+      "name": "秘传大地副手工具",
+      "category": "dol_tool",
+      "slot": "dolOffTool",
+      "kind": "dol",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "gatherSpeedPct": 24.0,
+        "fishInsightPct": 20.0
+      }
+    },
+    {
+      "id": "dh_dolHead_0",
+      "name": "制式大地工作头饰",
+      "category": "dol_gear",
+      "slot": "dolHead",
+      "kind": "dol",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "gatherYieldPct": 1.5
+      }
+    },
+    {
+      "id": "dh_dolHead_1",
+      "name": "精制大地工作头饰",
+      "category": "dol_gear",
+      "slot": "dolHead",
+      "kind": "dol",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "gatherYieldPct": 3.3
+      }
+    },
+    {
+      "id": "dh_dolHead_2",
+      "name": "秘传大地工作头饰",
+      "category": "dol_gear",
+      "slot": "dolHead",
+      "kind": "dol",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "gatherYieldPct": 6.0
+      }
+    },
+    {
+      "id": "dh_dolBody_0",
+      "name": "制式大地工作服",
+      "category": "dol_gear",
+      "slot": "dolBody",
+      "kind": "dol",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "gatherYieldPct": 2.0,
+        "fishInsightPct": 2.0
+      }
+    },
+    {
+      "id": "dh_dolBody_1",
+      "name": "精制大地工作服",
+      "category": "dol_gear",
+      "slot": "dolBody",
+      "kind": "dol",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "gatherYieldPct": 4.4,
+        "fishInsightPct": 4.4
+      }
+    },
+    {
+      "id": "dh_dolBody_2",
+      "name": "秘传大地工作服",
+      "category": "dol_gear",
+      "slot": "dolBody",
+      "kind": "dol",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "gatherYieldPct": 8.0,
+        "fishInsightPct": 8.0
+      }
+    },
+    {
+      "id": "dh_dolHands_0",
+      "name": "制式大地工作手套",
+      "category": "dol_gear",
+      "slot": "dolHands",
+      "kind": "dol",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "gatherSpeedPct": 1.6
+      }
+    },
+    {
+      "id": "dh_dolHands_1",
+      "name": "精制大地工作手套",
+      "category": "dol_gear",
+      "slot": "dolHands",
+      "kind": "dol",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "gatherSpeedPct": 3.5
+      }
+    },
+    {
+      "id": "dh_dolHands_2",
+      "name": "秘传大地工作手套",
+      "category": "dol_gear",
+      "slot": "dolHands",
+      "kind": "dol",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "gatherSpeedPct": 6.4
+      }
+    },
+    {
+      "id": "dh_dolLegs_0",
+      "name": "制式大地工作裤",
+      "category": "dol_gear",
+      "slot": "dolLegs",
+      "kind": "dol",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "gatherSpeedPct": 2.0
+      }
+    },
+    {
+      "id": "dh_dolLegs_1",
+      "name": "精制大地工作裤",
+      "category": "dol_gear",
+      "slot": "dolLegs",
+      "kind": "dol",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "gatherSpeedPct": 4.4
+      }
+    },
+    {
+      "id": "dh_dolLegs_2",
+      "name": "秘传大地工作裤",
+      "category": "dol_gear",
+      "slot": "dolLegs",
+      "kind": "dol",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "gatherSpeedPct": 8.0
+      }
+    },
+    {
+      "id": "dh_dolFeet_0",
+      "name": "制式大地工作靴",
+      "category": "dol_gear",
+      "slot": "dolFeet",
+      "kind": "dol",
+      "tierIndex": 0,
+      "levelReq": 1,
+      "bonus": {
+        "gatherYieldPct": 1.2
+      }
+    },
+    {
+      "id": "dh_dolFeet_1",
+      "name": "精制大地工作靴",
+      "category": "dol_gear",
+      "slot": "dolFeet",
+      "kind": "dol",
+      "tierIndex": 1,
+      "levelReq": 25,
+      "bonus": {
+        "gatherYieldPct": 2.6
+      }
+    },
+    {
+      "id": "dh_dolFeet_2",
+      "name": "秘传大地工作靴",
+      "category": "dol_gear",
+      "slot": "dolFeet",
+      "kind": "dol",
+      "tierIndex": 2,
+      "levelReq": 50,
+      "bonus": {
+        "gatherYieldPct": 4.8
+      }
+    }
+  ]
+}
