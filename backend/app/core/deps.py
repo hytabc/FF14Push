@@ -4,15 +4,38 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import BANNED_DETAIL, decode_access_token
 from app.models import Hero, Item, User
+from app.services import ratelimit
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def client_ip(request: Request) -> str:
+    """客户端 IP。
+
+    uvicorn 以 `--proxy-headers --forwarded-allow-ips` 启动时，Starlette 已把
+    `X-Forwarded-For` 解析进 `request.client`，这里直接读取即可。
+    """
+    return request.client.host if request.client else "unknown"
+
+
+async def guard_rate(
+    db: AsyncSession,
+    scope: str,
+    key: str,
+    limit: int,
+    window_seconds: int,
+    detail: str = "操作过于频繁，请稍后再试",
+) -> None:
+    """滑动窗口限流：超限抛 429。limit <= 0 表示关闭该限制。"""
+    if not await ratelimit.hit(db, scope, key, limit, window_seconds):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail)
 
 
 def _extract_token(authorization: str | None) -> str | None:

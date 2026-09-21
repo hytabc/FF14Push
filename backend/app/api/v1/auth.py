@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
-from app.core.deps import CurrentUser, DbSession
+from app.core.config import get_settings
+from app.core.deps import CurrentUser, DbSession, client_ip, guard_rate
 from app.core.security import BANNED_DETAIL, create_access_token, hash_password, verify_password
 from app.models import (
     AutoSellSetting,
@@ -98,7 +99,13 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
+async def register(payload: RegisterRequest, db: DbSession, request: Request) -> TokenResponse:
+    # 防多开：限制同一 IP 的建号频率与总量（每个新号都会立即获得可挂机的初始英雄）。
+    limits = get_settings()
+    ip = client_ip(request)
+    await guard_rate(db, "register_ip_hour", ip, limits.register_per_ip_per_hour, 3600)
+    await guard_rate(db, "register_ip_day", ip, limits.register_per_ip_per_day, 86400)
+
     # 管理员账号名保留，避免被普通玩家占用（否则启动同步会与之冲突）
     if payload.username.strip() == admin_username():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该用户名为保留的管理员账号")
@@ -122,7 +129,18 @@ async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
+async def login(payload: LoginRequest, db: DbSession, request: Request) -> TokenResponse:
+    # 防撞库 / 防脚本批量登录：限制同一 IP 的尝试频率。
+    limits = get_settings()
+    await guard_rate(
+        db,
+        "login_ip",
+        client_ip(request),
+        limits.login_per_ip_per_5min,
+        300,
+        detail="登录尝试过于频繁，请稍后再试",
+    )
+
     user = (await db.execute(select(User).where(User.username == payload.username))).scalar_one_or_none()
     # 先校验账号密码：密码错误与否都返回同一提示，不暴露账号是否存在。
     if user is None or not verify_password(payload.password, user.password_hash):

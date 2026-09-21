@@ -48,3 +48,20 @@ class AuditLog(Base, TimestampMixin):
     reason: Mapped[str] = mapped_column(sa.String(64))
     payload: Mapped[dict] = mapped_column(JsonType, default=dict)
     rejected: Mapped[bool] = mapped_column(sa.Boolean, default=False)
+
+
+class SecurityEvent(Base):
+    """反滥用限流事件：按 (scope, key) 做滑动窗口计数，key 通常是客户端 IP。
+
+    单进程内存计数在多 worker / 重启后会失真，故落库。每次写入前清理过期行，
+    表大小收敛在「活跃 key 数 × 限值」量级，不会无限增长。
+    """
+
+    __tablename__ = "security_events"
+    __table_args__ = (sa.Index("ix_security_events_scope_key", "scope", "key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    scope: Mapped[str] = mapped_column(sa.String(32))
+    key: Mapped[str] = mapped_column(sa.String(64))
+    # 用 epoch 秒存储，避开 SQLite / PostgreSQL 的时区比较差异
+    occurred_at: Mapped[float] = mapped_column(sa.Float)

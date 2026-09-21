@@ -14,7 +14,7 @@ from app.models.progress import (
 )
 from app.models.raid import RaidProgress, RaidSession
 from app.models.redeem import RedeemRecord
-from app.models.system import AuditLog, BattleSession, RankingEntry
+from app.models.system import AuditLog, BattleSession, RankingEntry, SecurityEvent
 
 __all__ = [
     "Base",
@@ -39,4 +39,5 @@ __all__ = [
     "BattleSession",
     "RankingEntry",
     "AuditLog",
+    "SecurityEvent",
 ]

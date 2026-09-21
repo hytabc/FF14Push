@@ -1586,3 +1586,105 @@ class TestRedeem:
 
         assert (await auth_client.get(f"{API}/auth/me")).json()["gold"] == before + 12345
         assert (await auth_client.get(f"{API}/redeem")).json()["canRedeem"] is False
+
+    async def test_redeem_ignores_client_supplied_amount(self, auth_client, monkeypatch) -> None:
+        """奖励数额只认服务端配置：请求体里塞金币/数额字段一律无效。"""
+        monkeypatch.setenv("REDEEM_CODE", "TAMPER")
+        monkeypatch.setenv("REDEEM_GOLD", "500")
+        get_settings.cache_clear()
+
+        before = (await auth_client.get(f"{API}/auth/me")).json()["gold"]
+        resp = await auth_client.post(
+            f"{API}/redeem", json={"code": "TAMPER", "gold": 10**9, "rewardGold": 10**9}
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["goldGained"] == 500
+        assert (await auth_client.get(f"{API}/auth/me")).json()["gold"] == before + 500
+
+
+class TestAbuseGuards:
+    """反滥用：多开与刷取的服务端边界（数值均为可配置的显式上限）。"""
+
+    @pytest.fixture(autouse=True)
+    def _reset_settings(self):
+        get_settings.cache_clear()
+        yield
+        get_settings.cache_clear()
+
+    async def test_register_rate_limited_per_ip(self, client, monkeypatch) -> None:
+        """同一 IP 每小时建号数达到上限后拒绝（防批量注册小号）。"""
+        monkeypatch.setenv("REGISTER_PER_IP_PER_HOUR", "2")
+        monkeypatch.setenv("REGISTER_PER_IP_PER_DAY", "0")  # 关掉日限，单独验证小时限
+        get_settings.cache_clear()
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+            codes = [
+                (
+                    await fresh.post(
+                        f"{API}/auth/register",
+                        json={"username": f"reg{i}", "password": "secret123"},
+                    )
+                ).status_code
+                for i in range(3)
+            ]
+        assert codes == [201, 201, 429]
+
+    async def test_login_rate_limited_per_ip(self, client, monkeypatch) -> None:
+        """同一 IP 的登录尝试达到上限后拒绝（防撞库 / 脚本批量登录）。"""
+        monkeypatch.setenv("LOGIN_PER_IP_PER_5MIN", "2")
+        get_settings.cache_clear()
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+            await fresh.post(
+                f"{API}/auth/register", json={"username": "loginuser", "password": "secret123"}
+            )
+            codes = [
+                (
+                    await fresh.post(
+                        f"{API}/auth/login", json={"username": "loginuser", "password": "secret123"}
+                    )
+                ).status_code
+                for _ in range(3)
+            ]
+        assert codes == [200, 200, 429]
+
+    async def test_redeem_rate_limited_per_ip(self, auth_client, monkeypatch) -> None:
+        monkeypatch.setenv("REDEEM_CODE", "RATE1")
+        monkeypatch.setenv("REDEEM_GOLD", "100")
+        monkeypatch.setenv("REDEEM_PER_IP_PER_HOUR", "1")
+        get_settings.cache_clear()
+
+        first = await auth_client.post(f"{API}/redeem", json={"code": "bad"})
+        assert first.status_code == 400
+        assert "无效" in first.json()["detail"]
+
+        second = await auth_client.post(f"{API}/redeem", json={"code": "bad"})
+        assert second.status_code == 429
+
+    async def test_redeem_capped_per_ip(self, client, monkeypatch) -> None:
+        """同一 IP 能兑换同一码的账号数有上限：多开小号无法换来无上限金币。"""
+        monkeypatch.setenv("REDEEM_CODE", "CAPTEST")
+        monkeypatch.setenv("REDEEM_GOLD", "1000")
+        monkeypatch.setenv("REDEEM_ACCOUNTS_PER_IP", "2")
+        monkeypatch.setenv("REDEEM_PER_IP_PER_HOUR", "0")  # 关掉频率限制，单独验证次数上限
+        get_settings.cache_clear()
+
+        tokens: list[str] = []
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+            for i in range(3):
+                reg = await fresh.post(
+                    f"{API}/auth/register",
+                    json={"username": f"alt{i}", "password": "secret123"},
+                )
+                assert reg.status_code == 201, reg.text
+                tokens.append(reg.json()["accessToken"])
+
+        statuses: list[int] = []
+        for token in tokens:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+                fresh.headers.update({"Authorization": f"Bearer {token}"})
+                statuses.append(
+                    (await fresh.post(f"{API}/redeem", json={"code": "CAPTEST"})).status_code
+                )
+
+        assert statuses == [200, 200, 429], "第 3 个小号必须被同 IP 兑换上限拦下"

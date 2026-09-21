@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = ""
 
+    # 反滥用（防多开 / 防刷）：按客户端 IP 的滑动窗口限值，<= 0 关闭该项。
+    # 注册：同一 IP 每小时 / 每天最多创建多少账号（多开的主要入口）。
+    register_per_ip_per_hour: int = 5
+    register_per_ip_per_day: int = 20
+    # 登录：同一 IP 每 5 分钟最多尝试多少次（防撞库）。
+    login_per_ip_per_5min: int = 30
+    # 兑换：同一 IP 每小时最多尝试多少次；同一 IP 对同一兑换码最多几个账号可兑换。
+    redeem_per_ip_per_hour: int = 10
+    redeem_accounts_per_ip: int = 5
+
     # 启动时自动建表（本地开发用；生产应使用 alembic upgrade head）
     auto_create_tables: bool = True
 

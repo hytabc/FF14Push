@@ -65,7 +65,8 @@ async function submitRedeem() {
     const res = await api.redeem(code)
     toast.push(res.message, 'success')
     redeemCode.value = ''
-    if (game.state) game.state.user.gold = res.gold
+    // 金币一律以服务端为准：整份状态重新拉取，不信任任何本地/响应拼装出来的数值。
+    await game.loadState()
     await loadRedeem()
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
