@@ -180,6 +180,8 @@ export interface ActivityCycle {
   seconds: number
   /** 尚未结算的剩余秒数（跨上报保留的余额）。 */
   credit: number
+  /** 服务端计算 credit 的时刻（epoch 毫秒），用于半 RTT 校正。 */
+  at: number
 }
 
 export interface GatherReportResponse {

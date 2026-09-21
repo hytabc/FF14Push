@@ -251,3 +251,13 @@ def fish_seconds_per_cast(base_bonus_pct: float) -> float:
     base = float(CONFIG.fish["castSeconds"])
     speed = max(0.0, base_bonus_pct) / 100.0
     return max(0.2, base / (1.0 + speed))
+
+
+def cycle_info(seconds: float, credit: float, now: datetime | None = None) -> dict[str, Any]:
+    """单次动作节奏，供前端插值画进度条。
+
+    `at` 是服务端计算 credit 的时刻（epoch 毫秒）。前端用它做半 RTT 校正，
+    使进度条的「跑满」时刻与产出时刻对齐，且不依赖客户端本地时钟。
+    """
+    moment = now or datetime.now(timezone.utc)
+    return {"seconds": float(seconds), "credit": float(credit), "at": int(moment.timestamp() * 1000)}

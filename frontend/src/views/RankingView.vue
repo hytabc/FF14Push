@@ -76,6 +76,17 @@ function entryTitles(entry: RankingEntry): string[] {
   return ids.map((id) => TITLE_NAMES[String(id)] ?? String(id))
 }
 
+const FISH_REGION_TOTAL = data.fish.regions.length
+
+/** 钓鱼种类榜：按「普通 / 鱼王 / 鱼皇」拆分的种类数（后端实时聚合）。 */
+function fishBreakdown(entry: RankingEntry): { normal: number; king: number; emperor: number } {
+  return {
+    normal: Number(entry.payload?.fishNormal ?? 0),
+    king: Number(entry.payload?.fishKing ?? 0),
+    emperor: Number(entry.payload?.fishEmperor ?? 0),
+  }
+}
+
 function openProfile(entry: RankingEntry) {
   if (!auth.isLoggedIn) {
     toast.push('登录后可查看他人装备', 'info')
@@ -144,7 +155,14 @@ function openProfile(entry: RankingEntry) {
               >{{ t }}</span>
             </td>
             <td class="px-3 py-2 text-ink-400">{{ entry.payload?.level ?? '—' }}</td>
-            <td class="px-3 py-2 text-right font-mono text-ink-200">{{ valueText(entry) }}</td>
+            <td class="px-3 py-2 text-right">
+              <div class="font-mono text-ink-200">{{ valueText(entry) }}</div>
+              <div v-if="board === 'fish_species'" class="mt-0.5 text-[10px] text-ink-500">
+                普通 {{ fishBreakdown(entry).normal }} ·
+                鱼王 {{ fishBreakdown(entry).king }}/{{ FISH_REGION_TOTAL }} ·
+                鱼皇 {{ fishBreakdown(entry).emperor }}/{{ FISH_REGION_TOTAL }}
+              </div>
+            </td>
             <td class="px-3 py-2 text-right text-ink-400">查看</td>
           </tr>
           <tr v-if="!entries.length && !loading">

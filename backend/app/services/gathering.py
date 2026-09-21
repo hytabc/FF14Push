@@ -56,7 +56,7 @@ async def start_gather(
         "sessionId": session.id,
         "jobId": job_id,
         "regionId": region_id,
-        "cycle": {"seconds": seconds, "credit": 0.0},
+        "cycle": dohdol_util.cycle_info(seconds, 0.0),
     }
 
 
@@ -126,7 +126,7 @@ async def report_gather(
         "actions": actions,
         "xp": xp,
         "level": level_info,
-        "cycle": {"seconds": seconds_per, "credit": float(session.credit)},
+        "cycle": dohdol_util.cycle_info(seconds_per, float(session.credit), now),
     }
 
 

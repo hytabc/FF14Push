@@ -1,12 +1,14 @@
-"""排行榜：等级榜 / 关卡榜 / 战力榜 / 金币榜。来源：PRD 排行榜 2.2 / 2.3 / 2.4
+"""排行榜。来源：PRD 排行榜 2.2 / 2.3 / 2.4
 
-每 5 分钟由后台任务刷新一次到 `rankings` 缓存表，查询时直接读缓存。
+- 等级 / 关卡 / 战力 / 金币：每 5 分钟由后台任务刷新到 `rankings` 缓存表。
+- 钓鱼种类 / 钓鱼数量：**实时**从 `fish_records` 聚合（数据量小、且刚钓完就该看到），
+  不依赖缓存，避免「刚钓完却看不到自己」。
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +19,12 @@ from app.services.admin import is_admin
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
-BOARDS = ("level", "stage", "power", "gold", "fish_species", "fish_count")
+# 走缓存刷新（每 5 分钟）的榜单
+CACHED_BOARDS = ("level", "stage", "power", "gold")
+# 实时聚合的钓鱼榜单
+FISH_BOARDS = ("fish_species", "fish_count")
+# 对外暴露的全部榜单
+BOARDS = CACHED_BOARDS + FISH_BOARDS
 
 
 async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
@@ -31,19 +38,14 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         if row.cleared:
             cleared.setdefault(row.user_id, []).append(row)
 
-    # 钓鱼统计（排行榜新增两列）与称号
-    fish_stats: dict[int, dict[str, int]] = {}
-    for row in (await db.execute(select(FishRecord))).scalars().all():
-        stat = fish_stats.setdefault(row.user_id, {"species": 0, "count": 0})
-        stat["species"] += 1
-        stat["count"] += int(row.count)
+    # 称号（展示在各榜行内；钓鱼榜的统计实时算，不走这里）
     title_map: dict[int, list[str]] = {}
     for row in (await db.execute(select(UserTitle))).scalars().all():
         title_map.setdefault(row.user_id, []).append(row.title_id)
 
     await db.execute(delete(RankingEntry))
 
-    counts = {board: 0 for board in BOARDS}
+    counts = {board: 0 for board in CACHED_BOARDS}
     for user in users:
         # 管理员与已封禁账号不参与排行榜（管理员另有「不创建英雄」双重保险）
         if is_admin(user) or user.banned:
@@ -56,12 +58,7 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         cleared_list = cleared.get(user.id, [])
         max_region = max((r.region_id for r in cleared_list), default=0)
         cleared_at = max((r.cleared_at for r in cleared_list if r.cleared_at), default=None)
-        fish = fish_stats.get(user.id, {"species": 0, "count": 0})
-        extra = {
-            "fishSpecies": fish["species"],
-            "fishCount": fish["count"],
-            "titles": title_map.get(user.id, []),
-        }
+        extra = {"titles": title_map.get(user.id, [])}
 
         entries = [
             _entry(user, hero, "level", hero.level, hero.exp, extra),
@@ -69,16 +66,121 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
             _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
             _entry(user, hero, "gold", int(user.gold), 0, extra),
         ]
-        # 钓鱼榜为两个独立榜单：只让有钓鱼记录的玩家上榜
-        if fish["species"] > 0:
-            entries.append(_entry(user, hero, "fish_species", fish["species"], fish["count"], extra))
-            entries.append(_entry(user, hero, "fish_count", fish["count"], fish["species"], extra))
         for entry in entries:
             db.add(entry)
             counts[entry.board] += 1
 
     await db.flush()
     return counts
+
+
+# ---------------------------------------------------------------- 钓鱼榜（实时）
+async def _fish_stats_by_user(db: AsyncSession) -> dict[int, dict[str, int]]:
+    """按账号聚合鱼类统计：种类数、总条数，以及普通 / 鱼王 / 鱼皇各自的种类数。"""
+    rows = (
+        await db.execute(
+            select(FishRecord).join(User, User.id == FishRecord.user_id).where(User.banned.is_(False))
+        )
+    ).scalars().all()
+    agg: dict[int, dict[str, int]] = {}
+    for row in rows:
+        stat = agg.setdefault(
+            row.user_id, {"species": 0, "count": 0, "normal": 0, "king": 0, "emperor": 0}
+        )
+        stat["species"] += 1
+        stat["count"] += int(row.count)
+        bucket = row.kind if row.kind in ("king", "emperor") else "normal"
+        stat[bucket] += 1
+    return agg
+
+
+def _fish_sort_key(board: str) -> Callable[[dict[str, Any]], tuple[int, int]]:
+    if board == "fish_count":
+        return lambda row: (row["fishCount"], row["fishSpecies"])
+    return lambda row: (row["fishSpecies"], row["fishCount"])
+
+
+async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
+    agg = await _fish_stats_by_user(db)
+    if not agg:
+        return []
+    ids = list(agg.keys())
+    users = (
+        await db.execute(select(User).options(selectinload(User.hero)).where(User.id.in_(ids)))
+    ).scalars().all()
+    title_map: dict[int, list[str]] = {}
+    for row in (await db.execute(select(UserTitle).where(UserTitle.user_id.in_(ids)))).scalars().all():
+        title_map.setdefault(row.user_id, []).append(row.title_id)
+
+    out: list[dict[str, Any]] = []
+    for user in users:
+        if is_admin(user) or user.banned or user.hero is None:
+            continue
+        stat = agg[user.id]
+        out.append(
+            {
+                "userId": user.id,
+                "nickname": user.nickname,
+                "username": user.username,
+                "level": user.hero.level,
+                "titles": title_map.get(user.id, []),
+                "fishSpecies": stat["species"],
+                "fishCount": stat["count"],
+                "fishNormal": stat["normal"],
+                "fishKing": stat["king"],
+                "fishEmperor": stat["emperor"],
+            }
+        )
+    return out
+
+
+def _fish_value(row: dict[str, Any], board: str) -> int:
+    return int(row["fishCount"] if board == "fish_count" else row["fishSpecies"])
+
+
+async def fetch_fish_board(
+    db: AsyncSession, board: str, page: int = 1, page_size: int = 100
+) -> list[dict[str, Any]]:
+    rows = await _fish_rows(db)
+    rows.sort(key=_fish_sort_key(board), reverse=True)
+    offset = max(0, (page - 1) * page_size)
+    return [
+        {
+            "rank": offset + index + 1,
+            "userId": row["userId"],
+            "nickname": row["nickname"],
+            "username": row["username"],
+            "value": _fish_value(row, board),
+            "payload": {
+                "nickname": row["nickname"],
+                "level": row["level"],
+                "fishSpecies": row["fishSpecies"],
+                "fishCount": row["fishCount"],
+                "fishNormal": row["fishNormal"],
+                "fishKing": row["fishKing"],
+                "fishEmperor": row["fishEmperor"],
+                "titles": row["titles"],
+            },
+        }
+        for index, row in enumerate(rows[offset : offset + page_size])
+    ]
+
+
+async def fetch_fish_user_rank(
+    db: AsyncSession, board: str, user_id: int
+) -> dict[str, Any] | None:
+    rows = await _fish_rows(db)
+    rows.sort(key=_fish_sort_key(board), reverse=True)
+    for index, row in enumerate(rows):
+        if row["userId"] == user_id:
+            return {
+                "rank": index + 1,
+                "value": _fish_value(row, board),
+                "nickname": row["nickname"],
+                "username": row["username"],
+                "userId": user_id,
+            }
+    return None
 
 
 def _entry(

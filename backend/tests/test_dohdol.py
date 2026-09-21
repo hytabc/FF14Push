@@ -84,6 +84,8 @@ class TestSharedData:
 
     def test_fish(self):
         assert len(CONFIG.fish["regions"]) == 40
+        king_names: list[str] = []
+        emperor_names: list[str] = []
         for region in CONFIG.fish["regions"]:
             normal_ids = {f["id"] for f in region["normal"]}
             assert region["normal"], "钓场必须有普通鱼"
@@ -91,6 +93,15 @@ class TestSharedData:
                 assert set(region[key]["prereqFishIds"]).issubset(normal_ids)
                 assert region[key]["chance"] > 0
             assert region["emperor"]["chance"] < region["king"]["chance"], "鱼皇概率必须低于鱼王"
+            king_names.append(region["king"]["name"])
+            emperor_names.append(region["emperor"]["name"])
+        # 鱼王 / 鱼皇每个地区各一条，名称互不重复
+        assert len(set(king_names)) == 40
+        assert len(set(emperor_names)) == 40
+        # 鱼名参考 FF14，不应再是「地区名+鱼王」这种拼出来的名字
+        for region in CONFIG.fish["regions"]:
+            assert not region["king"]["name"].startswith(region["name"])
+            assert not region["emperor"]["name"].startswith(region["name"])
 
     def test_consumables_and_titles(self):
         kinds = {c["kind"] for c in CONFIG.consumables["items"]}
@@ -323,9 +334,7 @@ class TestSellApi:
 
 
 class TestFishingRanking:
-    @pytest.mark.asyncio
-    async def test_fishing_boards_are_separate(self, auth_client, session_factory):
-        # 先钓几条鱼
+    async def _fish_once(self, auth_client, session_factory):
         start = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 1})
         session_id = start.json()["sessionId"]
         async with session_factory() as db:
@@ -336,23 +345,35 @@ class TestFishingRanking:
             await db.commit()
         await auth_client.post("/api/v1/fish/session/report", json={"sessionId": session_id})
 
-        await auth_client.post("/api/v1/ranking/refresh", json={})
+    @pytest.mark.asyncio
+    async def test_fishing_boards_are_live_without_refresh(self, auth_client, session_factory):
+        """刚钓完就能看到（钓鱼榜实时聚合，不等 5 分钟缓存刷新）。"""
+        await self._fish_once(auth_client, session_factory)
 
-        # 两个独立榜单：钓鱼种类榜 / 钓鱼数量榜
         species_board = await auth_client.get("/api/v1/ranking", params={"board": "fish_species"})
         assert species_board.status_code == 200, species_board.text
-        species_entries = species_board.json()["entries"]
-        assert species_entries, "钓鱼种类榜应有记录"
-        assert species_entries[0]["value"] >= 1
+        entries = species_board.json()["entries"]
+        assert entries, "钓鱼种类榜应有记录（且不依赖缓存刷新）"
+        assert entries[0]["value"] >= 1
 
         count_board = await auth_client.get("/api/v1/ranking", params={"board": "fish_count"})
         assert count_board.status_code == 200, count_board.text
-        count_entries = count_board.json()["entries"]
-        assert count_entries, "钓鱼数量榜应有记录"
-        assert count_entries[0]["value"] >= 1
+        assert count_board.json()["entries"][0]["value"] >= 1
 
-        # 通用榜单仍是 4 个 + 钓鱼 2 个
-        assert species_board.json()["boards"] == [
+    @pytest.mark.asyncio
+    async def test_species_board_breaks_down_by_kind(self, auth_client, session_factory):
+        """种类榜要包含普通鱼，并区分普通 / 鱼王 / 鱼皇。"""
+        await self._fish_once(auth_client, session_factory)
+        await auth_client.post("/api/v1/ranking/refresh", json={})
+
+        board = await auth_client.get("/api/v1/ranking", params={"board": "fish_species"})
+        payload = board.json()["entries"][0]["payload"]
+        assert payload["fishNormal"] >= 1, "普通鱼种类必须计入种类榜"
+        assert payload["fishSpecies"] == payload["fishNormal"] + payload["fishKing"] + payload["fishEmperor"]
+        assert payload["fishKing"] >= 0 and payload["fishEmperor"] >= 0
+
+        # 榜单是 4 个缓存榜 + 2 个钓鱼榜
+        assert board.json()["boards"] == [
             "level", "stage", "power", "gold", "fish_species", "fish_count",
         ]
 
@@ -374,6 +395,7 @@ class TestActivityCycle:
         body = start.json()
         assert body["cycle"]["seconds"] > 0
         assert body["cycle"]["credit"] == 0
+        assert body["cycle"]["at"] > 0, "cycle.at 用于前端半 RTT 校正"
 
         rep = await auth_client.post("/api/v1/gather/session/report", json={"sessionId": body["sessionId"]})
         assert rep.status_code == 200, rep.text

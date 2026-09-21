@@ -9,7 +9,7 @@
       "normal": [
         {
           "id": "f1_1",
-          "name": "中拉诺西亚幼鱼",
+          "name": "河鲈",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -18,7 +18,7 @@
         },
         {
           "id": "f1_2",
-          "name": "中拉诺西亚游鱼",
+          "name": "海鲈",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -27,7 +27,7 @@
         },
         {
           "id": "f1_3",
-          "name": "中拉诺西亚巨口鱼",
+          "name": "三文鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -36,7 +36,7 @@
         },
         {
           "id": "f1_4",
-          "name": "中拉诺西亚稀有鱼",
+          "name": "鲤鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -46,7 +46,7 @@
       ],
       "king": {
         "id": "k1",
-        "name": "中拉诺西亚鱼王",
+        "name": "涅普特之龙",
         "prereqFishIds": [
           "f1_1",
           "f1_2"
@@ -63,7 +63,7 @@
       },
       "emperor": {
         "id": "e1",
-        "name": "中拉诺西亚鱼皇",
+        "name": "海皇利维亚桑",
         "prereqFishIds": [
           "f1_1",
           "f1_2",
@@ -87,7 +87,7 @@
       "normal": [
         {
           "id": "f2_1",
-          "name": "西拉诺西亚幼鱼",
+          "name": "三文鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -96,7 +96,7 @@
         },
         {
           "id": "f2_2",
-          "name": "西拉诺西亚游鱼",
+          "name": "鲤鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -105,7 +105,7 @@
         },
         {
           "id": "f2_3",
-          "name": "西拉诺西亚巨口鱼",
+          "name": "泥鳅",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -114,7 +114,7 @@
         },
         {
           "id": "f2_4",
-          "name": "西拉诺西亚稀有鱼",
+          "name": "银鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -124,7 +124,7 @@
       ],
       "king": {
         "id": "k2",
-        "name": "西拉诺西亚鱼王",
+        "name": "利维亚桑的眷属",
         "prereqFishIds": [
           "f2_1",
           "f2_2"
@@ -141,7 +141,7 @@
       },
       "emperor": {
         "id": "e2",
-        "name": "西拉诺西亚鱼皇",
+        "name": "神龙之影",
         "prereqFishIds": [
           "f2_1",
           "f2_2",
@@ -165,7 +165,7 @@
       "normal": [
         {
           "id": "f3_1",
-          "name": "拉诺西亚低地幼鱼",
+          "name": "泥鳅",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -174,7 +174,7 @@
         },
         {
           "id": "f3_2",
-          "name": "拉诺西亚低地游鱼",
+          "name": "银鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -183,7 +183,7 @@
         },
         {
           "id": "f3_3",
-          "name": "拉诺西亚低地巨口鱼",
+          "name": "香鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -192,7 +192,7 @@
         },
         {
           "id": "f3_4",
-          "name": "拉诺西亚低地稀有鱼",
+          "name": "鳟鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -202,7 +202,7 @@
       ],
       "king": {
         "id": "k3",
-        "name": "拉诺西亚低地鱼王",
+        "name": "蓝宝石恶魔",
         "prereqFishIds": [
           "f3_1",
           "f3_2"
@@ -219,7 +219,7 @@
       },
       "emperor": {
         "id": "e3",
-        "name": "拉诺西亚低地鱼皇",
+        "name": "世界蛇",
         "prereqFishIds": [
           "f3_1",
           "f3_2",
@@ -243,7 +243,7 @@
       "normal": [
         {
           "id": "f4_1",
-          "name": "中萨纳兰幼鱼",
+          "name": "香鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -252,7 +252,7 @@
         },
         {
           "id": "f4_2",
-          "name": "中萨纳兰游鱼",
+          "name": "鳟鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -261,7 +261,7 @@
         },
         {
           "id": "f4_3",
-          "name": "中萨纳兰巨口鱼",
+          "name": "白鲑",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -270,7 +270,7 @@
         },
         {
           "id": "f4_4",
-          "name": "中萨纳兰稀有鱼",
+          "name": "茴鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -280,7 +280,7 @@
       ],
       "king": {
         "id": "k4",
-        "name": "中萨纳兰鱼王",
+        "name": "红玉蛇",
         "prereqFishIds": [
           "f4_1",
           "f4_2"
@@ -297,7 +297,7 @@
       },
       "emperor": {
         "id": "e4",
-        "name": "中萨纳兰鱼皇",
+        "name": "太古利维坦",
         "prereqFishIds": [
           "f4_1",
           "f4_2",
@@ -321,7 +321,7 @@
       "normal": [
         {
           "id": "f5_1",
-          "name": "西萨纳兰幼鱼",
+          "name": "白鲑",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -330,7 +330,7 @@
         },
         {
           "id": "f5_2",
-          "name": "西萨纳兰游鱼",
+          "name": "茴鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -339,7 +339,7 @@
         },
         {
           "id": "f5_3",
-          "name": "西萨纳兰巨口鱼",
+          "name": "鲱鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -348,7 +348,7 @@
         },
         {
           "id": "f5_4",
-          "name": "西萨纳兰稀有鱼",
+          "name": "沙丁鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -358,7 +358,7 @@
       ],
       "king": {
         "id": "k5",
-        "name": "西萨纳兰鱼王",
+        "name": "熔岩王",
         "prereqFishIds": [
           "f5_1",
           "f5_2"
@@ -375,7 +375,7 @@
       },
       "emperor": {
         "id": "e5",
-        "name": "西萨纳兰鱼皇",
+        "name": "群星之鲸",
         "prereqFishIds": [
           "f5_1",
           "f5_2",
@@ -399,7 +399,7 @@
       "normal": [
         {
           "id": "f6_1",
-          "name": "黑衣森林中央林区幼鱼",
+          "name": "鲱鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -408,7 +408,7 @@
         },
         {
           "id": "f6_2",
-          "name": "黑衣森林中央林区游鱼",
+          "name": "沙丁鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -417,7 +417,7 @@
         },
         {
           "id": "f6_3",
-          "name": "黑衣森林中央林区巨口鱼",
+          "name": "鲭鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -426,7 +426,7 @@
         },
         {
           "id": "f6_4",
-          "name": "黑衣森林中央林区稀有鱼",
+          "name": "鲣鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -436,7 +436,7 @@
       ],
       "king": {
         "id": "k6",
-        "name": "黑衣森林中央林区鱼王",
+        "name": "冰霜帝王",
         "prereqFishIds": [
           "f6_1",
           "f6_2"
@@ -453,7 +453,7 @@
       },
       "emperor": {
         "id": "e6",
-        "name": "黑衣森林中央林区鱼皇",
+        "name": "混沌之鱼",
         "prereqFishIds": [
           "f6_1",
           "f6_2",
@@ -477,7 +477,7 @@
       "normal": [
         {
           "id": "f7_1",
-          "name": "黑衣森林东部林区幼鱼",
+          "name": "鲭鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -486,7 +486,7 @@
         },
         {
           "id": "f7_2",
-          "name": "黑衣森林东部林区游鱼",
+          "name": "鲣鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -495,7 +495,7 @@
         },
         {
           "id": "f7_3",
-          "name": "黑衣森林东部林区巨口鱼",
+          "name": "金枪鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -504,7 +504,7 @@
         },
         {
           "id": "f7_4",
-          "name": "黑衣森林东部林区稀有鱼",
+          "name": "旗鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -514,7 +514,7 @@
       ],
       "king": {
         "id": "k7",
-        "name": "黑衣森林东部林区鱼王",
+        "name": "沙海之主",
         "prereqFishIds": [
           "f7_1",
           "f7_2"
@@ -531,7 +531,7 @@
       },
       "emperor": {
         "id": "e7",
-        "name": "黑衣森林东部林区鱼皇",
+        "name": "终焉之鲟",
         "prereqFishIds": [
           "f7_1",
           "f7_2",
@@ -555,7 +555,7 @@
       "normal": [
         {
           "id": "f8_1",
-          "name": "东萨纳兰幼鱼",
+          "name": "金枪鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -564,7 +564,7 @@
         },
         {
           "id": "f8_2",
-          "name": "东萨纳兰游鱼",
+          "name": "旗鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -573,7 +573,7 @@
         },
         {
           "id": "f8_3",
-          "name": "东萨纳兰巨口鱼",
+          "name": "鲷鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -582,7 +582,7 @@
         },
         {
           "id": "f8_4",
-          "name": "东萨纳兰稀有鱼",
+          "name": "石斑鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -592,7 +592,7 @@
       ],
       "king": {
         "id": "k8",
-        "name": "东萨纳兰鱼王",
+        "name": "苍天霸主",
         "prereqFishIds": [
           "f8_1",
           "f8_2"
@@ -609,7 +609,7 @@
       },
       "emperor": {
         "id": "e8",
-        "name": "东萨纳兰鱼皇",
+        "name": "苍穹之翼",
         "prereqFishIds": [
           "f8_1",
           "f8_2",
@@ -633,7 +633,7 @@
       "normal": [
         {
           "id": "f9_1",
-          "name": "南萨纳兰幼鱼",
+          "name": "鲷鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -642,7 +642,7 @@
         },
         {
           "id": "f9_2",
-          "name": "南萨纳兰游鱼",
+          "name": "石斑鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -651,7 +651,7 @@
         },
         {
           "id": "f9_3",
-          "name": "南萨纳兰巨口鱼",
+          "name": "比目鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -660,7 +660,7 @@
         },
         {
           "id": "f9_4",
-          "name": "南萨纳兰稀有鱼",
+          "name": "鲽鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -670,7 +670,7 @@
       ],
       "king": {
         "id": "k9",
-        "name": "南萨纳兰鱼王",
+        "name": "深渊恐惧",
         "prereqFishIds": [
           "f9_1",
           "f9_2"
@@ -687,7 +687,7 @@
       },
       "emperor": {
         "id": "e9",
-        "name": "南萨纳兰鱼皇",
+        "name": "大地之脾",
         "prereqFishIds": [
           "f9_1",
           "f9_2",
@@ -711,7 +711,7 @@
       "normal": [
         {
           "id": "f10_1",
-          "name": "摩杜纳幼鱼",
+          "name": "比目鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -720,7 +720,7 @@
         },
         {
           "id": "f10_2",
-          "name": "摩杜纳游鱼",
+          "name": "鲽鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -729,7 +729,7 @@
         },
         {
           "id": "f10_3",
-          "name": "摩杜纳巨口鱼",
+          "name": "鳐鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -738,7 +738,7 @@
         },
         {
           "id": "f10_4",
-          "name": "摩杜纳稀有鱼",
+          "name": "鲨鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -748,7 +748,7 @@
       ],
       "king": {
         "id": "k10",
-        "name": "摩杜纳鱼王",
+        "name": "幽灵船长",
         "prereqFishIds": [
           "f10_1",
           "f10_2"
@@ -765,7 +765,7 @@
       },
       "emperor": {
         "id": "e10",
-        "name": "摩杜纳鱼皇",
+        "name": "月读的守望",
         "prereqFishIds": [
           "f10_1",
           "f10_2",
@@ -789,7 +789,7 @@
       "normal": [
         {
           "id": "f11_1",
-          "name": "库尔札斯中央高地幼鱼",
+          "name": "鳐鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -798,7 +798,7 @@
         },
         {
           "id": "f11_2",
-          "name": "库尔札斯中央高地游鱼",
+          "name": "鲨鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -807,7 +807,7 @@
         },
         {
           "id": "f11_3",
-          "name": "库尔札斯中央高地巨口鱼",
+          "name": "河豚",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -816,7 +816,7 @@
         },
         {
           "id": "f11_4",
-          "name": "库尔札斯中央高地稀有鱼",
+          "name": "灯笼鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -826,7 +826,7 @@
       ],
       "king": {
         "id": "k11",
-        "name": "库尔札斯中央高地鱼王",
+        "name": "千年鲟",
         "prereqFishIds": [
           "f11_1",
           "f11_2"
@@ -843,7 +843,7 @@
       },
       "emperor": {
         "id": "e11",
-        "name": "库尔札斯中央高地鱼皇",
+        "name": "火神之鳞",
         "prereqFishIds": [
           "f11_1",
           "f11_2",
@@ -867,7 +867,7 @@
       "normal": [
         {
           "id": "f12_1",
-          "name": "库尔札斯西部高地幼鱼",
+          "name": "河豚",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -876,7 +876,7 @@
         },
         {
           "id": "f12_2",
-          "name": "库尔札斯西部高地游鱼",
+          "name": "灯笼鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -885,7 +885,7 @@
         },
         {
           "id": "f12_3",
-          "name": "库尔札斯西部高地巨口鱼",
+          "name": "海马",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -894,7 +894,7 @@
         },
         {
           "id": "f12_4",
-          "name": "库尔札斯西部高地稀有鱼",
+          "name": "神仙鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -904,7 +904,7 @@
       ],
       "king": {
         "id": "k12",
-        "name": "库尔札斯西部高地鱼王",
+        "name": "湖之主",
         "prereqFishIds": [
           "f12_1",
           "f12_2"
@@ -921,7 +921,7 @@
       },
       "emperor": {
         "id": "e12",
-        "name": "库尔札斯西部高地鱼皇",
+        "name": "风神之息",
         "prereqFishIds": [
           "f12_1",
           "f12_2",
@@ -945,7 +945,7 @@
       "normal": [
         {
           "id": "f13_1",
-          "name": "龙堡参天高地幼鱼",
+          "name": "海马",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -954,7 +954,7 @@
         },
         {
           "id": "f13_2",
-          "name": "龙堡参天高地游鱼",
+          "name": "神仙鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -963,7 +963,7 @@
         },
         {
           "id": "f13_3",
-          "name": "龙堡参天高地巨口鱼",
+          "name": "蝴蝶鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -972,7 +972,7 @@
         },
         {
           "id": "f13_4",
-          "name": "龙堡参天高地稀有鱼",
+          "name": "小丑鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -982,7 +982,7 @@
       ],
       "king": {
         "id": "k13",
-        "name": "龙堡参天高地鱼王",
+        "name": "雷鸣鲶",
         "prereqFishIds": [
           "f13_1",
           "f13_2"
@@ -999,7 +999,7 @@
       },
       "emperor": {
         "id": "e13",
-        "name": "龙堡参天高地鱼皇",
+        "name": "水神之泪",
         "prereqFishIds": [
           "f13_1",
           "f13_2",
@@ -1023,7 +1023,7 @@
       "normal": [
         {
           "id": "f14_1",
-          "name": "翻云雾海幼鱼",
+          "name": "蝴蝶鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1032,7 +1032,7 @@
         },
         {
           "id": "f14_2",
-          "name": "翻云雾海游鱼",
+          "name": "小丑鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1041,7 +1041,7 @@
         },
         {
           "id": "f14_3",
-          "name": "翻云雾海巨口鱼",
+          "name": "章鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1050,7 +1050,7 @@
         },
         {
           "id": "f14_4",
-          "name": "翻云雾海稀有鱼",
+          "name": "乌贼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1060,7 +1060,7 @@
       ],
       "king": {
         "id": "k14",
-        "name": "翻云雾海鱼王",
+        "name": "白银之鳞",
         "prereqFishIds": [
           "f14_1",
           "f14_2"
@@ -1077,7 +1077,7 @@
       },
       "emperor": {
         "id": "e14",
-        "name": "翻云雾海鱼皇",
+        "name": "雷神之怒",
         "prereqFishIds": [
           "f14_1",
           "f14_2",
@@ -1101,7 +1101,7 @@
       "normal": [
         {
           "id": "f15_1",
-          "name": "龙堡内陆低地幼鱼",
+          "name": "章鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1110,7 +1110,7 @@
         },
         {
           "id": "f15_2",
-          "name": "龙堡内陆低地游鱼",
+          "name": "乌贼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1119,7 +1119,7 @@
         },
         {
           "id": "f15_3",
-          "name": "龙堡内陆低地巨口鱼",
+          "name": "水母",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1128,7 +1128,7 @@
         },
         {
           "id": "f15_4",
-          "name": "龙堡内陆低地稀有鱼",
+          "name": "海星",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1138,7 +1138,7 @@
       ],
       "king": {
         "id": "k15",
-        "name": "龙堡内陆低地鱼王",
+        "name": "黄金鲷",
         "prereqFishIds": [
           "f15_1",
           "f15_2"
@@ -1155,7 +1155,7 @@
       },
       "emperor": {
         "id": "e15",
-        "name": "龙堡内陆低地鱼皇",
+        "name": "冰神之牙",
         "prereqFishIds": [
           "f15_1",
           "f15_2",
@@ -1179,7 +1179,7 @@
       "normal": [
         {
           "id": "f16_1",
-          "name": "田园郡幼鱼",
+          "name": "水母",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1188,7 +1188,7 @@
         },
         {
           "id": "f16_2",
-          "name": "田园郡游鱼",
+          "name": "海星",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1197,7 +1197,7 @@
         },
         {
           "id": "f16_3",
-          "name": "田园郡巨口鱼",
+          "name": "螃蟹",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1206,7 +1206,7 @@
         },
         {
           "id": "f16_4",
-          "name": "田园郡稀有鱼",
+          "name": "龙虾",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1216,7 +1216,7 @@
       ],
       "king": {
         "id": "k16",
-        "name": "田园郡鱼王",
+        "name": "黑曜石鲨",
         "prereqFishIds": [
           "f16_1",
           "f16_2"
@@ -1233,7 +1233,7 @@
       },
       "emperor": {
         "id": "e16",
-        "name": "田园郡鱼皇",
+        "name": "土神之核",
         "prereqFishIds": [
           "f16_1",
           "f16_2",
@@ -1257,7 +1257,7 @@
       "normal": [
         {
           "id": "f17_1",
-          "name": "基拉巴尼亚边区幼鱼",
+          "name": "螃蟹",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1266,7 +1266,7 @@
         },
         {
           "id": "f17_2",
-          "name": "基拉巴尼亚边区游鱼",
+          "name": "龙虾",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1275,7 +1275,7 @@
         },
         {
           "id": "f17_3",
-          "name": "基拉巴尼亚边区巨口鱼",
+          "name": "扇贝",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1284,7 +1284,7 @@
         },
         {
           "id": "f17_4",
-          "name": "基拉巴尼亚边区稀有鱼",
+          "name": "牡蛎",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1294,7 +1294,7 @@
       ],
       "king": {
         "id": "k17",
-        "name": "基拉巴尼亚边区鱼王",
+        "name": "翡翠巨龙",
         "prereqFishIds": [
           "f17_1",
           "f17_2"
@@ -1311,7 +1311,7 @@
       },
       "emperor": {
         "id": "e17",
-        "name": "基拉巴尼亚边区鱼皇",
+        "name": "圣兽白虎",
         "prereqFishIds": [
           "f17_1",
           "f17_2",
@@ -1335,7 +1335,7 @@
       "normal": [
         {
           "id": "f18_1",
-          "name": "基拉巴尼亚山区幼鱼",
+          "name": "扇贝",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1344,7 +1344,7 @@
         },
         {
           "id": "f18_2",
-          "name": "基拉巴尼亚山区游鱼",
+          "name": "牡蛎",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1353,7 +1353,7 @@
         },
         {
           "id": "f18_3",
-          "name": "基拉巴尼亚山区巨口鱼",
+          "name": "海胆",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1362,7 +1362,7 @@
         },
         {
           "id": "f18_4",
-          "name": "基拉巴尼亚山区稀有鱼",
+          "name": "鲍鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1372,7 +1372,7 @@
       ],
       "king": {
         "id": "k18",
-        "name": "基拉巴尼亚山区鱼王",
+        "name": "紫电鳗",
         "prereqFishIds": [
           "f18_1",
           "f18_2"
@@ -1389,7 +1389,7 @@
       },
       "emperor": {
         "id": "e18",
-        "name": "基拉巴尼亚山区鱼皇",
+        "name": "朱雀之羽",
         "prereqFishIds": [
           "f18_1",
           "f18_2",
@@ -1413,7 +1413,7 @@
       "normal": [
         {
           "id": "f19_1",
-          "name": "红玉海幼鱼",
+          "name": "海胆",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1422,7 +1422,7 @@
         },
         {
           "id": "f19_2",
-          "name": "红玉海游鱼",
+          "name": "鲍鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1431,7 +1431,7 @@
         },
         {
           "id": "f19_3",
-          "name": "红玉海巨口鱼",
+          "name": "珊瑚鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1440,7 +1440,7 @@
         },
         {
           "id": "f19_4",
-          "name": "红玉海稀有鱼",
+          "name": "深海鳕",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1450,7 +1450,7 @@
       ],
       "king": {
         "id": "k19",
-        "name": "红玉海鱼王",
+        "name": "苍翼飞鱼",
         "prereqFishIds": [
           "f19_1",
           "f19_2"
@@ -1467,7 +1467,7 @@
       },
       "emperor": {
         "id": "e19",
-        "name": "红玉海鱼皇",
+        "name": "青龙之鳞",
         "prereqFishIds": [
           "f19_1",
           "f19_2",
@@ -1491,7 +1491,7 @@
       "normal": [
         {
           "id": "f20_1",
-          "name": "延夏幼鱼",
+          "name": "珊瑚鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1500,7 +1500,7 @@
         },
         {
           "id": "f20_2",
-          "name": "延夏游鱼",
+          "name": "深海鳕",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1509,7 +1509,7 @@
         },
         {
           "id": "f20_3",
-          "name": "延夏巨口鱼",
+          "name": "河鲈",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1518,7 +1518,7 @@
         },
         {
           "id": "f20_4",
-          "name": "延夏稀有鱼",
+          "name": "海鲈",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1528,7 +1528,7 @@
       ],
       "king": {
         "id": "k20",
-        "name": "延夏鱼王",
+        "name": "血月鳐",
         "prereqFishIds": [
           "f20_1",
           "f20_2"
@@ -1545,7 +1545,7 @@
       },
       "emperor": {
         "id": "e20",
-        "name": "延夏鱼皇",
+        "name": "玄武之甲",
         "prereqFishIds": [
           "f20_1",
           "f20_2",
@@ -1569,7 +1569,7 @@
       "normal": [
         {
           "id": "f21_1",
-          "name": "太阳神草原幼鱼",
+          "name": "河鲈",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1578,7 +1578,7 @@
         },
         {
           "id": "f21_2",
-          "name": "太阳神草原游鱼",
+          "name": "海鲈",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1587,7 +1587,7 @@
         },
         {
           "id": "f21_3",
-          "name": "太阳神草原巨口鱼",
+          "name": "三文鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1596,7 +1596,7 @@
         },
         {
           "id": "f21_4",
-          "name": "太阳神草原稀有鱼",
+          "name": "鲤鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1606,7 +1606,7 @@
       ],
       "king": {
         "id": "k21",
-        "name": "太阳神草原鱼王",
+        "name": "星辉水母",
         "prereqFishIds": [
           "f21_1",
           "f21_2"
@@ -1623,7 +1623,7 @@
       },
       "emperor": {
         "id": "e21",
-        "name": "太阳神草原鱼皇",
+        "name": "森罗万象",
         "prereqFishIds": [
           "f21_1",
           "f21_2",
@@ -1647,7 +1647,7 @@
       "normal": [
         {
           "id": "f22_1",
-          "name": "黄金港幼鱼",
+          "name": "三文鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1656,7 +1656,7 @@
         },
         {
           "id": "f22_2",
-          "name": "黄金港游鱼",
+          "name": "鲤鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1665,7 +1665,7 @@
         },
         {
           "id": "f22_3",
-          "name": "黄金港巨口鱼",
+          "name": "泥鳅",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1674,7 +1674,7 @@
         },
         {
           "id": "f22_4",
-          "name": "黄金港稀有鱼",
+          "name": "银鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1684,7 +1684,7 @@
       ],
       "king": {
         "id": "k22",
-        "name": "黄金港鱼王",
+        "name": "虚空鲸",
         "prereqFishIds": [
           "f22_1",
           "f22_2"
@@ -1701,7 +1701,7 @@
       },
       "emperor": {
         "id": "e22",
-        "name": "黄金港鱼皇",
+        "name": "时间之鱼",
         "prereqFishIds": [
           "f22_1",
           "f22_2",
@@ -1725,7 +1725,7 @@
       "normal": [
         {
           "id": "f23_1",
-          "name": "珂露西亚岛幼鱼",
+          "name": "泥鳅",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1734,7 +1734,7 @@
         },
         {
           "id": "f23_2",
-          "name": "珂露西亚岛游鱼",
+          "name": "银鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1743,7 +1743,7 @@
         },
         {
           "id": "f23_3",
-          "name": "珂露西亚岛巨口鱼",
+          "name": "香鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1752,7 +1752,7 @@
         },
         {
           "id": "f23_4",
-          "name": "珂露西亚岛稀有鱼",
+          "name": "鳟鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1762,7 +1762,7 @@
       ],
       "king": {
         "id": "k23",
-        "name": "珂露西亚岛鱼王",
+        "name": "太古腔棘鱼",
         "prereqFishIds": [
           "f23_1",
           "f23_2"
@@ -1779,7 +1779,7 @@
       },
       "emperor": {
         "id": "e23",
-        "name": "珂露西亚岛鱼皇",
+        "name": "虚空之王",
         "prereqFishIds": [
           "f23_1",
           "f23_2",
@@ -1803,7 +1803,7 @@
       "normal": [
         {
           "id": "f24_1",
-          "name": "安穆·艾兰幼鱼",
+          "name": "香鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1812,7 +1812,7 @@
         },
         {
           "id": "f24_2",
-          "name": "安穆·艾兰游鱼",
+          "name": "鳟鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1821,7 +1821,7 @@
         },
         {
           "id": "f24_3",
-          "name": "安穆·艾兰巨口鱼",
+          "name": "白鲑",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1830,7 +1830,7 @@
         },
         {
           "id": "f24_4",
-          "name": "安穆·艾兰稀有鱼",
+          "name": "茴鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1840,7 +1840,7 @@
       ],
       "king": {
         "id": "k24",
-        "name": "安穆·艾兰鱼王",
+        "name": "沸腾章鱼",
         "prereqFishIds": [
           "f24_1",
           "f24_2"
@@ -1857,7 +1857,7 @@
       },
       "emperor": {
         "id": "e24",
-        "name": "安穆·艾兰鱼皇",
+        "name": "星海之主",
         "prereqFishIds": [
           "f24_1",
           "f24_2",
@@ -1881,7 +1881,7 @@
       "normal": [
         {
           "id": "f25_1",
-          "name": "伊尔美格幼鱼",
+          "name": "白鲑",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1890,7 +1890,7 @@
         },
         {
           "id": "f25_2",
-          "name": "伊尔美格游鱼",
+          "name": "茴鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1899,7 +1899,7 @@
         },
         {
           "id": "f25_3",
-          "name": "伊尔美格巨口鱼",
+          "name": "鲱鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1908,7 +1908,7 @@
         },
         {
           "id": "f25_4",
-          "name": "伊尔美格稀有鱼",
+          "name": "沙丁鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1918,7 +1918,7 @@
       ],
       "king": {
         "id": "k25",
-        "name": "伊尔美格鱼王",
+        "name": "极光鲑",
         "prereqFishIds": [
           "f25_1",
           "f25_2"
@@ -1935,7 +1935,7 @@
       },
       "emperor": {
         "id": "e25",
-        "name": "伊尔美格鱼皇",
+        "name": "永劫之鲛",
         "prereqFishIds": [
           "f25_1",
           "f25_2",
@@ -1959,7 +1959,7 @@
       "normal": [
         {
           "id": "f26_1",
-          "name": "雷克兰德幼鱼",
+          "name": "鲱鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -1968,7 +1968,7 @@
         },
         {
           "id": "f26_2",
-          "name": "雷克兰德游鱼",
+          "name": "沙丁鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -1977,7 +1977,7 @@
         },
         {
           "id": "f26_3",
-          "name": "雷克兰德巨口鱼",
+          "name": "鲭鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -1986,7 +1986,7 @@
         },
         {
           "id": "f26_4",
-          "name": "雷克兰德稀有鱼",
+          "name": "鲣鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -1996,7 +1996,7 @@
       ],
       "king": {
         "id": "k26",
-        "name": "雷克兰德鱼王",
+        "name": "沙漠鲵",
         "prereqFishIds": [
           "f26_1",
           "f26_2"
@@ -2013,7 +2013,7 @@
       },
       "emperor": {
         "id": "e26",
-        "name": "雷克兰德鱼皇",
+        "name": "创世之鲲",
         "prereqFishIds": [
           "f26_1",
           "f26_2",
@@ -2037,7 +2037,7 @@
       "normal": [
         {
           "id": "f27_1",
-          "name": "拉凯提卡大森林幼鱼",
+          "name": "鲭鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2046,7 +2046,7 @@
         },
         {
           "id": "f27_2",
-          "name": "拉凯提卡大森林游鱼",
+          "name": "鲣鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2055,7 +2055,7 @@
         },
         {
           "id": "f27_3",
-          "name": "拉凯提卡大森林巨口鱼",
+          "name": "金枪鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2064,7 +2064,7 @@
         },
         {
           "id": "f27_4",
-          "name": "拉凯提卡大森林稀有鱼",
+          "name": "旗鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2074,7 +2074,7 @@
       ],
       "king": {
         "id": "k27",
-        "name": "拉凯提卡大森林鱼王",
+        "name": "沼泽之主",
         "prereqFishIds": [
           "f27_1",
           "f27_2"
@@ -2091,7 +2091,7 @@
       },
       "emperor": {
         "id": "e27",
-        "name": "拉凯提卡大森林鱼皇",
+        "name": "灭世之鲸",
         "prereqFishIds": [
           "f27_1",
           "f27_2",
@@ -2115,7 +2115,7 @@
       "normal": [
         {
           "id": "f28_1",
-          "name": "黑风海幼鱼",
+          "name": "金枪鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2124,7 +2124,7 @@
         },
         {
           "id": "f28_2",
-          "name": "黑风海游鱼",
+          "name": "旗鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2133,7 +2133,7 @@
         },
         {
           "id": "f28_3",
-          "name": "黑风海巨口鱼",
+          "name": "鲷鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2142,7 +2142,7 @@
         },
         {
           "id": "f28_4",
-          "name": "黑风海稀有鱼",
+          "name": "石斑鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2152,7 +2152,7 @@
       ],
       "king": {
         "id": "k28",
-        "name": "黑风海鱼王",
+        "name": "森林守卫",
         "prereqFishIds": [
           "f28_1",
           "f28_2"
@@ -2169,7 +2169,7 @@
       },
       "emperor": {
         "id": "e28",
-        "name": "黑风海鱼皇",
+        "name": "天启之鳞",
         "prereqFishIds": [
           "f28_1",
           "f28_2",
@@ -2193,7 +2193,7 @@
       "normal": [
         {
           "id": "f29_1",
-          "name": "萨维奈岛幼鱼",
+          "name": "鲷鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2202,7 +2202,7 @@
         },
         {
           "id": "f29_2",
-          "name": "萨维奈岛游鱼",
+          "name": "石斑鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2211,7 +2211,7 @@
         },
         {
           "id": "f29_3",
-          "name": "萨维奈岛巨口鱼",
+          "name": "比目鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2220,7 +2220,7 @@
         },
         {
           "id": "f29_4",
-          "name": "萨维奈岛稀有鱼",
+          "name": "鲽鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2230,7 +2230,7 @@
       ],
       "king": {
         "id": "k29",
-        "name": "萨维奈岛鱼王",
+        "name": "遗迹守护者",
         "prereqFishIds": [
           "f29_1",
           "f29_2"
@@ -2247,7 +2247,7 @@
       },
       "emperor": {
         "id": "e29",
-        "name": "萨维奈岛鱼皇",
+        "name": "究极神鱼",
         "prereqFishIds": [
           "f29_1",
           "f29_2",
@@ -2271,7 +2271,7 @@
       "normal": [
         {
           "id": "f30_1",
-          "name": "加雷马幼鱼",
+          "name": "比目鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2280,7 +2280,7 @@
         },
         {
           "id": "f30_2",
-          "name": "加雷马游鱼",
+          "name": "鲽鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2289,7 +2289,7 @@
         },
         {
           "id": "f30_3",
-          "name": "加雷马巨口鱼",
+          "name": "鳐鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2298,7 +2298,7 @@
         },
         {
           "id": "f30_4",
-          "name": "加雷马稀有鱼",
+          "name": "鲨鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2308,7 +2308,7 @@
       ],
       "king": {
         "id": "k30",
-        "name": "加雷马鱼王",
+        "name": "巨型三角鱼",
         "prereqFishIds": [
           "f30_1",
           "f30_2"
@@ -2325,7 +2325,7 @@
       },
       "emperor": {
         "id": "e30",
-        "name": "加雷马鱼皇",
+        "name": "完美之鱼",
         "prereqFishIds": [
           "f30_1",
           "f30_2",
@@ -2349,7 +2349,7 @@
       "normal": [
         {
           "id": "f31_1",
-          "name": "叹息海幼鱼",
+          "name": "鳐鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2358,7 +2358,7 @@
         },
         {
           "id": "f31_2",
-          "name": "叹息海游鱼",
+          "name": "鲨鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2367,7 +2367,7 @@
         },
         {
           "id": "f31_3",
-          "name": "叹息海巨口鱼",
+          "name": "河豚",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2376,7 +2376,7 @@
         },
         {
           "id": "f31_4",
-          "name": "叹息海稀有鱼",
+          "name": "灯笼鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2386,7 +2386,7 @@
       ],
       "king": {
         "id": "k31",
-        "name": "叹息海鱼王",
+        "name": "风暴旗鱼",
         "prereqFishIds": [
           "f31_1",
           "f31_2"
@@ -2403,7 +2403,7 @@
       },
       "emperor": {
         "id": "e31",
-        "name": "叹息海鱼皇",
+        "name": "无瑕之鳞",
         "prereqFishIds": [
           "f31_1",
           "f31_2",
@@ -2427,7 +2427,7 @@
       "normal": [
         {
           "id": "f32_1",
-          "name": "天外天垓幼鱼",
+          "name": "河豚",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2436,7 +2436,7 @@
         },
         {
           "id": "f32_2",
-          "name": "天外天垓游鱼",
+          "name": "灯笼鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2445,7 +2445,7 @@
         },
         {
           "id": "f32_3",
-          "name": "天外天垓巨口鱼",
+          "name": "海马",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2454,7 +2454,7 @@
         },
         {
           "id": "f32_4",
-          "name": "天外天垓稀有鱼",
+          "name": "神仙鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2464,7 +2464,7 @@
       ],
       "king": {
         "id": "k32",
-        "name": "天外天垓鱼王",
+        "name": "冰海巨兽",
         "prereqFishIds": [
           "f32_1",
           "f32_2"
@@ -2481,7 +2481,7 @@
       },
       "emperor": {
         "id": "e32",
-        "name": "天外天垓鱼皇",
+        "name": "黄金之王",
         "prereqFishIds": [
           "f32_1",
           "f32_2",
@@ -2505,7 +2505,7 @@
       "normal": [
         {
           "id": "f33_1",
-          "name": "厄尔庇斯幼鱼",
+          "name": "海马",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2514,7 +2514,7 @@
         },
         {
           "id": "f33_2",
-          "name": "厄尔庇斯游鱼",
+          "name": "神仙鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2523,7 +2523,7 @@
         },
         {
           "id": "f33_3",
-          "name": "厄尔庇斯巨口鱼",
+          "name": "蝴蝶鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2532,7 +2532,7 @@
         },
         {
           "id": "f33_4",
-          "name": "厄尔庇斯稀有鱼",
+          "name": "小丑鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2542,7 +2542,7 @@
       ],
       "king": {
         "id": "k33",
-        "name": "厄尔庇斯鱼王",
+        "name": "火焰鲡",
         "prereqFishIds": [
           "f33_1",
           "f33_2"
@@ -2559,7 +2559,7 @@
       },
       "emperor": {
         "id": "e33",
-        "name": "厄尔庇斯鱼皇",
+        "name": "极乐鸟鱼",
         "prereqFishIds": [
           "f33_1",
           "f33_2",
@@ -2583,7 +2583,7 @@
       "normal": [
         {
           "id": "f34_1",
-          "name": "迷津幼鱼",
+          "name": "蝴蝶鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2592,7 +2592,7 @@
         },
         {
           "id": "f34_2",
-          "name": "迷津游鱼",
+          "name": "小丑鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2601,7 +2601,7 @@
         },
         {
           "id": "f34_3",
-          "name": "迷津巨口鱼",
+          "name": "章鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2610,7 +2610,7 @@
         },
         {
           "id": "f34_4",
-          "name": "迷津稀有鱼",
+          "name": "乌贼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2620,7 +2620,7 @@
       ],
       "king": {
         "id": "k34",
-        "name": "迷津鱼王",
+        "name": "云端鲲",
         "prereqFishIds": [
           "f34_1",
           "f34_2"
@@ -2637,7 +2637,7 @@
       },
       "emperor": {
         "id": "e34",
-        "name": "迷津鱼皇",
+        "name": "幻海之主",
         "prereqFishIds": [
           "f34_1",
           "f34_2",
@@ -2661,7 +2661,7 @@
       "normal": [
         {
           "id": "f35_1",
-          "name": "图拉尔大陆·海岸幼鱼",
+          "name": "章鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2670,7 +2670,7 @@
         },
         {
           "id": "f35_2",
-          "name": "图拉尔大陆·海岸游鱼",
+          "name": "乌贼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2679,7 +2679,7 @@
         },
         {
           "id": "f35_3",
-          "name": "图拉尔大陆·海岸巨口鱼",
+          "name": "水母",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2688,7 +2688,7 @@
         },
         {
           "id": "f35_4",
-          "name": "图拉尔大陆·海岸稀有鱼",
+          "name": "海星",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2698,7 +2698,7 @@
       ],
       "king": {
         "id": "k35",
-        "name": "图拉尔大陆·海岸鱼王",
+        "name": "幽谷潜者",
         "prereqFishIds": [
           "f35_1",
           "f35_2"
@@ -2715,7 +2715,7 @@
       },
       "emperor": {
         "id": "e35",
-        "name": "图拉尔大陆·海岸鱼皇",
+        "name": "万象之鱼",
         "prereqFishIds": [
           "f35_1",
           "f35_2",
@@ -2739,7 +2739,7 @@
       "normal": [
         {
           "id": "f36_1",
-          "name": "图拉尔大陆·丛林幼鱼",
+          "name": "水母",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2748,7 +2748,7 @@
         },
         {
           "id": "f36_2",
-          "name": "图拉尔大陆·丛林游鱼",
+          "name": "海星",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2757,7 +2757,7 @@
         },
         {
           "id": "f36_3",
-          "name": "图拉尔大陆·丛林巨口鱼",
+          "name": "螃蟹",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2766,7 +2766,7 @@
         },
         {
           "id": "f36_4",
-          "name": "图拉尔大陆·丛林稀有鱼",
+          "name": "龙虾",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2776,7 +2776,7 @@
       ],
       "king": {
         "id": "k36",
-        "name": "图拉尔大陆·丛林鱼王",
+        "name": "圣泉之鱼",
         "prereqFishIds": [
           "f36_1",
           "f36_2"
@@ -2793,7 +2793,7 @@
       },
       "emperor": {
         "id": "e36",
-        "name": "图拉尔大陆·丛林鱼皇",
+        "name": "万物之始",
         "prereqFishIds": [
           "f36_1",
           "f36_2",
@@ -2817,7 +2817,7 @@
       "normal": [
         {
           "id": "f37_1",
-          "name": "图拉尔大陆·遗迹幼鱼",
+          "name": "螃蟹",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2826,7 +2826,7 @@
         },
         {
           "id": "f37_2",
-          "name": "图拉尔大陆·遗迹游鱼",
+          "name": "龙虾",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2835,7 +2835,7 @@
         },
         {
           "id": "f37_3",
-          "name": "图拉尔大陆·遗迹巨口鱼",
+          "name": "扇贝",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2844,7 +2844,7 @@
         },
         {
           "id": "f37_4",
-          "name": "图拉尔大陆·遗迹稀有鱼",
+          "name": "牡蛎",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2854,7 +2854,7 @@
       ],
       "king": {
         "id": "k37",
-        "name": "图拉尔大陆·遗迹鱼王",
+        "name": "王都锦鲤",
         "prereqFishIds": [
           "f37_1",
           "f37_2"
@@ -2871,7 +2871,7 @@
       },
       "emperor": {
         "id": "e37",
-        "name": "图拉尔大陆·遗迹鱼皇",
+        "name": "终末之鲛",
         "prereqFishIds": [
           "f37_1",
           "f37_2",
@@ -2895,7 +2895,7 @@
       "normal": [
         {
           "id": "f38_1",
-          "name": "图拉尔大陆·火山幼鱼",
+          "name": "扇贝",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2904,7 +2904,7 @@
         },
         {
           "id": "f38_2",
-          "name": "图拉尔大陆·火山游鱼",
+          "name": "牡蛎",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2913,7 +2913,7 @@
         },
         {
           "id": "f38_3",
-          "name": "图拉尔大陆·火山巨口鱼",
+          "name": "海胆",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -2922,7 +2922,7 @@
         },
         {
           "id": "f38_4",
-          "name": "图拉尔大陆·火山稀有鱼",
+          "name": "鲍鱼",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -2932,7 +2932,7 @@
       ],
       "king": {
         "id": "k38",
-        "name": "图拉尔大陆·火山鱼王",
+        "name": "熔心鲟",
         "prereqFishIds": [
           "f38_1",
           "f38_2"
@@ -2949,7 +2949,7 @@
       },
       "emperor": {
         "id": "e38",
-        "name": "图拉尔大陆·火山鱼皇",
+        "name": "原初之鱼",
         "prereqFishIds": [
           "f38_1",
           "f38_2",
@@ -2973,7 +2973,7 @@
       "normal": [
         {
           "id": "f39_1",
-          "name": "图拉尔大陆·王都幼鱼",
+          "name": "海胆",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -2982,7 +2982,7 @@
         },
         {
           "id": "f39_2",
-          "name": "图拉尔大陆·王都游鱼",
+          "name": "鲍鱼",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -2991,7 +2991,7 @@
         },
         {
           "id": "f39_3",
-          "name": "图拉尔大陆·王都巨口鱼",
+          "name": "珊瑚鱼",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -3000,7 +3000,7 @@
         },
         {
           "id": "f39_4",
-          "name": "图拉尔大陆·王都稀有鱼",
+          "name": "深海鳕",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -3010,7 +3010,7 @@
       ],
       "king": {
         "id": "k39",
-        "name": "图拉尔大陆·王都鱼王",
+        "name": "天外怪兽",
         "prereqFishIds": [
           "f39_1",
           "f39_2"
@@ -3027,7 +3027,7 @@
       },
       "emperor": {
         "id": "e39",
-        "name": "图拉尔大陆·王都鱼皇",
+        "name": "十二神之鳞",
         "prereqFishIds": [
           "f39_1",
           "f39_2",
@@ -3051,7 +3051,7 @@
       "normal": [
         {
           "id": "f40_1",
-          "name": "图拉尔大陆·圣域幼鱼",
+          "name": "珊瑚鱼",
           "weight": 55,
           "sizeMin": 20,
           "sizeMax": 60,
@@ -3060,7 +3060,7 @@
         },
         {
           "id": "f40_2",
-          "name": "图拉尔大陆·圣域游鱼",
+          "name": "深海鳕",
           "weight": 28,
           "sizeMin": 30,
           "sizeMax": 90,
@@ -3069,7 +3069,7 @@
         },
         {
           "id": "f40_3",
-          "name": "图拉尔大陆·圣域巨口鱼",
+          "name": "河鲈",
           "weight": 14,
           "sizeMin": 50,
           "sizeMax": 130,
@@ -3078,7 +3078,7 @@
         },
         {
           "id": "f40_4",
-          "name": "图拉尔大陆·圣域稀有鱼",
+          "name": "海鲈",
           "weight": 3,
           "sizeMin": 60,
           "sizeMax": 150,
@@ -3088,7 +3088,7 @@
       ],
       "king": {
         "id": "k40",
-        "name": "图拉尔大陆·圣域鱼王",
+        "name": "终末鲸",
         "prereqFishIds": [
           "f40_1",
           "f40_2"
@@ -3105,7 +3105,7 @@
       },
       "emperor": {
         "id": "e40",
-        "name": "图拉尔大陆·圣域鱼皇",
+        "name": "艾欧泽亚之王",
         "prereqFishIds": [
           "f40_1",
           "f40_2",

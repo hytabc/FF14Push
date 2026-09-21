@@ -65,7 +65,7 @@ async def start_produce(
         "sessionId": session.id,
         "jobId": job_id,
         "recipeId": recipe_id,
-        "cycle": {"seconds": craft_seconds(recipe, items), "credit": 0.0},
+        "cycle": dohdol_util.cycle_info(craft_seconds(recipe, items), 0.0),
     }
 
 
@@ -146,7 +146,7 @@ async def report_produce(
         "items": produced if equipment_out else [],
         "xp": xp,
         "level": level_info,
-        "cycle": {"seconds": craft_seconds_value, "credit": float(session.credit)},
+        "cycle": dohdol_util.cycle_info(craft_seconds_value, float(session.credit), now),
     }
 
 

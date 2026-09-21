@@ -8,7 +8,15 @@ from sqlalchemy import select
 from app.core.deps import CurrentUser, DbSession, OptionalUser, load_user_items
 from app.models import Hero, User
 from app.services.admin import is_admin
-from app.services.ranking import BOARDS, fetch_board, fetch_user_rank, refresh_all_rankings
+from app.services.ranking import (
+    BOARDS,
+    FISH_BOARDS,
+    fetch_board,
+    fetch_fish_board,
+    fetch_fish_user_rank,
+    fetch_user_rank,
+    refresh_all_rankings,
+)
 from app.services.serialization import hero_to_dict, loadout
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
@@ -24,8 +32,13 @@ async def ranking(
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=100),
 ) -> dict:
-    entries = await fetch_board(db, board, page, pageSize)
-    mine = await fetch_user_rank(db, board, user.id) if user else None
+    # 钓鱼榜实时聚合（刚钓完即可见），其余榜单读 5 分钟缓存
+    if board in FISH_BOARDS:
+        entries = await fetch_fish_board(db, board, page, pageSize)
+        mine = await fetch_fish_user_rank(db, board, user.id) if user else None
+    else:
+        entries = await fetch_board(db, board, page, pageSize)
+        mine = await fetch_user_rank(db, board, user.id) if user else None
     return {
         "board": board,
         "boards": list(BOARDS),

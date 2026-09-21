@@ -230,31 +230,62 @@ dump("dohdol-equipment.json", {
 })
 
 # ---------------------------------------------------------------- 鱼类
-FISH_NORMAL = [
-    ("幼鱼", 20, 60, 55), ("游鱼", 30, 90, 28), ("巨口鱼", 50, 130, 14), ("稀有鱼", 60, 150, 3),
+# 鱼名参考《最终幻想 XIV》的鱼类命名（普通鱼在多个钓场重复出现是正常的；
+# 鱼王 / 鱼皇每个地区各一条，名称互不重复）。
+FISH_NORMAL_NAMES = [
+    "河鲈", "海鲈", "三文鱼", "鲤鱼", "泥鳅", "银鱼", "香鱼", "鳟鱼",
+    "白鲑", "茴鱼", "鲱鱼", "沙丁鱼", "鲭鱼", "鲣鱼", "金枪鱼", "旗鱼",
+    "鲷鱼", "石斑鱼", "比目鱼", "鲽鱼", "鳐鱼", "鲨鱼", "河豚", "灯笼鱼",
+    "海马", "神仙鱼", "蝴蝶鱼", "小丑鱼", "章鱼", "乌贼", "水母", "海星",
+    "螃蟹", "龙虾", "扇贝", "牡蛎", "海胆", "鲍鱼", "珊瑚鱼", "深海鳕",
 ]
+FISH_KING_NAMES = [
+    "涅普特之龙", "利维亚桑的眷属", "蓝宝石恶魔", "红玉蛇", "熔岩王", "冰霜帝王",
+    "沙海之主", "苍天霸主", "深渊恐惧", "幽灵船长", "千年鲟", "湖之主",
+    "雷鸣鲶", "白银之鳞", "黄金鲷", "黑曜石鲨", "翡翠巨龙", "紫电鳗",
+    "苍翼飞鱼", "血月鳐", "星辉水母", "虚空鲸", "太古腔棘鱼", "沸腾章鱼",
+    "极光鲑", "沙漠鲵", "沼泽之主", "森林守卫", "遗迹守护者", "巨型三角鱼",
+    "风暴旗鱼", "冰海巨兽", "火焰鲡", "云端鲲", "幽谷潜者", "圣泉之鱼",
+    "王都锦鲤", "熔心鲟", "天外怪兽", "终末鲸",
+]
+FISH_EMPEROR_NAMES = [
+    "海皇利维亚桑", "神龙之影", "世界蛇", "太古利维坦", "群星之鲸", "混沌之鱼",
+    "终焉之鲟", "苍穹之翼", "大地之脾", "月读的守望", "火神之鳞", "风神之息",
+    "水神之泪", "雷神之怒", "冰神之牙", "土神之核", "圣兽白虎", "朱雀之羽",
+    "青龙之鳞", "玄武之甲", "森罗万象", "时间之鱼", "虚空之王", "星海之主",
+    "永劫之鲛", "创世之鲲", "灭世之鲸", "天启之鳞", "究极神鱼", "完美之鱼",
+    "无瑕之鳞", "黄金之王", "极乐鸟鱼", "幻海之主", "万象之鱼", "万物之始",
+    "终末之鲛", "原初之鱼", "十二神之鳞", "艾欧泽亚之王",
+]
+assert len(FISH_KING_NAMES) >= len(regions) and len(FISH_EMPEROR_NAMES) >= len(regions)
+assert len(FISH_NORMAL_NAMES) >= 4
+
 fish_regions = []
-for r in regions:
+for index, r in enumerate(regions):
     rid = r["id"]
+    # 每个钓场 4 种普通鱼，按地区错开取名（同一鱼种在多个钓场出现是正常的）
     normal = []
-    for idx, (suffix, smin, smax, w) in enumerate(FISH_NORMAL, start=1):
+    for slot in range(4):
+        name = FISH_NORMAL_NAMES[(index * 2 + slot) % len(FISH_NORMAL_NAMES)]
+        weight = [55, 28, 14, 3][slot]
+        smin, smax = [(20, 60), (30, 90), (50, 130), (60, 150)][slot]
         normal.append({
-            "id": f"f{rid}_{idx}", "name": f"{r['name']}{suffix}",
-            "weight": w, "sizeMin": smin, "sizeMax": smax, "exp": 4 + rid // 4,
-            "sell": fish_sell(rid),
+            "id": f"f{rid}_{slot + 1}", "name": name,
+            "weight": weight, "sizeMin": smin, "sizeMax": smax,
+            "exp": 4 + rid // 4, "sell": fish_sell(rid),
         })
     fish_regions.append({
         "regionId": rid,
         "name": r["name"],
         "normal": normal,
         "king": {
-            "id": f"k{rid}", "name": f"{r['name']}鱼王",
+            "id": f"k{rid}", "name": FISH_KING_NAMES[index],
             "prereqFishIds": [f"f{rid}_1", f"f{rid}_2"],
             "insightSeconds": [30, 45], "chance": 0.014,
             "sizeMin": 160, "sizeMax": 240, "exp": 40 + rid, "sell": 150 + rid * 4,
         },
         "emperor": {
-            "id": f"e{rid}", "name": f"{r['name']}鱼皇",
+            "id": f"e{rid}", "name": FISH_EMPEROR_NAMES[index],
             "prereqFishIds": [f"f{rid}_1", f"f{rid}_2", f"f{rid}_3", f"f{rid}_4"],
             "insightSeconds": [45, 60], "chance": 0.004,
             "sizeMin": 240, "sizeMax": 360, "exp": 120 + rid * 2, "sell": 600 + rid * 15,

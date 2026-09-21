@@ -55,7 +55,7 @@ async def start_fish(db: AsyncSession, user: User, items: Sequence[Item], region
     return {
         "sessionId": session.id,
         "regionId": region_id,
-        "cycle": {"seconds": dohdol_util.fish_seconds_per_cast(speed), "credit": 0.0},
+        "cycle": dohdol_util.cycle_info(dohdol_util.fish_seconds_per_cast(speed), 0.0),
     }
 
 
@@ -212,7 +212,7 @@ async def report_fish(
         "level": level_info,
         "insightRemainingSec": insight_remaining,
         "newTitles": new_titles,
-        "cycle": {"seconds": cast_seconds, "credit": float(session.credit)},
+        "cycle": dohdol_util.cycle_info(cast_seconds, float(session.credit), now),
     }
 
 

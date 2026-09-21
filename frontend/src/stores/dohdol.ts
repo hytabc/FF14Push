@@ -56,11 +56,21 @@ export const useDohDolStore = defineStore('dohdol', () => {
     return recipe ? recipe.craftable <= 0 : false
   })
 
-  function syncCycle(cycle: { seconds: number; credit: number } | undefined) {
+  function syncCycle(cycle: { seconds: number; credit: number } | undefined, rttMs = 0) {
     cycleSeconds.value = cycle?.seconds ?? 0
-    cycleCredit.value = cycle?.credit ?? 0
+    // 半 RTT 校正：响应到达时，服务端时间约为「响应生成时刻 + RTT/2」。
+    // credit 是服务端生成响应那一刻的余额，把它推进到「客户端现在」，
+    // 进度条跑满的时刻才与服务端产出时刻对齐（也不用依赖客户端时钟）。
+    cycleCredit.value = (cycle?.credit ?? 0) + Math.max(0, rttMs) / 2000
     syncedAtMs = performance.now()
     progress.value = 0
+  }
+
+  /** 发请求并返回 [结果, 往返毫秒]，供 cycle 做半 RTT 校正。 */
+  async function timed<T>(fn: () => Promise<T>): Promise<[T, number]> {
+    const started = performance.now()
+    const result = await fn()
+    return [result, performance.now() - started]
   }
 
   function startTicker() {
@@ -106,13 +116,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
     busy.value = true
     try {
       if (mode.value === 'gather') {
-        const r = await api.gatherReport(sessionId.value)
+        const [r, rtt] = await timed(() => api.gatherReport(sessionId.value!))
         lastGained.value = r.gained
-        syncCycle(r.cycle)
+        syncCycle(r.cycle, rtt)
       } else if (mode.value === 'produce') {
-        const r = await api.produceReport(sessionId.value)
+        const [r, rtt] = await timed(() => api.produceReport(sessionId.value!))
         lastGained.value = r.materials
-        syncCycle(r.cycle)
+        syncCycle(r.cycle, rtt)
         if (r.items.length) {
           lastProduced.value = r.items.map((i) => ({ name: i.name, rarity: i.rarity }))
           for (const item of r.items) {
@@ -120,11 +130,11 @@ export const useDohDolStore = defineStore('dohdol', () => {
           }
         }
       } else if (mode.value === 'fish') {
-        const r = await api.fishReport(sessionId.value)
+        const [r, rtt] = await timed(() => api.fishReport(sessionId.value!))
         lastGained.value = r.gained
         lastCaught.value = r.caught
         insightRemaining.value = r.insightRemainingSec
-        syncCycle(r.cycle)
+        syncCycle(r.cycle, rtt)
         for (const title of r.newTitles) {
           toast.push(`达成称号「${TITLE_NAMES[title] ?? title}」`, 'success')
         }
@@ -140,38 +150,38 @@ export const useDohDolStore = defineStore('dohdol', () => {
   async function startGather(jobId: string, regionId: number) {
     await stop(true)
     await game.stopBattle(true)
-    const res = await api.gatherStart(jobId, regionId)
+    const [res, rtt] = await timed(() => api.gatherStart(jobId, regionId))
     sessionId.value = res.sessionId
     mode.value = 'gather'
     recipeId.value = null
     lastGained.value = []
-    syncCycle(res.cycle)
+    syncCycle(res.cycle, rtt)
     startLoop()
   }
 
   async function startProduce(jobId: string, recipeId_: string) {
     await stop(true)
     await game.stopBattle(true)
-    const res = await api.produceStart(jobId, recipeId_)
+    const [res, rtt] = await timed(() => api.produceStart(jobId, recipeId_))
     sessionId.value = res.sessionId
     mode.value = 'produce'
     recipeId.value = res.recipeId
     lastGained.value = []
     lastProduced.value = []
-    syncCycle(res.cycle)
+    syncCycle(res.cycle, rtt)
     startLoop()
   }
 
   async function startFish(regionId: number) {
     await stop(true)
     await game.stopBattle(true)
-    const res = await api.fishStart(regionId)
+    const [res, rtt] = await timed(() => api.fishStart(regionId))
     sessionId.value = res.sessionId
     mode.value = 'fish'
     recipeId.value = null
     lastCaught.value = []
     insightRemaining.value = 0
-    syncCycle(res.cycle)
+    syncCycle(res.cycle, rtt)
     startLoop()
   }
 
