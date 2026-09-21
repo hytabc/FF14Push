@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
+import { findGatherTarget } from '@/game/core/gather'
 import { craftQualityExplain, craftRarityExplain } from '@/game/explanations'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
@@ -16,6 +18,7 @@ const game = useGameStore()
 const dohdol = useDohDolStore()
 const auth = useAuthStore()
 const toast = useToastStore()
+const router = useRouter()
 
 const job = ref('CRP')
 const error = ref('')
@@ -43,6 +46,32 @@ const qualityBonusInfo = computed(() => craftQualityExplain((bonus.value.craftQu
 function fmtWeight(weight: number): string {
   const value = (weight ?? 0) * 100
   return `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)}%`
+}
+
+function isRegionUnlocked(regionId: number): boolean {
+  const entry = game.state?.regionProgress?.[String(regionId)]
+  return entry ? entry.unlocked : regionId === 1
+}
+
+/** 可采集材料 → 采集点（用于「快速跳转采集」按钮）。 */
+const gatherTargets = computed(() => {
+  const map = new Map<string, { jobId: string; regionId: number }>()
+  for (const material of data.materials.materials) {
+    if (material.kind !== 'gather') continue
+    const target = findGatherTarget(material.id, isRegionUnlocked)
+    if (target) map.set(material.id, target)
+  }
+  return map
+})
+
+/** 跳到采集页面、选中对应采集点并自动开始采集。 */
+function goGather(itemId: string) {
+  const target = gatherTargets.value.get(itemId)
+  if (!target) return
+  void router.push({
+    name: 'gather',
+    query: { job: target.jobId, region: String(target.regionId), auto: '1' },
+  })
 }
 
 onMounted(async () => {
@@ -178,9 +207,18 @@ async function stop() {
           <span
             v-for="i in r.inputs"
             :key="i.itemId"
+            class="inline-flex items-center gap-1"
             :class="i.have >= i.count ? 'text-ink-300' : 'text-red-400'"
           >
             {{ i.name }} {{ i.have }}/{{ i.count }}
+            <button
+              v-if="i.have < i.count && gatherTargets.get(i.itemId)"
+              class="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300 transition hover:bg-emerald-500/25"
+              title="跳转到采集页面并开始采集"
+              @click="goGather(i.itemId)"
+            >
+              ⛏ 采集
+            </button>
           </span>
           <span class="text-ink-500">可制造 {{ r.craftable }} 次 · 每次 {{ r.craftSeconds }}s · +{{ r.xp }} 经验</span>
         </div>

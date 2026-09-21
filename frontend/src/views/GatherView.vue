@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import data from '@shared/schema'
 import type { GatherNodeDef } from '@shared/schema'
@@ -15,6 +16,8 @@ const game = useGameStore()
 const dohdol = useDohDolStore()
 const auth = useAuthStore()
 const toast = useToastStore()
+const route = useRoute()
+const router = useRouter()
 
 const job = ref('MIN')
 const regionId = ref<number | null>(null)
@@ -71,10 +74,26 @@ function sellAll() {
 onMounted(async () => {
   if (auth.isLoggedIn) await game.loadState()
   if (availableNodes.value.length && regionId.value === null) regionId.value = availableNodes.value[0].regionId
+  await applyJump()
 })
 onUnmounted(() => {
   void dohdol.stop(true)
 })
+
+/** 从生产页跳转过来时：选中对应采集点，并按需自动开始采集。 */
+async function applyJump() {
+  const jobParam = typeof route.query.job === 'string' ? route.query.job : ''
+  const regionParam = typeof route.query.region === 'string' ? Number(route.query.region) : NaN
+  if (!jobParam || !Number.isFinite(regionParam)) return
+  const auto = route.query.auto === '1'
+  // 清掉 query，避免刷新 / 前进后退时重复触发
+  void router.replace({ name: 'gather' })
+  if (!dolJobs.some((j) => j.id === jobParam)) return
+  job.value = jobParam
+  if (!availableNodes.value.some((n) => n.regionId === regionParam)) return
+  regionId.value = regionParam
+  if (auto && !dohdol.isRunning) await toggle()
+}
 
 function pickJob(id: string) {
   job.value = id
