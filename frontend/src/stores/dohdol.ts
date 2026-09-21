@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import data from '@shared/schema'
 
 import { api } from '@/api'
+import { ProgressClock } from '@/game/core/progress'
 import type { FishCatch } from '@/game/types'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -36,14 +37,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
   /** 当前生产会话选中的配方（用于判断材料是否耗尽）。 */
   const recipeId = ref<string | null>(null)
 
-  // 单次动作进度：由服务端下发的 cycle（秒/余额）驱动，客户端只做插值展示。
-  const cycleSeconds = ref(0)
-  const cycleCredit = ref(0)
+  // 单次动作进度：与服务端下发的 cycle（秒/余额）对齐，用单调时钟插值展示。
   const progress = ref(0)
+  const clock = new ProgressClock()
 
   let timer: number | null = null
   let ticker: number | null = null
-  let syncedAtMs = 0
+  let lastTickMs = 0
 
   const state = computed(() => game.state?.dohdol ?? null)
   const isRunning = computed(() => mode.value !== 'idle')
@@ -56,14 +56,18 @@ export const useDohDolStore = defineStore('dohdol', () => {
     return recipe ? recipe.craftable <= 0 : false
   })
 
+  function renderProgress() {
+    progress.value = clock.position()
+  }
+
   function syncCycle(cycle: { seconds: number; credit: number } | undefined, rttMs = 0) {
-    cycleSeconds.value = cycle?.seconds ?? 0
     // 半 RTT 校正：响应到达时，服务端时间约为「响应生成时刻 + RTT/2」。
     // credit 是服务端生成响应那一刻的余额，把它推进到「客户端现在」，
     // 进度条跑满的时刻才与服务端产出时刻对齐（也不用依赖客户端时钟）。
-    cycleCredit.value = (cycle?.credit ?? 0) + Math.max(0, rttMs) / 2000
-    syncedAtMs = performance.now()
-    progress.value = 0
+    const seconds = cycle?.seconds ?? 0
+    clock.sync((cycle?.credit ?? 0) * 1000 + Math.max(0, rttMs) / 2, seconds)
+    lastTickMs = performance.now()
+    renderProgress()
   }
 
   /** 发请求并返回 [结果, 往返毫秒]，供 cycle 做半 RTT 校正。 */
@@ -75,15 +79,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
 
   function startTicker() {
     if (ticker !== null) return
+    lastTickMs = performance.now()
+    renderProgress()
     ticker = window.setInterval(() => {
-      if (cycleSeconds.value <= 0) {
-        progress.value = 0
-        return
-      }
-      const elapsed = (performance.now() - syncedAtMs) / 1000
-      const total = cycleCredit.value + elapsed
-      const frac = total / cycleSeconds.value
-      progress.value = Math.min(1, frac - Math.floor(frac))
+      const now = performance.now()
+      const delta = now - lastTickMs
+      lastTickMs = now
+      progress.value = clock.advance(delta)
     }, 100)
   }
 
@@ -92,6 +94,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
       window.clearInterval(ticker)
       ticker = null
     }
+    // 注意：这里不能清空时钟 —— startLoop() 会先 stopLoop() 再 startTicker()，
+    // 而时钟相位由紧接着 startLoop 之前的 syncCycle 写入；清掉会把刚对齐的进度打回 0。
     progress.value = 0
   }
 
@@ -187,6 +191,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
 
   async function stop(silent = false) {
     stopLoop()
+    clock.reset()
     const id = sessionId.value
     const current = mode.value
     mode.value = 'idle'
