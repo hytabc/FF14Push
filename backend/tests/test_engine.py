@@ -106,7 +106,7 @@ class TestHeroStats:
         main_gain = compute_stats(hero, [main_item]).max_hp - base.max_hp
         # 智力为非主属性，只提供 50% 魔法值收益
         off_gain = compute_stats(hero, [off_item]).max_mp - base.max_mp
-        full_gain = 100 * 8  # int 对 maxMp 的系数
+        full_gain = 100 * float(CONFIG.heroes["attributes"]["maxMp"]["coef"]["int"])
 
         assert main_gain == pytest.approx(100 * 10)  # str 对 maxHp 的系数为 10
         assert off_gain == pytest.approx(full_gain * 0.5)
@@ -678,6 +678,7 @@ class TestLevelPenalty:
                 "hitRatePenaltyPct": 0.0,
                 "damageDealtPenaltyPct": 0.0,
                 "damageTakenBonusPct": 0.0,
+                "defenseIgnorePct": 0.0,
             }
 
     def test_penalty_scales_per_level(self) -> None:
@@ -690,6 +691,9 @@ class TestLevelPenalty:
         assert penalty["damageTakenBonusPct"] == pytest.approx(
             10 * cfg["damageTakenBonusPctPerLevel"]
         )
+        assert penalty["defenseIgnorePct"] == pytest.approx(
+            min(cfg["maxDefenseIgnorePct"], 10 * cfg["defenseIgnorePctPerLevel"])
+        )
 
     def test_penalty_is_capped(self) -> None:
         cfg = CONFIG.regions["levelPenalty"]
@@ -697,6 +701,14 @@ class TestLevelPenalty:
         assert penalty["hitRatePenaltyPct"] == cfg["maxHitRatePenaltyPct"]
         assert penalty["damageDealtPenaltyPct"] == cfg["maxDamageDealtPenaltyPct"]
         assert penalty["damageTakenBonusPct"] == cfg["maxDamageTakenBonusPct"]
+        assert penalty["defenseIgnorePct"] == cfg["maxDefenseIgnorePct"]
+
+    def test_deficit_10_is_brutal(self) -> None:
+        """落后 10 级：输出惩罚 ≥80%，防御已完全失效。"""
+        cfg = CONFIG.regions["levelPenalty"]
+        penalty = level_penalty(60, 23)  # 地区下限 70 → 落后 10 级
+        assert penalty["damageDealtPenaltyPct"] >= 80
+        assert penalty["defenseIgnorePct"] >= cfg["maxDefenseIgnorePct"]
 
     def test_underleveled_output_collapses(self) -> None:
         """落后 20 级时有效输出不足等级匹配的 10%，且单怪耗时远超可玩区间。"""

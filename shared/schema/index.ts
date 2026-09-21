@@ -392,9 +392,11 @@ export const gameData = {
       hitRatePenaltyPctPerLevel: number
       damageDealtPenaltyPctPerLevel: number
       damageTakenBonusPctPerLevel: number
+      defenseIgnorePctPerLevel: number
       maxHitRatePenaltyPct: number
       maxDamageDealtPenaltyPct: number
       maxDamageTakenBonusPct: number
+      maxDefenseIgnorePct: number
     }
   },
   raids: raidsJson as unknown as {

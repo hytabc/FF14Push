@@ -155,15 +155,21 @@ def elite_chance(term_mods: dict[str, float]) -> float:
 
 
 def level_penalty(hero_level: int, region_id: int) -> dict[str, float]:
-    """英雄等级低于地区下限时的软惩罚：命中下降 + 输出下降 + 受伤增加。
+    """英雄等级低于地区下限时的软惩罚：命中下降 + 输出下降 + 受伤增加 + 防御衰减。
 
     每落后 1 级按配置比例累加，超过上限取上限；等级达标则为全 0。
+    `defenseIgnorePct` 用于削减英雄防御（否则高防御会把「受伤增加」吃掉，越级仍能磨过去）。
     来源：PRD 地区 7.3
     """
     region = CONFIG.region_by_id[region_id]
     deficit = max(0, int(region["levelMin"]) - int(hero_level))
     if deficit == 0:
-        return {"hitRatePenaltyPct": 0.0, "damageDealtPenaltyPct": 0.0, "damageTakenBonusPct": 0.0}
+        return {
+            "hitRatePenaltyPct": 0.0,
+            "damageDealtPenaltyPct": 0.0,
+            "damageTakenBonusPct": 0.0,
+            "defenseIgnorePct": 0.0,
+        }
 
     cfg = CONFIG.regions["levelPenalty"]
     return {
@@ -175,6 +181,9 @@ def level_penalty(hero_level: int, region_id: int) -> dict[str, float]:
         ),
         "damageTakenBonusPct": min(
             float(cfg["maxDamageTakenBonusPct"]), deficit * float(cfg["damageTakenBonusPctPerLevel"])
+        ),
+        "defenseIgnorePct": min(
+            float(cfg["maxDefenseIgnorePct"]), deficit * float(cfg["defenseIgnorePctPerLevel"])
         ),
     }
 

@@ -2,7 +2,7 @@ import data from '@shared/schema'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BattleSimulator } from '@/game/core/battle'
-import { estimateDps, rollDamage, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
+import { estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
 import { bossStats, getRegion, goldRange, levelPenalty, monsterStats } from '@/game/core/regions'
 import type { HeroStats, MonsterStats } from '@/game/types'
 
@@ -152,15 +152,20 @@ describe('等级压制', () => {
       expect(penalty.hitRatePenaltyPct).toBe(0)
       expect(penalty.damageDealtPenaltyPct).toBe(0)
       expect(penalty.damageTakenBonusPct).toBe(0)
+      expect(penalty.defenseIgnorePct).toBe(0)
     }
   })
 
-  it('每落后 1 级按配置累加三项惩罚', () => {
+  it('每落后 1 级按配置累加四项惩罚', () => {
     const cfg = data.regions.levelPenalty
     const penalty = levelPenalty(35, getRegion(10)) // levelMin 45 → 落后 10 级
     expect(penalty.hitRatePenaltyPct).toBeCloseTo(10 * cfg.hitRatePenaltyPctPerLevel, 5)
     expect(penalty.damageDealtPenaltyPct).toBeCloseTo(10 * cfg.damageDealtPenaltyPctPerLevel, 5)
     expect(penalty.damageTakenBonusPct).toBeCloseTo(10 * cfg.damageTakenBonusPctPerLevel, 5)
+    expect(penalty.defenseIgnorePct).toBeCloseTo(
+      Math.min(cfg.maxDefenseIgnorePct, 10 * cfg.defenseIgnorePctPerLevel),
+      5,
+    )
   })
 
   it('惩罚不超过配置上限', () => {
@@ -169,6 +174,14 @@ describe('等级压制', () => {
     expect(penalty.hitRatePenaltyPct).toBe(cfg.maxHitRatePenaltyPct)
     expect(penalty.damageDealtPenaltyPct).toBe(cfg.maxDamageDealtPenaltyPct)
     expect(penalty.damageTakenBonusPct).toBe(cfg.maxDamageTakenBonusPct)
+    expect(penalty.defenseIgnorePct).toBe(cfg.maxDefenseIgnorePct)
+  })
+
+  it('落后 10 级的输出惩罚已足够重（≥ 80%）', () => {
+    const cfg = data.regions.levelPenalty
+    const penalty = levelPenalty(60, getRegion(23)) // levelMin 70 → 落后 10 级
+    expect(penalty.damageDealtPenaltyPct).toBeGreaterThanOrEqual(80)
+    expect(penalty.defenseIgnorePct).toBeGreaterThanOrEqual(cfg.maxDefenseIgnorePct) // 防御归零
   })
 
   it('落后 20 级时击杀耗时至少放大 10 倍', () => {
@@ -181,12 +194,87 @@ describe('等级压制', () => {
     expect(underSeconds / matchedSeconds).toBeGreaterThan(10)
   })
 
+  it('越级时防御衰减，承伤显著高于等级达标', () => {
+    const region = getRegion(40) // levelMin 99
+    const monster = monsterStats(region, 'normal')
+    const atLevel = makeStats({ level: 99, attack: 3000, maxHp: 40000, physDef: 6000 })
+    const under = makeStats({ level: 79, attack: 3000, maxHp: 40000, physDef: 6000 })
+    const underPenalty = levelPenalty(79, region)
+    expect(underPenalty.defenseIgnorePct).toBeGreaterThan(0)
+
+    const base = rollIncoming(monster.attack, 100, atLevel.physDef, atLevel.tenacityPct, 0, 0)
+    const scaled = rollIncoming(
+      monster.attack,
+      100,
+      under.physDef * (1 - underPenalty.defenseIgnorePct / 100),
+      under.tenacityPct,
+      0,
+      underPenalty.damageTakenBonusPct,
+    )
+    expect(scaled).toBeGreaterThan(base * 3)
+  })
+
   it('未命中时判定不产生伤害', () => {
     const stats = makeStats({ attack: 1000, hitRatePct: 0 })
     const penalty = levelPenalty(1, getRegion(40))
     const roll = rollDamage(stats, 100, 'physical', 0, 1, penalty, 0, () => 1) // 必不命中
     expect(roll.missed).toBe(true)
     expect(roll.amount).toBe(0)
+  })
+})
+
+describe('蓝量与治疗平衡', () => {
+  it('持续施放会耗尽蓝量并回落到普攻', () => {
+    const stats = makeStats({
+      level: 100,
+      jobId: 'PLD',
+      maxMp: 600,
+      mpRegen: 3,
+      attack: 4000,
+      maxHp: 200000,
+      physDef: 2000,
+    })
+    const sim = new BattleSimulator({
+      stats,
+      regionId: 1,
+      killsRequired: 5,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    let minMp = stats.maxMp
+    for (let i = 0; i < 2400; i += 1) {
+      if (sim.phase === 'cleared') sim.continueAfterClear()
+      sim.tick(0.05)
+      minMp = Math.min(minMp, sim.heroMp)
+    }
+    expect(minMp).toBeLessThanOrEqual(2)
+    expect(sim.log.some((e) => e.text.startsWith('普攻'))).toBe(true)
+  })
+
+  it('治疗职业技能数值已下调、CD 已延长', () => {
+    const jobs = data.jobs.jobs as Array<{
+      id: string
+      role: string
+      skills: Array<{ cd: number; effects: Array<{ type: string; value?: number }> }>
+    }>
+    for (const job of jobs.filter((j) => j.role === 'healer')) {
+      for (const skill of job.skills) {
+        for (const effect of skill.effects ?? []) {
+          if (effect.type === 'heal') {
+            // 小/中治疗（CD < 120s）不超过 12%；大招允许 50%
+            expect(effect.value ?? 0).toBeLessThanOrEqual(skill.cd >= 120 ? 0.5 : 0.12)
+          }
+          if (effect.type === 'healOverTime') expect(effect.value ?? 0).toBeLessThanOrEqual(0.02)
+          if (effect.type === 'shield') expect(effect.value ?? 0).toBeLessThanOrEqual(0.12)
+          expect(effect.type).not.toBe('fullHeal')
+        }
+        // 小治疗/中治疗的 CD 都已延长（不再有 15s）
+        if (skill.effects?.some((e) => e.type === 'heal' && (e.value ?? 0) > 0)) {
+          expect(skill.cd).toBeGreaterThanOrEqual(20)
+        }
+      }
+    }
   })
 })
 

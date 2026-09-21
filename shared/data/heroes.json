@@ -17,9 +17,9 @@
       }
     },
     "maxMp": {
-      "base": 50,
+      "base": 40,
       "coef": {
-        "int": 8
+        "int": 0.7
       }
     },
     "hpRegen": {
@@ -29,9 +29,9 @@
       }
     },
     "mpRegen": {
-      "base": 1,
+      "base": 0.5,
       "coef": {
-        "int": 0.08
+        "int": 0.008
       }
     },
     "attack": {
@@ -100,9 +100,9 @@
       }
     },
     "maxMp": {
-      "basePct": 0.05,
+      "basePct": 0.006,
       "coef": {
-        "int": 2
+        "int": 0.05
       }
     },
     "attack": {
@@ -142,7 +142,7 @@
     "mpCostPct": -0.1,
     "equipMainAttrPct": 0.15
   },
-  "$commentMp": "MP 系统。来源：PRD 7.2。技能 mpCost 已按威力重排，两种伤害类型统一按 1.0 结算，使面板显示与实际消耗一致；蓝量不足时只能普攻。",
+  "$commentMp": "MP 系统。来源：PRD 7.2。技能 mpCost 已按威力重排，两种伤害类型统一按 1.0 结算。蓝池与回复刻意收紧：满蓝约等于「一整轮技能」的消耗，持续施放约 30-60s 见底，见底后只能普攻（零耗蓝）。",
   "mp": {
     "physicalSkillCostScale": 1.0,
     "magicalSkillCostScale": 1.0,

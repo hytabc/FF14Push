@@ -46,12 +46,15 @@ export interface LevelPenalty {
   hitRatePenaltyPct: number
   damageDealtPenaltyPct: number
   damageTakenBonusPct: number
+  /** 越级时英雄防御的衰减百分比（0-100），100 表示防御完全失效。 */
+  defenseIgnorePct: number
 }
 
 export const NO_LEVEL_PENALTY: LevelPenalty = {
   hitRatePenaltyPct: 0,
   damageDealtPenaltyPct: 0,
   damageTakenBonusPct: 0,
+  defenseIgnorePct: 0,
 }
 
 /** 英雄等级低于地区下限时的软惩罚。必须与后端 `regions_util.level_penalty` 一致。 */
@@ -69,6 +72,7 @@ export function levelPenalty(heroLevel: number, region: RegionDef): LevelPenalty
       cfg.maxDamageTakenBonusPct,
       deficit * cfg.damageTakenBonusPctPerLevel,
     ),
+    defenseIgnorePct: Math.min(cfg.maxDefenseIgnorePct, deficit * cfg.defenseIgnorePctPerLevel),
   }
 }
 

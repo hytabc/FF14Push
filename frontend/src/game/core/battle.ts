@@ -154,7 +154,8 @@ export class BattleSimulator {
     if (this.penalty.hitRatePenaltyPct > 0) {
       this.pushLog(
         `等级压制：英雄 Lv.${options.stats.level} 低于地区下限，命中 -${this.penalty.hitRatePenaltyPct.toFixed(0)}%、` +
-          `伤害 -${this.penalty.damageDealtPenaltyPct.toFixed(0)}%、受到伤害 +${this.penalty.damageTakenBonusPct.toFixed(0)}%`,
+          `伤害 -${this.penalty.damageDealtPenaltyPct.toFixed(0)}%、受到伤害 +${this.penalty.damageTakenBonusPct.toFixed(0)}%、` +
+          `防御 -${this.penalty.defenseIgnorePct.toFixed(0)}%`,
         'system',
       )
     }
@@ -555,6 +556,11 @@ export class BattleSimulator {
     if (this.monster && this.monsterHp <= 0) this.killMonster()
   }
 
+  /** 越级时英雄防御的剩余比例（0-1）。等级达标时为 1。 */
+  private get defenseScale(): number {
+    return Math.max(0, 1 - this.penalty.defenseIgnorePct / 100)
+  }
+
   private tickMonster(dt: number): void {
     if (!this.monster) return
     this.monsterAttackTimer -= dt
@@ -572,9 +578,10 @@ export class BattleSimulator {
     let damage = rollIncoming(
       this.monster!.attack * this.bossAttackMultiplier(),
       100,
-      stats.physDef,
+      stats.physDef * this.defenseScale,
       stats.tenacityPct,
-      (stats.termMods.damageTakenPct ?? 0) + this.penalty.damageTakenBonusPct,
+      stats.termMods.damageTakenPct ?? 0,
+      this.penalty.damageTakenBonusPct,
     )
 
     // 荆棘反弹
@@ -705,13 +712,14 @@ export class BattleSimulator {
     }
     const attackBuff = enemy.selfBuffs.reduce((sum, b) => (b.stat === 'attackBuff' ? sum + b.value : sum), 0)
     const attack = enemy.stats.attack * (1 + attackBuff)
-    const defense = skill.damageType === 'magical' ? stats.magicDef : stats.physDef
+    const defense = (skill.damageType === 'magical' ? stats.magicDef : stats.physDef) * this.defenseScale
     let damage = rollIncoming(
       attack,
       potency,
       defense,
       stats.tenacityPct,
-      (stats.termMods.damageTakenPct ?? 0) + this.penalty.damageTakenBonusPct,
+      stats.termMods.damageTakenPct ?? 0,
+      this.penalty.damageTakenBonusPct,
     )
     if (this.shield > 0) {
       const absorbed = Math.min(this.shield, damage)

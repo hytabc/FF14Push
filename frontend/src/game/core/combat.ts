@@ -112,12 +112,14 @@ export function rollIncoming(
   targetDefense: number,
   tenacityPct = 0,
   damageTakenPct = 0,
+  levelTakenPct = 0,
 ): number {
   let raw = attack * (potencyPct / 100)
   raw *= 1 + damageTakenPct / 100
   raw *= 1 - Math.min(0.6, tenacityPct / 100)
   const mitigated = Math.max(raw * 0.1, raw - targetDefense)
-  return Math.max(1, Math.floor(mitigated))
+  // 等级压制的「受伤增加」在减防之后乘算，否则会被高防御吃掉、越级仍然能磨过去
+  return Math.max(1, Math.floor(mitigated * (1 + levelTakenPct / 100)))
 }
 
 export function monsterHitChance(dodgePct: number): number {

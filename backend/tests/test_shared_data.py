@@ -100,6 +100,54 @@ def test_crafting_routes_are_contiguous() -> None:
     assert order[-1] not in routes
 
 
+def test_healer_skills_are_nerfed() -> None:
+    """治疗职业的治疗/护盾数值已下调，且不再有满血复活。"""
+    for job in CONFIG.jobs["jobs"]:
+        if job["role"] != "healer":
+            continue
+        for skill in job["skills"]:
+            for effect in skill.get("effects", []):
+                kind = effect.get("type")
+                if kind == "heal":
+                    # 小/中治疗（CD < 120s）不超过 12%；大招允许 50%
+                    limit = 0.5 if float(skill["cd"]) >= 120 else 0.12
+                    assert float(effect["value"]) <= limit, (job["id"], skill["id"])
+                if kind == "healOverTime":
+                    assert float(effect["value"]) <= 0.02, (job["id"], skill["id"])
+                if kind == "shield":
+                    assert float(effect["value"]) <= 0.12, (job["id"], skill["id"])
+                assert kind != "fullHeal", (job["id"], skill["id"])
+
+
+def test_mp_pool_is_tight() -> None:
+    """蓝池与回复刻意收紧：满蓝约等于一轮技能消耗，持续施放会见底。"""
+    attrs = CONFIG.heroes["attributes"]
+    growth = CONFIG.heroes["levelUpGain"]["maxMp"]
+    assert float(attrs["maxMp"]["coef"]["int"]) <= 1.0
+    assert float(attrs["mpRegen"]["coef"]["int"]) <= 0.01
+    assert float(growth["coef"]["int"]) <= 0.1
+
+
+def test_level_penalty_config_is_hard() -> None:
+    cfg = CONFIG.regions["levelPenalty"]
+    assert float(cfg["maxDamageDealtPenaltyPct"]) >= 95
+    assert float(cfg["maxDamageTakenBonusPct"]) >= 1000
+    assert float(cfg["maxDefenseIgnorePct"]) == 100
+    # 落后 10 级时防御已归零
+    assert 10 * float(cfg["defenseIgnorePctPerLevel"]) >= 100
+
+
+def test_melee_skills_scale_with_main_attr() -> None:
+    """力量/敏捷职业的**伤害技能**不应使用魔法伤害（否则按智力结算、DPS 差数倍）。"""
+    for job in CONFIG.jobs["jobs"]:
+        if job["mainAttr"] == "int":
+            continue
+        for skill in job["skills"]:
+            if int(skill.get("potency", 0)) <= 0:
+                continue
+            assert skill["damageType"] != "magical", (job["id"], skill["id"])
+
+
 def test_tutorial_has_fifteen_steps() -> None:
     steps = CONFIG.tutorial["steps"]
     assert len(steps) == 15

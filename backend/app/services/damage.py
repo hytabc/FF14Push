@@ -71,15 +71,19 @@ def roll_incoming_damage(
     target_defense: float,
     target_tenacity_pct: float = 0.0,
     damage_taken_pct: float = 0.0,
+    level_taken_pct: float = 0.0,
     rng: random.Random | None = None,
 ) -> int:
-    """怪物 → 英雄的伤害。"""
+    """怪物 → 英雄的伤害。
+
+    `level_taken_pct` 为等级压制的「受伤增加」，在减防之后乘算（否则会被高防御吃掉）。
+    """
     rng = rng or random
     raw = attacker_attack * (potency_pct / 100.0)
     raw *= 1.0 + damage_taken_pct / 100.0
     raw *= 1.0 - min(0.6, target_tenacity_pct / 100.0)
     mitigated = max(raw * 0.10, raw - target_defense)
-    return max(1, int(mitigated))
+    return max(1, int(mitigated * (1.0 + level_taken_pct / 100.0)))
 
 
 def dodge_check(stats: HeroStats, rng: random.Random | None = None) -> bool:

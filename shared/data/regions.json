@@ -54,13 +54,15 @@
   "goldFloat": 0.30,
   "goldMultipliers": { "normal": 1.0, "elite": 2.0, "boss": 15.0 },
   "maxGoldBonus": 0.80,
-  "$commentLevelPenalty": "英雄等级低于地区 levelMin 时，每落后 1 级按下列比例累加：命中下降 + 输出下降 + 受伤增加，保证玩家只能战胜对应等级的怪物。来源：PRD 7.3",
+  "$commentLevelPenalty": "英雄等级低于地区 levelMin 时的软惩罚：命中下降 + 输出下降 + 受伤增加（受伤在减防之后乘算）+ 防御按落后级数衰减。落后 10+ 级几乎必败，20+ 级即使满配也几乎必败。来源：PRD 7.3",
   "levelPenalty": {
-    "hitRatePenaltyPctPerLevel": 3.5,
-    "damageDealtPenaltyPctPerLevel": 5.0,
-    "damageTakenBonusPctPerLevel": 5.0,
-    "maxHitRatePenaltyPct": 75,
-    "maxDamageDealtPenaltyPct": 85,
-    "maxDamageTakenBonusPct": 300
+    "hitRatePenaltyPctPerLevel": 4,
+    "damageDealtPenaltyPctPerLevel": 8,
+    "damageTakenBonusPctPerLevel": 25,
+    "defenseIgnorePctPerLevel": 12,
+    "maxHitRatePenaltyPct": 80,
+    "maxDamageDealtPenaltyPct": 95,
+    "maxDamageTakenBonusPct": 1200,
+    "maxDefenseIgnorePct": 100
   }
 }
