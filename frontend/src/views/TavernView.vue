@@ -38,6 +38,35 @@ const freeRemainingSec = computed(() =>
 )
 const freeAvailable = computed(() => freeRemainingSec.value <= 0)
 
+/** 神话资质或带太古属性的候选＝有效英雄，刷新/放弃前需要二次确认。 */
+function isPrecious(c: TavernCandidate | null | undefined): boolean {
+  return !!c && (c.talent === 'mythic' || c.ancientAttr !== null)
+}
+
+const candidatePrecious = computed(() => isPrecious(candidate.value))
+const preciousMulti = computed(() => multiCandidates.value.filter(isPrecious))
+
+// 待确认的「会丢英雄」操作
+const pendingKind = ref<null | 'refresh' | 'tenPull' | 'clearMulti'>(null)
+const pendingUseGold = ref(false)
+
+const preciousToLose = computed<TavernCandidate[]>(() =>
+  pendingKind.value === 'refresh' ? (candidate.value ? [candidate.value] : []) : preciousMulti.value,
+)
+
+const discardTitle = computed(() => {
+  switch (pendingKind.value) {
+    case 'refresh':
+      return '确认刷新候选英雄？'
+    case 'tenPull':
+      return '确认十连抽？'
+    case 'clearMulti':
+      return '确认放弃本批候选？'
+    default:
+      return ''
+  }
+})
+
 function mmss(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -176,6 +205,49 @@ async function dismiss() {
   }
 }
 
+function requestRefresh(useGold: boolean) {
+  if (busy.value) return
+  // 当前候选是神话/太古时先确认，避免把有效英雄刷新掉
+  if (candidatePrecious.value) {
+    pendingUseGold.value = useGold
+    pendingKind.value = 'refresh'
+    return
+  }
+  void refresh(useGold)
+}
+
+function requestTenPull() {
+  if (busy.value) return
+  // 换一批十连会丢掉尚未招募的候选，其中若有神话/太古需先确认
+  if (preciousMulti.value.length) {
+    pendingKind.value = 'tenPull'
+    return
+  }
+  void tenPull()
+}
+
+function requestClearMulti() {
+  if (busy.value) return
+  if (preciousMulti.value.length) {
+    pendingKind.value = 'clearMulti'
+    return
+  }
+  void clearMulti()
+}
+
+function cancelDiscard() {
+  pendingKind.value = null
+}
+
+async function confirmDiscard() {
+  const kind = pendingKind.value
+  const useGold = pendingUseGold.value
+  pendingKind.value = null
+  if (kind === 'refresh') await refresh(useGold)
+  else if (kind === 'tenPull') await tenPull()
+  else if (kind === 'clearMulti') await clearMulti()
+}
+
 function attrBar(value: number, total: number) {
   return total > 0 ? (value / total) * 100 : 0
 }
@@ -227,14 +299,14 @@ function attrBar(value: number, total: number) {
             <button
               class="rounded bg-ink-700 px-2 py-1 text-[11px] hover:bg-ink-600 disabled:opacity-50"
               :disabled="busy || loading || !freeAvailable"
-              @click="refresh(false)"
+              @click="requestRefresh(false)"
             >
               {{ freeAvailable ? '免费刷新（每 10 分钟 1 次）' : `免费刷新（${mmss(freeRemainingSec)} 后可再用）` }}
             </button>
             <button
               class="rounded bg-ink-700 px-2 py-1 text-[11px] hover:bg-ink-600 disabled:opacity-50"
               :disabled="busy || loading"
-              @click="refresh(true)"
+              @click="requestRefresh(true)"
             >
               花 {{ refreshCost }} 金币刷新
             </button>
@@ -244,6 +316,10 @@ function attrBar(value: number, total: number) {
         <p class="mt-2 text-[11px] text-term-ancient">
           🌟 太古保底：{{ ancientPity.count }} / {{ ancientPity.threshold }}
           （每 {{ ancientPity.threshold }} 个候选必出一次「太古属性英雄」）
+        </p>
+
+        <p v-if="candidatePrecious" class="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
+          当前候选为<b>神话 / 太古</b>有效英雄，刷新前会二次确认。
         </p>
 
         <div v-if="candidate" class="mt-3 space-y-3">
@@ -308,7 +384,7 @@ function attrBar(value: number, total: number) {
             v-if="multiCandidates.length"
             class="rounded bg-ink-700 px-3 py-1.5 text-[11px] hover:bg-ink-600 disabled:opacity-50"
             :disabled="busy"
-            @click="clearMulti"
+            @click="requestClearMulti"
           >
             都不购买
           </button>
@@ -316,7 +392,7 @@ function attrBar(value: number, total: number) {
             class="rounded-md px-4 py-1.5 text-[11px] font-medium transition disabled:opacity-40"
             :class="canAffordTenPull ? 'bg-indigo-500 text-white hover:bg-indigo-400' : 'bg-ink-700 text-ink-400'"
             :disabled="busy || loading || !canAffordTenPull"
-            @click="tenPull"
+            @click="requestTenPull"
           >
             十连抽 · {{ formatNumber(tenPullCost) }} 金币
           </button>
@@ -399,6 +475,33 @@ function attrBar(value: number, total: number) {
         </button>
         <button class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950" @click="recruitMulti">
           确认招募
+        </button>
+      </template>
+    </Modal>
+
+    <Modal :open="pendingKind !== null" :title="discardTitle" @close="cancelDiscard">
+      <p class="text-sm text-ink-200">
+        检测到<b class="text-term-ancient">神话 / 太古</b>候选英雄。继续操作会使以下英雄
+        <b class="text-rose-300">永久丢失</b>（未被招募的候选不会保留）。
+      </p>
+      <ul class="mt-3 space-y-1 text-xs text-ink-300">
+        <li v-for="(c, idx) in preciousToLose" :key="`${c.name}-${idx}`">
+          {{ c.name }} ·
+          <span :class="rarityClass(c.talent)">{{ rarityName(c.talent) }}</span>
+          · {{ c.attrBiasLabel }}
+          <span v-if="c.ancientAttr" class="text-term-ancient">· 太古属性 🌟</span>
+        </li>
+      </ul>
+      <p class="mt-3 text-xs text-ink-400">想保留的话，点「取消」后先招募该英雄。</p>
+      <template #footer>
+        <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="cancelDiscard">
+          取消（保留）
+        </button>
+        <button
+          class="rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500"
+          @click="confirmDiscard"
+        >
+          确认继续
         </button>
       </template>
     </Modal>
