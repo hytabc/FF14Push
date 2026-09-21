@@ -18,7 +18,7 @@
 
   --color-term-common: #9ca3af;
   --color-term-rare: #f5c542;
-  --color-term-ancient: #ef4444;
+  --color-term-ancient: #ffd75e;
 
   --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -70,6 +70,11 @@ body {
 /* 16×16 像素图标放大后保持硬边，避免插值模糊 */
 .pixel-icon {
   image-rendering: pixelated;
+}
+
+/* 太古词条/属性：金色 + 轻微发光，与稀有（普通金色）相区分 */
+.term-ancient-glow {
+  text-shadow: 0 0 6px color-mix(in srgb, var(--color-term-ancient) 70%, transparent);
 }
 
 @keyframes float-up {

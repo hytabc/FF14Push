@@ -97,7 +97,10 @@ async def craft(
 async def refine(
     payload: RefineRequest, db: DbSession, user: CurrentUser, hero: CurrentHero
 ) -> dict:
-    """重造：重新随机基础属性与副属性，保留品阶/类型/等级需求/词条。"""
+    """重造：重掷基础属性与副属性，保留品阶/类型/等级需求/词条。
+
+    mode=random：彻底随机（全部重新洗牌）；mode=basedOnCurrent：基于当前（每条在当前值附近浮动）。
+    """
     item = (
         await db.execute(select(Item).where(Item.id == payload.itemId, Item.user_id == user.id))
     ).scalar_one_or_none()
@@ -125,7 +128,10 @@ async def refine(
 async def enchant(
     payload: EnchantRequest, db: DbSession, user: CurrentUser, hero: CurrentHero
 ) -> dict:
-    """附魔：重新随机全部 Buff/Debuff，含稀有 / 太古词条判定。"""
+    """附魔：重掷全部 Buff/Debuff（Buff 含稀有/太古品质，Debuff 恒为普通）。
+
+    mode=random：彻底随机（全部重掷）；mode=basedOnCurrent：基于当前（每条在当前值附近浮动）。
+    """
     item = (
         await db.execute(select(Item).where(Item.id == payload.itemId, Item.user_id == user.id))
     ).scalar_one_or_none()

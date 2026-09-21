@@ -15,10 +15,13 @@ from app.services.combat_model import (
 from app.services.economy import REQUIRED, build_craft_plan, enchant_cost, refine_cost
 from app.services.game_config import CONFIG, BaseItem
 from app.services.item_factory import (
+    base_attr_range,
     generate_item,
     regenerate_attrs,
     roll_sub_attr_value,
     roll_terms_for_enchant,
+    sub_attr_cap,
+    sub_attr_range,
 )
 from app.services.loot import (
     RARITY_ORDER,
@@ -41,14 +44,12 @@ from app.services.raid_util import all_raids, boss_stats_for_raid
 from app.services.slots_util import possible_slots
 from app.services.stats import compute_stats, convert_three_attrs
 from app.services.valuation import (
-    ancient_count,
     attr_factor,
     attrs_score,
     hero_power,
     item_score,
     sell_price,
     sell_price_range,
-    terms_score,
 )
 
 from tests.fakes import FakeHero, FakeItem, GeneratedItem
@@ -797,69 +798,118 @@ class TestRecruitingAncient:
         assert ancient_pity_count() >= 1
 
 
-class TestBasedOnCurrentReroll:
-    """「基于当前」的重造 / 附魔：总价值保底不降，且太古数量不减少。"""
+BASE_ID = "w_sword_shield_0"
 
-    def test_refine_total_score_never_drops(self) -> None:
+
+class TestBasedOnCurrentReroll:
+    """「基于当前」的重造 / 附魔：每条在当前值附近独立浮动，可升可降，保留种类与品质。"""
+
+    def test_refine_keeps_kinds_and_stays_in_range(self) -> None:
+        base = CONFIG.base_item_by_id[BASE_ID]
         item = FakeItem(
             category="weapon",
-            base_id="w_sword_shield_0",
+            base_id=BASE_ID,
             rarity="rare",
-            base_attrs=[{"attr": "attack", "value": 20.0}],
-            sub_attrs=[],
+            base_attrs=[{"attr": "attack", "value": 30.0}],
+            sub_attrs=[{"attr": "crit", "value": 90.0, "type": "flat", "quality": "common"}],
         )
         rng = random.Random(1)
-        floor = attrs_score(item.base_attrs, item.sub_attrs)
+        seen: set[float] = set()
         for _ in range(30):
             result = regenerate_attrs(item, rng, "basedOnCurrent")
-            score = attrs_score(result["baseAttrs"], result["subAttrs"])
-            assert score >= floor
+            assert [a["attr"] for a in result["baseAttrs"]] == ["attack"]
+            assert [a["attr"] for a in result["subAttrs"]] == ["crit"]
+            blo, bhi = base_attr_range(base, "rare", "attack")
+            assert blo - 1e-6 <= result["baseAttrs"][0]["value"] <= bhi + 1e-6
+            slo, shi = sub_attr_range(base, "rare", "crit")
+            assert slo - 1e-6 <= result["subAttrs"][0]["value"] <= shi + 1e-6
+            seen.add(result["subAttrs"][0]["value"])
             item.base_attrs, item.sub_attrs = result["baseAttrs"], result["subAttrs"]
-            floor = score
+        assert len(seen) > 1, "基于当前应逐次浮动，而非固定不变"
 
-    def test_refine_preserves_ancient_sub_attrs(self) -> None:
+    def test_refine_preserves_quality_band(self) -> None:
+        base = CONFIG.base_item_by_id[BASE_ID]
+        cap = sub_attr_cap(base, "legendary", "crit")
         item = FakeItem(
             category="weapon",
-            base_id="w_sword_shield_0",
+            base_id=BASE_ID,
             rarity="legendary",
-            base_attrs=[{"attr": "attack", "value": 20.0}],
+            base_attrs=[{"attr": "attack", "value": 30.0}],
             sub_attrs=[
-                {"attr": "crit", "value": 600.0, "type": "flat", "quality": "ancient"},
+                {"attr": "crit", "value": round(cap * 1.25, 2), "type": "flat", "quality": "ancient"},
             ],
         )
         rng = random.Random(2)
-        for _ in range(10):
+        for _ in range(20):
             result = regenerate_attrs(item, rng, "basedOnCurrent")
-            assert ancient_count(result["subAttrs"]) >= 1
+            entry = result["subAttrs"][0]
+            assert entry["quality"] == "ancient", "品质应保留，不掉回普通"
+            assert entry["value"] >= cap * 1.25 - 1e-6
+            assert entry["value"] <= cap * 1.5 + 1e-6
             item.base_attrs, item.sub_attrs = result["baseAttrs"], result["subAttrs"]
 
-    def test_enchant_total_value_never_drops_and_keeps_ancient(self) -> None:
+    def test_refine_random_rerolls_all_attrs(self) -> None:
+        """彻底随机：基础属性与副属性全部重新洗牌。"""
+        base = CONFIG.base_item_by_id[BASE_ID]
         item = FakeItem(
             category="weapon",
-            base_id="w_sword_shield_0",
+            base_id=BASE_ID,
+            rarity="rare",
+            base_attrs=[{"attr": "attack", "value": 1.0}],
+            sub_attrs=[],
+        )
+        rng = random.Random(9)
+        result = regenerate_attrs(item, rng, "random")
+        assert result["baseAttrs"][0]["attr"] == "attack"
+        lo, hi = base_attr_range(base, "rare", "attack")
+        assert lo - 1e-6 <= result["baseAttrs"][0]["value"] <= hi + 1e-6
+        assert len(result["subAttrs"]) >= 1
+
+    def test_enchant_keeps_terms_and_forces_debuff_common(self) -> None:
+        item = FakeItem(
+            category="weapon",
+            base_id=BASE_ID,
             rarity="epic",
             terms=[
                 {
-                    "id": "strBoost",
-                    "name": "力量增幅",
-                    "type": "buff",
-                    "stat": "attack",
-                    "trigger": "passive",
-                    "value": 20.0,
-                    "quality": "ancient",
-                    "desc": "",
-                }
+                    "id": "strBoost", "name": "力量增幅", "type": "buff", "stat": "attackPct",
+                    "trigger": "常驻", "value": 8.0, "quality": "rare", "desc": "",
+                },
+                {
+                    "id": "weaken", "name": "虚弱", "type": "debuff", "stat": "attackPct",
+                    "trigger": "常驻", "value": -9.0, "quality": "rare", "desc": "",
+                },
             ],
         )
         rng = random.Random(3)
-        floor = terms_score(item.terms)
+        seen: set[float] = set()
         for _ in range(20):
             result = roll_terms_for_enchant(item, rng, "basedOnCurrent")
-            assert ancient_count(result) >= 1
-            score = terms_score(result)
-            assert score >= floor
+            assert [t["id"] for t in result] == ["strBoost", "weaken"]
+            for term in result:
+                lo, hi = CONFIG.term_by_id[term["id"]]["range"]
+                assert lo - 1e-6 <= term["value"] <= hi + 1e-6
+            assert result[0]["quality"] == "rare", "Buff 品质保留"
+            assert result[1]["quality"] == "common", "Debuff 恒为普通"
+            seen.add(result[1]["value"])  # 普通 Debuff 逐次浮动
             item.terms = result
-            floor = score
+        assert len(seen) > 1
+
+
+class TestDebuffHasNoQuality:
+    """Debuff 不参与稀有/太古判定：品质恒为普通（仅在随机池内随机）。"""
+
+    def test_generated_debuffs_are_always_common(self) -> None:
+        rng = random.Random(7)
+        found = 0
+        for rarity in CONFIG.rarity_order:
+            for _ in range(200):
+                item, _ = generate_item("weapon", 100, rarity=rarity, rng=rng)
+                for term in item["terms"]:
+                    if term["type"] == "debuff":
+                        found += 1
+                        assert term["quality"] == "common"
+        assert found > 0, "样本里应出现 Debuff 才能验证"
 
 
 class TestBasedOnCurrentCost:

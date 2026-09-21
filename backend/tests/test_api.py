@@ -14,7 +14,6 @@ from app.models import RaidSession, BattleSession, Hero, Item, RegionProgress, T
 from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
-from app.services.valuation import attrs_score
 
 API = "/api/v1"
 
@@ -727,7 +726,17 @@ class TestEconomy:
         assert item["refineCostBasedOnCurrent"] > item["refineCost"]
         assert item["enchantCostBasedOnCurrent"] > item["enchantCost"]
 
-    async def test_refine_based_on_current_never_worse_and_costs_more(
+    async def test_item_attrs_expose_range(self, auth_client, session_factory) -> None:
+        """装备详情需要「当前值【区间】」：基础属性与副属性均带 min/max。"""
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        assert item["baseAttrs"], "起始/开箱装备应有基础属性"
+        for entry in item["baseAttrs"]:
+            assert entry["min"] <= entry["value"] <= entry["max"]
+        for entry in item["subAttrs"]:
+            assert entry["min"] <= entry["max"]
+
+    async def test_refine_based_on_current_costs_more_and_stays_in_range(
         self, auth_client, session_factory
     ) -> None:
         opened = await _open_one(auth_client, session_factory)
@@ -736,7 +745,6 @@ class TestEconomy:
 
         base = CONFIG_REFINE_COST[item["rarity"]]
         mult = float(CONFIG.economy["refine"]["basedOnCurrentCostMultiplier"])
-        score = attrs_score(item["baseAttrs"], item["subAttrs"])
 
         for index in range(5):
             resp = await auth_client.post(
@@ -746,9 +754,13 @@ class TestEconomy:
             body = resp.json()
             if index == 0:
                 assert body["cost"] == int(base * mult)
-            new_score = attrs_score(body["after"]["baseAttrs"], body["after"]["subAttrs"])
-            assert new_score >= score
-            score = new_score
+            after = body["after"]
+            # 种类不变；普通品质数值仍落在其可达区间内
+            assert [a["attr"] for a in after["baseAttrs"]] == [a["attr"] for a in item["baseAttrs"]]
+            assert [a["attr"] for a in after["subAttrs"]] == [a["attr"] for a in item["subAttrs"]]
+            for entry in after["baseAttrs"] + after["subAttrs"]:
+                if entry.get("quality") in (None, "common"):
+                    assert entry["min"] - 1e-6 <= entry["value"] <= entry["max"] + 1e-6
 
     async def test_enchant_based_on_current_costs_more(self, auth_client, session_factory) -> None:
         opened = await _open_one(auth_client, session_factory)

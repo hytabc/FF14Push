@@ -423,9 +423,21 @@ export const gameData = {
   },
   economy: economyJson as unknown as {
     sell: { basePrice: number; randomFloat: number; scoreHalf: number; attrBonusMax: number; autoSellRarities: RarityId[] }
-    refine: { baseAttrFloat: number; subAttrFloat: number }
-    enchant: { autoUntilRareExtraCostMultiplier: number }
+    refine: {
+      baseAttrFloat: number
+      subAttrFloat: number
+      costGrowthPerRefine: number
+      basedOnCurrentCostMultiplier: number
+      basedOnCurrentSpreadPct: number
+    }
+    enchant: {
+      autoUntilRareExtraCostMultiplier: number
+      basedOnCurrentCostMultiplier: number
+      basedOnCurrentSpreadPct: number
+    }
     termQuality: Record<TermQuality, number>
+    /** Debuff 是否参与稀有/太古品质判定（false = Debuff 恒为普通，仅在随机池内随机）。 */
+    debuffQualityEnabled: boolean
     power: { weights: Record<string, number> }
   },
   talents: talentsJson as unknown as {

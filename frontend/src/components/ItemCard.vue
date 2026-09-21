@@ -6,6 +6,7 @@ import { useItemActions } from '@/stores/itemActions'
 import type { Item } from '@/game/types'
 import {
   attrName,
+  attrRangeLabel,
   attrSuffix,
   baseAttrName,
   categoryName,
@@ -15,6 +16,7 @@ import {
   rarityHex,
   rarityName,
   slotName,
+  subAttrQualityClass,
   termLabel,
   termQualityClass,
 } from '@/utils/format'
@@ -80,12 +82,16 @@ const debuffs = computed(() => props.item.terms.filter((t) => t.type === 'debuff
     <ul class="mt-2 space-y-0.5 text-[12px]">
       <li v-for="(entry, index) in item.baseAttrs" :key="`b${index}`" class="text-ink-200">
         {{ baseAttrName(entry.attr) }} <span class="font-mono text-white">+{{ Math.round(entry.value) }}</span>
+        <span class="font-mono text-ink-400">{{ attrRangeLabel(entry.min, entry.max) }}</span>
       </li>
-      <li v-for="(entry, index) in item.subAttrs" :key="`s${index}`" class="text-sky-300">
+      <li v-for="(entry, index) in item.subAttrs" :key="`s${index}`" :class="subAttrQualityClass(entry.quality)">
         {{ attrName(entry.attr) }}
         <span class="font-mono">+{{ entry.value.toFixed(entry.type === 'percent' ? 2 : 0) }}{{ attrSuffix(entry.attr) }}</span>
         <span v-if="entry.quality === 'ancient'" class="ml-0.5">🌟</span>
-        <span v-else-if="entry.quality === 'rare'" class="ml-0.5 text-term-rare">（稀有）</span>
+        <template v-else>
+          <span class="font-mono text-ink-400">{{ attrRangeLabel(entry.min, entry.max, entry.type === 'percent' ? 2 : 0) }}</span>
+          <span v-if="entry.quality === 'rare'" class="ml-0.5">（稀有）</span>
+        </template>
       </li>
     </ul>
 

@@ -6,8 +6,21 @@ from typing import Any, Iterable
 
 from app.services.economy import enchant_cost, refine_cost
 from app.services.game_config import CONFIG
+from app.services.item_factory import base_attr_range, sub_attr_range
 from app.services.slots_util import possible_slots
 from app.services.valuation import item_score
+
+
+def _attrs_with_range(item: Any, base: Any, entries: Any, range_fn: Any) -> list[dict[str, Any]]:
+    """为每条属性附加 min/max（供前端展示「当前值【区间】」）。不改动库中的 JSON。"""
+    out: list[dict[str, Any]] = []
+    for entry in entries or []:
+        row = dict(entry)
+        if base is not None:
+            lo, hi = range_fn(base, item.rarity, entry["attr"])
+            row["min"], row["max"] = round(lo, 2), round(hi, 2)
+        out.append(row)
+    return out
 
 
 def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[str, Any]:
@@ -22,8 +35,8 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "rarity": item.rarity,
         "levelReq": item.level_req,
         "score": int(round(item_score(item))),
-        "baseAttrs": item.base_attrs or [],
-        "subAttrs": item.sub_attrs or [],
+        "baseAttrs": _attrs_with_range(item, base, item.base_attrs, base_attr_range),
+        "subAttrs": _attrs_with_range(item, base, item.sub_attrs, sub_attr_range),
         "terms": item.terms or [],
         "equippedSlot": item.equipped_slot,
         "refineCount": item.refine_count,

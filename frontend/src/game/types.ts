@@ -6,12 +6,15 @@ export type SlotId =
   | 'mainHand' | 'head' | 'body' | 'hands' | 'legs' | 'feet'
   | 'necklace' | 'earring' | 'bracelet' | 'ring1' | 'ring2'
 export type TermQuality = 'common' | 'rare' | 'ancient'
-/** 重造 / 附魔模式：彻底随机（现价）或基于当前（更贵，总值保底不降）。 */
+/** 重造 / 附魔模式：彻底随机（现价，全部重掷）或基于当前（更贵，每条在当前值附近浮动）。 */
 export type RerollMode = 'random' | 'basedOnCurrent'
 
 export interface BaseAttrEntry {
   attr: string
   value: number
+  /** 该属性在当前品阶/档位下的合法区间（服务端下发，用于详情展示「当前值【区间】」）。 */
+  min?: number
+  max?: number
 }
 
 export interface SubAttrEntry {
@@ -20,6 +23,20 @@ export interface SubAttrEntry {
   type: 'flat' | 'percent'
   /** 副属性品质：普通 / 稀有（取上限）/ 太古（上限 ×1.25）。 */
   quality?: TermQuality
+  /** 该属性在当前品阶/档位下的合法区间（太古值可超过 max）。 */
+  min?: number
+  max?: number
+}
+
+/** 重掷结果面板中的单条涨跌记录。 */
+export interface RerollChange {
+  key: string
+  name: string
+  /** 属性/词条的数值变化方向：up=涨（绿）、down=降（红）、same=不变。 */
+  direction: 'up' | 'down' | 'same'
+  before: number | null
+  after: number | null
+  delta: number | null
 }
 
 export interface TermEntry {

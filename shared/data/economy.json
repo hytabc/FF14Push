@@ -9,26 +9,28 @@
     "autoSellRarities": ["common", "uncommon"]
   },
   "refine": {
-    "$comment": "重造：重新随机基础属性浮动值与副属性，保留品阶/类型/等级需求/词条",
-    "$commentMode": "mode=random：彻底随机（现价，结果可能变差）；mode=basedOnCurrent：在当前基础上随机（价格 × basedOnCurrentCostMultiplier），总属性评分保底不降、太古副属性数量不减少。",
+    "$comment": "重造：随机基础属性浮动值与副属性，保留品阶/类型/等级需求/词条",
+    "$commentMode": "mode=random：彻底随机（现价）——基础属性与副属性全部重新洗牌，等同重新获得该装备；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——每条属性在现有值附近 ±基于当前浮动幅度 内独立浮动，可升可降，夹在该属性合法区间内。",
+    "$commentSpread": "basedOnCurrentSpreadPct：浮动幅度 = 该属性总区间宽度(上限−下限) × 该系数。例：区间 0-100、当前 22、0.10 → 12~32。",
     "baseAttrFloat": 0.20,
     "subAttrFloat": 0.20,
     "costGrowthPerRefine": 0.25,
     "basedOnCurrentCostMultiplier": 3,
-    "basedOnCurrentMaxAttempts": 50
+    "basedOnCurrentSpreadPct": 0.10
   },
   "enchant": {
-    "$comment": "附魔：重新随机全部 Buff/Debuff，含品质判定",
-    "$commentMode": "mode=random：彻底随机（现价）；mode=basedOnCurrent：在当前基础上随机（价格 × basedOnCurrentCostMultiplier），词条总价值保底不降、太古词条数量不减少。",
+    "$comment": "附魔：重新随机全部 Buff/Debuff，含品质判定（Debuff 见 debuffQualityEnabled）",
+    "$commentMode": "mode=random：彻底随机（现价）——全部词条重新随机；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——每条词条在现有值附近 ±basedOnCurrentSpreadPct 内独立浮动，可升可降。",
     "autoUntilRareExtraCostMultiplier": 10,
     "basedOnCurrentCostMultiplier": 3,
-    "basedOnCurrentMaxAttempts": 50
+    "basedOnCurrentSpreadPct": 0.10
   },
   "termQuality": {
     "common": 0.989,
     "rare": 0.010,
     "ancient": 0.001
   },
+  "debuffQualityEnabled": false,
   "power": {
     "$comment": "战力计算权重。来源：PRD 排行榜 2.2 / 新增三属性 8.2。攻击力是期望 DPS 的线性乘数，作为锚点 = 1.0；暴击/直击/信念按真实伤害模型的边际贡献标定（约等于攻击力，远低于旧值）；攻速/急速/闪避/命中/韧性等有硬上限（攻速 50%、闪避 30%、命中 20%）或用满即失效，权重取保守值。推导见 scripts/derive-power-weights.py（参考 Lv80 门槛装）。",
     "weights": {

@@ -66,6 +66,19 @@ export function termQualityClass(quality: TermQuality): string {
   }[quality]
 }
 
+/** 副属性品质 → 文本色：普通天蓝，稀有/太古金色（太古更亮 + 发光）。 */
+export function subAttrQualityClass(quality?: TermQuality): string {
+  if (quality === 'ancient') return 'text-term-ancient term-ancient-glow'
+  if (quality === 'rare') return 'text-term-rare'
+  return 'text-sky-300'
+}
+
+/** 属性区间展示：`【下限-上限】`（与数值同精度，缺省时返回空串）。 */
+export function attrRangeLabel(min?: number, max?: number, digits = 0): string {
+  if (min == null || max == null) return ''
+  return `【${min.toFixed(digits)}-${max.toFixed(digits)}】`
+}
+
 /**
  * 属性 id → 中文名。
  * 饰品底材用的是副属性 id（str/dex/int/vit），武器与防具用的是底材属性 id（attack/physDef…），

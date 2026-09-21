@@ -90,7 +90,7 @@ class CraftRequest(BaseModel):
 
 class RefineRequest(BaseModel):
     itemId: int
-    # random=彻底随机（现价，可能变差）；basedOnCurrent=在当前基础上随机（更贵，总值保底不降）
+    # random=彻底随机（现价，全部重新洗牌）；basedOnCurrent=基于当前（更贵，每条在当前值附近小幅浮动，可升可降）
     mode: Literal["random", "basedOnCurrent"] = "random"
 
 
