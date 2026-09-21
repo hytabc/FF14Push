@@ -144,6 +144,7 @@ export const useGameStore = defineStore('game', () => {
       sessionId.value = session.sessionId
       sim.value = new BattleSimulator({
         stats: state.value.hero.stats,
+        penalty: session.penalty,
         regionId: target,
         killsRequired: session.killsRequired,
         spawnInterval: session.spawnInterval,
@@ -324,6 +325,7 @@ export const useGameStore = defineStore('game', () => {
       raidResult.value = null
       sim.value = new BattleSimulator({
         stats: state.value.hero.stats,
+        penalty: session.penalty,
         raid: { bosses: session.bosses, enrage: session.enrage },
       })
       sim.value.start()
@@ -377,6 +379,7 @@ export const useGameStore = defineStore('game', () => {
     raidSessionId.value = null
     try {
       const res = await api.raidReport({
+        mechanismFailures: current.mechanismFailures,
         sessionId: id,
         raidId,
         cleared,

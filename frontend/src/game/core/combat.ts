@@ -65,10 +65,10 @@ export function powerAttack(stats: HeroStats): number {
 }
 
 /** 命中率 = 基础命中 − 等级压制惩罚 + 命中属性，上限 99%。与 `damage.py:hit_chance` 一致。 */
-export function hitChance(stats: HeroStats, levelPenaltyPct = 0): number {
+export function hitChance(stats: HeroStats, levelPenaltyPct = 0, floor = .8): number {
   const base = 1 - (data.combat.baseMissChance as number)
-  const chance = base + stats.hitRatePct / 100 - levelPenaltyPct / 100
-  return Math.max(0.05, Math.min(0.99, chance))
+  const chance = Math.min(0.99, base + stats.hitRatePct / 100)
+  return Math.max(floor, chance * (1 - Math.min(10, Math.max(0, levelPenaltyPct)) / 100))
 }
 
 /** 一次伤害结算：命中 → 直击 → 暴击 → 信念 → 随机浮动 → BOSS 抗性 → 减防。来源：PRD 三属性 2.2 / 3.3 */
@@ -82,13 +82,12 @@ export function rollDamage(
   resistancePct = 0,
   rand: () => number = Math.random,
 ): DamageRoll {
-  if (penalty && rand() > hitChance(stats, penalty.hitRatePenaltyPct)) {
+  if (penalty && rand() > hitChance(stats, penalty.hitRatePenaltyPct, penalty.hitFloor)) {
     return { amount: 0, isCrit: false, isDirectHit: false, missed: true }
   }
 
   let raw = (potencyPct / 100) * (damageType === 'magical' ? stats.magicAttack : stats.attack) * skillMult
   raw *= 1 + stats.detBonusPct / 100
-  if (penalty) raw *= Math.max(0, 1 - penalty.damageDealtPenaltyPct / 100)
 
   const isDirectHit = rand() * 100 < stats.dhRatePct
   if (isDirectHit) raw *= data.combat.directHitMultiplier as number
@@ -102,7 +101,7 @@ export function rollDamage(
   // BOSS 抗性：直接削减最终伤害（高难副本 BOSS 自带抗性）
   raw *= Math.max(0, 1 - Math.min(90, resistancePct) / 100)
 
-  const mitigated = Math.max(raw * 0.1, raw - targetDefense)
+  const mitigated = Math.max(raw * 0.1, raw - targetDefense) * (1 - (penalty?.damageDealtPenaltyPct ?? 0) / 100)
   return { amount: Math.max(1, Math.floor(mitigated)), isCrit, isDirectHit, missed: false }
 }
 
@@ -163,7 +162,7 @@ export function estimateDps(
   return Math.max(
     0.01,
     dps *
-      hitChance(stats, penalty.hitRatePenaltyPct) *
+      hitChance(stats, penalty.hitRatePenaltyPct, penalty.hitFloor) *
       Math.max(0, 1 - penalty.damageDealtPenaltyPct / 100),
   )
 }

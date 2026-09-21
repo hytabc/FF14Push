@@ -36,6 +36,10 @@ from app.services.slots_util import selectable_base_slots
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
+from app.services.balance import BALANCE as RULES
+from app.services.qualification import trial_marks
+from app.services.raid_balance import snapshot, clear_failures, calibration
+
 router = APIRouter(prefix="/raid", tags=["raid"])
 
 EMPTY_GRANT = {"items": [], "autoSold": [], "autoGold": 0}
@@ -85,8 +89,10 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
     ).scalars().all()
     progress = {row.raid_id: row for row in rows}
 
+    marks = await trial_marks(db,user.id)
     entries = []
     for raid in all_raids():
+        raid = {**raid, **RULES["raids"][raid["id"]]}
         ok, reason = eligibility(raid, hero.level, stats, items)
         row = progress.get(raid["id"])
         entries.append(
@@ -96,7 +102,9 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
                 "difficulty": raid.get("difficulty", "normal"),
                 "name": raid["name"],
                 "requiredLevel": raid["requiredLevel"],
-                "requiredPower": raid["requiredPower"],
+                "requiredPower": RULES["raids"][raid["id"]]["power"],
+                "trialPassed": f"raid:{raid['id']}" in marks,
+                "practiceOnly": raid.get("difficulty") == "hard" and f"raid:{raid['id']}" not in marks,
                 "requiresAllSlots": raid["requiresAllSlots"],
                 "minEquipRarity": raid.get("minEquipRarity", "common"),
                 "topRarity": raid.get("topRarity"),
@@ -136,6 +144,10 @@ async def start_session(
 
     await _end_active_sessions(db, user.id)
     session = RaidSession(user_id=user.id, raid_id=raid["id"], active=True, cleared=False)
+    marks = await trial_marks(db,user.id)
+    session.balance_snapshot = snapshot(raid,hero.level,stats,items,marks)
+    previous = await db.scalar(select(func.count(RaidSession.id)).where(RaidSession.user_id==user.id,RaidSession.raid_id==raid['id']))
+    session.balance_snapshot = dict(session.balance_snapshot,firstEntry=not previous)
     db.add(session)
     await db.commit()
 
@@ -145,6 +157,8 @@ async def start_session(
         "name": raid["name"],
         "difficulty": raid.get("difficulty", "normal"),
         "bosses": boss_stats_for_raid(raid, hero.level, stats),
+        "penalty": session.balance_snapshot["penalty"],
+        "practiceOnly": session.balance_snapshot["hard"] and not session.balance_snapshot["trialPassed"],
         "enrage": raid["enrage"],
         "reward": raid["reward"],
     }
@@ -164,7 +178,7 @@ async def report_session(
                 RaidSession.id == payload.sessionId,
                 RaidSession.user_id == user.id,
                 RaidSession.active.is_(True),
-            )
+            ).with_for_update()
         )
     ).scalar_one_or_none()
     if session is None:
@@ -174,24 +188,28 @@ async def report_session(
 
     now = datetime.now(timezone.utc)
     server_elapsed_ms = int(max(0.0, (now - _as_utc(session.started_at)).total_seconds() * 1000))
-    elapsed_ms = max(int(payload.elapsedMs), server_elapsed_ms)
 
     session.active = False
     session.ended_at = now
 
-    if not payload.cleared:
+    stats = compute_stats(hero, items)
+    current = snapshot(raid,hero.level,stats,items,await trial_marks(db,user.id))
+    fight_ms = int(payload.fightMs if payload.fightMs is not None else server_elapsed_ms)
+    failures = clear_failures(session.balance_snapshot,current,server_elapsed_ms,fight_ms) if payload.cleared else []
+    if not payload.cleared and current["hard"]:
+        failures = [reason for key,reason in [("trialPassed","mechanism"),("outputPassed","output"),("defensePassed","defense")] if not current[key]]
+    if payload.died: failures.append('defense')
+    valid_mechanisms = {s["id"] for b in boss_stats_for_raid(raid,hero.level,stats) for s in b["skills"]}
+    reported_mechanisms = sorted(set(payload.mechanismFailures) & valid_mechanisms) if payload.died else []
+    session.outcome = dict(mechanismFailures=reported_mechanisms,failures=failures,fightMs=max(0,min(fight_ms,server_elapsed_ms)),firstClear=False)
+    if not payload.cleared or failures:
         await db.commit()
         return {
-            "cleared": False,
-            "firstClear": False,
-            "gold": int(user.gold),
-            "goldGained": 0,
-            "items": [],
-            "message": "挑战失败，未获得奖励" if payload.died else "已结束挑战",
+            "cleared": False, "firstClear": False, "gold": int(user.gold), "goldGained": 0,
+            "expGained": 0, "items": [], "autoSold": [], "autoGold": 0, "fightMs": fight_ms,
+            "failures": failures,
+            "message": "练习结束，未满足正式通关条件：" + '、'.join({'entry':'进入门槛','mechanism':'机制试炼','output':'输出检查','defense':'防御检查','invalid_duration':'战斗时长校验','missing_snapshot':'会话版本已失效'}.get(f,f) for f in failures) if failures else "挑战结束，未获得奖励",
         }
-
-    # 副本不做击杀时间校验：装备极佳时可能远快于服务端理论上限，避免误判为作弊。
-    stats = compute_stats(hero, items)
 
     row = await _progress(db, user.id, raid["id"])
     if row is None:
@@ -202,18 +220,23 @@ async def report_session(
     first_clear = not bool(row.cleared)
     reward = raid["reward"]
     gold = int(reward["firstGold"]) if first_clear else int(reward["repeatGold"])
+    reward_multiplier = min(session.balance_snapshot["penalty"]["rewardMultiplier"],current["penalty"]["rewardMultiplier"])
+    gold = int(gold * reward_multiplier)
     user.gold = int(user.gold) + gold
 
     # 通关经验：首通用 firstExp，重刷用 repeatExp（高难副本的 repeatExp 更高）
     raw_exp = int(reward["firstExp"]) if first_clear else int(reward.get("repeatExp", 0))
+    raw_exp = int(raw_exp * reward_multiplier)
     exp_gained = apply_exp_bonus(raw_exp, stats.term_mods) if raw_exp > 0 else 0
     level_info = apply_exp(hero, exp_gained)
 
     grant = EMPTY_GRANT
     pending_chest = 0
+    box_amount = int(reward["boxCount"]) * reward_multiplier
+    box_count = int(box_amount) + int(random.random() < box_amount % 1)
     if bool(reward.get("slotChoice")):
         # 高难宝箱：每次通关都掉落，由玩家自选装备种类后在结算界面开启
-        session.pending_chest = int(session.pending_chest or 0) + int(reward["boxCount"])
+        session.pending_chest = int(session.pending_chest or 0) + box_count
         pending_chest = int(session.pending_chest)
     elif first_clear:
         chest = chest_by_id(str(reward["chestId"]))
@@ -221,7 +244,7 @@ async def report_session(
         if chest is not None:
             rng = random.Random()
             luck = rarity_luck(await user_drop_rate(db, user.id))
-            for _ in range(int(reward["boxCount"])):
+            for _ in range(box_count):
                 item, _ = generate_item(
                     chest["category"], hero.level, box_tier=chest["tier"], rng=rng, luck=luck
                 )
@@ -229,12 +252,12 @@ async def report_session(
         if generated:
             grant = await grant_generated_items(db, user, generated, source=f"raid:{raid['id']}")
 
-    fight_ms = int(payload.fightMs or elapsed_ms)
     row.cleared = True
     row.cleared_at = row.cleared_at or now
     row.clear_count = int(row.clear_count) + 1
     row.best_clear_ms = fight_ms if row.best_clear_ms is None else min(int(row.best_clear_ms), fight_ms)
     session.cleared = True
+    session.outcome = dict(session.outcome, firstClear=first_clear)
     await db.commit()
 
     return {
@@ -314,3 +337,12 @@ async def stop_session(payload: RaidStopRequest, db: DbSession, user: CurrentUse
     session.ended_at = datetime.now(timezone.utc)
     await db.commit()
     return {"ok": True, "message": "已退出副本"}
+
+
+@router.get('/telemetry')
+async def raid_telemetry(db: DbSession, user: CurrentUser):
+    from app.services.admin import is_admin
+    if not is_admin(user):
+        raise HTTPException(403,'需要管理员权限')
+    rows=(await db.execute(select(RaidSession))).scalars().all()
+    return {r['id']: calibration([s for s in rows if s.raid_id == r['id']]) for r in all_raids() if r.get('difficulty') == 'hard'}

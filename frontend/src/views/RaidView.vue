@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { api } from '@/api'
+import MechanismTrial from '@/components/MechanismTrial.vue'
 import { toApiError } from '@/api/client'
 import Modal from '@/components/Modal.vue'
 import RaidChestPicker from '@/components/RaidChestPicker.vue'
@@ -115,6 +116,7 @@ async function closeResult() {
 
 <template>
   <div class="space-y-4">
+    <MechanismTrial :scopes="raids.filter(r => r.difficulty === 'hard').map(r => ({id:`raid:${r.id}`,name:r.name}))" @passed="load" />
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">高难副本</h2>
@@ -134,6 +136,7 @@ async function closeResult() {
       @claim="claimChest"
     />
 
+    <p class="text-xs text-ink-400">普通副本战力为推荐值，低于推荐值仍可挑战；伤害、承伤、治疗、资源、冷却、机制间隔及奖励效率随差距调整。高难未通过机制试炼时仅可练习。</p>
     <!-- 副本列表 -->
     <section v-if="!activeRaid" class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
       <button
@@ -145,7 +148,7 @@ async function closeResult() {
         @click="enter(raid)"
       >
         <div class="flex items-center justify-between gap-2">
-          <h3 class="text-sm font-semibold text-white">{{ raid.name }}</h3>
+          <h3 class="text-sm font-semibold text-white">{{ raid.name }} <span v-if="raid.practiceOnly" class="text-amber-300">（练习）</span></h3>
           <span class="flex shrink-0 gap-1">
             <span
               class="rounded px-2 py-0.5 text-[11px]"
@@ -169,10 +172,10 @@ async function closeResult() {
         <p class="mt-2 text-[11px] text-ink-400">{{ raid.bossNames.join(' / ') }}</p>
 
         <ul class="mt-2 space-y-0.5 text-[11px] text-ink-400">
-          <li>· 需要等级 Lv.{{ raid.requiredLevel }}</li>
-          <li>· 需要战力 {{ formatNumber(raid.requiredPower) }}</li>
-          <li v-if="raid.requiresAllSlots">· 需要穿满全部装备栏位</li>
-          <li>
+          <li>· {{ raid.difficulty === "normal" ? "推荐等级" : "需要等级" }} Lv.{{ raid.requiredLevel }}</li>
+          <li>· {{ raid.difficulty === "normal" ? "推荐战力" : "需要战力" }} {{ formatNumber(raid.requiredPower) }}</li>
+          <li v-if="raid.difficulty === 'hard' && raid.requiresAllSlots">· 需要穿满全部装备栏位</li>
+          <li v-if="raid.difficulty === 'hard'">
             · 全部装备品阶 ≥
             <span :class="rarityClass(raid.minEquipRarity)">{{ rarityName(raid.minEquipRarity) }}</span>
           </li>
@@ -180,7 +183,7 @@ async function closeResult() {
             · 至少 {{ raid.topRarityCount }} 件
             <span :class="rarityClass(raid.topRarity)">{{ rarityName(raid.topRarity) }}</span> 装备
           </li>
-          <li v-if="raid.minAncientTermsPerItem" class="text-amber-300">
+          <li v-if="raid.difficulty === 'hard' && raid.minAncientTermsPerItem" class="text-amber-300">
             · 每件装备至少 {{ raid.minAncientTermsPerItem }} 个太古词条 🌟
           </li>
         </ul>

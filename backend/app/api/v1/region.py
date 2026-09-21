@@ -5,12 +5,14 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from app.core.deps import CurrentHero, CurrentUser, DbSession
+from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
 from app.models import BattleSession, RegionProgress
 from app.schemas.game import RegionEnterRequest
 from app.services.codex import codex_progress
 from app.services.game_config import CONFIG
 from app.services.regions_util import boss_stats, kills_required, spawn_interval
+
+from app.services.qualification import region_access, require_region
 
 router = APIRouter(prefix="/region", tags=["region"])
 
@@ -27,8 +29,9 @@ def _recommended_level(region: dict) -> int:
 
 
 @router.get("")
-async def list_regions(db: DbSession, user: CurrentUser, hero: CurrentHero) -> dict:
+async def list_regions(db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems) -> dict:
     progress = await _progress_map(db, user.id)
+    access = await region_access(db,user.id,hero,items)
     entries = []
     for region in CONFIG.regions["regions"]:
         row = progress.get(region["id"])
@@ -37,11 +40,12 @@ async def list_regions(db: DbSession, user: CurrentUser, hero: CurrentHero) -> d
                 **region,
                 "killsRequired": kills_required(region["id"]),
                 "spawnInterval": spawn_interval(region["id"]),
-                "unlocked": bool(row.unlocked) if row else False,
+                "unlocked": not access[region["id"]],
                 "cleared": bool(row.cleared) if row else False,
                 "bestClearMs": row.best_clear_ms if row else None,
                 "recommendedLevel": _recommended_level(region),
-                "lockedHint": "需击败前一地区 BOSS 解锁",
+                "lockedHint": "；".join(access[region["id"]]),
+                "missingConditions": access[region["id"]],
                 "isCurrent": hero.current_region_id == region["id"],
             }
         )
@@ -62,9 +66,10 @@ async def list_regions(db: DbSession, user: CurrentUser, hero: CurrentHero) -> d
 
 
 @router.get("/current")
-async def current_region(db: DbSession, user: CurrentUser, hero: CurrentHero) -> dict:
+async def current_region(db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems) -> dict:
     region_id = hero.current_region_id or 1
     region = CONFIG.region_by_id[region_id]
+    await require_region(db,user.id,hero,items,region_id)
     return {
         "region": region,
         "killsRequired": kills_required(region_id),
@@ -76,7 +81,7 @@ async def current_region(db: DbSession, user: CurrentUser, hero: CurrentHero) ->
 
 @router.post("/enter")
 async def enter_region(
-    payload: RegionEnterRequest, db: DbSession, user: CurrentUser, hero: CurrentHero
+    payload: RegionEnterRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
 ) -> dict:
     """手动切换地区；切换后击杀计数归零。来源：PRD 地区 6.2"""
     region = CONFIG.region_by_id.get(payload.regionId)
@@ -90,8 +95,9 @@ async def enter_region(
             )
         )
     ).scalar_one_or_none()
-    if row is None or not row.unlocked:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="该地区尚未解锁")
+    await require_region(db,user.id,hero,items,payload.regionId)
+    if row is not None:
+        row.unlocked = True
 
     # 结束进行中的会话（切换地区即暂停）
     active = (
@@ -116,7 +122,7 @@ async def enter_region(
 
 
 @router.post("/advance")
-async def advance(db: DbSession, user: CurrentUser, hero: CurrentHero) -> dict:
+async def advance(db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems) -> dict:
     """击败 BOSS 后前往下一地区。"""
     current = hero.current_region_id or 1
     next_id = current + 1
@@ -130,8 +136,9 @@ async def advance(db: DbSession, user: CurrentUser, hero: CurrentHero) -> dict:
             )
         )
     ).scalar_one_or_none()
-    if row is None or not row.unlocked:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需先击败当前地区 BOSS")
+    await require_region(db,user.id,hero,items,next_id)
+    if row is not None:
+        row.unlocked = True
 
     hero.current_region_id = next_id
     hero.region_kill_count = 0

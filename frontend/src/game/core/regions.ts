@@ -43,6 +43,12 @@ function monsterBaseStats(level: number) {
 }
 
 export interface LevelPenalty {
+  hitFloor?: number
+  healingMultiplier?: number
+  resourceMultiplier?: number
+  cooldownMultiplier?: number
+  windowMultiplier?: number
+  rewardMultiplier?: number
   hitRatePenaltyPct: number
   damageDealtPenaltyPct: number
   damageTakenBonusPct: number

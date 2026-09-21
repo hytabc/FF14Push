@@ -123,6 +123,10 @@ def eligibility(
     全部副本都按 `requiredLevel` 开放（普通高难 20/40/60/80，高难度高难满级 100）；
     BOSS 数值仍按英雄当前等级锚定。
     """
+    if raid.get("difficulty", "normal") == "normal":
+        return True, None
+    from app.services.balance import BALANCE as RULES
+    raid = {**raid, **RULES["raids"][raid["id"]]}
     required_level = int(raid["requiredLevel"])
     if hero_level < required_level:
         return False, f"需要英雄等级 {required_level}"
@@ -158,7 +162,13 @@ def eligibility(
                 f"需要每件装备至少 {need_ancient} 个太古词条（当前 {ok}/{SLOT_COUNT} 件达标）"
             )
 
-    required_power = int(raid["requiredPower"])
+    from app.services.balance import BALANCE as RULES
+    rule = RULES["raids"][raid["id"]]
+    if stats.power_attack < rule["attack"]:
+        return False, f"主攻击属性需要 {rule['attack']}"
+    if min(stats.phys_def,stats.magic_def) < rule["defense"]:
+        return False, f"双防属性需要 {rule['defense']}"
+    required_power = int(rule["power"])
     power = hero_power(stats)
     if power < required_power:
         return False, f"战力不足（需要 {required_power}，当前 {power}）"

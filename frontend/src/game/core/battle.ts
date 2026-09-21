@@ -22,7 +22,6 @@ import {
   bossStats,
   eliteChance,
   getRegion,
-  levelPenalty,
   monsterStats,
   NO_LEVEL_PENALTY,
   regionTemplates,
@@ -67,6 +66,7 @@ interface EnemyState {
   attackTimer: number
   enraged: boolean
   /** 副本 BOSS 共享技能冷却：归零后从技能池随机抽一个释放。 */
+  pendingSkill: { skill: BossSkill; remaining: number } | null
   skillTimer: number
   /** BOSS 自身增益：减伤（damageReduce）/ 增伤（attackBuff）。 */
   selfBuffs: Array<{ stat: string; value: number; remaining: number }>
@@ -88,6 +88,7 @@ export class BattleSimulator {
   killCount = 0
   heroHp = 0
   heroMp = 0
+  mechanismFailures: string[] = []
   shield = 0
 
   log: LogEntry[] = []
@@ -122,6 +123,7 @@ export class BattleSimulator {
 
   constructor(options: {
     stats: HeroStats
+    penalty?: LevelPenalty
     regionId?: number
     killsRequired?: number
     spawnInterval?: number
@@ -137,7 +139,7 @@ export class BattleSimulator {
     this.heroHp = options.stats.maxHp
     this.heroMp = options.stats.maxMp
     this.spawnTimer = 0.6
-    this.penalty = NO_LEVEL_PENALTY
+    this.penalty = options.penalty ?? NO_LEVEL_PENALTY
     this.boss = null
 
     if (this.isRaid) {
@@ -149,11 +151,11 @@ export class BattleSimulator {
 
     this.region = getRegion(options.regionId ?? 1)
     this.boss = bossStats(this.region)
-    this.penalty = levelPenalty(options.stats.level, this.region)
+    this.penalty = options.penalty ?? NO_LEVEL_PENALTY
     this.pushLog(`进入「${this.region.name}」· Lv.${this.region.levelMin}-${this.region.levelMax}`, 'system')
     if (this.penalty.hitRatePenaltyPct > 0) {
       this.pushLog(
-        `等级压制：英雄 Lv.${options.stats.level} 低于地区下限，命中 -${this.penalty.hitRatePenaltyPct.toFixed(0)}%、` +
+        `战力差距惩罚，命中 -${this.penalty.hitRatePenaltyPct.toFixed(0)}%、` +
           `伤害 -${this.penalty.damageDealtPenaltyPct.toFixed(0)}%、受到伤害 +${this.penalty.damageTakenBonusPct.toFixed(0)}%、` +
           `防御 -${this.penalty.defenseIgnorePct.toFixed(0)}%`,
         'system',
@@ -296,8 +298,8 @@ export class BattleSimulator {
       const ticks = Math.floor(this.regenTimer)
       this.regenTimer -= ticks
       const stats = this.stats
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + stats.hpRegen * ticks)
-      this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks)
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + (stats.hpRegen + this.buffs.filter(b => b.stat === "healOverTime").reduce((sum,b) => sum + stats.maxHp * b.value,0)) * ticks * (this.penalty.healingMultiplier ?? 1))
+      this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks * (this.penalty.resourceMultiplier ?? 1))
     }
 
     if (this.phase === 'dead') {
@@ -376,12 +378,13 @@ export class BattleSimulator {
       enraged: false,
       skillTimer: this.bossSkillInterval(stats),
       selfBuffs: [],
+      pendingSkill: null,
     }
   }
 
   /** 共享技能 CD（秒）：来自 BOSS 数据，缺省 6 秒。 */
   private bossSkillInterval(stats: MonsterStats): number {
-    return Math.max(1, Number(stats.skillInterval ?? 6))
+    return Math.max(1, Number(stats.skillInterval ?? 6)) * (this.penalty.windowMultiplier ?? 1)
   }
 
   private setMonster(monster: MonsterStats): void {
@@ -451,7 +454,7 @@ export class BattleSimulator {
     const stats = this.stats
     const cost = this.mpCost(skill)
     this.heroMp = Math.max(0, this.heroMp - cost)
-    this.cooldowns[skill.id] = skillCooldown(stats, skill.cd)
+    this.cooldowns[skill.id] = skillCooldown(stats, skill.cd) * (this.penalty.cooldownMultiplier ?? 1)
     this.gcd = data.combat.gcdSeconds as number
     this.pendingSkillCasts[skill.id] = (this.pendingSkillCasts[skill.id] ?? 0) + 1
 
@@ -497,7 +500,7 @@ export class BattleSimulator {
       switch (type) {
         case 'heal':
         case 'fullHeal': {
-          const amount = type === 'fullHeal' ? stats.maxHp : Math.floor(stats.maxHp * value)
+          const amount = (type === 'fullHeal' ? stats.maxHp : Math.floor(stats.maxHp * value)) * (this.penalty.healingMultiplier ?? 1)
           this.heroHp = Math.min(stats.maxHp, this.heroHp + amount)
           this.pushFloat(`+${Math.floor(amount)}`, 'hero', 'hero')
           break
@@ -506,10 +509,10 @@ export class BattleSimulator {
           this.buffs.push({ stat: 'healOverTime', value, remaining: duration, name: skill.name })
           break
         case 'shield':
-          this.shield += Math.floor(stats.maxHp * value)
+          this.shield += Math.floor(stats.maxHp * value * (this.penalty.healingMultiplier ?? 1))
           break
         case 'mpRestore':
-          this.heroMp = Math.min(stats.maxMp, this.heroMp + Math.floor(stats.maxMp * value))
+          this.heroMp = Math.min(stats.maxMp, this.heroMp + Math.floor(stats.maxMp * value * (this.penalty.resourceMultiplier ?? 1)))
           break
         case 'dot':
           this.dots.push({ remaining: duration, potency: value * 100, tick: 1 })
@@ -602,7 +605,7 @@ export class BattleSimulator {
 
     // 吸血
     if (stats.lifestealPct > 0) {
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(damage * (stats.lifestealPct / 100)))
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(damage * (stats.lifestealPct / 100) * (this.penalty.healingMultiplier ?? 1)))
     }
 
     if (this.monsterHp <= 0) {
@@ -623,6 +626,15 @@ export class BattleSimulator {
     for (const buff of enemy.selfBuffs) buff.remaining -= dt
     enemy.selfBuffs = enemy.selfBuffs.filter((b) => b.remaining > 0)
 
+    if (enemy.pendingSkill) {
+      enemy.pendingSkill.remaining -= dt
+      if (enemy.pendingSkill.remaining <= 0) {
+        const pending = enemy.pendingSkill.skill
+        enemy.pendingSkill = null
+        this.castBossSkill(enemy, { ...pending, effect: 'nuke' })
+      }
+      return
+    }
     const skills = enemy.stats.skills ?? []
     if (skills.length === 0) return
 
@@ -638,6 +650,12 @@ export class BattleSimulator {
     const effect = String(skill.effect ?? '')
     const duration = Math.max(0, Number(skill.duration ?? 0))
     switch (effect) {
+      case 'charge': {
+        const seconds = Number(skill.chargeSeconds ?? 2) * (this.penalty.windowMultiplier ?? 1)
+        enemy.pendingSkill = { skill, remaining: seconds }
+        this.pushLog(`「${enemy.stats.name}」蓄力 ${skill.name}：${seconds.toFixed(1)} 秒后命中`, 'danger')
+        break
+      }
       case 'shield': {
         const reduce = Number(skill.damageReduce ?? 0)
         if (reduce > 0) {
@@ -669,7 +687,7 @@ export class BattleSimulator {
             remaining: seconds,
             potencyPerSec: potency / seconds,
             tick: 1,
-            source: skill.name,
+            source: skill.id,
           })
           this.pushLog(
             `「${enemy.stats.name}」施放 ${skill.name}：持续伤害 ${Math.round(potency)}%（${seconds}s）`,
@@ -680,7 +698,6 @@ export class BattleSimulator {
       }
       case 'nuke':
       case 'aoe':
-      case 'charge':
       case 'debuff': {
         const potency = Number(skill.potency ?? 0)
         if (potency > 0) {
@@ -731,9 +748,9 @@ export class BattleSimulator {
       this.pushFloat(`-${damage}`, 'hero', 'monster')
     }
     if (stats.lifestealPct > 0) {
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100)))
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * (this.penalty.healingMultiplier ?? 1)))
     }
-    if (this.heroHp <= 0) this.heroDies()
+    if (this.heroHp <= 0) { this.mechanismFailures.push(skill.id); this.heroDies() }
   }
 
   /** BOSS 持续伤害计时（作用于英雄）。 */
@@ -746,8 +763,12 @@ export class BattleSimulator {
       dot.tick -= dt
       if (dot.tick <= 0) {
         dot.tick = 1
-        const damage = Math.max(1, Math.floor(base * (dot.potencyPerSec / 100)))
+        let damage = Math.max(1, Math.floor(base * (dot.potencyPerSec / 100) * (1 + this.penalty.damageTakenBonusPct / 100)))
+        const absorbed = Math.min(this.shield, damage)
+        this.shield -= absorbed
+        damage -= absorbed
         this.heroHp -= damage
+        if (this.heroHp <= 0) this.mechanismFailures.push(dot.source)
         this.pushFloat(`-${damage}`, 'hero', 'monster')
       }
     }

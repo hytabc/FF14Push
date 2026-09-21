@@ -191,6 +191,8 @@ export interface RaidReward {
 }
 
 export interface RaidListEntry {
+  trialPassed: boolean
+  practiceOnly: boolean
   id: string
   order: number
   difficulty: 'normal' | 'hard'
@@ -213,6 +215,8 @@ export interface RaidListEntry {
 }
 
 export interface RaidSessionStart {
+  penalty: import("./core/regions").LevelPenalty
+  practiceOnly: boolean
   sessionId: number
   raidId: string
   name: string
@@ -320,6 +324,7 @@ export interface GameState {
   user: { id: number; nickname: string; gold: number }
   hero: Hero
   power: number
+  powerAudit?: { version: string; groups: Record<string, number>; contributions: Record<string, { raw: number; effective: number; contribution: number }> }
   expToNext: number
   recruitCost: number
   loadout: Partial<Record<SlotId, Item>>
@@ -340,6 +345,7 @@ export interface GameState {
 }
 
 export interface BattleSessionStart {
+  penalty: import("./core/regions").LevelPenalty
   sessionId: number
   regionId: number
   killsRequired: number

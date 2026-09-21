@@ -716,7 +716,7 @@ class TestLevelPenalty:
         stats = compute_stats(FakeHero(level=50), _expected_gear(50))
         matched = theoretical_dps(stats, 0.0, level_penalty(70, region))
         under = theoretical_dps(stats, 0.0, level_penalty(50, region))
-        assert under < matched * 0.10, f"落后 20 级仍有 {under / matched:.1%} 输出"
+        assert under < matched * 0.10, f"旧等级曲线输出 {under / matched:.1%}"
         kill = theoretical_kill_seconds(stats, region, penalty=level_penalty(50, region))
         assert kill > 40.0, f"落后 20 级单怪仅 {kill:.1f}s"
 
@@ -725,8 +725,8 @@ class TestLevelPenalty:
         stats = compute_stats(FakeHero(level=50), _expected_gear(50))
         matched = max_kills_in_seconds(stats, 23, 10.0, 1.0, 70)
         under = max_kills_in_seconds(stats, 23, 10.0, 1.0, 50)
-        assert under < matched
-        assert under <= 1.0, f"落后 20 级仍允许 {under:.1f} 杀/10s"
+        assert under == matched  # 相同战斗属性下，仅更改等级参数不能绕过战力差距曲线。
+        assert 0 < under <= 10 / float(CONFIG.region_by_id[23]["spawnInterval"])
 
 
 class TestRecruitingAncient:

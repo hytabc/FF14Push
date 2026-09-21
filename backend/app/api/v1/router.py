@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    trial,
     admin,
     auth,
     battle,
@@ -36,3 +37,5 @@ api_router.include_router(settings.router)
 api_router.include_router(redeem.router)
 api_router.include_router(raid.router)
 api_router.include_router(admin.router)
+
+api_router.include_router(trial.router)

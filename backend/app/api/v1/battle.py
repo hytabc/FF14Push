@@ -27,7 +27,7 @@ from app.models import (
 )
 from app.schemas.game import BattleReportRequest, BattleStartRequest, BattleStopRequest
 from app.services.codex import unlock_monster
-from app.services.combat_model import boss_stats, max_kills_in_seconds, resolve_job_skills
+from app.services.combat_model import effective_penalty, boss_stats, max_kills_in_seconds, resolve_job_skills
 from app.services.drop_luck import rarity_luck, user_drop_rate
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
@@ -37,6 +37,10 @@ from app.services.progression import apply_exp
 from app.services.regions_util import apply_exp_bonus, kills_required, roll_gold, spawn_interval
 from app.services.stats import compute_stats
 from app.services.validator import MAX_ELAPSED_MS, MIN_ELAPSED_MS, validate_report
+
+from app.services.qualification import require_region, region_access
+from app.services.balance import BALANCE, soft_penalty
+from app.services.valuation import hero_power
 
 router = APIRouter(prefix="/battle", tags=["battle"])
 settings = get_settings()
@@ -66,14 +70,15 @@ async def _end_active_sessions(db: DbSession, user_id: int) -> None:
 
 @router.post("/session/start")
 async def start_session(
-    payload: BattleStartRequest, db: DbSession, user: CurrentUser, hero: CurrentHero
+    payload: BattleStartRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
 ) -> dict:
     if payload.regionId not in CONFIG.region_by_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="地区不存在")
 
     progress = await _progress(db, user.id, payload.regionId)
-    if progress is None or not progress.unlocked:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="该地区尚未解锁")
+    await require_region(db,user.id,hero,items,payload.regionId)
+    if progress is not None:
+        progress.unlocked = True
 
     await _end_active_sessions(db, user.id)
 
@@ -87,6 +92,7 @@ async def start_session(
     region = CONFIG.region_by_id[payload.regionId]
     return {
         "sessionId": session.id,
+        "penalty": effective_penalty(compute_stats(hero,items),payload.regionId),
         "regionId": payload.regionId,
         "killsRequired": kills_required(payload.regionId),
         "spawnInterval": spawn_interval(payload.regionId),
@@ -117,6 +123,7 @@ async def report(
     if session.region_id != payload.regionId:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="地区与会话不一致")
 
+    await require_region(db,user.id,hero,items,payload.regionId)
     stats = compute_stats(hero, items)
 
     # 客户端只在有事件时才上报，上报间隔并不固定：窗口必须以服务端时钟为准，
@@ -160,6 +167,9 @@ async def report(
     rng = random.Random()
 
     # 金币与经验（服务端重新结算）
+    reward_multiplier = effective_penalty(stats,payload.regionId)["rewardMultiplier"]
+    result.total_gold = int(result.total_gold * reward_multiplier)
+    result.total_exp = int(result.total_exp * reward_multiplier)
     user.gold = int(user.gold) + result.total_gold
     gained_exp = apply_exp_bonus(result.total_exp, stats.term_mods)  # 经验获取效率 Buff
     level_info = apply_exp(hero, gained_exp)
@@ -237,7 +247,7 @@ async def _settle_boss(
         return None
 
     region = CONFIG.region_by_id[payload.regionId]
-    boss_gold = roll_gold(payload.regionId, "boss", 0.0, rng)
+    boss_gold = int(roll_gold(payload.regionId, "boss", 0.0, rng) * effective_penalty(compute_stats(hero,items),payload.regionId)["rewardMultiplier"])
     boss_exp = apply_exp_bonus(max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"]))), term_mods or {})
 
     user.gold = int(user.gold) + boss_gold
@@ -262,7 +272,8 @@ async def _settle_boss(
         if next_region in CONFIG.region_by_id:
             nxt = await _progress(db, user.id, next_region)
             if nxt and not nxt.unlocked:
-                nxt.unlocked = True
+                access = await region_access(db,user.id,hero,items)
+                nxt.unlocked = not access[next_region]
 
     hero.region_kill_count = 0
 

@@ -292,6 +292,7 @@ export const api = {
   },
 
   async raidReport(payload: {
+    mechanismFailures?: string[]
     sessionId: number
     raidId: string
     cleared: boolean

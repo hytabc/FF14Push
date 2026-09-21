@@ -145,6 +145,13 @@ function castShare(skillId: string) {
             <div class="flex justify-between"><dt class="text-ink-400">攻击速度</dt><dd class="font-mono text-ink-200">{{ formatPercent(stats?.attackSpeedPct ?? 0) }}</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">技能急速</dt><dd class="font-mono text-ink-200">{{ formatPercent(stats?.hastePct ?? 0) }}</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">战力</dt><dd class="font-mono text-amber-300">{{ game.state?.power }}</dd></div>
+            <div v-if="game.state?.powerAudit" class="space-y-1 text-xs">
+              <p>进攻 {{ Math.floor(game.state.powerAudit.groups.offense ?? 0) }} · 防御 {{ Math.floor(game.state.powerAudit.groups.defense ?? 0) }} · 续航 {{ Math.floor(game.state.powerAudit.groups.sustain ?? 0) }}</p>
+              <details><summary>属性贡献 · {{ game.state.powerAudit.version }}</summary>
+                <p>属性按软上限递减；时长与重复次数不计入战力。</p>
+                <p v-for="(entry, key) in game.state.powerAudit.contributions" :key="key">{{ attrName(String(key)) }}：{{ entry.raw.toFixed(1) }} → 有效 {{ entry.effective.toFixed(1) }} → 战力 +{{ entry.contribution.toFixed(1) }}</p>
+              </details>
+            </div>
           </dl>
         </div>
       </div>

@@ -16,30 +16,9 @@ TERM_DEBUFF_SELL = {q: float(v) for q, v in CONFIG.terms["debuffValue"].items()}
 
 
 def hero_power(stats: HeroStats) -> int:
-    """战力 = Σ(属性 × 权重)。
-
-    与 `attrs_score` 共用同一权重表，使「装备战力之和」与「英雄战力」口径一致：
-    战力更高的装备换上后，英雄战力必然不降。暴击/直击/信念按面板值×权重计入
-    （其收益已由权重标定，不再额外叠加等级相关的速率项，避免两套口径打架）。
-    """
-    w = POWER_WEIGHTS
-    total = 0.0
-    total += stats.max_hp * w.get("hp", 0)
-    total += stats.attack * w.get("attack", 0)
-    total += stats.magic_attack * w.get("magicAttack", 0)
-    total += stats.phys_def * w.get("physDef", 0)
-    total += stats.magic_def * w.get("magicDef", 0)
-    total += stats.crit_value * w.get("crit", 0)
-    total += stats.dh_value * w.get("dh", 0)
-    total += stats.det_value * w.get("det", 0)
-    total += stats.attack_speed_pct * w.get("sks", 0)
-    total += stats.haste_pct * w.get("sps", 0)
-    total += stats.hp_regen * w.get("regen", 0)
-    total += stats.lifesteal_pct * w.get("lifesteal", 0)
-    total += stats.dodge_pct * w.get("dodge", 0)
-    total += stats.hit_rate_pct * w.get("acc", 0)
-    total += stats.tenacity_pct * w.get("tenacity", 0)
-    return int(total)
+    """递减后的战斗属性贡献；非战斗成长不参与。"""
+    from app.services.balance import power_audit
+    return power_audit(stats)['total']
 
 
 def attrs_score(base_attrs: Any, sub_attrs: Any) -> float:

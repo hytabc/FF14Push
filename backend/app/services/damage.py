@@ -25,8 +25,9 @@ def hit_chance(stats: HeroStats, level_penalty_pct: float = 0.0) -> float:
     """命中率 = 基础命中 − 等级压制惩罚 + 命中属性，上限 99%。"""
     c = CONFIG.combat
     base = 1.0 - float(c["baseMissChance"])
-    chance = base + stats.hit_rate_pct / 100.0 - level_penalty_pct / 100.0
-    return max(0.05, min(0.99, chance))
+    from app.services.balance import BALANCE
+    chance = min(.99, base + stats.hit_rate_pct / 100.0)
+    return max(BALANCE["normal"]["hitFloor"], chance * (1 - min(10.,max(0.,level_penalty_pct))/100))
 
 
 def roll_damage(

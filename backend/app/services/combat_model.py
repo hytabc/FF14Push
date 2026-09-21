@@ -55,7 +55,7 @@ def theoretical_dps(
     cast_rate = 0.0
     max_potency = 0.0
     for skill in skills:
-        cd = max(0.5, skill_cooldown(stats, float(skill["cd"])))
+        cd = max(0.5, skill_cooldown(stats, float(skill["cd"]))) * (penalty or {}).get("cooldownMultiplier",1)
         potency = float(skill.get("potency", 0))
         cast_rate += 1.0 / cd
         potency_per_sec += potency / cd
@@ -81,7 +81,9 @@ def theoretical_dps(
 
 def effective_penalty(stats: HeroStats, region_id: int) -> dict[str, float]:
     """英雄相对地区的等级压制惩罚（越级时非零）。"""
-    return level_penalty(int(stats.level), region_id)
+    from app.services.balance import BALANCE, soft_penalty
+    from app.services.valuation import hero_power
+    return soft_penalty(hero_power(stats),BALANCE["regions"][str(region_id)]["recommendedPower"])
 
 
 def theoretical_kill_seconds(
@@ -114,7 +116,7 @@ def max_kills_in_seconds(
 
     hero_level 用于纳入等级压制，避免越级英雄上报到等级匹配才有的击杀速率。
     """
-    penalty = level_penalty(int(hero_level if hero_level is not None else stats.level), region_id)
+    penalty = effective_penalty(stats,region_id)
     spawn_limited = seconds / max(0.1, spawn_interval(region_id))
     kill_limited = seconds / theoretical_kill_seconds(stats, region_id, penalty=penalty)
     return min(spawn_limited, kill_limited) * tolerance

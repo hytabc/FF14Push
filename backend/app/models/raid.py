@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin, JsonType
 
 
 class RaidSession(Base, TimestampMixin):
@@ -20,6 +20,8 @@ class RaidSession(Base, TimestampMixin):
     ended_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     active: Mapped[bool] = mapped_column(sa.Boolean, default=True)
     cleared: Mapped[bool] = mapped_column(sa.Boolean, default=False)
+    balance_snapshot: Mapped[dict] = mapped_column(JsonType, default=dict)
+    outcome: Mapped[dict] = mapped_column(JsonType, default=dict)
     # 待开启的高难宝箱数量：通关结算后由玩家自选装备种类再开箱
     pending_chest: Mapped[int] = mapped_column(sa.Integer, default=0)
 
@@ -37,3 +39,16 @@ class RaidProgress(Base, TimestampMixin):
     cleared_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     best_clear_ms: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     clear_count: Mapped[int] = mapped_column(sa.Integer, default=0)
+
+
+class MechanismTrial(Base):
+    __tablename__ = 'mechanism_trials'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey('users.id', ondelete='CASCADE'), index=True)
+    scope: Mapped[str] = mapped_column(sa.String(40))
+    version: Mapped[str] = mapped_column(sa.String(20))
+    step: Mapped[int] = mapped_column(default=0)
+    challenge: Mapped[int] = mapped_column(default=0)
+    active: Mapped[bool] = mapped_column(default=True)
+    passed: Mapped[bool] = mapped_column(default=False)
+    issued_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())

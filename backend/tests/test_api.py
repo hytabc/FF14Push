@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.main import app
-from app.models import BattleSession, Hero, Item, RegionProgress, TavernState, User
+from app.models import RaidSession, BattleSession, Hero, Item, RegionProgress, TavernState, User
 from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
@@ -115,7 +115,7 @@ async def _farm(client, region_id: int, reports: int = 3, elapsed_ms: int = 1500
                 "elapsedMs": elapsed_ms,
                 "kills": [
                     {"monsterId": "normal", "gold": 20, "exp": 30}
-                    for _ in range(max(1, int(elapsed_ms / 1000 / spawn)))
+                    for _ in range(1)
                 ],
                 "killCount": 0,
             },
@@ -372,7 +372,7 @@ class TestBattleLoop:
         session = started.json()["sessionId"]
 
         cleared = None
-        for _ in range(12):
+        for _ in range(100):
             resp = await auth_client.post(
                 f"{API}/battle/session/report",
                 json={
@@ -404,7 +404,8 @@ class TestBattleLoop:
         regions = (await auth_client.get(f"{API}/region")).json()
         by_id = {r["id"]: r for r in regions["regions"]}
         assert by_id[1]["cleared"] is True
-        assert by_id[2]["unlocked"] is True
+        assert by_id[2]["unlocked"] is False
+        assert "试炼" in by_id[2]["lockedHint"]
 
     async def test_stop_session(self, auth_client) -> None:
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
@@ -938,7 +939,7 @@ class TestRaid:
                         slot=slot["id"],
                         rarity=rarities[index % len(rarities)],
                         level_req=1,
-                        base_attrs=[{"attr": "attack", "value": 12000.0}],
+                        base_attrs=[{"attr": "attack", "value": 12000.0}, {"attr":"physDef","value":5000.0}, {"attr":"magicDef","value":5000.0}, {"attr":"hp","value":100000.0}],
                         sub_attrs=[{"attr": "crit", "value": 2000.0, "type": "flat", "quality": "common"}],
                         terms=[dict(t) for t in terms],
                         equipped_slot=slot["id"],
@@ -947,7 +948,7 @@ class TestRaid:
             await db.commit()
 
     async def test_gate_rejects_underleveled_hero(self, auth_client) -> None:
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})
+        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
         assert resp.status_code == 400
         assert "等级" in resp.json()["detail"]
 
@@ -958,7 +959,7 @@ class TestRaid:
             hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
             hero.level = 100
             await db.commit()
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})
+        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
         assert resp.status_code == 400
         assert "栏位" in resp.json()["detail"]
 
@@ -974,17 +975,17 @@ class TestRaid:
         assert raid["requiredLevel"] == 20
         assert raid["minAncientTermsPerItem"] == 2
 
-    async def test_normal_gate_rejects_rare_mix(self, auth_client, session_factory) -> None:
-        """普通高难：全部装备品阶不得低于神话。全蓝应被拦下。"""
+    async def test_hard_equipment_gate_rejects_rare_mix(self, auth_client, session_factory) -> None:
+        """高难：全部装备品阶不得低于神话。全蓝应被拦下。"""
         await self._gear_up(auth_client, session_factory, mix=["rare"] * 11, ancient=2)
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})
+        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
         assert resp.status_code == 400
         assert "神话" in resp.json()["detail"]
 
-    async def test_normal_gate_requires_ancient_terms(self, auth_client, session_factory) -> None:
-        """普通高难：每件装备至少 2 个太古词条。"""
+    async def test_hard_equipment_gate_requires_ancient_terms(self, auth_client, session_factory) -> None:
+        """高难：每件装备至少 2 个太古词条。"""
         await self._gear_up(auth_client, session_factory, ancient=0)
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})
+        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
         assert resp.status_code == 400
         assert "太古" in resp.json()["detail"]
 
@@ -1035,11 +1036,11 @@ class TestRaid:
         assert started.status_code == 400
         assert "等级" in started.json()["detail"]
 
-    async def test_normal_raid_still_enforces_level_gate(self, auth_client, session_factory) -> None:
+    async def test_normal_raid_allows_underleveled_hero(self, auth_client, session_factory) -> None:
         await self._gear_up(auth_client, session_factory, level=50)
         resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_3"})
-        assert resp.status_code == 400
-        assert "等级" in resp.json()["detail"]
+        assert resp.status_code == 200
+        assert "penalty" in resp.json()
 
     async def test_all_raid_bosses_have_at_least_10_skills(self, auth_client, session_factory) -> None:
         """每个副本的每个 BOSS 都带共享技能池（≥10 个技能）+ 共享 CD。"""
@@ -1062,8 +1063,8 @@ class TestRaid:
         for boss in body["bosses"]:
             assert len(boss["skills"]) >= 10
 
-    async def test_raid_accepts_fast_clear(self, auth_client, session_factory) -> None:
-        """副本不做击杀时间校验：装备极佳时通关远快于理论上限也接受。"""
+    async def test_raid_rejects_fabricated_fast_clear(self, auth_client, session_factory) -> None:
+        """服务端时间不足时，客户端虚报通关不能获得奖励。"""
         await self._gear_up(auth_client, session_factory, ancient=2)
         started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
         resp = await auth_client.post(
@@ -1078,12 +1079,19 @@ class TestRaid:
             },
         )
         assert resp.status_code == 200, resp.text
-        assert resp.json()["cleared"] is True
+        assert resp.json()["cleared"] is False
+        assert "invalid_duration" in resp.json()["failures"]
 
     async def test_hard_raid_drops_chooseable_chest(self, auth_client, session_factory) -> None:
         """高难副本通关掉落自选种类宝箱：通关不直接给装备，自选后一次性开箱。"""
         await self._gear_up(auth_client, session_factory, ancient=2)
+        from tests.test_balance import pass_trial
+        await pass_trial(auth_client,session_factory,'raid:raid_h1')
         started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
+        async with session_factory() as db:
+            session = await db.get(RaidSession,started['sessionId'])
+            session.started_at = datetime.now(timezone.utc)-timedelta(seconds=120)
+            await db.commit()
         box_count = int(CONFIG.raid_by_id["raid_h1"]["reward"]["boxCount"])
 
         resp = await auth_client.post(
@@ -1094,7 +1102,7 @@ class TestRaid:
                 "cleared": True,
                 "died": False,
                 "elapsedMs": 1000,
-                "fightMs": 1000,
+                "fightMs": 120000,
             },
         )
         assert resp.status_code == 200, resp.text
@@ -1129,6 +1137,10 @@ class TestRaid:
 
         async def clear_once() -> dict:
             started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
+            async with session_factory() as db:
+                session = await db.get(RaidSession,started['sessionId'])
+                session.started_at = datetime.now(timezone.utc)-timedelta(seconds=90)
+                await db.commit()
             resp = await auth_client.post(
                 f"{API}/raid/session/report",
                 json={

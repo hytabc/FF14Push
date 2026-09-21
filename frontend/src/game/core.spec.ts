@@ -613,3 +613,35 @@ describe('高难副本模拟器', () => {
     expect(data.raids.bossSkillPool.length).toBeGreaterThanOrEqual(10)
   })
 })
+
+describe('普通副本多维软惩罚', () => {
+  const penalty = {
+    hitRatePenaltyPct: 10, damageDealtPenaltyPct: 35, damageTakenBonusPct: 30, defenseIgnorePct: 0,
+    healingMultiplier: .75, resourceMultiplier: .8, cooldownMultiplier: 1.15,
+    windowMultiplier: .8, rewardMultiplier: .6,
+  }
+  it('低战力普通副本仍有通关可能', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ maxHp: 10000 }), penalty,
+      raid: { bosses: [{ ...monsterStats(getRegion(1),'normal'), kind:'boss',hp:1,attack:1 }],enrage:null } })
+    sim.start()
+    for(let i=0;i<100 && sim.phase!=='cleared';i++) sim.tick(.1)
+    expect(sim.phase).toBe('cleared')
+  })
+  it('真实技能路径同时削弱治疗、护盾、资源及机制间隔', () => {
+    const sim = new BattleSimulator({stats:makeStats(),penalty,
+      raid:{bosses:[{...monsterStats(getRegion(1),'normal'),kind:'boss',hp:1e9,attack:0}],enrage:null}})
+    sim.heroHp=1;sim.heroMp=0
+    const engine=sim as unknown as {applyEffects(s:unknown):void;bossSkillInterval(s:unknown):number;cast(s:unknown):void}
+    engine.applyEffects({name:'测试治疗',effects:[{type:'heal',value:.1},{type:'shield',value:.1},{type:'mpRestore',value:.1}]})
+    expect(sim.heroHp).toBeCloseTo(1+Math.floor(sim.stats.maxHp*.1)*.75)
+    expect(sim.shield).toBe(Math.floor(sim.stats.maxHp*.1*.75))
+    expect(sim.heroMp).toBe(Math.floor(sim.stats.maxMp*.1*.8))
+    expect(engine.bossSkillInterval({skillInterval:6})).toBeCloseTo(4.8)
+    engine.cast(ADVENTURER_SKILL)
+    expect(sim.cooldowns[ADVENTURER_SKILL.id]).toBeCloseTo(skillCooldown(sim.stats,ADVENTURER_SKILL.cd)*1.15)
+    const baseline = rollDamage(makeStats({attack:1000}),100,'physical',500,1,null,0,()=>.5)
+    const weakened = rollDamage(makeStats({attack:1000}),100,'physical',500,1,penalty,0,()=>.5)
+    expect(weakened.amount).toBe(Math.floor(baseline.amount*.65))
+    expect(rollIncoming(1000,100,500,0,0,30)).toBe(Math.floor(rollIncoming(1000,100,500)*1.3))
+  })
+})

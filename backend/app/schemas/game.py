@@ -131,12 +131,13 @@ class RaidStartRequest(BaseModel):
 
 
 class RaidReportRequest(BaseModel):
+    mechanismFailures: list[str] = Field(default_factory=list, max_length=32)
     sessionId: int
     raidId: str
     elapsedMs: int = 0
     cleared: bool = False
     died: bool = False
-    fightMs: int | None = None
+    fightMs: int | None = Field(default=None, ge=0)
 
 
 class RaidStopRequest(BaseModel):

@@ -27,6 +27,8 @@ from app.services.recruiting import initial_hero, recruit_cost, with_recruit_cos
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
 from app.services.serialization import hero_to_dict, item_to_dict, loadout
 from app.services.stats import compute_stats
+from app.services.qualification import region_access, trial_marks
+from app.services.balance import power_audit
 from app.services.valuation import hero_power, sell_price_range
 
 
@@ -63,10 +65,12 @@ async def build_game_state(
     progress_rows = (
         await db.execute(select(RegionProgress).where(RegionProgress.user_id == user.id))
     ).scalars().all()
+    access = await region_access(db,user.id,hero,items)
     progress = {
         row.region_id: {
             "regionId": row.region_id,
-            "unlocked": row.unlocked,
+            "unlocked": not access[row.region_id],
+            "missingConditions": access[row.region_id],
             "cleared": row.cleared,
             "clearedAt": row.cleared_at.isoformat() if row.cleared_at else None,
             "bestClearMs": row.best_clear_ms,
@@ -99,6 +103,8 @@ async def build_game_state(
     ).scalar_one_or_none()
 
     region = CONFIG.region_by_id.get(hero.current_region_id) if hero.current_region_id else None
+    if region and access[region["id"]]:
+        region = None
     region_detail = None
     if region:
         region_detail = {
@@ -113,6 +119,7 @@ async def build_game_state(
         "user": {"id": user.id, "nickname": user.nickname, "gold": int(user.gold)},
         "hero": hero_to_dict(hero, stats),
         "power": hero_power(stats),
+        "powerAudit": power_audit(stats,await trial_marks(db,user.id)),
         "expToNext": exp_to_next(hero.level),
         "recruitCost": recruit_cost(hero.talent, hero.level),
         "loadout": loadout(items),
