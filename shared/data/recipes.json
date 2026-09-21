@@ -276,6 +276,10 @@
         {
           "itemId": "h_ingot",
           "count": 2
+        },
+        {
+          "itemId": "ore7",
+          "count": 2
         }
       ],
       "output": {
@@ -299,8 +303,8 @@
           "count": 4
         },
         {
-          "itemId": "ore18",
-          "count": 3
+          "itemId": "ore17",
+          "count": 2
         }
       ],
       "output": {
@@ -324,8 +328,8 @@
           "count": 6
         },
         {
-          "itemId": "ore35",
-          "count": 4
+          "itemId": "ore27",
+          "count": 3
         }
       ],
       "output": {
@@ -347,6 +351,10 @@
         {
           "itemId": "h_ingot",
           "count": 1
+        },
+        {
+          "itemId": "ore6",
+          "count": 2
         }
       ],
       "output": {
@@ -370,8 +378,8 @@
           "count": 2
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "ore16",
+          "count": 2
         }
       ],
       "output": {
@@ -395,8 +403,8 @@
           "count": 3
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "ore26",
+          "count": 3
         }
       ],
       "output": {
@@ -418,6 +426,10 @@
         {
           "itemId": "h_cloth",
           "count": 1
+        },
+        {
+          "itemId": "ore4",
+          "count": 2
         }
       ],
       "output": {
@@ -441,8 +453,8 @@
           "count": 2
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "ore14",
+          "count": 2
         }
       ],
       "output": {
@@ -466,8 +478,8 @@
           "count": 3
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "ore24",
+          "count": 3
         }
       ],
       "output": {
@@ -488,6 +500,14 @@
         },
         {
           "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "ore1",
+          "count": 2
+        },
+        {
+          "itemId": "ore8",
           "count": 2
         }
       ],
@@ -512,8 +532,12 @@
           "count": 4
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "ore11",
+          "count": 2
+        },
+        {
+          "itemId": "ore18",
+          "count": 2
         }
       ],
       "output": {
@@ -537,8 +561,8 @@
           "count": 6
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "ore21",
+          "count": 3
         }
       ],
       "output": {
@@ -560,6 +584,14 @@
         {
           "itemId": "h_plate",
           "count": 1
+        },
+        {
+          "itemId": "ore3",
+          "count": 2
+        },
+        {
+          "itemId": "ore10",
+          "count": 2
         }
       ],
       "output": {
@@ -583,8 +615,12 @@
           "count": 2
         },
         {
-          "itemId": "ore18",
-          "count": 3
+          "itemId": "ore13",
+          "count": 2
+        },
+        {
+          "itemId": "ore20",
+          "count": 2
         }
       ],
       "output": {
@@ -608,8 +644,8 @@
           "count": 3
         },
         {
-          "itemId": "ore35",
-          "count": 4
+          "itemId": "ore23",
+          "count": 3
         }
       ],
       "output": {
@@ -630,6 +666,10 @@
         },
         {
           "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "ore5",
           "count": 2
         }
       ],
@@ -654,8 +694,8 @@
           "count": 4
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "ore15",
+          "count": 2
         }
       ],
       "output": {
@@ -679,8 +719,8 @@
           "count": 6
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "ore25",
+          "count": 3
         }
       ],
       "output": {
@@ -698,6 +738,14 @@
         {
           "itemId": "h_leather",
           "count": 3
+        },
+        {
+          "itemId": "ore2",
+          "count": 2
+        },
+        {
+          "itemId": "ore9",
+          "count": 2
         }
       ],
       "output": {
@@ -717,8 +765,12 @@
           "count": 6
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "ore12",
+          "count": 2
+        },
+        {
+          "itemId": "ore19",
+          "count": 2
         }
       ],
       "output": {
@@ -738,8 +790,8 @@
           "count": 9
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "ore22",
+          "count": 3
         }
       ],
       "output": {
@@ -760,6 +812,10 @@
         },
         {
           "itemId": "h_ingot",
+          "count": 2
+        },
+        {
+          "itemId": "flora7",
           "count": 2
         }
       ],
@@ -784,8 +840,8 @@
           "count": 4
         },
         {
-          "itemId": "ore18",
-          "count": 3
+          "itemId": "flora17",
+          "count": 2
         }
       ],
       "output": {
@@ -809,8 +865,8 @@
           "count": 6
         },
         {
-          "itemId": "ore35",
-          "count": 4
+          "itemId": "flora27",
+          "count": 3
         }
       ],
       "output": {
@@ -832,6 +888,10 @@
         {
           "itemId": "h_ingot",
           "count": 1
+        },
+        {
+          "itemId": "flora6",
+          "count": 2
         }
       ],
       "output": {
@@ -855,8 +915,8 @@
           "count": 2
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "flora16",
+          "count": 2
         }
       ],
       "output": {
@@ -880,8 +940,8 @@
           "count": 3
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "flora26",
+          "count": 3
         }
       ],
       "output": {
@@ -903,6 +963,10 @@
         {
           "itemId": "h_cloth",
           "count": 1
+        },
+        {
+          "itemId": "flora4",
+          "count": 2
         }
       ],
       "output": {
@@ -926,8 +990,8 @@
           "count": 2
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "flora14",
+          "count": 2
         }
       ],
       "output": {
@@ -951,8 +1015,8 @@
           "count": 3
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "flora24",
+          "count": 3
         }
       ],
       "output": {
@@ -973,6 +1037,14 @@
         },
         {
           "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "flora1",
+          "count": 2
+        },
+        {
+          "itemId": "flora8",
           "count": 2
         }
       ],
@@ -997,8 +1069,12 @@
           "count": 4
         },
         {
+          "itemId": "flora11",
+          "count": 2
+        },
+        {
           "itemId": "flora18",
-          "count": 3
+          "count": 2
         }
       ],
       "output": {
@@ -1022,8 +1098,12 @@
           "count": 6
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "flora21",
+          "count": 3
+        },
+        {
+          "itemId": "flora28",
+          "count": 3
         }
       ],
       "output": {
@@ -1045,6 +1125,14 @@
         {
           "itemId": "h_plate",
           "count": 1
+        },
+        {
+          "itemId": "flora3",
+          "count": 2
+        },
+        {
+          "itemId": "flora10",
+          "count": 2
         }
       ],
       "output": {
@@ -1068,8 +1156,12 @@
           "count": 2
         },
         {
-          "itemId": "ore18",
-          "count": 3
+          "itemId": "flora13",
+          "count": 2
+        },
+        {
+          "itemId": "flora20",
+          "count": 2
         }
       ],
       "output": {
@@ -1093,8 +1185,12 @@
           "count": 3
         },
         {
-          "itemId": "ore35",
-          "count": 4
+          "itemId": "flora23",
+          "count": 3
+        },
+        {
+          "itemId": "flora30",
+          "count": 3
         }
       ],
       "output": {
@@ -1115,6 +1211,10 @@
         },
         {
           "itemId": "h_leather",
+          "count": 2
+        },
+        {
+          "itemId": "flora5",
           "count": 2
         }
       ],
@@ -1139,8 +1239,8 @@
           "count": 4
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "flora15",
+          "count": 2
         }
       ],
       "output": {
@@ -1164,8 +1264,8 @@
           "count": 6
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "flora25",
+          "count": 3
         }
       ],
       "output": {
@@ -1183,6 +1283,14 @@
         {
           "itemId": "h_leather",
           "count": 3
+        },
+        {
+          "itemId": "flora2",
+          "count": 2
+        },
+        {
+          "itemId": "flora9",
+          "count": 2
         }
       ],
       "output": {
@@ -1202,8 +1310,12 @@
           "count": 6
         },
         {
-          "itemId": "flora18",
-          "count": 3
+          "itemId": "flora12",
+          "count": 2
+        },
+        {
+          "itemId": "flora19",
+          "count": 2
         }
       ],
       "output": {
@@ -1223,8 +1335,12 @@
           "count": 9
         },
         {
-          "itemId": "flora35",
-          "count": 4
+          "itemId": "flora22",
+          "count": 3
+        },
+        {
+          "itemId": "flora29",
+          "count": 3
         }
       ],
       "output": {
@@ -1252,8 +1368,8 @@
           "count": 2
         },
         {
-          "itemId": "ore23",
-          "count": 4
+          "itemId": "ore28",
+          "count": 3
         }
       ],
       "output": {
@@ -1281,8 +1397,8 @@
           "count": 2
         },
         {
-          "itemId": "ore23",
-          "count": 4
+          "itemId": "ore22",
+          "count": 3
         }
       ],
       "output": {
@@ -1310,8 +1426,8 @@
           "count": 2
         },
         {
-          "itemId": "ore23",
-          "count": 4
+          "itemId": "ore21",
+          "count": 3
         }
       ],
       "output": {
@@ -1339,8 +1455,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore39",
+          "count": 4
         }
       ],
       "output": {
@@ -1368,8 +1484,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore37",
+          "count": 4
         }
       ],
       "output": {
@@ -1398,7 +1514,7 @@
         },
         {
           "itemId": "ore23",
-          "count": 4
+          "count": 3
         }
       ],
       "output": {
@@ -1426,8 +1542,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore36",
+          "count": 4
         }
       ],
       "output": {
@@ -1455,8 +1571,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore38",
+          "count": 4
         }
       ],
       "output": {
@@ -1484,8 +1600,8 @@
           "count": 2
         },
         {
-          "itemId": "ore23",
-          "count": 4
+          "itemId": "ore30",
+          "count": 3
         }
       ],
       "output": {
@@ -1513,8 +1629,8 @@
           "count": 2
         },
         {
-          "itemId": "ore23",
-          "count": 4
+          "itemId": "ore29",
+          "count": 3
         }
       ],
       "output": {
@@ -1542,8 +1658,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore34",
+          "count": 4
         }
       ],
       "output": {
@@ -1571,8 +1687,12 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore31",
+          "count": 4
+        },
+        {
+          "itemId": "ore40",
+          "count": 4
         }
       ],
       "output": {
@@ -1600,8 +1720,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore33",
+          "count": 4
         }
       ],
       "output": {
@@ -1629,8 +1749,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore35",
+          "count": 4
         }
       ],
       "output": {
@@ -1658,8 +1778,8 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "ore32",
+          "count": 4
         }
       ],
       "output": {
@@ -1687,8 +1807,12 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "flora34",
+          "count": 4
+        },
+        {
+          "itemId": "flora38",
+          "count": 4
         }
       ],
       "output": {
@@ -1716,8 +1840,12 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "flora33",
+          "count": 4
+        },
+        {
+          "itemId": "flora37",
+          "count": 4
         }
       ],
       "output": {
@@ -1745,8 +1873,16 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "flora32",
+          "count": 4
+        },
+        {
+          "itemId": "flora36",
+          "count": 4
+        },
+        {
+          "itemId": "flora40",
+          "count": 4
         }
       ],
       "output": {
@@ -1774,8 +1910,16 @@
           "count": 2
         },
         {
-          "itemId": "ore5",
-          "count": 6
+          "itemId": "flora31",
+          "count": 4
+        },
+        {
+          "itemId": "flora35",
+          "count": 4
+        },
+        {
+          "itemId": "flora39",
+          "count": 4
         }
       ],
       "output": {

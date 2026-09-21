@@ -75,6 +75,13 @@ class TestSharedData:
             else:
                 assert out["itemId"] in CONFIG.material_by_id
 
+    def test_all_region_materials_are_used(self):
+        """每个地区的专属材料（oreN / floraN）都必须被至少一个配方消耗。"""
+        region_mats = {m["id"] for m in CONFIG.materials["materials"] if m.get("regionId")}
+        used = {i["itemId"] for r in CONFIG.recipes["recipes"] for i in r["inputs"]}
+        missing = sorted(region_mats - used)
+        assert not missing, f"未被任何配方使用的地区材料：{missing}"
+
     def test_dohdol_equipment(self):
         ids = [i["id"] for i in CONFIG.dohdol_equipment["items"]]
         assert len(ids) == len(set(ids))
@@ -201,8 +208,13 @@ class TestProduceApi:
     async def test_produce_equipment_high_quality(self, auth_client, session_factory):
         async with session_factory() as db:
             user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
-            for item_id in ("h_plank", "h_ingot"):
-                db.add(StackItem(user_id=user_id, kind="material", item_id=item_id, count=10))
+            recipe = CONFIG.recipe_by_id["r_dh_dohTool_0"]
+            for entry in recipe["inputs"]:
+                db.add(
+                    StackItem(
+                        user_id=user_id, kind="material", item_id=entry["itemId"], count=10
+                    )
+                )
             await db.commit()
 
         resp = await auth_client.post(
