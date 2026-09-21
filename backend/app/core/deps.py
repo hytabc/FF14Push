@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import decode_access_token
+from app.core.security import BANNED_DETAIL, decode_access_token
 from app.models import Hero, Item, User
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -34,6 +34,9 @@ async def get_current_user(
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在")
+    # 封号：令牌仍可能有效，因此每个已认证请求都要在这里拦截，实现「强制下线」。
+    if user.banned:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BANNED_DETAIL)
     return user
 
 
@@ -72,7 +75,11 @@ async def get_optional_user(
     user_id = decode_access_token(token)
     if user_id is None:
         return None
-    return (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    # 封号用户视同未登录：既不参与排行，也不会被回显「我的排名」。
+    if user is None or user.banned:
+        return None
+    return user
 
 
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]

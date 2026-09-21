@@ -35,8 +35,8 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
 
     counts = {board: 0 for board in BOARDS}
     for user in users:
-        # 管理员不参与排行榜（且不创建英雄，双重保险）
-        if is_admin(user):
+        # 管理员与已封禁账号不参与排行榜（管理员另有「不创建英雄」双重保险）
+        if is_admin(user) or user.banned:
             continue
         hero = user.hero
         if hero is None:
@@ -93,7 +93,7 @@ async def fetch_board(db: AsyncSession, board: str, page: int = 1, page_size: in
         await db.execute(
             select(RankingEntry, User.username)
             .join(User, User.id == RankingEntry.user_id)
-            .where(RankingEntry.board == board)
+            .where(RankingEntry.board == board, User.banned.is_(False))
             .order_by(RankingEntry.value.desc(), RankingEntry.secondary.desc())
             .offset(offset)
             .limit(page_size)
@@ -118,7 +118,11 @@ async def fetch_user_rank(db: AsyncSession, board: str, user_id: int) -> dict[st
         await db.execute(
             select(RankingEntry, User.username)
             .join(User, User.id == RankingEntry.user_id)
-            .where(RankingEntry.board == board, RankingEntry.user_id == user_id)
+            .where(
+                RankingEntry.board == board,
+                RankingEntry.user_id == user_id,
+                User.banned.is_(False),
+            )
         )
     ).first()
     if row is None:
@@ -128,8 +132,10 @@ async def fetch_user_rank(db: AsyncSession, board: str, user_id: int) -> dict[st
         await db.execute(
             select(func.count())
             .select_from(RankingEntry)
+            .join(User, User.id == RankingEntry.user_id)
             .where(
                 RankingEntry.board == board,
+                User.banned.is_(False),
                 or_(
                     RankingEntry.value > entry.value,
                     and_(RankingEntry.value == entry.value, RankingEntry.secondary > entry.secondary),

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +18,10 @@ class User(Base, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(sa.String(128))
     nickname: Mapped[str] = mapped_column(sa.String(64))
     gold: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    # 封号：登录与所有已认证请求都会被拒绝，且不参与排行榜。
+    # 注意：对外只返回机器码，不返回任何封禁文案（见 `core/security.BANNED_DETAIL`）。
+    banned: Mapped[bool] = mapped_column(sa.Boolean, default=False, server_default=sa.false())
+    banned_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
 
     hero: Mapped["Hero | None"] = relationship(back_populates="user", uselist=False)
     items: Mapped[list["Item"]] = relationship(back_populates="user", cascade="all, delete-orphan")

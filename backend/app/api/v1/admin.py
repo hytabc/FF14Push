@@ -8,7 +8,8 @@ from sqlalchemy import or_, select
 from app.core.deps import CurrentUser, DbSession
 from app.core.security import hash_password
 from app.models import Hero, User
-from app.schemas.game import AdminResetPasswordRequest
+from app.models.base import utcnow
+from app.schemas.game import AdminBanRequest, AdminResetPasswordRequest
 from app.services.admin import admin_enabled, is_admin
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -52,6 +53,7 @@ async def list_users(
                 "level": level,
                 "hasHero": level is not None,
                 "isAdmin": is_admin(user),
+                "banned": bool(user.banned),
             }
             for user, level in rows
         ]
@@ -79,3 +81,29 @@ async def reset_password(
     target.password_hash = hash_password(payload.newPassword)
     await db.commit()
     return {"ok": True, "message": f"已重置「{target.username}」的密码"}
+
+
+@router.post("/ban")
+async def set_ban(payload: AdminBanRequest, db: DbSession, _: User = AdminUser) -> dict:
+    """封禁 / 解封指定账号。
+
+    封禁后：登录被拒绝、已登录的令牌在下一次请求即被拒（强制下线）、不参与排行榜。
+    对外只回传机器码，不返回任何封禁文案，避免被封用户反推。
+    """
+    target = (await db.execute(select(User).where(User.id == payload.userId))).scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    if is_admin(target):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不能封禁管理员账号",
+        )
+
+    target.banned = payload.banned
+    target.banned_at = utcnow() if payload.banned else None
+    await db.commit()
+    return {
+        "ok": True,
+        "banned": payload.banned,
+        "message": f"已{'封禁' if payload.banned else '解封'}「{target.username}」",
+    }

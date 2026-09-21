@@ -145,6 +145,24 @@ class TestAuth:
         )
         assert resp.status_code == 409
 
+    async def test_nickname_strips_html_metacharacters(self, client) -> None:
+        """昵称去除尖括号与控制字符，避免存储型 XSS，同时保留普通文字。"""
+        resp = await client.post(
+            f"{API}/auth/register",
+            json={
+                "username": "xssuser",
+                "password": "secret123",
+                "nickname": "<script>alert(1)</script>光\x00之战士",
+            },
+        )
+        assert resp.status_code == 201, resp.text
+        token = resp.json()["accessToken"]
+        me = (await client.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {token}"})).json()
+        assert "<" not in me["nickname"] and ">" not in me["nickname"]
+        assert "\x00" not in me["nickname"]
+        assert "script" in me["nickname"].lower()  # 只去掉元字符，不吞掉正文
+        assert "光" in me["nickname"] and "之战士" in me["nickname"]
+
     async def test_bad_login(self, client) -> None:
         resp = await client.post(f"{API}/auth/login", json={"username": "nobody", "password": "x"})
         assert resp.status_code == 401
@@ -1318,6 +1336,89 @@ class TestAdmin:
         entries = (await client.get(f"{API}/ranking", params={"board": "level"})).json()["entries"]
         assert entries, "排行榜不应为空"
         assert all(e["username"] != self.ADMIN_USER for e in entries)
+
+    async def test_admin_cannot_ban_admin(self, client, session_factory) -> None:
+        await self._ensure_admin(session_factory)
+        await self._login_as_admin(client)
+        me = (await client.get(f"{API}/auth/me")).json()
+        resp = await client.post(f"{API}/admin/ban", json={"userId": me["id"], "banned": True})
+        assert resp.status_code == 400
+        assert "管理员" in resp.json()["detail"]
+
+    async def test_normal_user_cannot_ban(self, auth_client) -> None:
+        resp = await auth_client.post(f"{API}/admin/ban", json={"userId": 1, "banned": True})
+        assert resp.status_code == 403
+
+    async def test_ban_blocks_login_and_kills_existing_session(
+        self, client, session_factory, auth_client
+    ) -> None:
+        """封号后：旧令牌下一次请求即被拒（强制下线），且无法再登录；对外只回传机器码。"""
+        await self._ensure_admin(session_factory)
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        tester_token = auth_client.headers["Authorization"].split(" ", 1)[1]
+
+        await self._login_as_admin(client)  # 复用同一 client，Authorization 换成管理员
+        banned = await client.post(f"{API}/admin/ban", json={"userId": me["id"], "banned": True})
+        assert banned.status_code == 200, banned.text
+        assert banned.json()["banned"] is True
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+            fresh.headers.update({"Authorization": f"Bearer {tester_token}"})
+            session_blocked = await fresh.get(f"{API}/auth/me")
+            assert session_blocked.status_code == 403
+            assert session_blocked.json()["detail"] == {"code": "banned"}
+
+            relogin = await fresh.post(
+                f"{API}/auth/login", json={"username": "tester", "password": "secret123"}
+            )
+            assert relogin.status_code == 403
+            assert relogin.json()["detail"] == {"code": "banned"}
+
+            # 密码是否正确都不改变结果，避免暴露账号状态
+            wrong_pass = await fresh.post(
+                f"{API}/auth/login", json={"username": "tester", "password": "nope"}
+            )
+            assert wrong_pass.status_code == 401
+
+    async def test_unban_restores_login(self, client, session_factory, auth_client) -> None:
+        await self._ensure_admin(session_factory)
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        await self._login_as_admin(client)
+
+        await client.post(f"{API}/admin/ban", json={"userId": me["id"], "banned": True})
+        unbanned = await client.post(f"{API}/admin/ban", json={"userId": me["id"], "banned": False})
+        assert unbanned.status_code == 200
+        assert unbanned.json()["banned"] is False
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as fresh:
+            ok = await fresh.post(
+                f"{API}/auth/login", json={"username": "tester", "password": "secret123"}
+            )
+            assert ok.status_code == 200, ok.text
+
+    async def test_banned_user_hidden_from_ranking(self, client, session_factory, auth_client) -> None:
+        await self._ensure_admin(session_factory)
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            await refresh_all_rankings(db)
+            await db.commit()
+
+        before = (await client.get(f"{API}/ranking", params={"board": "level"})).json()["entries"]
+        assert any(e["userId"] == me["id"] for e in before), "封禁前应在榜上"
+
+        await self._login_as_admin(client)
+        await client.post(f"{API}/admin/ban", json={"userId": me["id"], "banned": True})
+
+        # 即使缓存未刷新，也应在查询期被过滤掉
+        hidden = (await client.get(f"{API}/ranking", params={"board": "level"})).json()["entries"]
+        assert all(e["userId"] != me["id"] for e in hidden)
+
+        # 缓存刷新后依然不在榜
+        async with session_factory() as db:
+            await refresh_all_rankings(db)
+            await db.commit()
+        refreshed = (await client.get(f"{API}/ranking", params={"board": "level"})).json()["entries"]
+        assert all(e["userId"] != me["id"] for e in refreshed)
 
     async def test_ranking_exposes_login_username(self, client, session_factory, auth_client) -> None:
         me = (await auth_client.get(f"{API}/auth/me")).json()

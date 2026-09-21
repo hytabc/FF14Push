@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.core.deps import CurrentUser, DbSession
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import BANNED_DETAIL, create_access_token, hash_password, verify_password
 from app.models import (
     AutoSellSetting,
     Hero,
@@ -25,6 +25,16 @@ from app.services.recruiting import generate_candidates, initial_hero
 from app.services.serialization import item_from_generated
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# 昵称是唯一由玩家自由填写、且会展示给他人（排行榜 / 页头 / 管理页）的文本。
+# 前端一律用插值渲染（自动转义，无 v-html），这里再去掉尖括号与控制字符做纵深防御，
+# 防止将来误用 v-html 时形成存储型 XSS。
+_NICKNAME_FORBIDDEN = frozenset("<>")
+
+
+def sanitize_nickname(raw: str) -> str:
+    cleaned = "".join(ch for ch in raw if ch.isprintable() and ch not in _NICKNAME_FORBIDDEN)
+    return cleaned.strip()
 
 
 async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
@@ -97,10 +107,11 @@ async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
     if exists:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名已被占用")
 
+    nickname = sanitize_nickname(payload.nickname) if payload.nickname else ""
     user = User(
         username=payload.username,
         password_hash=hash_password(payload.password),
-        nickname=payload.nickname or payload.username,
+        nickname=nickname or payload.username,
         gold=0,
     )
     db.add(user)
@@ -113,8 +124,12 @@ async def register(payload: RegisterRequest, db: DbSession) -> TokenResponse:
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
     user = (await db.execute(select(User).where(User.username == payload.username))).scalar_one_or_none()
+    # 先校验账号密码：密码错误与否都返回同一提示，不暴露账号是否存在。
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    # 封号：拒绝发放令牌，只回传机器码（前端静默拦截，不渲染提示）。
+    if user.banned:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BANNED_DETAIL)
     return TokenResponse(accessToken=create_access_token(user.id))
 
 

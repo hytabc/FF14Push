@@ -320,6 +320,7 @@ export const api = {
           level: number | null
           hasHero: boolean
           isAdmin: boolean
+          banned: boolean
         }>
       }>('/admin/users', { params: { query, limit } })
     ).data
@@ -327,5 +328,9 @@ export const api = {
 
   async adminResetPassword(userId: number, newPassword: string) {
     return (await http.post<{ ok: boolean; message: string }>('/admin/reset-password', { userId, newPassword })).data
+  },
+
+  async adminBanUser(userId: number, banned: boolean) {
+    return (await http.post<{ ok: boolean; banned: boolean; message: string }>('/admin/ban', { userId, banned })).data
   },
 }

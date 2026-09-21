@@ -16,6 +16,7 @@ interface AdminUser {
   level: number | null
   hasHero: boolean
   isAdmin: boolean
+  banned: boolean
 }
 
 const auth = useAuthStore()
@@ -25,6 +26,7 @@ const query = ref('')
 const users = ref<AdminUser[]>([])
 const loading = ref(false)
 const resetting = ref(false)
+const banning = ref<number | null>(null)
 
 const target = ref<AdminUser | null>(null)
 const newPassword = ref('')
@@ -71,17 +73,32 @@ async function submitReset() {
     resetting.value = false
   }
 }
+
+async function toggleBan(user: AdminUser) {
+  if (user.isAdmin || banning.value !== null) return
+  banning.value = user.id
+  try {
+    const res = await api.adminBanUser(user.id, !user.banned)
+    user.banned = res.banned
+    toast.push(res.message, 'success')
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    banning.value = null
+  }
+}
 </script>
 
 <template>
   <div class="space-y-4">
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
-        <h2 class="text-lg font-semibold text-white">管理员 · 用户密码重置</h2>
-        <span class="text-xs text-ink-400">用于玩家忘记密码时协助重置</span>
+        <h2 class="text-lg font-semibold text-white">管理员 · 账号管理</h2>
+        <span class="text-xs text-ink-400">重置密码 / 封禁账号</span>
       </div>
       <p class="mt-1 text-[11px] text-ink-500">
         管理员账号由环境变量配置，不参与排行榜；管理员自己的密码不能在此修改。
+        封禁后该账号无法登录、已登录会话立即失效，并从排行榜隐藏；页面不会向被封账号展示任何提示。
       </p>
     </section>
 
@@ -117,7 +134,7 @@ async function submitReset() {
               <th class="px-3 py-2 text-left">昵称</th>
               <th class="px-3 py-2 text-left">英雄等级</th>
               <th class="px-3 py-2 text-right">金币</th>
-              <th class="w-24 px-3 py-2 text-right">操作</th>
+              <th class="w-40 px-3 py-2 text-right">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -127,6 +144,9 @@ async function submitReset() {
                 {{ user.username }}
                 <span v-if="user.isAdmin" class="ml-1 rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] text-rose-200">
                   管理员
+                </span>
+                <span v-if="user.banned" class="ml-1 rounded bg-red-700/40 px-1.5 py-0.5 text-[10px] text-red-100">
+                  已封禁
                 </span>
               </td>
               <td class="px-3 py-2 text-ink-300">{{ user.nickname }}</td>
@@ -139,6 +159,14 @@ async function submitReset() {
                   @click="openReset(user)"
                 >
                   重置密码
+                </button>
+                <button
+                  class="ml-1 rounded px-2 py-1 text-[11px] text-white disabled:opacity-40"
+                  :class="user.banned ? 'bg-emerald-600/80 hover:bg-emerald-500' : 'bg-red-600/80 hover:bg-red-500'"
+                  :disabled="user.isAdmin || banning === user.id"
+                  @click="toggleBan(user)"
+                >
+                  {{ user.banned ? '解封' : '封禁' }}
                 </button>
               </td>
             </tr>

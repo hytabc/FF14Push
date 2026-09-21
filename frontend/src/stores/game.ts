@@ -127,6 +127,8 @@ export const useGameStore = defineStore('game', () => {
 
   function pushError(e: unknown) {
     const err = toApiError(e)
+    // 封号由全局响应拦截器静默处理（清空会话 → 空白页），此处不再弹任何提示。
+    if (err.code === 'banned') return
     lastError.value = err.message
     toast.push(err.message, 'error')
     if (err.status === 401) auth.logout()

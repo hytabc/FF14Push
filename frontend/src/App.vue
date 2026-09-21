@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import ItemActionDialogs from '@/components/ItemActionDialogs.vue'
@@ -40,6 +40,17 @@ function onVisibilityChange() {
   game.handleVisibility()
 }
 
+// 命中封号：立即停止本地战斗循环，页面只保留空白（不展示任何文案）。
+watch(
+  () => auth.banned,
+  (value) => {
+    if (value) {
+      void game.stopBattle(true)
+      game.reset()
+    }
+  },
+)
+
 onMounted(async () => {
   if (auth.isLoggedIn) {
     await auth.loadProfile()
@@ -61,7 +72,10 @@ async function logout() {
 </script>
 
 <template>
-  <div v-if="isPublicOnly" class="min-h-full">
+  <!-- 封号：整页留白，不渲染任何文案（防止被封用户反推封禁原因）。 -->
+  <div v-if="auth.banned" class="min-h-full"></div>
+
+  <div v-else-if="isPublicOnly" class="min-h-full">
     <RouterView />
   </div>
 

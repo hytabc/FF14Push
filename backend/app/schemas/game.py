@@ -158,6 +158,11 @@ class AdminResetPasswordRequest(BaseModel):
     newPassword: str = Field(min_length=6, max_length=64)
 
 
+class AdminBanRequest(BaseModel):
+    userId: int
+    banned: bool = True
+
+
 class ApiMessage(BaseModel):
     ok: bool = True
     message: str = "ok"

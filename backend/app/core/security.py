@@ -11,6 +11,10 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# 封号响应体：只回传机器码，不回传任何可读文案。
+# 前端据此静默拦截（不渲染任何提示），避免被封用户从提示中反推封禁原因或绕过方式。
+BANNED_DETAIL: dict[str, str] = {"code": "banned"}
+
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
