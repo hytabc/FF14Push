@@ -186,6 +186,13 @@ async def stack_add(db: AsyncSession, user_id: int, kind: str, item_id: str, cou
         db.add(StackItem(user_id=user_id, kind=kind, item_id=item_id, count=int(count)))
     else:
         row.count = int(row.count) + int(count)
+    # 材料图鉴：采集材料与半成品首次入库即永久解锁（鱼获走 FishRecord，不在此列）。
+    if kind == STACK_MATERIAL:
+        material = material_def(item_id)
+        if material and material.get("kind") in ("gather", "half"):
+            from app.services.codex import unlock_material  # 局部导入避免循环依赖
+
+            await unlock_material(db, user_id, item_id, int(count))
 
 
 async def stack_counts(db: AsyncSession, user_id: int, kind: str | None = None) -> dict[str, int]:

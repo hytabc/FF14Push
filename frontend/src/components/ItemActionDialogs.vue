@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import data from '@shared/schema'
+
+import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
+import { enchantQualityExplain } from '@/game/explanations'
 import { useItemActions } from '@/stores/itemActions'
 import type { RerollChange } from '@/game/types'
 import {
@@ -17,6 +21,7 @@ import {
 import { diffReroll } from '@/utils/rerollDiff'
 
 const actions = useItemActions()
+const enchantInfo = enchantQualityExplain()
 
 const item = computed(() => actions.pending?.item ?? null)
 const kind = computed(() => actions.pending?.kind ?? null)
@@ -200,7 +205,11 @@ function close() {
         </template>
         <template v-else>
           彻底随机：将<b class="text-rose-300">覆盖现有全部 Buff/Debuff</b>（数量、种类、数值均重新随机）。
-          极低概率出现稀有词条，更低概率出现太古词条（仅 Buff）。附魔结果<b class="text-rose-300">不可撤销</b>。
+          每个词条独立判定品质：稀有 {{ (data.economy.termQuality.rare * 100).toFixed(1) }}%、
+          太古 {{ (data.economy.termQuality.ancient * 100).toFixed(1) }}%（仅 Buff）。附魔结果<b class="text-rose-300">不可撤销</b>。
+          <InfoTip :title="enchantInfo.title">
+            <p v-for="(line, i) in enchantInfo.lines" :key="i">{{ line }}</p>
+          </InfoTip>
         </template>
       </p>
       <p v-else-if="kind === 'enchantAuto'" class="text-xs text-ink-300">

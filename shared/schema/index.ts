@@ -607,9 +607,14 @@ export const gameData = {
   },
   talents: talentsJson as unknown as {
     order: RarityId[]
+    talentWeights: Record<RarityId, number>
     baseRecruitCost: number
     refreshCost: number
     freeRefreshIntervalSec: number
+    tenPullCost: number
+    ancientChance: number
+    ancientMultiplier: number
+    ancientPityCount: number
     talents: Record<RarityId, TalentDef>
     biases: Record<string, TalentBias>
   },

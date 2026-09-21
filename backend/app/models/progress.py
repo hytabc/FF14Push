@@ -59,6 +59,19 @@ class CodexTerm(Base, TimestampMixin):
     first_seen_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
 
 
+class CodexMaterial(Base, TimestampMixin):
+    """材料图鉴：采集材料与半成品，首次获得即永久解锁（出售/消耗不撤销）。"""
+
+    __tablename__ = "codex_materials"
+    __table_args__ = (sa.UniqueConstraint("user_id", "item_id", name="uq_codex_material"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    item_id: Mapped[str] = mapped_column(sa.String(48), index=True)
+    total_count: Mapped[int] = mapped_column(sa.Integer, default=0)
+    first_unlock_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
+
+
 class TutorialProgress(Base):
     __tablename__ = "tutorial_progress"
 

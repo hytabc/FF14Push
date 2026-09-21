@@ -1,4 +1,4 @@
-"""图鉴：装备 / 怪物 / 词条。来源：PRD 图鉴系统"""
+"""图鉴：装备 / 怪物 / 词条 / 材料 / 鱼获。来源：PRD 图鉴系统"""
 
 from __future__ import annotations
 
@@ -6,22 +6,26 @@ from fastapi import APIRouter, Query
 from sqlalchemy import select
 
 from app.core.deps import CurrentUser, DbSession
-from app.models import CodexEquipment, CodexMonster, CodexTerm
+from app.models import CodexEquipment, CodexMaterial, CodexMonster, CodexTerm, FishRecord
 from app.services.codex import (
     codex_progress,
     equipment_codex_entries,
+    fish_codex_entries,
+    material_codex_entries,
     monster_codex_entries,
     term_codex_entries,
 )
 
 router = APIRouter(prefix="/codex", tags=["codex"])
 
+CATEGORY_PATTERN = "^(equipment|monster|term|material|fish)$"
+
 
 @router.get("")
 async def codex(
     db: DbSession,
     user: CurrentUser,
-    category: str = Query("equipment", pattern="^(equipment|monster|term)$"),
+    category: str = Query("equipment", pattern=CATEGORY_PATTERN),
 ) -> dict:
     progress = await codex_progress(db, user.id)
 
@@ -71,6 +75,56 @@ async def codex(
                     "unlocked": state is not None,
                     "killCount": state["killCount"] if state else 0,
                     "firstDefeatAt": state["firstDefeatAt"] if state else None,
+                }
+            )
+        return {"category": category, "progress": progress, "entries": entries}
+
+    if category == "material":
+        rows = (
+            await db.execute(select(CodexMaterial).where(CodexMaterial.user_id == user.id))
+        ).scalars().all()
+        unlocked = {
+            row.item_id: {
+                "totalCount": row.total_count,
+                "firstUnlockAt": row.first_unlock_at.isoformat() if row.first_unlock_at else None,
+            }
+            for row in rows
+        }
+        entries = []
+        for entry in material_codex_entries():
+            state = unlocked.get(entry["itemId"])
+            entries.append(
+                {
+                    **entry,
+                    "unlocked": state is not None,
+                    "totalCount": state["totalCount"] if state else 0,
+                    "firstUnlockAt": state["firstUnlockAt"] if state else None,
+                }
+            )
+        return {"category": category, "progress": progress, "entries": entries}
+
+    if category == "fish":
+        rows = (
+            await db.execute(select(FishRecord).where(FishRecord.user_id == user.id))
+        ).scalars().all()
+        unlocked = {
+            row.fish_id: {
+                "count": row.count,
+                "maxSize": row.max_size,
+                "firstCaughtAt": row.first_caught_at.isoformat() if row.first_caught_at else None,
+            }
+            for row in rows
+        }
+        entries = []
+        for entry in fish_codex_entries():
+            state = unlocked.get(entry["fishId"])
+            entries.append(
+                {
+                    **entry,
+                    "unlocked": state is not None,
+                    "count": state["count"] if state else 0,
+                    "maxSize": state["maxSize"] if state else 0,
+                    "firstCaughtAt": state["firstCaughtAt"] if state else None,
                 }
             )
         return {"category": category, "progress": progress, "entries": entries}

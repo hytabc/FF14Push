@@ -6,13 +6,13 @@ import data from '@shared/schema'
 import ItemIcon from '@/components/ItemIcon.vue'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, RarityId } from '@/game/types'
-import { RARITY_ORDER, attrName, baseAttrName, categoryName, formatPercent, jobName, rarityName, slotName, termQualityClass, termQualityName } from '@/utils/format'
+import { RARITY_ORDER, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termQualityClass, termQualityName } from '@/utils/format'
 
 type Entry = Record<string, any>
 
 const toast = useToastStore()
 
-const category = ref<'equipment' | 'monster' | 'term'>('equipment')
+const category = ref<'equipment' | 'monster' | 'material' | 'fish' | 'term'>('equipment')
 const entries = ref<Entry[]>([])
 const progress = ref<CodexProgress | null>(null)
 const loading = ref(false)
@@ -22,8 +22,28 @@ const onlyUnlocked = ref(false)
 const TABS = [
   { id: 'equipment', label: '装备图鉴' },
   { id: 'monster', label: '怪物图鉴' },
+  { id: 'material', label: '材料图鉴' },
+  { id: 'fish', label: '鱼获图鉴' },
   { id: 'term', label: '词条图鉴' },
 ] as const
+
+const FISH_KIND_LABEL: Record<string, string> = { normal: '普通鱼', king: '鱼王', emperor: '鱼皇' }
+const FISH_KIND_CLASS: Record<string, string> = {
+  normal: 'bg-ink-700/60 text-ink-200',
+  king: 'bg-amber-500/20 text-amber-200',
+  emperor: 'bg-fuchsia-500/20 text-fuchsia-200',
+}
+const MATERIAL_KIND_LABEL: Record<string, string> = { gather: '采集材料', half: '半成品' }
+
+function regionName(regionId: number | null | undefined): string {
+  if (!regionId) return ''
+  return data.regions.regions.find((r) => r.id === regionId)?.name ?? `地区 ${regionId}`
+}
+
+function dohJobName(jobId: string | null | undefined): string {
+  if (!jobId) return ''
+  return data.dohdolJobById[jobId]?.name ?? jobId
+}
 
 async function load() {
   loading.value = true
@@ -60,7 +80,6 @@ function entryRarity(entry: Entry): RarityId {
   if (!list.length) return 'common'
   return list.reduce((best, r) => (RARITY_ORDER.indexOf(r) > RARITY_ORDER.indexOf(best) ? r : best), list[0])
 }
-
 </script>
 
 <template>
@@ -92,11 +111,11 @@ function entryRarity(entry: Entry): RarityId {
         </div>
       </div>
 
-      <div class="mt-3 flex gap-1 rounded-lg bg-ink-800 p-1 text-xs">
+      <div class="mt-3 flex gap-1 overflow-x-auto rounded-lg bg-ink-800 p-1 text-xs">
         <button
           v-for="tab in TABS"
           :key="tab.id"
-          class="flex-1 rounded-md py-1.5 transition"
+          class="shrink-0 rounded-md px-3 py-1.5 transition"
           :class="category === tab.id ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
           @click="category = tab.id"
         >
@@ -212,6 +231,80 @@ function entryRarity(entry: Entry): RarityId {
       </article>
     </section>
 
+    <!-- 材料图鉴 -->
+    <section v-else-if="category === 'material'" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <article
+        v-for="entry in filtered"
+        :key="entry.itemId"
+        class="card p-3"
+        :class="entry.unlocked ? '' : 'opacity-55'"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
+              {{ entry.unlocked ? entry.name : '未获得' }}
+            </p>
+            <p class="text-[10px] text-ink-400">
+              {{ MATERIAL_KIND_LABEL[entry.kind] ?? '材料' }}
+              <span v-if="entry.jobId"> · {{ dohJobName(entry.jobId) }}</span>
+              <span v-if="entry.regionId"> · {{ regionName(entry.regionId) }}</span>
+            </p>
+          </div>
+          <span v-if="entry.common" class="shrink-0 rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-ink-300">
+            通用
+          </span>
+        </div>
+
+        <p class="mt-2 text-[10px] text-ink-500">
+          品阶 {{ entry.tier ?? '-' }} · 出售单价 {{ entry.sell ?? 0 }} 金币
+        </p>
+
+        <p v-if="!entry.unlocked" class="mt-2 text-[10px] text-amber-300">
+          来源：{{ entry.kind === 'half' ? '生产合成' : entry.common ? '各采集点通用产出' : `${regionName(entry.regionId)} 采集点` }}
+        </p>
+        <p v-else class="mt-2 text-[10px] text-ink-600">
+          累计获得 {{ entry.totalCount }} 个 · 首次获得 {{ entry.firstUnlockAt?.slice(0, 10) }}
+        </p>
+      </article>
+    </section>
+
+    <!-- 鱼获图鉴 -->
+    <section v-else-if="category === 'fish'" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <article
+        v-for="entry in filtered"
+        :key="entry.fishId"
+        class="card p-3"
+        :class="entry.unlocked ? '' : 'opacity-55'"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
+              {{ entry.unlocked ? entry.name : '未钓起' }}
+            </p>
+            <p class="text-[10px] text-ink-400">{{ entry.regionName }} 钓场</p>
+          </div>
+          <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px]" :class="FISH_KIND_CLASS[entry.kind]">
+            {{ FISH_KIND_LABEL[entry.kind] ?? '普通鱼' }}
+          </span>
+        </div>
+
+        <p class="mt-2 text-[10px] text-ink-500">
+          尺寸 {{ entry.sizeMin }} ~ {{ entry.sizeMax }} cm · 出售 {{ entry.sell }} 金币 · 经验 {{ entry.exp }}
+        </p>
+        <p v-if="entry.chance" class="text-[10px] text-ink-500">
+          出现概率 {{ (entry.chance * 100).toFixed(1) }}%（仅在「捕鱼人之识」期间判定）
+        </p>
+
+        <p v-if="!entry.unlocked" class="mt-2 text-[10px] text-amber-300">
+          钓场：{{ entry.regionName }}
+          <span v-if="entry.kind !== 'normal'">（需先钓起前置普通鱼开启捕鱼人之识）</span>
+        </p>
+        <p v-else class="mt-2 text-[10px] text-ink-600">
+          累计钓起 {{ entry.count }} 条 · 最大 {{ entry.maxSize }} cm · 首次 {{ entry.firstCaughtAt?.slice(0, 10) }}
+        </p>
+      </article>
+    </section>
+
     <!-- 词条图鉴 -->
     <section v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <article v-for="entry in filtered" :key="entry.termId" class="card p-3">
@@ -258,8 +351,9 @@ function entryRarity(entry: Entry): RarityId {
     <p class="text-center text-[10px] text-ink-700">
       当前总完成度：装备 {{ progress?.equipment.unlocked ?? 0 }}/{{ progress?.equipment.total ?? 0 }} ·
       怪物 {{ progress?.monster.unlocked ?? 0 }}/{{ progress?.monster.total ?? 0 }} ·
-      词条 {{ progress?.term.unlocked ?? 0 }}/{{ progress?.term.total ?? 0 }}（
-      {{ formatPercent(((progress?.term.unlocked ?? 0) / Math.max(1, progress?.term.total ?? 1)) * 100, 1) }}）
+      材料 {{ progress?.material.unlocked ?? 0 }}/{{ progress?.material.total ?? 0 }} ·
+      鱼获 {{ progress?.fish.unlocked ?? 0 }}/{{ progress?.fish.total ?? 0 }} ·
+      词条 {{ progress?.term.unlocked ?? 0 }}/{{ progress?.term.total ?? 0 }}
     </p>
   </div>
 </template>

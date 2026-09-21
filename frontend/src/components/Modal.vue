@@ -21,13 +21,15 @@ const emit = defineEmits<{ close: [] }>()
         :style="{ zIndex }"
         @click.self="emit('close')"
       >
-        <div class="card w-full animate-rise p-5" :class="maxWidth">
-          <header v-if="title" class="mb-3 flex items-center justify-between">
+        <div class="card flex max-h-[calc(100vh-2rem)] w-full animate-rise flex-col p-5" :class="maxWidth">
+          <header v-if="title" class="mb-3 flex shrink-0 items-center justify-between">
             <h2 class="text-lg font-semibold text-white">{{ title }}</h2>
             <button class="text-ink-400 transition hover:text-white" @click="emit('close')">✕</button>
           </header>
-          <slot />
-          <footer v-if="$slots.footer" class="mt-4 flex justify-end gap-2">
+          <div class="min-h-0 flex-1 overflow-y-auto">
+            <slot />
+          </div>
+          <footer v-if="$slots.footer" class="mt-4 flex shrink-0 justify-end gap-2">
             <slot name="footer" />
           </footer>
         </div>

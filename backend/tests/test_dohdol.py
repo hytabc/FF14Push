@@ -430,3 +430,63 @@ class TestDohDolState:
         for r in dohdol["recipes"]:
             key = r["output"]["itemId"] or r["output"]["baseId"]
             assert r["output"]["name"] != key, r["id"]
+
+
+class TestMaterialAndFishCodex:
+    @pytest.mark.asyncio
+    async def test_material_codex_unlocks_on_gather(self, auth_client, session_factory):
+        before = (await auth_client.get("/api/v1/codex?category=material")).json()
+        assert before["progress"]["material"]["unlocked"] == 0
+        assert before["progress"]["material"]["total"] > 0
+
+        start = await auth_client.post("/api/v1/gather/session/start", json={"jobId": "MIN", "regionId": 1})
+        assert start.status_code == 200, start.text
+        session_id = start.json()["sessionId"]
+
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 20)
+            await db.commit()
+
+        rep = await auth_client.post("/api/v1/gather/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        gained_ids = {g["itemId"] for g in rep.json()["gained"]}
+        assert gained_ids, "应有采集产出"
+
+        body = (await auth_client.get("/api/v1/codex?category=material")).json()
+        unlocked = {e["itemId"] for e in body["entries"] if e["unlocked"]}
+        assert gained_ids <= unlocked, "采集到的材料应解锁材料图鉴"
+        assert body["progress"]["material"]["unlocked"] == len(unlocked)
+
+    @pytest.mark.asyncio
+    async def test_fish_codex_unlocks_on_catch(self, auth_client, session_factory):
+        start = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 1})
+        assert start.status_code == 200, start.text
+        session_id = start.json()["sessionId"]
+
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 60)
+            await db.commit()
+
+        rep = await auth_client.post("/api/v1/fish/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        caught_ids = {c["id"] for c in rep.json()["caught"]}
+        assert caught_ids, "应有鱼获"
+
+        body = (await auth_client.get("/api/v1/codex?category=fish")).json()
+        unlocked = {e["fishId"] for e in body["entries"] if e["unlocked"]}
+        assert caught_ids <= unlocked, "钓到的鱼应解锁鱼获图鉴"
+
+        # 鱼获单独成册：不应进入材料图鉴
+        material = (await auth_client.get("/api/v1/codex?category=material")).json()
+        assert caught_ids.isdisjoint({e["itemId"] for e in material["entries"]})
+
+    @pytest.mark.asyncio
+    async def test_unknown_codex_category_rejected(self, auth_client):
+        resp = await auth_client.get("/api/v1/codex?category=bogus")
+        assert resp.status_code == 422

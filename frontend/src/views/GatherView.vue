@@ -2,7 +2,10 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import data from '@shared/schema'
+import type { GatherNodeDef } from '@shared/schema'
 
+import InfoTip from '@/components/InfoTip.vue'
+import { gatherYieldExplain } from '@/game/explanations'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
@@ -21,7 +24,7 @@ const dolJobs = data.dohdolJobs.jobs.filter((j) => j.kind === 'dol' && j.id !== 
 
 /** 已解锁且在当前职业下有采集点的地区。 */
 const availableNodes = computed(() => {
-  const nodes = (data.gatherNodes.nodes as Array<{ regionId: number; jobId: string; levelReq: number }>).filter(
+  const nodes = (data.gatherNodes.nodes as GatherNodeDef[]).filter(
     (n) => n.jobId === job.value,
   )
   return nodes
@@ -33,6 +36,20 @@ const availableNodes = computed(() => {
 })
 
 const progress = computed(() => dohdol.state?.progress?.dol ?? null)
+
+/** 当前选中采集点（用于展示产出概率）。 */
+const currentNode = computed(
+  () => availableNodes.value.find((n) => n.regionId === regionId.value) ?? null,
+)
+const yieldInfo = computed(() => gatherYieldExplain(currentNode.value))
+const yieldRows = computed(() => {
+  const yields = (currentNode.value?.yields ?? []) as Array<{ materialId: string; weight: number }>
+  const total = yields.reduce((sum, y) => sum + Math.max(0, y.weight), 0) || 1
+  return yields.map((y) => ({
+    name: data.materialById[y.materialId]?.name ?? y.materialId,
+    pct: (Math.max(0, y.weight) / total) * 100,
+  }))
+})
 const materials = computed(() =>
   (dohdol.state?.materials ?? []).slice().sort((a, b) => b.count - a.count),
 )
@@ -132,6 +149,21 @@ async function toggle() {
         </button>
       </div>
       <p v-if="error" class="mt-2 text-xs text-red-400">{{ error }}</p>
+
+      <p v-if="yieldRows.length" class="mt-2 text-[11px] text-ink-500">
+        该采集点产出：
+        <span v-for="(row, idx) in yieldRows" :key="row.name">
+          {{ row.name }} {{ row.pct.toFixed(row.pct < 1 ? 1 : 0) }}%<span
+            v-if="idx < yieldRows.length - 1"
+            class="text-ink-600"
+          >
+            /
+          </span>
+        </span>
+        <InfoTip :title="yieldInfo.title">
+          <p v-for="(line, i) in yieldInfo.lines" :key="i">{{ line }}</p>
+        </InfoTip>
+      </p>
 
       <div v-if="running" class="mt-3">
         <div class="mb-1 flex justify-between text-[11px] text-ink-400">

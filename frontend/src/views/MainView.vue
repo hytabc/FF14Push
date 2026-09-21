@@ -2,7 +2,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
+import InfoTip from '@/components/InfoTip.vue'
 import Modal from '@/components/Modal.vue'
+import { dodgeExplain, threeAttrExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { jobName, rarityClass, rarityName } from '@/utils/format'
 
@@ -82,6 +84,23 @@ async function toggleBattle() {
 
 function openBossDialog() {
   showBoss.value = true
+}
+
+// 概率 / 面板速率的「如何计算」说明（数值取自当前面板，公式镜像后端）
+function critRateInfo() {
+  return threeAttrExplain('critRate', hero.value?.level ?? 1, stats.value?.critValue ?? 0)
+}
+function critDamageInfo() {
+  return threeAttrExplain('critDamage', hero.value?.level ?? 1, stats.value?.critValue ?? 0)
+}
+function dhRateInfo() {
+  return threeAttrExplain('dhRate', hero.value?.level ?? 1, stats.value?.dhValue ?? 0)
+}
+function detBonusInfo() {
+  return threeAttrExplain('detBonus', hero.value?.level ?? 1, stats.value?.detValue ?? 0)
+}
+function dodgeInfo() {
+  return dodgeExplain(hero.value?.agility ?? 0, stats.value?.dodgePct ?? 0)
 }
 </script>
 
@@ -175,11 +194,11 @@ function openBossDialog() {
           <div><dt>攻击力</dt><dd class="font-mono text-ink-200">{{ stats?.attack?.toFixed(0) }}</dd></div>
           <div><dt>魔法攻击</dt><dd class="font-mono text-ink-200">{{ stats?.magicAttack?.toFixed(0) }}</dd></div>
           <div><dt>物理防御</dt><dd class="font-mono text-ink-200">{{ stats?.physDef?.toFixed(0) }}</dd></div>
-          <div><dt>暴击率</dt><dd class="font-mono text-sky-300">{{ stats?.critRatePct?.toFixed(1) }}%</dd></div>
-          <div><dt>暴击伤害</dt><dd class="font-mono text-sky-300">{{ stats?.critDamagePct?.toFixed(0) }}%</dd></div>
-          <div><dt>直击率</dt><dd class="font-mono text-sky-300">{{ stats?.dhRatePct?.toFixed(1) }}%</dd></div>
-          <div><dt>信念增伤</dt><dd class="font-mono text-sky-300">{{ stats?.detBonusPct?.toFixed(1) }}%</dd></div>
-          <div><dt>闪避</dt><dd class="font-mono text-ink-200">{{ stats?.dodgePct?.toFixed(1) }}%</dd></div>
+          <div><dt>暴击率</dt><dd class="font-mono text-sky-300">{{ stats?.critRatePct?.toFixed(1) }}%<InfoTip :title="critRateInfo().title"><p v-for="(line, i) in critRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+          <div><dt>暴击伤害</dt><dd class="font-mono text-sky-300">{{ stats?.critDamagePct?.toFixed(0) }}%<InfoTip :title="critDamageInfo().title"><p v-for="(line, i) in critDamageInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+          <div><dt>直击率</dt><dd class="font-mono text-sky-300">{{ stats?.dhRatePct?.toFixed(1) }}%<InfoTip :title="dhRateInfo().title"><p v-for="(line, i) in dhRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+          <div><dt>信念增伤</dt><dd class="font-mono text-sky-300">{{ stats?.detBonusPct?.toFixed(1) }}%<InfoTip :title="detBonusInfo().title"><p v-for="(line, i) in detBonusInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+          <div><dt>闪避</dt><dd class="font-mono text-ink-200">{{ stats?.dodgePct?.toFixed(1) }}%<InfoTip :title="dodgeInfo().title"><p v-for="(line, i) in dodgeInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
         </dl>
 
         <div class="mt-3 space-y-2">

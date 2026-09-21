@@ -2,8 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
+import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
+import { chestLuckExplain, chestRarityExplain, pityExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { Item } from '@/game/types'
@@ -53,6 +55,15 @@ function odds(chest: { tier: string }) {
 
 const canAfford = computed(() => (price: number, count: number) => game.gold >= price * count)
 
+const luckExplain = computed(() =>
+  chestLuckExplain(game.state?.dropRateMultiplier ?? 1, game.state?.clearedRegions ?? 0),
+)
+const pityExplanation = pityExplain()
+
+function rarityExplain(chest: { tier: string }) {
+  return chestRarityExplain(chest.tier, luck.value)
+}
+
 onMounted(async () => {
   if (!game.state) await game.loadState()
   // 默认选中已解锁的最高档位
@@ -100,6 +111,9 @@ function bestRarity(): string {
         金币仅通过打怪掉落获得。每开启 10 / 50 / 200 个同类型箱子，必出稀有 / 史诗 / 传说及以上品质。
         已通关 {{ game.state?.clearedRegions ?? 0 }} 个地区 → 品阶爆率
         <b class="text-emerald-300">×{{ (game.state?.dropRateMultiplier ?? 1).toFixed(2) }}</b>（仅提升装备品阶，不影响金币）。
+        <InfoTip :title="luckExplain.title">
+          <p v-for="(line, i) in luckExplain.lines" :key="i">{{ line }}</p>
+        </InfoTip>
       </p>
     </section>
 
@@ -147,7 +161,12 @@ function bestRarity(): string {
         </div>
 
         <div class="mt-3 space-y-2">
-          <p class="text-[10px] uppercase tracking-wide text-ink-500">品阶概率</p>
+          <p class="text-[10px] uppercase tracking-wide text-ink-500">
+            品阶概率
+            <InfoTip :title="rarityExplain(chest).title">
+              <p v-for="(line, i) in rarityExplain(chest).lines" :key="i">{{ line }}</p>
+            </InfoTip>
+          </p>
           <div class="flex h-2 overflow-hidden rounded-full bg-ink-800">
             <div
               v-for="o in odds(chest)"
@@ -164,6 +183,12 @@ function bestRarity(): string {
         </div>
 
         <div class="mt-3 space-y-1.5">
+          <p class="text-[10px] uppercase tracking-wide text-ink-500">
+            保底进度
+            <InfoTip :title="pityExplanation.title">
+              <p v-for="(line, i) in pityExplanation.lines" :key="i">{{ line }}</p>
+            </InfoTip>
+          </p>
           <div v-for="p in PITY" :key="p.count">
             <div class="flex justify-between text-[10px] text-ink-400">
               <span>{{ p.count }} 抽保底 · {{ rarityName(p.minRarity) }}+</span>

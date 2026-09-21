@@ -229,6 +229,8 @@ export interface PlayerProfile {
   hero: Hero | null
   power: number
   loadout: Partial<Record<SlotId, Item>>
+  /** 生产 / 采集专用装备（仅含已装备栏位，跨账号只读）。 */
+  dohdolLoadout: Partial<Record<string, Item>>
 }
 
 /** 被自动出售的掉落物（未进入背包，仅用于提示）。 */
@@ -479,6 +481,8 @@ export interface CodexProgress {
   equipment: { unlocked: number; total: number }
   monster: { unlocked: number; total: number }
   term: { unlocked: number; total: number }
+  material: { unlocked: number; total: number }
+  fish: { unlocked: number; total: number }
 }
 
 export interface TavernCandidate {

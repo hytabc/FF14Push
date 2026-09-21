@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
+import data from '@shared/schema'
+
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
+import InfoTip from '@/components/InfoTip.vue'
 import Modal from '@/components/Modal.vue'
+import { ancientPityExplain, recruitCostExplain, talentExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
-import type { TavernCandidate } from '@/game/types'
+import type { RarityId, TavernCandidate } from '@/game/types'
 import { formatNumber, jobName, rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
@@ -251,6 +255,20 @@ async function confirmDiscard() {
 function attrBar(value: number, total: number) {
   return total > 0 ? (value / total) * 100 : 0
 }
+
+// 概率说明：资质权重 / 太古保底 / 招募费用公式
+const talentInfo = talentExplain()
+const ancientPityInfo = computed(() => ancientPityExplain(ancientPity.value.count, ancientPity.value.threshold))
+const talentWeightRows = computed(() =>
+  data.talents.order.map((rarity) => ({ rarity: rarity as RarityId, weight: data.talents.talentWeights[rarity] ?? 0 })),
+)
+function fmtWeight(weight: number): string {
+  const value = (weight ?? 0) * 100
+  return `${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)}%`
+}
+function recruitInfo(candidate: TavernCandidate) {
+  return recruitCostExplain(hero.value?.level ?? 1, candidate.talent, candidate.recruitCost)
+}
 </script>
 
 <template>
@@ -316,6 +334,23 @@ function attrBar(value: number, total: number) {
         <p class="mt-2 text-[11px] text-term-ancient">
           🌟 太古保底：{{ ancientPity.count }} / {{ ancientPity.threshold }}
           （每 {{ ancientPity.threshold }} 个候选必出一次「太古属性英雄」）
+          <InfoTip :title="ancientPityInfo.title">
+            <p v-for="(line, i) in ancientPityInfo.lines" :key="i">{{ line }}</p>
+          </InfoTip>
+        </p>
+        <p class="mt-1 text-[11px] text-ink-400">
+          资质概率：
+          <span v-for="(row, idx) in talentWeightRows" :key="row.rarity">
+            <span :class="rarityClass(row.rarity)">{{ rarityName(row.rarity) }}</span> {{ fmtWeight(row.weight) }}<span
+              v-if="idx < talentWeightRows.length - 1"
+              class="text-ink-600"
+            >
+              /
+            </span>
+          </span>
+          <InfoTip :title="talentInfo.title">
+            <p v-for="(line, i) in talentInfo.lines" :key="i">{{ line }}</p>
+          </InfoTip>
         </p>
 
         <p v-if="candidatePrecious" class="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
@@ -368,6 +403,9 @@ function attrBar(value: number, total: number) {
           </p>
           <p class="text-[10px] text-ink-600">
             招募费用 = 基础费用 × 资质系数 × (1 + 当前英雄等级 / 10)
+            <InfoTip :title="recruitInfo(candidate).title">
+              <p v-for="(line, i) in recruitInfo(candidate).lines" :key="i">{{ line }}</p>
+            </InfoTip>
           </p>
         </div>
       </section>

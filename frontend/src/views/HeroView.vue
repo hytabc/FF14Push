@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
+import InfoTip from '@/components/InfoTip.vue'
+import { dodgeExplain, heroRateExplain, threeAttrExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { attrName, formatPercent, jobName, rarityClass, rarityName, skillEffectLabel } from '@/utils/format'
 
@@ -51,6 +53,31 @@ onMounted(async () => {
 function castShare(skillId: string) {
   if (!totalCasts.value) return 0
   return ((game.state?.skillStats[skillId] ?? 0) / totalCasts.value) * 100
+}
+
+// 概率 / 面板速率的「如何计算」说明（数值取自当前面板，公式镜像后端）
+const heroLevel = computed(() => hero.value?.level ?? 1)
+const heroAgility = computed(() => hero.value?.agility ?? 0)
+function critRateInfo() {
+  return threeAttrExplain('critRate', heroLevel.value, stats.value?.critValue ?? 0)
+}
+function critDamageInfo() {
+  return threeAttrExplain('critDamage', heroLevel.value, stats.value?.critValue ?? 0)
+}
+function dhRateInfo() {
+  return threeAttrExplain('dhRate', heroLevel.value, stats.value?.dhValue ?? 0)
+}
+function detBonusInfo() {
+  return threeAttrExplain('detBonus', heroLevel.value, stats.value?.detValue ?? 0)
+}
+function dodgeInfo() {
+  return dodgeExplain(heroAgility.value, stats.value?.dodgePct ?? 0)
+}
+function attackSpeedInfo() {
+  return heroRateExplain('attackSpeed', heroAgility.value, stats.value?.attackSpeedPct ?? 0)
+}
+function hasteInfo() {
+  return heroRateExplain('haste', heroAgility.value, stats.value?.hastePct ?? 0)
 }
 </script>
 
@@ -137,13 +164,13 @@ function castShare(skillId: string) {
               <dt class="text-ink-400">{{ row[0] }}</dt>
               <dd class="font-mono text-ink-200">{{ Math.round(Number(row[1] ?? 0)) }}</dd>
             </div>
-            <div class="flex justify-between"><dt class="text-ink-400">暴击率</dt><dd class="font-mono text-sky-300">{{ formatPercent(stats?.critRatePct ?? 0) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">暴击伤害</dt><dd class="font-mono text-sky-300">{{ formatPercent(stats?.critDamagePct ?? 0, 0) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">直击率</dt><dd class="font-mono text-sky-300">{{ formatPercent(stats?.dhRatePct ?? 0) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">信念增伤</dt><dd class="font-mono text-sky-300">{{ formatPercent(stats?.detBonusPct ?? 0) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">闪避</dt><dd class="font-mono text-ink-200">{{ formatPercent(stats?.dodgePct ?? 0) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">攻击速度</dt><dd class="font-mono text-ink-200">{{ formatPercent(stats?.attackSpeedPct ?? 0) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">技能急速</dt><dd class="font-mono text-ink-200">{{ formatPercent(stats?.hastePct ?? 0) }}</dd></div>
+            <div class="flex justify-between"><dt class="text-ink-400">暴击率</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.critRatePct ?? 0) }}<InfoTip :title="critRateInfo().title"><p v-for="(line, i) in critRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+            <div class="flex justify-between"><dt class="text-ink-400">暴击伤害</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.critDamagePct ?? 0, 0) }}<InfoTip :title="critDamageInfo().title"><p v-for="(line, i) in critDamageInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+            <div class="flex justify-between"><dt class="text-ink-400">直击率</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.dhRatePct ?? 0) }}<InfoTip :title="dhRateInfo().title"><p v-for="(line, i) in dhRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+            <div class="flex justify-between"><dt class="text-ink-400">信念增伤</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.detBonusPct ?? 0) }}<InfoTip :title="detBonusInfo().title"><p v-for="(line, i) in detBonusInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+            <div class="flex justify-between"><dt class="text-ink-400">闪避</dt><dd class="flex items-center font-mono text-ink-200">{{ formatPercent(stats?.dodgePct ?? 0) }}<InfoTip :title="dodgeInfo().title"><p v-for="(line, i) in dodgeInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+            <div class="flex justify-between"><dt class="text-ink-400">攻击速度</dt><dd class="flex items-center font-mono text-ink-200">{{ formatPercent(stats?.attackSpeedPct ?? 0) }}<InfoTip :title="attackSpeedInfo().title"><p v-for="(line, i) in attackSpeedInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
+            <div class="flex justify-between"><dt class="text-ink-400">技能急速</dt><dd class="flex items-center font-mono text-ink-200">{{ formatPercent(stats?.hastePct ?? 0) }}<InfoTip :title="hasteInfo().title"><p v-for="(line, i) in hasteInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">战力</dt><dd class="font-mono text-amber-300">{{ game.state?.power }}</dd></div>
             <div v-if="game.state?.powerAudit" class="space-y-1 text-xs">
               <p>进攻 {{ Math.floor(game.state.powerAudit.groups.offense ?? 0) }} · 防御 {{ Math.floor(game.state.powerAudit.groups.defense ?? 0) }} · 续航 {{ Math.floor(game.state.powerAudit.groups.sustain ?? 0) }}</p>

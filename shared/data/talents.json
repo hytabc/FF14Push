@@ -2,6 +2,15 @@
   "$comment": "英雄资质品阶。来源：PRD 招募 2.3 / 3.3 / 6.2",
   "$commentCost": "招募费用 = baseRecruitCost × recruitCoef × (1 + 英雄等级/10)。recruitCoef 较 PRD 大幅下调，避免高资质英雄价格高到无法招募。",
   "order": ["common", "uncommon", "rare", "epic", "legendary", "mythic"],
+  "$commentTalentWeights": "资质抽取权重（生成候选时按此概率抽资质），需与 recruiting.py 一致。",
+  "talentWeights": {
+    "common": 0.5,
+    "uncommon": 0.25,
+    "rare": 0.15,
+    "epic": 0.07,
+    "legendary": 0.025,
+    "mythic": 0.005
+  },
   "baseRecruitCost": 1000,
   "refreshCost": 200,
   "freeRefreshIntervalSec": 600,

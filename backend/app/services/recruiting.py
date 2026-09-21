@@ -7,15 +7,6 @@ from typing import Any
 
 from app.services.game_config import CONFIG
 
-TALENT_WEIGHTS: dict[str, float] = {
-    "common": 0.50,
-    "uncommon": 0.25,
-    "rare": 0.15,
-    "epic": 0.07,
-    "legendary": 0.025,
-    "mythic": 0.005,
-}
-
 NAME_POOL = [
     "阿尔菲诺", "阿莉塞", "雅·修特拉", "桑克瑞德", "于里昂热", "埃斯蒂尼安",
     "塔塔露", "库尔扎斯", "兰吉特", "希尔达", "莉瑟", "格格鲁",
@@ -26,13 +17,17 @@ BIAS_LABELS = {"str": "力量型", "dex": "敏捷型", "int": "智力型", "bala
 
 
 def talent_weights(rng: random.Random) -> str:
+    """按 talents.json 的 talentWeights 抽取资质（权重单一来源，前端也据此展示概率）。"""
+    cfg = CONFIG.talents
+    weights = cfg["talentWeights"]
+    order = list(cfg["order"])
     roll = rng.random()
     cumulative = 0.0
-    for talent, weight in TALENT_WEIGHTS.items():
-        cumulative += weight
+    for talent in order:
+        cumulative += float(weights[talent])
         if roll < cumulative:
             return talent
-    return "mythic"
+    return order[-1]
 
 
 def recruit_cost(talent: str, current_hero_level: int) -> int:

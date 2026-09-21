@@ -223,7 +223,7 @@ export const api = {
     return (await http.post<{ ok: boolean; message: string }>('/tavern/ten-pull/clear', {})).data
   },
 
-  async codex(category: 'equipment' | 'monster' | 'term') {
+  async codex(category: 'equipment' | 'monster' | 'term' | 'material' | 'fish') {
     return (
       await http.get<{
         category: string

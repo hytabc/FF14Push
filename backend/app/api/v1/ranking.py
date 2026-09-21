@@ -23,6 +23,10 @@ from app.services.valuation import hero_power
 
 router = APIRouter(prefix="/ranking", tags=["ranking"])
 
+# 战斗装备 / 生产采集专用装备（跨账号查看时按此拆分）。
+_COMBAT_CATEGORIES = {"weapon", "armor", "accessory"}
+_DEDICATED_CATEGORIES = {"doh_tool", "doh_gear", "dol_tool", "dol_gear"}
+
 
 @router.get("")
 async def ranking(
@@ -75,16 +79,16 @@ async def player_profile(user_id: int, db: DbSession, viewer: CurrentUser) -> di
 
     items = await load_user_items(db, user_id)
     stats = compute_stats(hero, items)
-    gear = {
-        # 标签属于物主私有（id 只在物主账号内有意义），跨账号查看时清空
-        slot: {**data, "tagIds": []}
-        for slot, data in loadout(items).items()
-    }
+    # 标签属于物主私有（id 只在物主账号内有意义），跨账号查看时清空
+    equipped = {slot: {**data, "tagIds": []} for slot, data in loadout(items).items()}
+    combat = {s: d for s, d in equipped.items() if d["category"] in _COMBAT_CATEGORIES}
+    dedicated = {s: d for s, d in equipped.items() if d["category"] in _DEDICATED_CATEGORIES}
     return {
         "userId": target.id,
         "nickname": target.nickname,
         "username": target.username,
         "hero": hero_to_dict(hero, stats),
         "power": hero_power(stats),
-        "loadout": gear,
+        "loadout": combat,
+        "dohdolLoadout": dedicated,
     }

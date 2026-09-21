@@ -3,8 +3,10 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
+import InfoTip from '@/components/InfoTip.vue'
 import Modal from '@/components/Modal.vue'
 import RaidChestPicker from '@/components/RaidChestPicker.vue'
+import { raidSkillExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { RaidListEntry } from '@/game/types'
@@ -110,6 +112,10 @@ async function leave() {
 async function closeResult() {
   game.dismissRaidResult()
   await load()
+}
+
+function skillInfo(count: number) {
+  return raidSkillExplain(count)
 }
 </script>
 
@@ -266,6 +272,9 @@ async function closeResult() {
             </div>
             <p v-if="boss.skillNames.length" class="mt-2 text-[10px] text-fuchsia-300">
               技能池：{{ boss.skillNames.length }} 个随机释放（{{ boss.skillNames.slice(0, 3).join('、') }} 等）
+              <InfoTip :title="skillInfo(boss.skillNames.length).title">
+                <p v-for="(line, i) in skillInfo(boss.skillNames.length).lines" :key="i">{{ line }}</p>
+              </InfoTip>
             </p>
           </button>
         </div>

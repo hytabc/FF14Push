@@ -7,12 +7,14 @@ from typing import Any, Iterable
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CodexEquipment, CodexMonster, CodexTerm
+from app.models import CodexEquipment, CodexMaterial, CodexMonster, CodexTerm, FishRecord
 from app.services.game_config import CONFIG
 from app.services.loot import boss_box_for_region
 from app.services.slots_util import possible_slots
 
 RARITY_ORDER = list(CONFIG.rarity_order)
+# 材料图鉴只收录采集材料与半成品（鱼获单独成册，见 fish_codex_entries）。
+MATERIAL_CODEX_KINDS = ("gather", "half")
 
 
 async def unlock_equipment(db: AsyncSession, user_id: int, item: Any) -> dict[str, Any]:
@@ -80,6 +82,22 @@ async def unlock_terms(db: AsyncSession, user_id: int, terms: Iterable[Any]) -> 
             db.add(CodexTerm(user_id=user_id, term_id=term_id, quality=quality))
             unlocked.append([term_id, quality])
     return unlocked
+
+
+async def unlock_material(db: AsyncSession, user_id: int, item_id: str, count: int = 1) -> dict[str, Any]:
+    """解锁材料图鉴：首次获得即永久记录，累计获得数量随每次入库增长。"""
+    row = (
+        await db.execute(
+            select(CodexMaterial).where(
+                CodexMaterial.user_id == user_id, CodexMaterial.item_id == item_id
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        db.add(CodexMaterial(user_id=user_id, item_id=item_id, total_count=int(count)))
+        return {"itemId": item_id, "new": True}
+    row.total_count = int(row.total_count or 0) + int(count)
+    return {"itemId": item_id, "new": False}
 
 
 def equipment_codex_entries() -> list[dict[str, Any]]:
@@ -156,6 +174,67 @@ def term_codex_entries() -> list[dict[str, Any]]:
     ]
 
 
+def material_codex_entries() -> list[dict[str, Any]]:
+    """全部采集材料与半成品条目（不含鱼获）。"""
+    out: list[dict[str, Any]] = []
+    for material in CONFIG.materials["materials"]:
+        if material.get("kind") not in MATERIAL_CODEX_KINDS:
+            continue
+        out.append(
+            {
+                "itemId": material["id"],
+                "name": material["name"],
+                "kind": material["kind"],
+                "jobId": material.get("jobId"),
+                "tier": material.get("tier"),
+                "regionId": material.get("regionId"),
+                "common": bool(material.get("common", False)),
+                "sell": material.get("sell", 0),
+            }
+        )
+    return out
+
+
+def fish_codex_entries() -> list[dict[str, Any]]:
+    """全部鱼获条目：每钓场的普通鱼 + 鱼王 + 鱼皇。"""
+    out: list[dict[str, Any]] = []
+    for region in CONFIG.fish["regions"]:
+        region_id = int(region["regionId"])
+        region_name = region["name"]
+        for fish in region["normal"]:
+            out.append(
+                {
+                    "fishId": fish["id"],
+                    "name": fish["name"],
+                    "kind": "normal",
+                    "regionId": region_id,
+                    "regionName": region_name,
+                    "sizeMin": fish["sizeMin"],
+                    "sizeMax": fish["sizeMax"],
+                    "exp": fish.get("exp", 0),
+                    "sell": fish.get("sell", 0),
+                    "chance": None,
+                }
+            )
+        for kind, key in (("king", "king"), ("emperor", "emperor")):
+            fish = region[key]
+            out.append(
+                {
+                    "fishId": fish["id"],
+                    "name": fish["name"],
+                    "kind": kind,
+                    "regionId": region_id,
+                    "regionName": region_name,
+                    "sizeMin": fish["sizeMin"],
+                    "sizeMax": fish["sizeMax"],
+                    "exp": fish.get("exp", 0),
+                    "sell": fish.get("sell", 0),
+                    "chance": fish.get("chance"),
+                }
+            )
+    return out
+
+
 async def codex_progress(db: AsyncSession, user_id: int) -> dict[str, Any]:
     equip_count = (
         await db.execute(
@@ -170,8 +249,20 @@ async def codex_progress(db: AsyncSession, user_id: int) -> dict[str, Any]:
     term_count = (
         await db.execute(select(func.count()).select_from(CodexTerm).where(CodexTerm.user_id == user_id))
     ).scalar_one()
+    material_count = (
+        await db.execute(
+            select(func.count()).select_from(CodexMaterial).where(CodexMaterial.user_id == user_id)
+        )
+    ).scalar_one()
+    fish_count = (
+        await db.execute(
+            select(func.count()).select_from(FishRecord).where(FishRecord.user_id == user_id)
+        )
+    ).scalar_one()
     return {
         "equipment": {"unlocked": int(equip_count), "total": len(CONFIG.base_items)},
         "monster": {"unlocked": int(monster_count), "total": len(monster_codex_entries())},
         "term": {"unlocked": int(term_count), "total": len(CONFIG.terms["terms"]) * 3},
+        "material": {"unlocked": int(material_count), "total": len(material_codex_entries())},
+        "fish": {"unlocked": int(fish_count), "total": len(fish_codex_entries())},
     }

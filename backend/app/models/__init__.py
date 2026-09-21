@@ -14,6 +14,7 @@ from app.models.equipment import ChestPity, Item, ItemTag
 from app.models.progress import (
     AutoSellSetting,
     CodexEquipment,
+    CodexMaterial,
     CodexMonster,
     CodexTerm,
     RegionProgress,
@@ -39,6 +40,7 @@ __all__ = [
     "CodexEquipment",
     "CodexMonster",
     "CodexTerm",
+    "CodexMaterial",
     "TutorialProgress",
     "TavernState",
     "AutoSellSetting",

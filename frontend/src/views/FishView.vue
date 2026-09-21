@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import data from '@shared/schema'
 
+import InfoTip from '@/components/InfoTip.vue'
+import { fishChanceExplain } from '@/game/explanations'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
@@ -31,6 +33,12 @@ const regionOptions = computed(() =>
 )
 
 const currentRegion = computed(() => data.fish.regions.find((r) => r.regionId === regionId.value) ?? null)
+
+/** 鱼王/鱼皇「鱼识加成」来自专用装备（药水加成在服务端结算时另计）。 */
+const chanceBonus = computed(() => dohdol.state?.bonus?.fishChancePct ?? 0)
+function fishInfo(region: (typeof data.fish.regions)[number]) {
+  return fishChanceExplain(region, chanceBonus.value)
+}
 
 /** 鱼获库存（鱼作为可出售材料存储）。 */
 const fishBag = computed(() =>
@@ -106,6 +114,9 @@ async function toggle() {
       </div>
       <p class="mt-1 text-[11px] text-ink-500">
         先钓起前置普通鱼开启「捕鱼人之识」，期间才有小概率钓起鱼王 / 鱼皇（鱼皇更稀有）。
+        <InfoTip v-if="currentRegion" :title="fishInfo(currentRegion).title">
+          <p v-for="(line, i) in fishInfo(currentRegion).lines" :key="i">{{ line }}</p>
+        </InfoTip>
       </p>
     </section>
 
@@ -138,8 +149,8 @@ async function toggle() {
         </div>
       </div>
       <div v-if="currentRegion" class="mt-2 text-[11px] text-ink-500">
-        鱼王：{{ currentRegion.king.name }}（前置：{{ currentRegion.king.prereqFishIds.length }} 种普通鱼）·
-        鱼皇：{{ currentRegion.emperor.name }}
+        鱼王：{{ currentRegion.king.name }}（{{ (currentRegion.king.chance * 100).toFixed(1) }}%，前置 {{ currentRegion.king.prereqFishIds.length }} 种普通鱼）·
+        鱼皇：{{ currentRegion.emperor.name }}（{{ (currentRegion.emperor.chance * 100).toFixed(1) }}%）
       </div>
     </section>
 

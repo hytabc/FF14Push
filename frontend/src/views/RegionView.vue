@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
+import data from '@shared/schema'
+
 import { api } from '@/api'
+import InfoTip from '@/components/InfoTip.vue'
+import { eliteChanceExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import type { RegionListEntry } from '@/game/types'
 import { formatNumber } from '@/utils/format'
@@ -47,6 +51,10 @@ function goldRange(region: RegionListEntry) {
 }
 
 const heroLevel = computed(() => game.hero?.level ?? 1)
+
+// 精英怪出现概率（基础值 + 装备词条加成，这里只展示基础值）。
+const eliteInfo = eliteChanceExplain()
+const eliteBasePct = computed(() => (data.monsters.eliteBaseChance * 100).toFixed(1))
 </script>
 
 <template>
@@ -63,6 +71,10 @@ const heroLevel = computed(() => game.hero?.level ?? 1)
       </div>
       <p class="mt-1 text-[11px] text-ink-500">
         按顺序解锁，不可跳关；切换地区后当前地区的小怪击杀计数从 0 重新计算。已击败的 BOSS 不会重复出现。
+        区域内普通怪有小概率替换为<b class="text-amber-300">精英怪</b>，基础概率 {{ eliteBasePct }}%（金币与经验翻倍）。
+        <InfoTip :title="eliteInfo.title">
+          <p v-for="(line, i) in eliteInfo.lines" :key="i">{{ line }}</p>
+        </InfoTip>
       </p>
     </section>
 
