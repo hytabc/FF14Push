@@ -5,6 +5,7 @@ import type {
   GameState,
   Item,
   ItemTag,
+  PlayerProfile,
   RankingEntry,
   RegionListEntry,
   RerollMode,
@@ -247,6 +248,10 @@ export const api = {
 
   async rankingRefresh() {
     return (await http.post('/ranking/refresh', {})).data
+  },
+
+  async playerProfile(userId: number) {
+    return (await http.get<PlayerProfile>(`/ranking/players/${userId}`)).data
   },
 
   async tutorial() {

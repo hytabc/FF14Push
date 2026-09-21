@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
+import PlayerProfileDialog from '@/components/PlayerProfileDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import type { RankingEntry } from '@/game/types'
@@ -56,6 +57,16 @@ function valueText(entry: RankingEntry): string {
   if (board.value === 'stage') return entry.value > 0 ? `第 ${entry.value} 关` : '未通关'
   return String(entry.value)
 }
+
+const profileId = ref<number | null>(null)
+
+function openProfile(entry: RankingEntry) {
+  if (!auth.isLoggedIn) {
+    toast.push('登录后可查看他人装备', 'info')
+    return
+  }
+  profileId.value = entry.userId
+}
 </script>
 
 <template>
@@ -69,7 +80,7 @@ function valueText(entry: RankingEntry): string {
         </button>
       </div>
       <p class="mt-1 text-[11px] text-ink-500">
-        服务端每 5 分钟自动刷新一次，展示前 100 名。
+        服务端每 5 分钟自动刷新一次，展示前 100 名。点击任意玩家可查看其当前装备（需登录）。
         <span v-if="!auth.isLoggedIn" class="text-amber-300">未登录可查看榜单，但不会上榜。</span>
       </p>
 
@@ -94,10 +105,17 @@ function valueText(entry: RankingEntry): string {
             <th class="px-3 py-2 text-left">玩家昵称</th>
             <th class="px-3 py-2 text-left">英雄等级</th>
             <th class="px-3 py-2 text-right">数值</th>
+            <th class="w-14 px-3 py-2 text-right">装备</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in entries" :key="entry.userId" class="border-t border-ink-800">
+          <tr
+            v-for="entry in entries"
+            :key="entry.userId"
+            class="cursor-pointer border-t border-ink-800 transition hover:bg-ink-800/60"
+            title="查看该玩家当前装备"
+            @click="openProfile(entry)"
+          >
             <td class="px-3 py-2 font-mono" :class="entry.rank <= 3 ? 'text-amber-300' : 'text-ink-400'">
               {{ entry.rank }}
             </td>
@@ -106,9 +124,10 @@ function valueText(entry: RankingEntry): string {
             </td>
             <td class="px-3 py-2 text-ink-400">{{ entry.payload?.level ?? '—' }}</td>
             <td class="px-3 py-2 text-right font-mono text-ink-200">{{ valueText(entry) }}</td>
+            <td class="px-3 py-2 text-right text-ink-400">查看</td>
           </tr>
           <tr v-if="!entries.length && !loading">
-            <td colspan="4" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
+            <td colspan="5" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
           </tr>
         </tbody>
       </table>
@@ -131,5 +150,7 @@ function valueText(entry: RankingEntry): string {
         下一页
       </button>
     </nav>
+
+    <PlayerProfileDialog :user-id="profileId" @close="profileId = null" />
   </div>
 </template>

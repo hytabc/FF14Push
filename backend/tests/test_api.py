@@ -1618,6 +1618,87 @@ class TestCodexAndRanking:
         assert resp.json()["loggedIn"] is False
 
 
+class TestPlayerProfile:
+    """排行榜点击查看他人「当前装备」：需登录、仅已装备栏位、不含私有标签。"""
+
+    async def _make_player(
+        self, session_factory, username: str, *, banned: bool = False, with_hero: bool = True
+    ) -> int:
+        async with session_factory() as db:
+            user = User(username=username, password_hash="x", nickname="对手", banned=banned)
+            db.add(user)
+            await db.flush()
+            if with_hero:
+                db.add(
+                    Hero(
+                        user_id=user.id, name="对手英雄", level=42, exp=0, talent="rare",
+                        attr_bias="balanced", strength=100, agility=80, intellect=60,
+                        current_region_id=1, region_kill_count=0, is_initial=False,
+                    )
+                )
+            db.add(
+                Item(
+                    user_id=user.id, base_id="w_sword_shield_0", name="剑", category="weapon",
+                    slot="mainHand", rarity="rare", level_req=1,
+                    base_attrs=[{"attr": "attack", "value": 50.0}], sub_attrs=[], terms=[],
+                    equipped_slot="mainHand" if with_hero else None, source="chest", tag_ids=[7],
+                )
+            )
+            db.add(
+                Item(
+                    user_id=user.id, base_id="a_head_0", name="头盔", category="armor",
+                    slot="head", rarity="rare", level_req=1,
+                    base_attrs=[{"attr": "physDef", "value": 30.0}], sub_attrs=[], terms=[],
+                    equipped_slot="head" if with_hero else None, source="chest", tag_ids=[],
+                )
+            )
+            # 背包里未装备的物品不应出现在他人视角
+            db.add(
+                Item(
+                    user_id=user.id, base_id="a_head_0", name="背包头盔", category="armor",
+                    slot="head", rarity="rare", level_req=1,
+                    base_attrs=[{"attr": "physDef", "value": 30.0}], sub_attrs=[], terms=[],
+                    equipped_slot=None, source="chest", tag_ids=[],
+                )
+            )
+            await db.commit()
+            return user.id
+
+    async def test_view_other_player_gear(self, auth_client, session_factory) -> None:
+        pid = await self._make_player(session_factory, "rival")
+        resp = await auth_client.get(f"{API}/ranking/players/{pid}")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["userId"] == pid
+        assert body["nickname"] == "对手"
+        assert body["hero"]["level"] == 42
+        assert body["power"] > 0
+        # 只含已装备栏位，不含背包
+        assert set(body["loadout"].keys()) == {"mainHand", "head"}
+        # 物主私有的标签不外泄
+        assert all(item["tagIds"] == [] for item in body["loadout"].values())
+
+    async def test_missing_player_is_404(self, auth_client) -> None:
+        assert (await auth_client.get(f"{API}/ranking/players/999999")).status_code == 404
+
+    async def test_banned_and_hero_less_are_hidden(self, auth_client, session_factory) -> None:
+        banned_id = await self._make_player(session_factory, "rival_banned", banned=True)
+        assert (await auth_client.get(f"{API}/ranking/players/{banned_id}")).status_code == 404
+
+        no_hero_id = await self._make_player(session_factory, "rival_nohero", with_hero=False)
+        assert (await auth_client.get(f"{API}/ranking/players/{no_hero_id}")).status_code == 404
+
+    async def test_requires_login(self, auth_client) -> None:
+        token = auth_client.headers.get("Authorization")
+        auth_client.headers.pop("Authorization", None)
+        try:
+            resp = await auth_client.get(f"{API}/ranking/players/1")
+        finally:
+            if token:
+                auth_client.headers["Authorization"] = token
+        assert resp.status_code == 401
+
+
 class TestTutorial:
     async def test_steps_and_reward(self, auth_client) -> None:
         info = await auth_client.get(f"{API}/tutorial")

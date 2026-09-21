@@ -86,6 +86,16 @@ export interface Item {
   sellPriceMax: number
 }
 
+/** 排行榜点击查看的玩家资料（只含当前已装备栏位，只读）。 */
+export interface PlayerProfile {
+  userId: number
+  nickname: string
+  username: string
+  hero: Hero | null
+  power: number
+  loadout: Partial<Record<SlotId, Item>>
+}
+
 /** 被自动出售的掉落物（未进入背包，仅用于提示）。 */
 export interface AutoSoldItem {
   baseId: string

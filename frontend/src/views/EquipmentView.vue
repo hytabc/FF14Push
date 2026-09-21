@@ -8,6 +8,7 @@ import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import type { Item, SlotId } from '@/game/types'
 import { rarityBg, rarityClass, rarityName, slotName, baseAttrName } from '@/utils/format'
+import { equipmentSlotGroups } from '@/utils/slots'
 
 const game = useGameStore()
 const pickerSlot = ref<SlotId | null>(null)
@@ -15,20 +16,7 @@ const pickerSlot = ref<SlotId | null>(null)
 const slots = computed(() => [...data.slots].sort((a, b) => a.order - b.order))
 
 /** 栏位分组：左侧防具、右侧饰品、下方武器（整行）。 */
-const slotGroups = computed(() => {
-  const byId = new Map(slots.value.map((s) => [s.id, s]))
-  const pick = (ids: SlotId[]) => ids.map((id) => byId.get(id)).filter((s) => s !== undefined)
-  return [
-    { key: 'armor', title: '防具', slots: pick(['head', 'body', 'hands', 'legs', 'feet']), full: false },
-    {
-      key: 'accessory',
-      title: '饰品',
-      slots: pick(['necklace', 'earring', 'bracelet', 'ring1', 'ring2']),
-      full: false,
-    },
-    { key: 'weapon', title: '武器', slots: pick(['mainHand']), full: true },
-  ]
-})
+const slotGroups = computed(() => equipmentSlotGroups())
 
 const loadout = computed(() => game.loadout)
 
