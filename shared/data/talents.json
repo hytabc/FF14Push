@@ -6,7 +6,7 @@
   "refreshCost": 200,
   "freeRefreshIntervalSec": 600,
   "tenPullCost": 2000,
-  "$commentAncient": "英雄「太古」属性：极低概率使随机 1 条三维变为「三条中最高值 × ancientMultiplier」，每名英雄最多 1 条太古。",
+  "$commentAncient": "英雄「太古」属性：极低概率使随机 1 条三维变为「三条中最高值 × ancientMultiplier」，每名英雄最多 1 条太古。任何带太古属性的英雄都必定为神话（红色）资质（无论是否保底触发），因此太古判定先于点数抽取，其总点数落在神话区间。",
   "ancientChance": 0.001,
   "ancientMultiplier": 1.25,
   "$commentAncientPity": "太古保底：连续 ancientPityCount 个候选都没出太古时，下一个必出。计数在每次生成候选（刷新 / 招募 / 十连 / 注册）时推进，出太古后归零。",

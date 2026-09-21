@@ -14,6 +14,7 @@ from app.services.game_config import CONFIG
 from app.services.recruiting import (
     ancient_pity_count,
     generate_candidates,
+    normalize_candidate,
     recruit_cost,
     with_recruit_cost,
 )
@@ -53,6 +54,7 @@ async def _replace_hero(
     db: DbSession, user: User, hero: Hero | None, candidate: dict, cost: int
 ) -> Hero:
     """扣费并替换当前英雄（旧英雄装备卸下回背包，等级经验不保留）。"""
+    candidate = normalize_candidate(candidate)  # 带太古属性必定为神话
     await db.execute(update(Item).where(Item.user_id == user.id).values(equipped_slot=None))
     user.gold = int(user.gold) - cost
     if hero is not None:
@@ -185,9 +187,9 @@ async def recruit(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先确认替换")
 
     row = await _tavern(db, user.id)
-    candidate = row.candidate
-    if candidate is None:
+    if row.candidate is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="没有候选英雄")
+    candidate = normalize_candidate(row.candidate)
 
     current_level = _hero_level(hero)
     cost = recruit_cost(candidate["talent"], current_level)
@@ -253,7 +255,7 @@ async def ten_pull_recruit(
     if payload.index < 0 or payload.index >= len(candidates):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="候选序号无效")
 
-    candidate = candidates[payload.index]
+    candidate = normalize_candidate(candidates[payload.index])
     cost = recruit_cost(candidate["talent"], _hero_level(hero))
     if int(user.gold) < cost:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")

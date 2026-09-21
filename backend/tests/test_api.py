@@ -14,6 +14,7 @@ from app.models import RaidSession, BattleSession, Hero, Item, ItemTag, RegionPr
 from app.services.admin import ensure_admin_user
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
+from app.services.recruiting import recruit_cost
 
 API = "/api/v1"
 
@@ -925,6 +926,37 @@ class TestTavern:
         spec = CONFIG.talents["talents"]["mythic"]
         assert int(spec["pointMin"]) <= candidate["totalPoints"] <= int(spec["pointMax"])
         assert body["ancientPity"]["count"] == 0
+
+    async def test_ancient_candidate_always_mythic(self, auth_client, session_factory) -> None:
+        """带太古属性的候选即便落库时资质非神话，展示 / 计费 / 创建英雄三处都按神话。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        await _set_gold(auth_client, session_factory, 10_000_000)
+        async with session_factory() as db:
+            row = (
+                await db.execute(select(TavernState).where(TavernState.user_id == me["id"]))
+            ).scalar_one()
+            row.candidate = {
+                "name": "旧候选",
+                "talent": "common",
+                "attrBias": "balanced",
+                "attrBiasLabel": "均衡型",
+                "strength": 120,
+                "agility": 90,
+                "intellect": 80,
+                "ancientAttr": "str",
+                "totalPoints": 240,
+                "recruitCost": 1,
+                "recommendedJobs": [],
+            }
+            await db.commit()
+
+        info = (await auth_client.get(f"{API}/tavern")).json()
+        assert info["candidate"]["talent"] == "mythic"
+        assert info["candidate"]["recruitCost"] == recruit_cost("mythic", 1)
+
+        resp = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["hero"]["talent"] == "mythic"
 
     async def test_shown_recruit_cost_matches_charge_after_level_up(self, auth_client, session_factory) -> None:
         """候选生成后英雄升级，页面显示价仍须等于招募时的实际扣费。"""

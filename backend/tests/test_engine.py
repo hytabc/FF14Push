@@ -781,11 +781,19 @@ class TestRecruitingAncient:
         total = hero["strength"] + hero["agility"] + hero["intellect"]
         assert total > hero["totalPoints"]
 
-    def test_natural_ancient_keeps_rolled_talent(self) -> None:
-        """自然命中（非保底）不强制资质：仍按权重随机。"""
+    def test_natural_ancient_also_becomes_mythic(self) -> None:
+        """自然命中（非保底）的太古同样必定为神话，总点数落在神话区间。"""
+        spec = CONFIG.talents["talents"]["mythic"]
         candidate = generate_candidate(1, self._Forced(0.0))
         assert candidate["ancientAttr"] in ("str", "dex", "int")
-        assert candidate["talent"] == "common"  # roll=0.0 落在 common 权重区间
+        assert candidate["talent"] == "mythic"
+        assert int(spec["pointMin"]) <= candidate["totalPoints"] <= int(spec["pointMax"])
+
+    def test_no_ancient_keeps_rolled_talent(self) -> None:
+        """未出太古时仍按资质权重随机。"""
+        candidate = generate_candidate(1, self._Forced(0.3))
+        assert candidate["ancientAttr"] is None
+        assert candidate["talent"] == "common"  # roll=0.3 落在 common 权重区间
 
     def test_pity_counter_advances_and_resets(self) -> None:
         rng = self._Forced(0.999)

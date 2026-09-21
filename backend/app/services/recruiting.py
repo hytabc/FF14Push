@@ -42,6 +42,17 @@ def recruit_cost(talent: str, current_hero_level: int) -> int:
     return int(float(cfg["baseRecruitCost"]) * coef * (1.0 + current_hero_level / 10.0))
 
 
+def normalize_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
+    """带太古属性的候选必定为神话（红色）资质。
+
+    生成端（`generate_candidate`）已保证；这里再兜底一次，防御规则上线前落库的旧候选，
+    确保展示、计费与创建英雄三处口径一致。
+    """
+    if candidate.get("ancientAttr") and candidate.get("talent") != "mythic":
+        return {**candidate, "talent": "mythic"}
+    return candidate
+
+
 def with_recruit_cost(candidate: dict[str, Any], current_hero_level: int) -> dict[str, Any]:
     """候选副本：按当前英雄等级重算 recruitCost。
 
@@ -49,6 +60,7 @@ def with_recruit_cost(candidate: dict[str, Any], current_hero_level: int) -> dic
     招募实际扣费又按招募时的等级计算，两者不一致会让玩家看到「价格变了」。
     所有对外返回候选的接口都应经过这里。
     """
+    candidate = normalize_candidate(candidate)
     return {**candidate, "recruitCost": recruit_cost(candidate["talent"], current_hero_level)}
 
 
@@ -64,7 +76,7 @@ def roll_ancient(counter: int, rng: random.Random) -> tuple[bool, int, bool]:
     """判定下一个候选是否带太古属性。返回 (是否太古, 新的保底计数, 是否保底触发)。
 
     每 ancientPityCount 个候选至少出一个太古：计数满则必出；否则按 ancientChance 随机。
-    出太古后计数归零。保底触发的太古必定为神话（红色）资质，见 `generate_candidates`。
+    出太古后计数归零。任何太古（保底或自然触发）都必定为神话（红色）资质，见 `generate_candidate`。
     """
     if counter + 1 >= ancient_pity_count():
         return True, 0, True
@@ -83,17 +95,10 @@ def generate_candidates(
     rng = rng or random.Random()
     candidates: list[dict[str, Any]] = []
     for _ in range(max(0, count)):
-        is_ancient, counter, is_pity = roll_ancient(counter, rng)
-        candidates.append(
-            generate_candidate(
-                current_hero_level,
-                rng,
-                ancient=is_ancient,
-                # 太古保底必定为神话（红色）资质：总点数因此落在 220-260，
-                # 太古 ×1.25 计算后总值可超出该区间。
-                talent="mythic" if is_pity else None,
-            )
-        )
+        is_ancient, counter, _ = roll_ancient(counter, rng)
+        # 带太古属性的候选必定为神话（红色）资质（保底或自然触发皆然）：
+        # 总点数因此落在 220-260，太古 ×1.25 计算后总值可超出该区间。
+        candidates.append(generate_candidate(current_hero_level, rng, ancient=is_ancient))
     return candidates, counter
 
 
@@ -107,12 +112,17 @@ def generate_candidate(
     """生成候选英雄：资质决定总点数，偏向决定三维分配。
 
     ancient 显式指定是否带太古（由 `roll_ancient` 的保底结果决定）；省略时按 ancientChance 随机。
-    talent 显式指定资质（太古保底强制神话）；省略时按资质权重随机。
+    talent 显式指定资质；省略时按资质权重随机。
+
+    任何带太古属性的英雄都**必定是神话（红色）资质**（无论是否保底触发），因此太古判定
+    先于点数抽取，使其落在神话区间（计算前总点数 220-260）。
     """
     rng = rng or random.Random()
     # 无论是否指定 talent 都消耗一次资质随机，避免改变后续随机序列。
     rolled_talent = talent_weights(rng)
-    talent_id = talent or rolled_talent
+    # 太古判定提前：太古英雄必定为神话，点数须按神话区间抽取。
+    hit = rng.random() < float(CONFIG.talents["ancientChance"]) if ancient is None else ancient
+    talent_id = "mythic" if hit else (talent or rolled_talent)
     spec = CONFIG.talents["talents"][talent_id]
     total_points = rng.randint(int(spec["pointMin"]), int(spec["pointMax"]))
 
@@ -140,7 +150,6 @@ def generate_candidate(
 
     # 太古：使随机 1 条三维变为「三条中最高值 × ancientMultiplier」，每名英雄最多 1 条
     ancient_attr = None
-    hit = rng.random() < float(CONFIG.talents["ancientChance"]) if ancient is None else ancient
     if hit:
         ancient_attr = rng.choice(["str", "dex", "int"])
         attrs[ancient_attr] = max(1, int(round(max(attrs.values()) * float(CONFIG.talents["ancientMultiplier"]))))
