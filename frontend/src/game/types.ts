@@ -60,6 +60,14 @@ export interface Item {
   sellPriceMax: number
 }
 
+/** 被自动出售的掉落物（未进入背包，仅用于提示）。 */
+export interface AutoSoldItem {
+  baseId: string
+  name: string
+  rarity: RarityId
+  price: number
+}
+
 export interface HeroStats {
   level: number
   jobId: string
@@ -359,7 +367,7 @@ export interface BattleReportResponse {
   killCount: number
   killsRequired: number
   items: Item[]
-  autoSold: Array<{ baseId: string; name: string; rarity: RarityId; price: number }>
+  autoSold: AutoSoldItem[]
   autoGold: number
   boss: {
     gold: number
@@ -369,7 +377,7 @@ export interface BattleReportResponse {
     nextRegionId: number | null
     box: string | null
     items: Item[]
-    autoSold: unknown[]
+    autoSold: AutoSoldItem[]
     bossName: string
   } | null
   warnings: string[]

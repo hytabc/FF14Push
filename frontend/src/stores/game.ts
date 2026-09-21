@@ -4,15 +4,16 @@ import { computed, ref, shallowRef } from 'vue'
 import { api, type KillPayload } from '@/api'
 import { toApiError } from '@/api/client'
 import { BattleSimulator } from '@/game/core/battle'
-import type { Category, GameState, Item, RaidBossEntry, RaidReportResponse, RerollMode, SlotId } from '@/game/types'
-import { rarityName } from '@/utils/format'
+import type { AutoSoldItem, Category, GameState, Item, RaidBossEntry, RaidReportResponse, RerollMode, SlotId } from '@/game/types'
 
 import { useAuthStore } from './auth'
+import { useLootStore } from './loot'
 import { useToastStore } from './toast'
 
 const TICK_MS = 100
 const REPORT_MS = 1500
 const AUTO_ADVANCE_KEY = 'eorzea.autoAdvance'
+const STAY_REGION_KEY = 'eorzea.stayRegion'
 
 export interface BossResult {
   bossName: string
@@ -27,6 +28,7 @@ export interface BossResult {
 export const useGameStore = defineStore('game', () => {
   const auth = useAuthStore()
   const toast = useToastStore()
+  const loot = useLootStore()
 
   const state = ref<GameState | null>(null)
   const loading = ref(false)
@@ -46,6 +48,23 @@ export const useGameStore = defineStore('game', () => {
     autoAdvance.value = value
     localStorage.setItem(AUTO_ADVANCE_KEY, value ? '1' : '0')
   }
+
+  // 原地挂机：选择「留在当前地区」后记录该地区，之后击败 BOSS 不再弹出结算窗
+  // （本地偏好，持久化；切换地区后不再匹配，结算窗自然恢复）。
+  const storedStay = Number(localStorage.getItem(STAY_REGION_KEY))
+  const stayRegion = ref<number | null>(storedStay > 0 ? storedStay : null)
+
+  function setStayRegion(regionId: number | null) {
+    stayRegion.value = regionId
+    if (regionId === null) localStorage.removeItem(STAY_REGION_KEY)
+    else localStorage.setItem(STAY_REGION_KEY, String(regionId))
+  }
+
+  /** 当前战斗地区是否处于原地挂机。 */
+  const isStaying = computed(() => {
+    const active = sim.value?.region?.id ?? state.value?.hero.currentRegionId ?? null
+    return active !== null && stayRegion.value === active
+  })
 
   /** 高难副本：进行中的挑战与结算结果。 */
   const raid = ref<{ raidId: string; name: string } | null>(null)
@@ -262,12 +281,7 @@ export const useGameStore = defineStore('game', () => {
       state.value.itemCounts = { ...state.value.itemCounts }
     }
 
-    if (res.items.length > 0) {
-      state.value.items = [...state.value.items, ...res.items]
-      for (const item of res.items) {
-        toast.push(`获得 ${item.name}（${rarityName(item.rarity)}）`, 'loot')
-      }
-    }
+    showLoot(res.items)
     if (res.autoSold.length > 0) {
       toast.push(`自动出售 ${res.autoSold.length} 件装备，+${res.autoGold} 金币`, 'info')
     }
@@ -277,9 +291,17 @@ export const useGameStore = defineStore('game', () => {
     // 开启「自动进入下一阶段」时，击杀 BOSS 直接推进到下一地区，不弹结算窗
     let pendingAdvance = false
     if (res.boss) {
+      // 地区战斗的装备只来自 BOSS 宝箱（怪物不掉落），掉落以气泡提示
+      showLoot(res.boss.items)
+      showAutoSold(res.boss.autoSold)
+
       if (autoAdvance.value && res.boss.nextRegionId) {
         bossResult.value = null
         pendingAdvance = true
+      } else if (isStaying.value) {
+        // 原地挂机：不再弹结算窗，直接继续刷本地区的小怪。
+        bossResult.value = null
+        current.continueAfterClear()
       } else {
         bossResult.value = {
           bossName: res.boss.bossName,
@@ -307,10 +329,38 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /** 掉落物品：并入背包并以气泡提示。 */
+  function showLoot(items: Item[]) {
+    if (items.length === 0 || !state.value) return
+    state.value.items = [...state.value.items, ...items]
+    for (const item of items) {
+      loot.push({ baseId: item.baseId, name: item.name, rarity: item.rarity })
+    }
+  }
+
+  /** 自动出售的掉落同样以气泡提示。 */
+  function showAutoSold(sold: AutoSoldItem[]) {
+    for (const item of sold) {
+      loot.push({
+        baseId: item.baseId,
+        name: item.name,
+        rarity: item.rarity,
+        note: `自动出售 +${item.price}`,
+      })
+    }
+  }
+
   function dismissBossResult() {
     bossResult.value = null
     // 留在当前地区：BOSS 已击败后模拟会停在 cleared，这里恢复小怪阶段继续挂机。
     sim.value?.continueAfterClear()
+  }
+
+  /** 「留在当前地区」：记录该地区为原地挂机，之后击败 BOSS 不再弹出结算窗。 */
+  function stayInCurrentRegion() {
+    const regionId = sim.value?.region?.id ?? state.value?.hero.currentRegionId ?? null
+    if (regionId !== null) setStayRegion(regionId)
+    dismissBossResult()
   }
 
   // ---------- 高难副本 ----------
@@ -389,15 +439,8 @@ export const useGameStore = defineStore('game', () => {
       })
       raidResult.value = res
       if (res.pendingChest) setRaidChest(res.pendingChest.count, res.pendingChest.slots)
-      if (state.value) {
-        state.value.user.gold = res.gold
-        if (res.items.length > 0) {
-          state.value.items = [...state.value.items, ...res.items]
-          for (const item of res.items) {
-            toast.push(`获得 ${item.name}（${rarityName(item.rarity)}）`, 'loot')
-          }
-        }
-      }
+      if (state.value) state.value.user.gold = res.gold
+      showLoot(res.items)
       if (res.cleared) {
         toast.push(res.message, res.firstClear ? 'loot' : 'success')
       } else {
@@ -569,6 +612,7 @@ export const useGameStore = defineStore('game', () => {
     raidResult.value = null
     raidChest.value = { count: 0, slots: [] }
     lastDraw.value = []
+    loot.clear()
     lastReportAt = 0
   }
 
@@ -585,6 +629,9 @@ export const useGameStore = defineStore('game', () => {
     bossResult,
     autoAdvance,
     setAutoAdvance,
+    stayRegion,
+    setStayRegion,
+    isStaying,
     lastError,
     lastDraw,
     loggedIn,
@@ -603,6 +650,7 @@ export const useGameStore = defineStore('game', () => {
     stopBattle,
     report,
     dismissBossResult,
+    stayInCurrentRegion,
     startRaid,
     stopRaid,
     selectRaidTarget,

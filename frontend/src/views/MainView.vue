@@ -116,6 +116,14 @@ function openBossDialog() {
             自动进入下一阶段{{ game.autoAdvance ? ' · 开' : ' · 关' }}
           </button>
           <button
+            v-if="game.isStaying"
+            class="rounded-md border border-amber-400 bg-amber-500/15 px-3 py-1.5 text-xs text-amber-200 transition hover:border-amber-300"
+            title="原地挂机中：击败 BOSS 不再弹出结算窗（点击关闭，恢复弹窗）"
+            @click="game.setStayRegion(null)"
+          >
+            原地挂机 · 开
+          </button>
+          <button
             class="rounded-md px-3 py-1.5 text-xs font-medium transition"
             :class="
               game.isRunning
@@ -317,13 +325,13 @@ function openBossDialog() {
             {{ item.name }}（{{ rarityName(item.rarity) }}）
           </div>
         </div>
-        <p class="text-xs text-ink-400">是否前往下一地区？</p>
+        <p class="text-xs text-ink-400">是否前往下一地区？选择「留在当前地区」后将不再弹出本提示。</p>
       </div>
 
       <template #footer>
         <button
           class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600"
-          @click="game.dismissBossResult()"
+          @click="game.stayInCurrentRegion()"
         >
           留在当前地区
         </button>
