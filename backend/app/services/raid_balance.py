@@ -6,7 +6,7 @@ from app.services.combat_model import theoretical_dps
 from app.services.raid_util import boss_stats_for_raid, eligibility
 
 
-def snapshot(raid, level, stats, items, marks):
+def snapshot(raid, level, stats, items):
     rule=BALANCE['raids'][raid['id']]
     normal=raid.get('difficulty','normal')=='normal'
     penalty=soft_penalty(hero_power(stats),rule['power'] if normal else 0)
@@ -16,8 +16,7 @@ def snapshot(raid, level, stats, items, marks):
     survival=stats.max_hp/max(1,incoming)
     eligible,reason=eligibility(raid,level,stats,items)
     return dict(version=BALANCE['version'],hard=not normal,eligible=eligible,entryReason=reason,
-        equipmentQualified=equipment_qualified(raid,items),
-        trialPassed=f"raid:{raid['id']}" in marks, penalty=penalty,
+        equipmentQualified=equipment_qualified(raid,items), penalty=penalty,
         outputPassed=seconds<=rule['maxFightSeconds'],defensePassed=survival>=rule['minSurvivalSeconds'],
         minimumFightMs=max(1,int(seconds*1000*rule["durationTolerance"])),maxFightMs=int(rule['maxFightSeconds']*1000),clockToleranceMs=rule['clockToleranceMs'])
 
@@ -42,7 +41,7 @@ def clear_failures(start, current, server_ms, fight_ms):
     failures=[]
     if not start or not current: return ['missing_snapshot']
     if start['hard']:
-        for key,reason in [('eligible','entry'),('trialPassed','mechanism'),('outputPassed','output'),('defensePassed','defense')]:
+        for key,reason in [('eligible','entry'),('outputPassed','output'),('defensePassed','defense')]:
             if not start.get(key) or not current.get(key): failures.append(reason)
         if fight_ms > start['maxFightMs']: failures.append('output')
     if server_ms < start['minimumFightMs'] or fight_ms < start['minimumFightMs'] or fight_ms > server_ms+start["clockToleranceMs"]:
@@ -64,7 +63,7 @@ def telemetry(attempts, now=None):
     def failure(reason): return sum(reason in r.outcome.get('failures',[]) for r in ended)/len(ended) if ended else None
     return dict(windowDays=cfg['days'],firstEntrants=len({r.user_id for r in rows if r.balance_snapshot.get('firstEntry')}),
         entrants=len(entrants),qualifiedPlayers=len(qualified),firstClears=len(first),hardcorePlayers=len(cohort),
-        hardcoreFirstClearRate=rate,mechanismFailureRates={'trial':failure('mechanism'), **{key: sum(key in r.outcome.get('mechanismFailures',[]) for r in ended)/len(ended) for key in {k for r in ended for k in r.outcome.get('mechanismFailures',[])}}},outputFailureRate=failure('output'),
+        hardcoreFirstClearRate=rate,mechanismFailureRates={key: sum(key in r.outcome.get('mechanismFailures',[]) for r in ended)/len(ended) for key in {k for r in ended for k in r.outcome.get('mechanismFailures',[])}},outputFailureRate=failure('output'),
         defenseFailureRate=failure('defense'),averageAttempts=len(rows)/len(entrants) if entrants else 0,
         averageFightSeconds=sum(r.outcome.get('fightMs',max(0,(utc(r.ended_at)-utc(r.started_at)).total_seconds()*1000)) for r in ended)/len(ended)/1000 if ended else 0,
         target=[cfg['targetLow'],cfg['targetHigh']],sufficientSample=len(cohort)>=cfg['minimumPlayers'])

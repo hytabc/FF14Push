@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { api } from '@/api'
-import MechanismTrial from '@/components/MechanismTrial.vue'
 import { useGameStore } from '@/stores/game'
 import type { RegionListEntry } from '@/game/types'
 import { formatNumber } from '@/utils/format'
@@ -52,7 +51,6 @@ const heroLevel = computed(() => game.hero?.level ?? 1)
 
 <template>
   <div class="space-y-4">
-    <MechanismTrial :scopes="regions.filter(r => r.id > 1).map(r => ({id:`region:${r.id}`,name:r.name}))" @passed="load" />
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">地区关卡</h2>

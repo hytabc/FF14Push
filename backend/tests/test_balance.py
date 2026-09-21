@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import json
 import pytest
 from sqlalchemy import select
-from app.models import Hero, Item, RegionProgress, RaidSession, MechanismTrial
+from app.models import Hero, Item, RegionProgress, RaidSession
 from app.services.balance import BALANCE, load_balance, power_audit, region_gate, soft_penalty
 from app.services.damage import hit_chance
 from app.services.raid_balance import telemetry, calibration, clear_failures
@@ -21,9 +21,8 @@ def test_power_audit_diminishes_and_excludes_off_job_and_economy():
     gains=[b-a for a,b in zip(values,values[1:])]
     assert gains[0]>gains[1]>gains[2]>0
     assert power_audit(replace(stats,magic_attack=1e12,term_mods={'goldGainPct':1e12}))['total']==power_audit(stats)['total']
-    audit=power_audit(stats,['region:2'])
+    audit=power_audit(stats)
     assert audit['total']==int(sum(v['contribution'] for v in audit['contributions'].values()))
-    assert audit['mechanismMarks']==['region:2']
 
 
 def test_penalties_monotone_bounded_and_hit_floor():
@@ -48,18 +47,17 @@ def test_all_region_conditions_and_time_cannot_bypass(monkeypatch):
     items=[FakeItem(rarity='mythic',equipped_slot=s['id']) for s in __import__('app.services.game_config',fromlist=['CONFIG']).CONFIG.slots]
     rule=BALANCE['regions']['2']
     monkeypatch.setitem(BALANCE['regions'],'2',dict(rule,power=100,quality=1,attack=100,defense=100))
-    assert not region_gate(2,stats,items,{1},{'region:2'})
+    assert not region_gate(2,stats,items,{1})
     for attr in ('power','quality','attack','defense'):
         with monkeypatch.context() as m:
             m.setitem(BALANCE['regions']['2'],attr,1e10)
-            assert region_gate(2,stats,items,{1},{'region:2'})
-    assert region_gate(2,stats,items,set(),{'region:2'})
-    assert region_gate(2,stats,items,{1},set())
+            assert region_gate(2,stats,items,{1})
+    assert region_gate(2,stats,items,set())
     stats.online_seconds=stats.idle_seconds=stats.low_difficulty_clears=1e20
-    assert region_gate(2,stats,items,set(),set())
+    assert region_gate(2,stats,items,set())
     monkeypatch.setitem(BALANCE,'migration','new_unlocks_only')
-    assert not region_gate(2,stats,[],set(),set(),True)
-    assert region_gate(2,stats,[],set(),set(),False)
+    assert not region_gate(2,stats,[],set(),True)
+    assert region_gate(2,stats,[],set(),False)
 
 
 def test_config_invalid_falls_back_with_log(tmp_path,caplog):
@@ -73,9 +71,9 @@ def test_config_invalid_falls_back_with_log(tmp_path,caplog):
     assert 'using safe defaults' in caplog.text
 
 
-@pytest.mark.parametrize('key,reason',[('eligible','entry'),('trialPassed','mechanism'),('outputPassed','output'),('defensePassed','defense')])
+@pytest.mark.parametrize('key,reason',[('eligible','entry'),('outputPassed','output'),('defensePassed','defense')])
 def test_hard_clear_requires_every_gate_at_start_and_finish(key,reason):
-    good=dict(hard=True,eligible=True,trialPassed=True,outputPassed=True,defensePassed=True,minimumFightMs=1000,maxFightMs=10000,clockToleranceMs=2000)
+    good=dict(hard=True,eligible=True,outputPassed=True,defensePassed=True,minimumFightMs=1000,maxFightMs=10000,clockToleranceMs=2000)
     assert clear_failures(good,good,5000,5000)==[]
     bad=dict(good,**{key:False})
     assert reason in clear_failures(bad,good,5000,5000)
@@ -101,30 +99,6 @@ def test_telemetry_uses_unique_rolling_equipment_cohort(monkeypatch):
     assert telemetry([],now)['hardcoreFirstClearRate'] is None
 
 
-async def pass_trial(client,session_factory,scope):
-    result=(await client.post(f'{API}/trial/start',json={'scope':scope})).json()
-    for _ in range(BALANCE['trial']['rounds']):
-        async with session_factory() as db:
-            row=await db.get(MechanismTrial,result['trialId'])
-            action=['sidestep','guard','interrupt'][row.challenge]
-            row.issued_at=datetime.now(timezone.utc)-timedelta(seconds=1)
-            await db.commit()
-        response=await client.post(f'{API}/trial/respond',json=dict(trialId=result['trialId'],step=result['step'],action=action))
-        assert response.status_code==200,response.text
-        result=response.json()
-    assert result['passed']
-    return result
-
-
-async def test_trial_requires_active_correct_timed_responses(auth_client,session_factory):
-    result=(await auth_client.post(f'{API}/trial/start',json={'scope':'region:2'})).json()
-    response=await auth_client.post(f'{API}/trial/respond',json=dict(trialId=result['trialId'],step=10,action='guard'))
-    assert response.json()['failed']
-    done=await pass_trial(auth_client,session_factory,'region:2')
-    response=await auth_client.post(f'{API}/trial/respond',json=dict(trialId=done['trialId'],step=done['step'],action='guard'))
-    assert response.status_code==400
-
-
 async def test_legacy_access_recalculated_at_every_entry(auth_client,session_factory,monkeypatch):
     uid=(await auth_client.get(f'{API}/auth/me')).json()['id']
     async with session_factory() as db:
@@ -134,7 +108,7 @@ async def test_legacy_access_recalculated_at_every_entry(auth_client,session_fac
         await db.commit()
     for endpoint,body in [('region/enter',{'regionId':2}),('battle/session/start',{'regionId':2})]:
         response=await auth_client.post(f'{API}/{endpoint}',json=body)
-        assert response.status_code==403 and '试炼' in response.json()['detail']
+        assert response.status_code==403 and '前一地区' in response.json()['detail']
     listing=(await auth_client.get(f'{API}/region')).json()['regions'][1]
     assert not listing['unlocked'] and listing['cleared'] and listing['bestClearMs']==12345
     state=(await auth_client.get(f'{API}/game/state')).json()
@@ -158,36 +132,35 @@ async def test_low_power_normal_can_clear_with_reduced_reward(auth_client,sessio
     assert (await auth_client.post(f'{API}/raid/session/report',json=dict(sessionId=started['sessionId'],raidId='raid_1',cleared=True))).status_code==404
 
 
-async def test_hard_practice_does_not_award_clear_or_erase_history(auth_client,session_factory):
+async def test_hard_raid_no_longer_requires_trial(auth_client,session_factory):
+    """高难副本不再要求机制试炼：会话不再有练习标记，快照与失败原因里也没有试炼。"""
     from tests.test_api import TestRaid
     await TestRaid()._gear_up(auth_client,session_factory,ancient=3)
     response=await auth_client.post(f'{API}/raid/session/start',json={'raidId':'raid_h1'})
     assert response.status_code==200,response.text
     started=response.json()
-    assert started['practiceOnly']
+    assert 'practiceOnly' not in started
     async with session_factory() as db:
         session=await db.get(RaidSession,started['sessionId'])
+        assert 'trialPassed' not in session.balance_snapshot
         session.started_at=datetime.now(timezone.utc)-timedelta(seconds=120)
         await db.commit()
     result=(await auth_client.post(f'{API}/raid/session/report',json=dict(
         sessionId=started['sessionId'],raidId='raid_h1',cleared=True,fightMs=120000))).json()
-    assert not result['cleared'] and result['goldGained']==0 and 'mechanism' in result['failures']
-    await pass_trial(auth_client,session_factory,'raid:raid_h1')
-    async with session_factory() as db:
-        session=await db.get(RaidSession,started['sessionId'])
-        assert not session.cleared and not session.balance_snapshot['trialPassed']
+    assert 'mechanism' not in result.get('failures',[])
 
 
-async def test_region_advance_requires_trial_even_with_old_flag(auth_client,session_factory):
+async def test_region_advance_requires_previous_boss_cleared(auth_client,session_factory):
+    """击败前一地区 BOSS 才能推进下一地区；旧解锁标记不能绕过。"""
     uid=(await auth_client.get(f'{API}/auth/me')).json()['id']
     async with session_factory() as db:
         rows=(await db.execute(select(RegionProgress).where(RegionProgress.user_id==uid))).scalars().all()
         for row in rows:
             row.unlocked=True
-            if row.region_id==1: row.cleared=True
+            row.cleared=False
         await db.commit()
     response=await auth_client.post(f'{API}/region/advance')
-    assert response.status_code==403 and '试炼' in response.json()['detail']
+    assert response.status_code==403 and '前一地区' in response.json()['detail']
 
 
 def test_balance_migration_preserves_existing_records():

@@ -32,11 +32,10 @@ def load_balance(path=None):
         if not (0 < data['telemetry']['targetLow'] < data['telemetry']['targetHigh'] < 1): raise ValueError("unsafe balance rule")
         if not (data['telemetry']['days'] > 0 and data['telemetry']['minimumPlayers'] > 0): raise ValueError("unsafe balance rule")
         if not (data['telemetry']['consecutiveWindows'] >= 2): raise ValueError("unsafe balance rule")
-        if not (data['trial']['rounds'] >= 1 and data['trial']['windowSeconds'] > data['trial']['minResponseSeconds']): raise ValueError("unsafe balance rule")
         for rid, rule in data['regions'].items():
             if int(rid) > 1:
                 if not (rule['power'] > 0 and rule['attack'] + rule['defense'] > 0): raise ValueError("unsafe balance rule")
-                if not (rule['prerequisite'] == int(rid)-1 and rule['trial']): raise ValueError("unsafe balance rule")
+                if not (rule['prerequisite'] == int(rid)-1): raise ValueError("unsafe balance rule")
         if not (all(r['power'] > 0 and r['attack'] > 0 and r['defense'] > 0 and r['maxFightSeconds'] > 0 and r['minSurvivalSeconds'] > 0 for r in data['raids'].values())): raise ValueError("unsafe balance rule")
         return data
     except (OSError, ValueError, TypeError, KeyError, AssertionError):
@@ -46,7 +45,7 @@ def load_balance(path=None):
 BALANCE = load_balance()
 
 
-def power_audit(stats, marks=()):
+def power_audit(stats):
     raw = dict(hp=stats.max_hp, attack=stats.attack if not stats.is_magical else 0,
                magicAttack=stats.magic_attack if stats.is_magical else 0,
                physDef=stats.phys_def, magicDef=stats.magic_def, crit=stats.crit_value,
@@ -66,7 +65,7 @@ def power_audit(stats, marks=()):
         groups[rule['group']] += contribution
         contributions[key] = dict(raw=value, effective=effective, contribution=contribution, **rule)
     return dict(version=BALANCE['version'], total=int(sum(groups.values())), groups=groups,
-                contributions=contributions, mechanismMarks=sorted(marks))
+                contributions=contributions)
 
 
 def soft_penalty(power, recommended):
@@ -84,7 +83,7 @@ def equipment_quality(items):
     return sum(CONFIG.rarity_order.index(i.rarity) for i in equipped) / len(CONFIG.slots)
 
 
-def region_gate(region_id, stats, items, cleared, marks, previously_unlocked=False):
+def region_gate(region_id, stats, items, cleared, previously_unlocked=False):
     rule = BALANCE['regions'][str(region_id)]
     if BALANCE['migration'] == 'new_unlocks_only' and previously_unlocked:
         return []
@@ -93,5 +92,4 @@ def region_gate(region_id, stats, items, cleared, marks, previously_unlocked=Fal
     labels = dict(power='综合战力',quality='装备质量',attack='主攻击属性',defense='双防属性')
     missing = [f'{labels[k]}需要 {rule[k]:g}（当前 {actual[k]:.1f}）' for k in actual if actual[k] < rule[k]]
     if rule['prerequisite'] and rule['prerequisite'] not in cleared: missing.append('需通关前一地区 BOSS')
-    if rule['trial'] and f'region:{region_id}' not in marks: missing.append('需通过本地区机制试炼')
     return missing

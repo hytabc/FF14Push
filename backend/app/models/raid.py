@@ -39,16 +39,3 @@ class RaidProgress(Base, TimestampMixin):
     cleared_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     best_clear_ms: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     clear_count: Mapped[int] = mapped_column(sa.Integer, default=0)
-
-
-class MechanismTrial(Base):
-    __tablename__ = 'mechanism_trials'
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(sa.ForeignKey('users.id', ondelete='CASCADE'), index=True)
-    scope: Mapped[str] = mapped_column(sa.String(40))
-    version: Mapped[str] = mapped_column(sa.String(20))
-    step: Mapped[int] = mapped_column(default=0)
-    challenge: Mapped[int] = mapped_column(default=0)
-    active: Mapped[bool] = mapped_column(default=True)
-    passed: Mapped[bool] = mapped_column(default=False)
-    issued_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())

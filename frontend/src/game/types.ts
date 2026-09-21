@@ -191,8 +191,6 @@ export interface RaidReward {
 }
 
 export interface RaidListEntry {
-  trialPassed: boolean
-  practiceOnly: boolean
   id: string
   order: number
   difficulty: 'normal' | 'hard'
@@ -216,7 +214,6 @@ export interface RaidListEntry {
 
 export interface RaidSessionStart {
   penalty: import("./core/regions").LevelPenalty
-  practiceOnly: boolean
   sessionId: number
   raidId: string
   name: string

@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { api } from '@/api'
-import MechanismTrial from '@/components/MechanismTrial.vue'
 import { toApiError } from '@/api/client'
 import Modal from '@/components/Modal.vue'
 import RaidChestPicker from '@/components/RaidChestPicker.vue'
@@ -116,7 +115,6 @@ async function closeResult() {
 
 <template>
   <div class="space-y-4">
-    <MechanismTrial :scopes="raids.filter(r => r.difficulty === 'hard').map(r => ({id:`raid:${r.id}`,name:r.name}))" @passed="load" />
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">高难副本</h2>
@@ -148,7 +146,7 @@ async function closeResult() {
         @click="enter(raid)"
       >
         <div class="flex items-center justify-between gap-2">
-          <h3 class="text-sm font-semibold text-white">{{ raid.name }} <span v-if="raid.practiceOnly" class="text-amber-300">（练习）</span></h3>
+          <h3 class="text-sm font-semibold text-white">{{ raid.name }}</h3>
           <span class="flex shrink-0 gap-1">
             <span
               class="rounded px-2 py-0.5 text-[11px]"

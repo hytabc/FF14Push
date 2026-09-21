@@ -405,7 +405,9 @@ class TestBattleLoop:
         by_id = {r["id"]: r for r in regions["regions"]}
         assert by_id[1]["cleared"] is True
         assert by_id[2]["unlocked"] is False
-        assert "试炼" in by_id[2]["lockedHint"]
+        # 地区不再要求机制试炼：未解锁只因战力/装备/主攻/双防或前一地区 BOSS
+        assert by_id[2]["missingConditions"]
+        assert "试炼" not in by_id[2]["lockedHint"]
 
     async def test_stop_session(self, auth_client) -> None:
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
@@ -1085,8 +1087,6 @@ class TestRaid:
     async def test_hard_raid_drops_chooseable_chest(self, auth_client, session_factory) -> None:
         """高难副本通关掉落自选种类宝箱：通关不直接给装备，自选后一次性开箱。"""
         await self._gear_up(auth_client, session_factory, ancient=2)
-        from tests.test_balance import pass_trial
-        await pass_trial(auth_client,session_factory,'raid:raid_h1')
         started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
         async with session_factory() as db:
             session = await db.get(RaidSession,started['sessionId'])

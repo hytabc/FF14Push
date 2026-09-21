@@ -37,7 +37,6 @@ from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
 from app.services.balance import BALANCE as RULES
-from app.services.qualification import trial_marks
 from app.services.raid_balance import snapshot, clear_failures, calibration
 
 router = APIRouter(prefix="/raid", tags=["raid"])
@@ -89,7 +88,6 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
     ).scalars().all()
     progress = {row.raid_id: row for row in rows}
 
-    marks = await trial_marks(db,user.id)
     entries = []
     for raid in all_raids():
         raid = {**raid, **RULES["raids"][raid["id"]]}
@@ -103,8 +101,6 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
                 "name": raid["name"],
                 "requiredLevel": raid["requiredLevel"],
                 "requiredPower": RULES["raids"][raid["id"]]["power"],
-                "trialPassed": f"raid:{raid['id']}" in marks,
-                "practiceOnly": raid.get("difficulty") == "hard" and f"raid:{raid['id']}" not in marks,
                 "requiresAllSlots": raid["requiresAllSlots"],
                 "minEquipRarity": raid.get("minEquipRarity", "common"),
                 "topRarity": raid.get("topRarity"),
@@ -144,8 +140,7 @@ async def start_session(
 
     await _end_active_sessions(db, user.id)
     session = RaidSession(user_id=user.id, raid_id=raid["id"], active=True, cleared=False)
-    marks = await trial_marks(db,user.id)
-    session.balance_snapshot = snapshot(raid,hero.level,stats,items,marks)
+    session.balance_snapshot = snapshot(raid,hero.level,stats,items)
     previous = await db.scalar(select(func.count(RaidSession.id)).where(RaidSession.user_id==user.id,RaidSession.raid_id==raid['id']))
     session.balance_snapshot = dict(session.balance_snapshot,firstEntry=not previous)
     db.add(session)
@@ -158,7 +153,6 @@ async def start_session(
         "difficulty": raid.get("difficulty", "normal"),
         "bosses": boss_stats_for_raid(raid, hero.level, stats),
         "penalty": session.balance_snapshot["penalty"],
-        "practiceOnly": session.balance_snapshot["hard"] and not session.balance_snapshot["trialPassed"],
         "enrage": raid["enrage"],
         "reward": raid["reward"],
     }
@@ -193,11 +187,11 @@ async def report_session(
     session.ended_at = now
 
     stats = compute_stats(hero, items)
-    current = snapshot(raid,hero.level,stats,items,await trial_marks(db,user.id))
+    current = snapshot(raid,hero.level,stats,items)
     fight_ms = int(payload.fightMs if payload.fightMs is not None else server_elapsed_ms)
     failures = clear_failures(session.balance_snapshot,current,server_elapsed_ms,fight_ms) if payload.cleared else []
     if not payload.cleared and current["hard"]:
-        failures = [reason for key,reason in [("trialPassed","mechanism"),("outputPassed","output"),("defensePassed","defense")] if not current[key]]
+        failures = [reason for key,reason in [("outputPassed","output"),("defensePassed","defense")] if not current[key]]
     if payload.died: failures.append('defense')
     valid_mechanisms = {s["id"] for b in boss_stats_for_raid(raid,hero.level,stats) for s in b["skills"]}
     reported_mechanisms = sorted(set(payload.mechanismFailures) & valid_mechanisms) if payload.died else []
@@ -208,7 +202,7 @@ async def report_session(
             "cleared": False, "firstClear": False, "gold": int(user.gold), "goldGained": 0,
             "expGained": 0, "items": [], "autoSold": [], "autoGold": 0, "fightMs": fight_ms,
             "failures": failures,
-            "message": "练习结束，未满足正式通关条件：" + '、'.join({'entry':'进入门槛','mechanism':'机制试炼','output':'输出检查','defense':'防御检查','invalid_duration':'战斗时长校验','missing_snapshot':'会话版本已失效'}.get(f,f) for f in failures) if failures else "挑战结束，未获得奖励",
+            "message": "练习结束，未满足正式通关条件：" + '、'.join({'entry':'进入门槛','output':'输出检查','defense':'防御检查','invalid_duration':'战斗时长校验','missing_snapshot':'会话版本已失效'}.get(f,f) for f in failures) if failures else "挑战结束，未获得奖励",
         }
 
     row = await _progress(db, user.id, raid["id"])
