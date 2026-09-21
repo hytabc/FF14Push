@@ -802,3 +802,104 @@ describe('地区击杀手感（小怪 3 下 / 精英 5 下 / BOSS 10 下）', ()
     expect(hits[0]).toBeLessThanOrEqual(14)
   })
 })
+
+describe('彩蛋英雄技能', () => {
+  /** 访问私有 cast 以直接驱动技能释放。 */
+  function forceCast(sim: BattleSimulator, skillId: string): void {
+    const skill = sim.skills.find((s) => s.id === skillId)
+    if (!skill) throw new Error(`skill not found: ${skillId}`)
+    ;(sim as unknown as { cast(s: unknown): void }).cast(skill)
+  }
+
+  const attacker: MonsterStats = {
+    id: 'dummy', regionId: 0, name: '木桩', templateId: 'dummy', kind: 'boss',
+    hp: 1e12, attack: 1000, defense: 0, attackInterval: 1, level: 100, resistancePct: 0,
+  }
+
+  it('Astgen 使用黑魔法师时只拥有「崩溃」', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ jobId: 'BLM' }), regionId: 1, eggId: 'astgen' })
+    const ids = sim.skills.map((s) => s.id)
+    expect(ids).toEqual(['eggCrash'])
+  })
+
+  it('彩蛋英雄绑定职业不匹配时不影响正常技能组', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ jobId: 'SAM' }), regionId: 1, eggId: 'astgen' })
+    const ids = sim.skills.map((s) => s.id)
+    expect(ids).not.toContain('eggCrash')
+    expect(ids).toEqual(data.jobById['SAM'].skills.map((s) => s.id))
+  })
+
+  it('追加型彩蛋技能加在职业技能之外', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ jobId: 'SAM' }), regionId: 1, eggId: 'gujiu' })
+    const ids = sim.skills.map((s) => s.id)
+    expect(ids).toContain('eggLogs')
+    expect(ids).toHaveLength(data.jobById['SAM'].skills.length + 1)
+  })
+
+  it('「Logs」提供技能威力 +50% 的限时增益', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'SAM', termMods: {} }),
+      regionId: 1,
+      eggId: 'gujiu',
+    })
+    forceCast(sim, 'eggLogs')
+    expect(sim.stats.termMods.skillDamagePct).toBeCloseTo(50, 5)
+  })
+
+  it('「割草」使接下来 2 次技能威力翻倍并逐次消耗', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'RPR', attack: 1000 }),
+      raid: { bosses: [attacker], enrage: null },
+      eggId: 'jibian',
+    })
+    sim.start()
+    sim.doublePowerCharges = 2
+    forceCast(sim, data.jobById['RPR'].skills.find((s) => s.potency > 0)!.id)
+    expect(sim.doublePowerCharges).toBe(1)
+  })
+
+  it('「我布道啊」的免疫逐次消耗，免疫期间不掉血', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'DRK', maxHp: 100000, physDef: 0, dodgePct: 0, tenacityPct: 0 }),
+      raid: { bosses: [attacker], enrage: null },
+    })
+    sim.start()
+    sim.immunityCharges = 2
+    const hp0 = sim.heroHp
+
+    sim.tick(1.0)
+    expect(sim.immunityCharges).toBe(1)
+    expect(sim.heroHp).toBe(hp0)
+
+    sim.tick(1.0)
+    expect(sim.immunityCharges).toBe(0)
+    expect(sim.heroHp).toBe(hp0)
+
+    sim.tick(1.0)
+    expect(sim.heroHp).toBeLessThan(hp0)
+  })
+
+  it('「拔豆芽」使接下来 10 个怪物的经验/金币翻倍', () => {
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    try {
+      const run = (charges: number): number => {
+        const sim = new BattleSimulator({
+          stats: makeStats({ jobId: 'DRG', attack: 1e7, maxHp: 1e7, dodgePct: 0 }),
+          regionId: 1,
+          killsRequired: 100,
+          spawnInterval: 1,
+          killCount: 0,
+        })
+        sim.start()
+        sim.doubleRewardCharges = charges
+        for (let i = 0; i < 200 && sim.pendingKills.length === 0; i += 1) sim.tick(0.05)
+        return sim.pendingKills[0]?.gold ?? 0
+      }
+      const plain = run(0)
+      expect(plain).toBeGreaterThan(0)
+      expect(run(1)).toBe(plain * 2)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})

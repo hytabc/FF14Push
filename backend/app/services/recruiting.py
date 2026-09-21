@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from app.services.egg_heroes import egg_def
 from app.services.game_config import CONFIG
 
 NAME_POOL = [
@@ -38,14 +39,31 @@ def recruit_cost(talent: str, current_hero_level: int) -> int:
 
 
 def normalize_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
-    """带太古属性的候选必定为神话（红色）资质。
+    """规范化候选资质：彩蛋英雄固定为配置资质，带太古属性的候选必定为神话（红色）资质。
 
     生成端（`generate_candidate`）已保证；这里再兜底一次，防御规则上线前落库的旧候选，
     确保展示、计费与创建英雄三处口径一致。
     """
+    egg = egg_def(candidate.get("eggId"))
+    if egg:
+        return {**candidate, "talent": str(egg["talent"]), "ancientAttr": None}
     if candidate.get("ancientAttr") and candidate.get("talent") != "mythic":
         return {**candidate, "talent": "mythic"}
     return candidate
+
+
+def roll_egg(rng: random.Random) -> dict[str, Any] | None:
+    """判定下一个候选是否为彩蛋英雄。
+
+    所有彩蛋英雄共用 eggChance 概率（独立于资质/太古抽取，不影响原英雄池概率），
+    命中后再从 heroes 中随机取一位；未命中返回 None。始终消耗 1 次随机以稳定序列。
+    """
+    heroes = list(CONFIG.egg_heroes.get("heroes", []))
+    if not heroes:
+        return None
+    if rng.random() >= float(CONFIG.egg_heroes.get("eggChance", 0.0)):
+        return None
+    return rng.choice(heroes)
 
 
 def with_recruit_cost(candidate: dict[str, Any], current_hero_level: int) -> dict[str, Any]:
@@ -115,13 +133,20 @@ def generate_candidate(
     rng = rng or random.Random()
     # 无论是否指定 talent 都消耗一次资质随机，避免改变后续随机序列。
     rolled_talent = talent_weights(rng)
+    # 彩蛋判定：独立于资质/太古抽取，命中后固定资质与偏向，忽略太古。
+    egg = roll_egg(rng)
     # 太古判定提前：太古英雄必定为神话，点数须按神话区间抽取。
     hit = rng.random() < float(CONFIG.talents["ancientChance"]) if ancient is None else ancient
-    talent_id = "mythic" if hit else (talent or rolled_talent)
+    if egg is not None:
+        hit = False
+        talent_id = str(egg["talent"])
+    else:
+        talent_id = "mythic" if hit else (talent or rolled_talent)
     spec = CONFIG.talents["talents"][talent_id]
     total_points = rng.randint(int(spec["pointMin"]), int(spec["pointMax"]))
 
-    bias_id = rng.choice(["str", "dex", "int", "balanced"])
+    rolled_bias = rng.choice(["str", "dex", "int", "balanced"])
+    bias_id = str(egg["attrBias"]) if egg is not None else rolled_bias
     weights = CONFIG.talents["biases"][bias_id]["weights"]
 
     # 按权重分配并加入少量抖动，保证总和不变
@@ -150,8 +175,9 @@ def generate_candidate(
         attrs[ancient_attr] = max(1, int(round(max(attrs.values()) * float(CONFIG.talents["ancientMultiplier"]))))
 
     attr_main = bias_id if bias_id != "balanced" else max(attrs, key=lambda k: attrs[k])
+    rolled_name = rng.choice(NAME_POOL)
     return {
-        "name": rng.choice(NAME_POOL),
+        "name": str(egg["name"]) if egg is not None else rolled_name,
         "talent": talent_id,
         "attrBias": bias_id,
         "attrBiasLabel": BIAS_LABELS[bias_id],
@@ -159,6 +185,7 @@ def generate_candidate(
         "agility": attrs["dex"],
         "intellect": attrs["int"],
         "ancientAttr": ancient_attr,
+        "eggId": str(egg["id"]) if egg is not None else None,
         "totalPoints": total_points,
         "recruitCost": recruit_cost(talent_id, current_hero_level),
         "recommendedJobs": recommended_jobs(attr_main),
@@ -179,6 +206,7 @@ def initial_hero(rng: random.Random | None = None) -> dict[str, Any]:
         "agility": each,
         "intellect": total - each * 2,
         "ancientAttr": None,
+        "eggId": None,
         "totalPoints": total,
         "isInitial": True,
     }

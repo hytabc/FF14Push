@@ -72,6 +72,8 @@ async def _replace_hero(
         agility=candidate["agility"],
         intellect=candidate["intellect"],
         ancient_attr=candidate.get("ancientAttr"),
+        egg_id=candidate.get("eggId"),
+        double_reward_charges=0,
         current_region_id=1,
         region_kill_count=0,
         is_initial=False,

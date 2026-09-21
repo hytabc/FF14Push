@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
 import InfoTip from '@/components/InfoTip.vue'
+import { eggSkillSet } from '@/game/core/egg'
 import { dodgeExplain, heroRateExplain, threeAttrExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { attrName, formatPercent, jobName, rarityClass, rarityName, skillEffectLabel } from '@/utils/format'
@@ -15,11 +16,16 @@ const stats = computed(() => hero.value?.stats ?? null)
 
 const skills = computed(() => {
   const jobId = hero.value?.jobId ?? 'adventurer'
-  if (jobId === 'adventurer') {
-    return [{ id: 'basicAttack', name: '普攻', cd: data.combat.basicAttackCd as number, potency: 100, mpCost: 0, effects: [], damageType: 'physical', target: 'single', priority: 3 }]
-  }
-  return data.jobById[jobId]?.skills ?? []
+  const base =
+    jobId === 'adventurer'
+      ? [{ id: 'basicAttack', name: '普攻', cd: data.combat.basicAttackCd as number, potency: 100, mpCost: 0, effects: [], damageType: 'physical', target: 'single', priority: 3 }]
+      : (data.jobById[jobId]?.skills ?? [])
+  const egg = eggSkillSet(hero.value?.eggId, jobId)
+  if (!egg) return base
+  return egg.replace ? egg.skills : [...egg.skills, ...base]
 })
+
+const eggDesc = computed(() => (hero.value?.eggId ? (data.eggHeroes.byId[hero.value.eggId]?.desc ?? '彩蛋英雄') : ''))
 
 const totalCasts = computed(() =>
   Object.values(game.state?.skillStats ?? {}).reduce((sum, v) => sum + Number(v), 0),
@@ -97,6 +103,9 @@ function hasteInfo() {
             <span class="rounded bg-ink-800 px-2 py-0.5 text-[11px] text-ink-300">
               {{ attrBiasLabel[hero.attrBias] }}
             </span>
+            <span v-if="hero.eggId" class="rounded bg-fuchsia-500/20 px-2 py-0.5 text-[11px] text-fuchsia-300">
+              🎁 彩蛋
+            </span>
           </div>
 
           <div class="mt-3">
@@ -140,6 +149,9 @@ function hasteInfo() {
           </div>
           <p v-if="hero.ancientAttr" class="mt-2 text-[11px] text-term-ancient">
             🌟 太古属性：{{ ancientAttrLabel }}（数值为三条中最高值 ×1.25）
+          </p>
+          <p v-if="hero.eggId" class="mt-2 text-[11px] text-fuchsia-300">
+            🎁 彩蛋英雄 · {{ eggDesc }}
           </p>
           <p class="mt-2 text-[11px] text-ink-500">
             英雄主属性对应装备三维收益 100%，非主属性 50%；职业推荐主属性为

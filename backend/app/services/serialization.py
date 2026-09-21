@@ -102,6 +102,7 @@ def hero_to_dict(hero: Any, stats: Any) -> dict[str, Any]:
         "agility": hero.agility,
         "intellect": hero.intellect,
         "ancientAttr": hero.ancient_attr,
+        "eggId": hero.egg_id,
         "currentRegionId": hero.current_region_id,
         "regionKillCount": hero.region_kill_count,
         "isInitial": hero.is_initial,

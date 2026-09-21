@@ -192,6 +192,10 @@ const SKILL_EFFECT_LABELS: Record<string, (pct: number, seconds: number) => stri
   attackSpeedBuff: (pct, seconds) => `攻击速度 +${pct}%${durationSuffix(seconds)}`,
   allDamageBuff: (pct, seconds) => `全伤害 +${pct}%${durationSuffix(seconds)}`,
   damageReduction: (pct, seconds) => `受到伤害 −${pct}%${durationSuffix(seconds)}`,
+  skillDamageBuff: (pct, seconds) => `技能威力 +${pct}%${durationSuffix(seconds)}`,
+  immunity: (pct) => `免疫下 ${Math.round(pct / 100)} 次伤害`,
+  doublePowerCharges: (pct) => `接下来 ${Math.round(pct / 100)} 次技能威力翻倍`,
+  doubleRewardCharges: (pct) => `接下来 ${Math.round(pct / 100)} 个怪物经验/金币翻倍`,
 }
 
 /** 技能效果 → 中文说明；未知类型不暴露原始英文枚举。 */

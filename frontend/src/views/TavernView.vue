@@ -42,9 +42,9 @@ const freeRemainingSec = computed(() =>
 )
 const freeAvailable = computed(() => freeRemainingSec.value <= 0)
 
-/** 神话资质或带太古属性的候选＝有效英雄，刷新/放弃前需要二次确认。 */
+/** 神话资质、带太古属性或彩蛋英雄＝有效英雄，刷新/放弃前需要二次确认。 */
 function isPrecious(c: TavernCandidate | null | undefined): boolean {
-  return !!c && (c.talent === 'mythic' || c.ancientAttr !== null)
+  return !!c && (c.talent === 'mythic' || c.ancientAttr !== null || !!c.eggId)
 }
 
 const candidatePrecious = computed(() => isPrecious(candidate.value))
@@ -269,6 +269,13 @@ function fmtWeight(weight: number): string {
 function recruitInfo(candidate: TavernCandidate) {
   return recruitCostExplain(hero.value?.level ?? 1, candidate.talent, candidate.recruitCost)
 }
+
+/** 彩蛋英雄说明文案（无彩蛋返回空串）。 */
+function eggDesc(eggId: string | null | undefined): string {
+  return eggId ? (data.eggHeroes.byId[eggId]?.desc ?? '彩蛋英雄') : ''
+}
+
+const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(1)}%`)
 </script>
 
 <template>
@@ -294,6 +301,9 @@ function recruitInfo(candidate: TavernCandidate) {
             力量 {{ hero.strength }}{{ hero.ancientAttr === 'str' ? '🌟' : '' }} /
             敏捷 {{ hero.agility }}{{ hero.ancientAttr === 'dex' ? '🌟' : '' }} /
             智力 {{ hero.intellect }}{{ hero.ancientAttr === 'int' ? '🌟' : '' }}
+          </p>
+          <p v-if="hero.eggId" class="text-[11px] text-fuchsia-300">
+            🎁 彩蛋英雄 · {{ eggDesc(hero.eggId) }}
           </p>
           <p v-if="hero.isInitial" class="text-[11px] text-amber-300">
             初始英雄不可解雇，请先招募新英雄进行替换
@@ -353,8 +363,12 @@ function recruitInfo(candidate: TavernCandidate) {
           </InfoTip>
         </p>
 
+        <p class="mt-1 text-[11px] text-fuchsia-300">
+          🎁 彩蛋英雄：{{ eggChancePct }} 共用概率（不影响上方资质概率，命中后随机出现一位）
+        </p>
+
         <p v-if="candidatePrecious" class="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
-          当前候选为<b>神话 / 太古</b>有效英雄，刷新前会二次确认。
+          当前候选为<b>神话 / 太古 / 彩蛋</b>有效英雄，刷新前会二次确认。
         </p>
 
         <div v-if="candidate" class="mt-3 space-y-3">
@@ -366,7 +380,14 @@ function recruitInfo(candidate: TavernCandidate) {
             <span class="rounded bg-ink-800 px-2 py-0.5 text-[11px] text-ink-300">
               {{ candidate.attrBiasLabel }}
             </span>
+            <span v-if="candidate.eggId" class="rounded bg-fuchsia-500/20 px-2 py-0.5 text-[11px] text-fuchsia-300">
+              🎁 彩蛋
+            </span>
           </div>
+
+          <p v-if="candidate.eggId" class="text-[11px] text-fuchsia-300">
+            {{ eggDesc(candidate.eggId) }}
+          </p>
 
           <div class="space-y-1.5">
             <div v-for="row in [
@@ -449,7 +470,9 @@ function recruitInfo(candidate: TavernCandidate) {
               {{ rarityName(c.talent) }}
             </span>
           </div>
-          <p class="text-[10px] text-ink-400">{{ c.attrBiasLabel }} · 总 {{ c.totalPoints }}</p>
+          <p class="text-[10px] text-ink-400">
+            {{ c.attrBiasLabel }} · 总 {{ c.totalPoints }}<span v-if="c.eggId" class="text-fuchsia-300"> · 🎁彩蛋</span>
+          </p>
           <p class="font-mono text-[10px] text-ink-300">
             力 {{ c.strength }}{{ c.ancientAttr === 'str' ? '🌟' : '' }} /
             敏 {{ c.agility }}{{ c.ancientAttr === 'dex' ? '🌟' : '' }} /

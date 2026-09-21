@@ -15,6 +15,17 @@ from app.models import Base
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 
+@pytest.fixture(autouse=True)
+def _disable_egg_heroes(monkeypatch):
+    """默认关闭彩蛋英雄随机：0.5% 概率会让既有资质/太古断言偶发失败。
+
+    专门测试彩蛋生成时再自行把 `eggChance` 打开。
+    """
+    from app.services.game_config import CONFIG
+
+    monkeypatch.setitem(CONFIG.egg_heroes, "eggChance", 0.0)
+
+
 @pytest_asyncio.fixture
 async def db_engine():
     engine = create_async_engine(

@@ -176,6 +176,7 @@ export const useGameStore = defineStore('game', () => {
         killsRequired: session.killsRequired,
         spawnInterval: session.spawnInterval,
         killCount: 0,
+        eggId: state.value.hero.eggId,
       })
       sim.value.start()
       running.value = true
@@ -397,6 +398,7 @@ export const useGameStore = defineStore('game', () => {
         stats: state.value.hero.stats,
         penalty: session.penalty,
         raid: { bosses: session.bosses, enrage: session.enrage },
+        eggId: state.value.hero.eggId,
       })
       sim.value.start()
       running.value = true

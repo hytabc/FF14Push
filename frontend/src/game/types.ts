@@ -284,6 +284,8 @@ export interface Hero {
   intellect: number
   /** 太古三维：值为 'str'|'dex'|'int'，null 表示无 */
   ancientAttr: 'str' | 'dex' | 'int' | null
+  /** 彩蛋英雄 id，null 表示普通英雄 */
+  eggId: string | null
   currentRegionId: number | null
   regionKillCount: number
   isInitial: boolean
@@ -497,6 +499,8 @@ export interface TavernCandidate {
   intellect: number
   /** 太古三维：值为 'str'|'dex'|'int'，null 表示无 */
   ancientAttr: 'str' | 'dex' | 'int' | null
+  /** 彩蛋英雄 id，null/缺失表示普通英雄 */
+  eggId?: string | null
   totalPoints: number
   recruitCost: number
   recommendedJobs: string[]

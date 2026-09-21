@@ -46,6 +46,10 @@ class Hero(Base, TimestampMixin):
     intellect: Mapped[int] = mapped_column(sa.Integer, default=0)
     # 太古属性：值为 "str"|"dex"|"int"，表示该条三维为太古（最高值 ×1.25）；None 表示无
     ancient_attr: Mapped[str | None] = mapped_column(sa.String(8), nullable=True)
+    # 彩蛋英雄 id（见 shared/data/egg-heroes.json）；None 表示普通英雄
+    egg_id: Mapped[str | None] = mapped_column(sa.String(32), nullable=True)
+    # 彩蛋技能「拔豆芽」剩余的奖励翻倍怪物数（服务端权威结算）
+    double_reward_charges: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
     current_region_id: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=1)
     region_kill_count: Mapped[int] = mapped_column(sa.Integer, default=0)
     is_initial: Mapped[bool] = mapped_column(sa.Boolean, default=False)

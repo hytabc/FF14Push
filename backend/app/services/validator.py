@@ -37,6 +37,7 @@ class ValidationResult:
     total_exp: int = 0
     drop_count: int = 0
     consumed_credit: float = 0.0
+    doubled_kills: int = 0
     reject_reason: str | None = None
 
 
@@ -47,9 +48,15 @@ def validate_report(
     kills: list[dict[str, Any]],
     allowance: float,
     tolerance: float = 1.10,
+    double_charges: int = 0,
 ) -> ValidationResult:
-    """allowance 为本次上报可用的击杀额度（含跨上报累积的余额）。"""
+    """allowance 为本次上报可用的击杀额度（含跨上报累积的余额）。
+
+    double_charges 为彩蛋技能「拔豆芽」剩余的奖励翻倍怪物数：前 min(double_charges, N)
+    只被接受击杀的金币/经验上限放宽为 2 倍，并计入 `doubled_kills` 供调用方扣减。
+    """
     issues: list[str] = []
+    double_charges = max(0, int(double_charges))
 
     if elapsed_ms < MIN_ELAPSED_MS or elapsed_ms > MAX_ELAPSED_MS:
         return ValidationResult(
@@ -80,10 +87,15 @@ def validate_report(
 
     accepted_count = min(len(kills), int(allowed))
     accepted_kills: list[KillReport] = []
-    for kill in kills[:accepted_count]:
+    doubled_kills = 0
+    for index, kill in enumerate(kills[:accepted_count]):
         template_id = str(kill.get("monsterId", "normal"))
         kind = "elite" if template_id == "elite" else "normal"
         cap = max_gold_for_kill(region_id, kind, stats)
+        if index < double_charges:
+            # 彩蛋「拔豆芽」：该只怪物经验/金币翻倍，放宽上限
+            cap *= 2
+            doubled_kills += 1
         gold = int(kill.get("gold", 0))
         if gold < 0:
             gold = 0
@@ -114,6 +126,7 @@ def validate_report(
         total_exp=sum(k.exp for k in accepted_kills),
         drop_count=sum(1 for k in accepted_kills if k.dropped),
         consumed_credit=float(accepted_count),
+        doubled_kills=doubled_kills,
     )
 
 

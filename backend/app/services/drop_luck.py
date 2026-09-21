@@ -6,10 +6,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RegionProgress
+from app.services.egg_heroes import luck_bonus
 from app.services.loot import drop_rate_multiplier
 
 
@@ -29,3 +32,8 @@ async def user_drop_rate(db: AsyncSession, user_id: int) -> float:
 def rarity_luck(multiplier: float) -> float:
     """爆率倍率 → 品阶抽取的 luck 系数。"""
     return max(0.0, float(multiplier) - 1.0)
+
+
+def egg_luck(hero: Any) -> float:
+    """彩蛋英雄被动的装备品阶幸运加成（如「种田JPG」的幸运）。"""
+    return luck_bonus(getattr(hero, "egg_id", None))

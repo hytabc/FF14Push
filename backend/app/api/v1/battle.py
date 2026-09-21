@@ -29,7 +29,8 @@ from app.schemas.game import BattleReportRequest, BattleStartRequest, BattleStop
 from app.services.codex import unlock_monster
 from app.services.combat_model import effective_penalty, boss_stats, max_kills_in_seconds, resolve_job_skills
 from app.services import consumables
-from app.services.drop_luck import rarity_luck, user_drop_rate
+from app.services.drop_luck import egg_luck, rarity_luck, user_drop_rate
+from app.services.egg_heroes import charge_grants
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
@@ -132,6 +133,16 @@ async def report(
     await require_region(db,user.id,hero,items,payload.regionId)
     stats = compute_stats(hero, items)
 
+    # 彩蛋技能「拔豆芽」：本次上报释放的充能技能 → 累加奖励翻倍怪物数（上限 20，可跨上报保留）。
+    # 先在本地计算，等上报通过校验后再写回，避免被拒绝的上报也能累积充能。
+    grants = charge_grants(stats.egg_id, stats.job_id)
+    granted = 0
+    if grants:
+        for cast in payload.skillCasts:
+            if cast.skillId in grants and cast.count > 0:
+                granted += grants[cast.skillId] * min(cast.count, 10000)
+    double_charges = min(20, int(hero.double_reward_charges or 0) + granted)
+
     # 客户端只在有事件时才上报，上报间隔并不固定：窗口必须以服务端时钟为准，
     # 否则额度永远只能按固定短窗口核算，合法单杀会被判超速。
     #
@@ -158,6 +169,7 @@ async def report(
         kills=[k.model_dump() for k in payload.kills],
         allowance=allowance,
         tolerance=settings.report_tolerance,
+        double_charges=double_charges,
     )
 
     if not result.accepted:
@@ -171,6 +183,9 @@ async def report(
         )
         await db.commit()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"rejected": result.issues})
+
+    # 彩蛋「拔豆芽」：上报通过后写回充能，并扣除本次实际翻倍的怪物数
+    hero.double_reward_charges = max(0, double_charges - result.doubled_kills)
 
     session.kill_credit = max(0.0, allowance - result.consumed_credit)
     # 累计在线时长：只计入通过校验的上报窗口（服务端时钟，已按上限封顶）。
@@ -279,7 +294,11 @@ async def _settle_boss(
     box = chest_by_id(box_id)
     generated = []
     if box:
-        luck = rarity_luck(await user_drop_rate(db, user.id)) + await consumables.chest_luck(db, user.id)
+        luck = (
+            rarity_luck(await user_drop_rate(db, user.id))
+            + await consumables.chest_luck(db, user.id)
+            + egg_luck(hero)
+        )
         item, _ = generate_item(box["category"], hero.level, box_tier=box["tier"], rng=rng, luck=luck)
         generated.append(item)
     grant = await grant_generated_items(db, user, generated, source="boss", rng=rng)

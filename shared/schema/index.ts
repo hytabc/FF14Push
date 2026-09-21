@@ -29,6 +29,7 @@ import fishJson from '../data/fish.json'
 import recipesJson from '../data/recipes.json'
 import consumablesJson from '../data/consumables.json'
 import titlesJson from '../data/titles.json'
+import eggHeroesJson from '../data/egg-heroes.json'
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
@@ -240,6 +241,30 @@ export interface TalentBias {
   id: string
   name: string
   weights: Record<'str' | 'dex' | 'int', number>
+}
+
+export interface EggHeroPassive {
+  type: string
+  value: number
+}
+
+export interface EggHeroDef {
+  id: string
+  name: string
+  talent: RarityId
+  attrBias: 'str' | 'dex' | 'int' | 'balanced'
+  jobId: string | null
+  replaceSkills: boolean
+  skills: SkillDef[]
+  passive?: EggHeroPassive
+  /** 展示用说明文案 */
+  desc?: string
+}
+
+export interface EggHeroesConfig {
+  eggChance: number
+  heroes: EggHeroDef[]
+  byId: Record<string, EggHeroDef>
 }
 
 export interface BossTypeDef {
@@ -618,6 +643,14 @@ export const gameData = {
     talents: Record<RarityId, TalentDef>
     biases: Record<string, TalentBias>
   },
+  eggHeroes: (() => {
+    const raw = eggHeroesJson as unknown as { eggChance: number; heroes: EggHeroDef[] }
+    return {
+      eggChance: raw.eggChance,
+      heroes: raw.heroes,
+      byId: Object.fromEntries(raw.heroes.map((h) => [h.id, h])) as Record<string, EggHeroDef>,
+    }
+  })(),
   heroes: heroesJson as unknown as Record<string, any>,
   combat: combatJson as unknown as Record<string, any>,
   tutorial: tutorialJson as unknown as {

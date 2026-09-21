@@ -52,6 +52,8 @@ class HeroStats:
     dh_rate_pct: float
     det_bonus_pct: float
     term_mods: dict[str, float] = field(default_factory=dict)
+    # 彩蛋英雄 id（见 shared/data/egg-heroes.json）；None 表示普通英雄
+    egg_id: str | None = None
 
     @property
     def is_magical(self) -> bool:
@@ -259,6 +261,7 @@ def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
         dh_rate_pct=dh_rate,
         det_bonus_pct=det_bonus,
         term_mods=dict(mods),
+        egg_id=getattr(hero, "egg_id", None),
     )
 
 

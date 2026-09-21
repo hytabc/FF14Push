@@ -1,0 +1,79 @@
+{
+  "$comment": "彩蛋英雄：共用 eggChance 出现概率，独立于 talentWeights / ancient 抽取，不影响原英雄池概率。命中后再从 heroes 中随机取一位。",
+  "$commentSkill": "技能字段与 jobs.json 的 SkillDef 一致。replaceSkills=true 时该职业只拥有这些技能；false 时在职业技能之外追加。新增 effect：skillDamageBuff（技能威力 +value，持续 duration 秒）、immunity（免疫下 value 次伤害）、doublePowerCharges（接下来 value 次技能威力翻倍）、doubleRewardCharges（接下来 value 个怪物经验/金币翻倍）。",
+  "$commentPassive": "passive 为常驻被动：chestLuckBonus 表示装备品阶高品质概率 +value（luck 系数）。",
+  "eggChance": 0.005,
+  "heroes": [
+    {
+      "id": "astgen",
+      "name": "Astgen",
+      "talent": "legendary",
+      "attrBias": "int",
+      "jobId": "BLM",
+      "replaceSkills": true,
+      "desc": "使用黑魔法师时仅拥有技能「崩溃」（MP 10 / CD 1s / 50% 伤害）",
+      "skills": [
+        { "id": "eggCrash", "name": "崩溃", "cd": 1, "mpCost": 10, "potency": 50, "damageType": "magical", "target": "single", "priority": 3, "effects": [] }
+      ]
+    },
+    {
+      "id": "gujiu",
+      "name": "孤酒丶",
+      "talent": "legendary",
+      "attrBias": "dex",
+      "jobId": "SAM",
+      "replaceSkills": false,
+      "desc": "使用武士时追加「Logs」：技能威力 +50%，持续 30s（CD 120s）",
+      "skills": [
+        { "id": "eggLogs", "name": "Logs", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "skillDamageBuff", "value": 0.5, "duration": 30 }] }
+      ]
+    },
+    {
+      "id": "shaonv",
+      "name": "少女心的涛涛",
+      "talent": "legendary",
+      "attrBias": "dex",
+      "jobId": "SAM",
+      "replaceSkills": false,
+      "desc": "使用武士时追加「拔豆芽」：接下来 10 个怪物经验/金币翻倍（CD 120s）",
+      "skills": [
+        { "id": "eggPullSprout", "name": "拔豆芽", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "doubleRewardCharges", "value": 10 }] }
+      ]
+    },
+    {
+      "id": "demos",
+      "name": "得梅因",
+      "talent": "legendary",
+      "attrBias": "str",
+      "jobId": "DRK",
+      "replaceSkills": false,
+      "desc": "使用暗黑骑士时追加「我布道啊」：免疫下 2 次伤害，并获得 10% 减伤 10s（CD 120s）",
+      "skills": [
+        { "id": "eggIdontKnow", "name": "我布道啊", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "immunity", "value": 2 }, { "type": "damageReduction", "value": 0.1, "duration": 10 }] }
+      ]
+    },
+    {
+      "id": "jibian",
+      "name": "机变藕不变",
+      "talent": "legendary",
+      "attrBias": "dex",
+      "jobId": "RPR",
+      "replaceSkills": false,
+      "desc": "使用钐镰客时追加「割草」：接下来 2 次技能威力翻倍（CD 120s）",
+      "skills": [
+        { "id": "eggMowing", "name": "割草", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "doublePowerCharges", "value": 2 }] }
+      ]
+    },
+    {
+      "id": "zhongtian",
+      "name": "种田JPG",
+      "talent": "legendary",
+      "attrBias": "int",
+      "jobId": null,
+      "replaceSkills": false,
+      "desc": "被动「幸运」：装备品阶高品质概率 +10%（任意职业）",
+      "skills": [],
+      "passive": { "type": "chestLuckBonus", "value": 0.1 }
+    }
+  ]
+}

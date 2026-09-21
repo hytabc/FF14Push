@@ -11,7 +11,7 @@ from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
 from app.models import ChestPity
 from app.schemas.game import ChestOpenRequest
 from app.services import consumables
-from app.services.drop_luck import rarity_luck, user_drop_rate
+from app.services.drop_luck import egg_luck, rarity_luck, user_drop_rate
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
@@ -69,7 +69,11 @@ async def open_chest(
         band_multiplier = LEVEL_BAND_MULTIPLIER[band]
 
     # 品阶爆率随通关进度提升（仅影响装备品阶，不含金币）+ 抽箱药水加成
-    luck = rarity_luck(await user_drop_rate(db, user.id)) + await consumables.chest_luck(db, user.id)
+    luck = (
+        rarity_luck(await user_drop_rate(db, user.id))
+        + await consumables.chest_luck(db, user.id)
+        + egg_luck(hero)
+    )
 
     unit_price = int(chest["price"] * band_multiplier)
     cost = unit_price * payload.count

@@ -7,6 +7,7 @@ import random
 import pytest
 
 from app.services.combat_model import (
+    max_gold_for_kill,
     max_kills_in_seconds,
     theoretical_boss_seconds,
     theoretical_dps,
@@ -33,7 +34,12 @@ from app.services.loot import (
     roll_rarity,
 )
 from app.services.combat_model import theoretical_dps
-from app.services.recruiting import ancient_pity_count, generate_candidate, generate_candidates
+from app.services.recruiting import (
+    ancient_pity_count,
+    generate_candidate,
+    generate_candidates,
+    normalize_candidate,
+)
 from app.services.regions_util import (
     apply_exp_bonus,
     exp_bonus_from_terms,
@@ -43,6 +49,7 @@ from app.services.regions_util import (
 from app.services.raid_util import all_raids, boss_stats_for_raid
 from app.services.slots_util import possible_slots
 from app.services.stats import compute_stats, convert_three_attrs
+from app.services.validator import validate_report
 from app.services.valuation import (
     attr_factor,
     attrs_score,
@@ -813,6 +820,58 @@ class TestRecruitingAncient:
 
     def test_pity_threshold_is_positive(self) -> None:
         assert ancient_pity_count() >= 1
+
+
+class TestRecruitingEgg:
+    """彩蛋英雄：共用 eggChance 概率，命中后固定资质/偏向，且忽略太古。"""
+
+    def test_roll_hit_produces_fixed_legendary(self, monkeypatch) -> None:
+        monkeypatch.setitem(CONFIG.egg_heroes, "eggChance", 1.0)
+        candidate = generate_candidate(1, random.Random(1))
+        assert candidate["eggId"] is not None
+        egg = {h["id"]: h for h in CONFIG.egg_heroes["heroes"]}[candidate["eggId"]]
+        assert candidate["name"] == egg["name"]
+        assert candidate["talent"] == egg["talent"] == "legendary"
+        assert candidate["attrBias"] == egg["attrBias"]
+        assert candidate["ancientAttr"] is None
+        spec = CONFIG.talents["talents"]["legendary"]
+        assert int(spec["pointMin"]) <= candidate["totalPoints"] <= int(spec["pointMax"])
+
+    def test_roll_miss_keeps_normal_hero(self) -> None:
+        # conftest 默认把 eggChance 置 0，等价于「未命中彩蛋」
+        candidate = generate_candidate(1, random.Random(1))
+        assert candidate["eggId"] is None
+        assert candidate["ancientAttr"] is None
+
+    def test_normalize_egg_forces_configured_talent(self) -> None:
+        egg = CONFIG.egg_heroes["heroes"][0]
+        candidate = normalize_candidate({"eggId": egg["id"], "talent": "common", "ancientAttr": "str"})
+        assert candidate["talent"] == egg["talent"]
+        assert candidate["ancientAttr"] is None
+
+
+class TestReportDoubleCharges:
+    """彩蛋「拔豆芽」：服务端按充能放宽单只怪物上限并扣减。"""
+
+    def test_without_charges_gold_is_clamped(self) -> None:
+        stats = compute_stats(FakeHero(level=50), [])
+        cap = int(max_gold_for_kill(1, "normal", stats))
+        gold = int(cap * 1.8)
+        result = validate_report(stats, 1, 5000, [{"monsterId": "normal", "gold": gold, "exp": 1}], 10)
+        assert result.doubled_kills == 0
+        assert result.total_gold == cap
+        assert any("截断" in issue for issue in result.issues)
+
+    def test_charges_relax_cap_and_are_counted(self) -> None:
+        stats = compute_stats(FakeHero(level=50), [])
+        cap = int(max_gold_for_kill(1, "normal", stats))
+        gold = int(cap * 1.8)  # 超过单倍上限，但在双倍上限内
+        kills = [{"monsterId": "normal", "gold": gold, "exp": int(gold * 1.0)} for _ in range(2)]
+        result = validate_report(stats, 1, 5000, kills, 10, double_charges=2)
+        assert result.accepted
+        assert result.doubled_kills == 2
+        assert result.total_gold == gold * 2
+        assert not any("截断" in issue for issue in result.issues)
 
 
 BASE_ID = "w_sword_shield_0"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.damage import hit_chance
+from app.services.egg_heroes import dps_uplift, skills_for
 from app.services.game_config import CONFIG
 from app.services.regions_util import (
     boss_stats,
@@ -24,9 +25,12 @@ ADVENTURER_SKILL = {"id": "attack", "name": "普攻", "cd": BASIC_ATTACK_CD, "po
 
 def resolve_job_skills(stats: HeroStats) -> list[dict[str, Any]]:
     job = CONFIG.job_by_id.get(stats.job_id)
-    if not job:
-        return [ADVENTURER_SKILL]
-    return list(job["skills"])
+    base = list(job["skills"]) if job else [ADVENTURER_SKILL]
+    egg = skills_for(stats.egg_id, stats.job_id)
+    if not egg:
+        return base
+    egg_skills, replace = egg
+    return list(egg_skills) if replace else [*egg_skills, *base]
 
 
 def damage_multiplier(stats: HeroStats) -> float:
@@ -71,7 +75,8 @@ def theoretical_dps(
     attack_rate = max(cast_rate, 1.0 / BASIC_ATTACK_CD)
     gross = power * (potency_per_sec / 100.0) * mult * skill_mult
     mitigated = max(gross * 0.10, gross - target_defense * attack_rate)
-    dps = max(1.0, mitigated)
+    # 彩蛋技能增伤按平均覆盖计入，避免合法的高输出上报被击杀额度误判
+    dps = max(1.0, mitigated) * dps_uplift(stats.egg_id)
 
     if penalty:
         dps *= hit_chance(stats, float(penalty.get("hitRatePenaltyPct", 0.0)))

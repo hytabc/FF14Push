@@ -80,6 +80,7 @@ class GameConfig:
     crafting: dict[str, Any]
     economy: dict[str, Any]
     talents: dict[str, Any]
+    egg_heroes: dict[str, Any]
     heroes: dict[str, Any]
     combat: dict[str, Any]
     tutorial: dict[str, Any]
@@ -171,6 +172,7 @@ def load_game_data() -> GameConfig:
         "crafting": _load("crafting.json"),
         "economy": _load("economy.json"),
         "talents": _load("talents.json"),
+        "eggHeroes": _load("egg-heroes.json"),
         "heroes": _load("heroes.json"),
         "combat": _load("combat.json"),
         "tutorial": _load("tutorial.json"),
@@ -261,6 +263,7 @@ def load_game_data() -> GameConfig:
         crafting=raw["crafting"],
         economy=raw["economy"],
         talents=raw["talents"],
+        egg_heroes=raw["eggHeroes"],
         heroes=raw["heroes"],
         combat=raw["combat"],
         tutorial=raw["tutorial"],

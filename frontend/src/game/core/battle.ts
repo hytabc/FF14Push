@@ -18,6 +18,7 @@ import {
   skillDamageMultiplier,
   type SkillLike,
 } from './combat'
+import { eggSkillSet } from './egg'
 import {
   bossStats,
   eliteChance,
@@ -90,6 +91,12 @@ export class BattleSimulator {
   heroMp = 0
   mechanismFailures: string[] = []
   shield = 0
+  /** 彩蛋技能「免疫」剩余次数：命中时优先消耗。 */
+  immunityCharges = 0
+  /** 彩蛋技能「割草」剩余次数：接下来 N 次技能威力翻倍。 */
+  doublePowerCharges = 0
+  /** 彩蛋技能「拔豆芽」剩余次数：接下来 N 个怪物经验/金币翻倍。 */
+  doubleRewardCharges = 0
 
   log: LogEntry[] = []
   floating: FloatingText[] = []
@@ -113,6 +120,7 @@ export class BattleSimulator {
   private readonly raidEnrage: RaidEnrage | null
 
   private baseStats: HeroStats
+  private readonly eggId: string | null
   private buffs: ActiveBuff[] = []
   private dots: Array<{ remaining: number; potency: number; tick: number }> = []
   /** BOSS 施加给英雄的持续伤害（高难副本）。 */
@@ -129,8 +137,11 @@ export class BattleSimulator {
     spawnInterval?: number
     killCount?: number
     raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null }
+    /** 彩蛋英雄 id：命中对应职业时追加/替换技能。 */
+    eggId?: string | null
   }) {
     this.baseStats = options.stats
+    this.eggId = options.eggId ?? null
     this.isRaid = options.raid !== undefined
     this.raidEnrage = options.raid?.enrage ?? null
     this.killsRequired = options.killsRequired ?? 0
@@ -246,6 +257,9 @@ export class BattleSimulator {
         case 'allDamageBuff':
           clone.detBonusPct += buff.value * 100
           break
+        case 'skillDamageBuff':
+          clone.termMods.skillDamagePct = (clone.termMods.skillDamagePct ?? 0) + buff.value * 100
+          break
         case 'critRateBuff':
           clone.critRatePct += buff.value * 100
           break
@@ -263,7 +277,11 @@ export class BattleSimulator {
   }
 
   get skills(): SkillLike[] {
-    return this.baseStats.jobId === 'adventurer' ? [ADVENTURER_SKILL] : jobSkills(this.baseStats.jobId)
+    const jobId = this.baseStats.jobId
+    const base = jobId === 'adventurer' ? [ADVENTURER_SKILL] : jobSkills(jobId)
+    const egg = eggSkillSet(this.eggId, jobId)
+    if (!egg) return base
+    return egg.replace ? egg.skills : [...egg.skills, ...base]
   }
 
   get monsterName(): string {
@@ -480,7 +498,12 @@ export class BattleSimulator {
     this.pendingSkillCasts[skill.id] = (this.pendingSkillCasts[skill.id] ?? 0) + 1
 
     if (skill.potency > 0 && this.monster) {
-      const mult = skillDamageMultiplier(stats, stats.jobId)
+      let mult = skillDamageMultiplier(stats, stats.jobId)
+      if (this.doublePowerCharges > 0) {
+        mult *= 2
+        this.doublePowerCharges -= 1
+        this.pushLog(`${skill.name} 触发「割草」，威力翻倍`, 'skill')
+      }
       const roll = rollDamage(
         stats,
         skill.potency,
@@ -569,6 +592,18 @@ export class BattleSimulator {
           this.heroMp = 0
           break
         }
+        case 'immunity':
+          this.immunityCharges += Math.max(0, Math.floor(value))
+          this.pushLog(`获得免疫，接下来 ${this.immunityCharges} 次伤害无效`, 'skill')
+          break
+        case 'doublePowerCharges':
+          this.doublePowerCharges += Math.max(0, Math.floor(value))
+          this.pushLog(`接下来 ${this.doublePowerCharges} 次技能威力翻倍`, 'skill')
+          break
+        case 'doubleRewardCharges':
+          this.doubleRewardCharges += Math.max(0, Math.floor(value))
+          this.pushLog(`接下来 ${this.doubleRewardCharges} 个怪物经验/金币翻倍`, 'skill')
+          break
         default:
           if (duration > 0 && (type.endsWith('Buff') || type === 'damageReduction')) {
             this.buffs.push({ stat: type, value, remaining: duration, name: skill.name })
@@ -585,6 +620,15 @@ export class BattleSimulator {
     return Math.max(0, 1 - this.penalty.defenseIgnorePct / 100)
   }
 
+  /** 消耗一层彩蛋「免疫」：返回 true 表示本次伤害被免疫。 */
+  private consumeImmunity(): boolean {
+    if (this.immunityCharges <= 0) return false
+    this.immunityCharges -= 1
+    this.pushFloat('免疫', 'hero', 'hero')
+    this.pushLog(`免疫了本次伤害（剩余 ${this.immunityCharges} 次）`, 'skill')
+    return true
+  }
+
   private tickMonster(dt: number): void {
     if (!this.monster) return
     this.monsterAttackTimer -= dt
@@ -599,6 +643,7 @@ export class BattleSimulator {
       this.pushFloat('闪避', 'hero', 'hero')
       return
     }
+    if (this.consumeImmunity()) return
     let damage = rollIncoming(
       this.monster!.attack * this.bossAttackMultiplier(),
       100,
@@ -748,6 +793,7 @@ export class BattleSimulator {
       this.pushFloat('闪避', 'hero', 'hero')
       return
     }
+    if (this.consumeImmunity()) return
     const attackBuff = enemy.selfBuffs.reduce((sum, b) => (b.stat === 'attackBuff' ? sum + b.value : sum), 0)
     const attack = enemy.stats.attack * (1 + attackBuff)
     const defense = (skill.damageType === 'magical' ? stats.magicDef : stats.physDef) * this.defenseScale
@@ -784,6 +830,7 @@ export class BattleSimulator {
       dot.tick -= dt
       if (dot.tick <= 0) {
         dot.tick = 1
+        if (this.consumeImmunity()) continue
         let damage = Math.max(1, Math.floor(base * (dot.potencyPerSec / 100) * (1 + this.penalty.damageTakenBonusPct / 100)))
         const absorbed = Math.min(this.shield, damage)
         this.shield -= absorbed
@@ -805,14 +852,20 @@ export class BattleSimulator {
 
     if (!this.isRaid) {
       // 地区战斗：小怪计入上报，BOSS 触发通关
-      const gold = this.rollGold(monster.kind)
+      let gold = this.rollGold(monster.kind)
+      let doubled = false
+      if (!isBoss && this.doubleRewardCharges > 0) {
+        this.doubleRewardCharges -= 1
+        gold *= 2
+        doubled = true
+      }
       const exp = Math.max(1, Math.floor(gold * data.monsters.xpPerGold))
       if (isBoss) {
         this.pendingBossKill = true
       } else {
         // 装备不再由怪物掉落：只能通过抽箱获取
         this.pendingKills.push({ monsterId: monster.templateId, gold, exp })
-        this.pushLog(`击败 ${monster.name}，获得 ${gold} 金币`, 'loot')
+        this.pushLog(`击败 ${monster.name}，获得 ${gold} 金币${doubled ? '（翻倍）' : ''}`, 'loot')
       }
     }
 
