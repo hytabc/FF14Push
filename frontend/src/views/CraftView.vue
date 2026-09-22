@@ -129,7 +129,7 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
       </div>
     </section>
 
-    <section class="card p-4">
+    <section data-tutorial="craft" class="card p-4">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-white">一键合成预览</h3>
         <span class="text-xs text-ink-400">

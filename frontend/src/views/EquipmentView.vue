@@ -92,7 +92,7 @@ async function unequipDohdol(slot: string) {
 
 <template>
   <div class="space-y-4">
-    <section class="card p-4">
+    <section data-tutorial="equipment" class="card p-4">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold text-white">英雄装备</h2>
         <span class="text-xs text-ink-400">共 {{ slots.length }} 个栏位（含双戒指）</span>

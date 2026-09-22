@@ -151,6 +151,7 @@ function tagStyle(colorId: string) {
       <button
         v-if="!isDedicated"
         class="rounded bg-indigo-600/70 px-2 py-1 text-[11px] text-white hover:bg-indigo-500"
+        data-tutorial="refine"
         @click="itemActions.requestRefine(item)"
       >
         重造
@@ -158,6 +159,7 @@ function tagStyle(colorId: string) {
       <button
         v-if="!isDedicated"
         class="rounded bg-fuchsia-600/70 px-2 py-1 text-[11px] text-white hover:bg-fuchsia-500"
+        data-tutorial="enchant"
         @click="itemActions.requestEnchant(item)"
       >
         附魔
@@ -171,6 +173,7 @@ function tagStyle(colorId: string) {
       <button
         v-if="!item.equippedSlot"
         class="rounded bg-amber-600/70 px-2 py-1 text-[11px] text-white hover:bg-amber-500"
+        data-tutorial="sell"
         @click="itemActions.requestSell(item)"
       >
         出售 {{ item.sellPriceMin }}~{{ item.sellPriceMax }}

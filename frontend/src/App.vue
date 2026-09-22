@@ -78,7 +78,7 @@ async function logout() {
   </div>
 
   <div v-else class="flex min-h-full flex-col">
-    <header class="sticky top-0 z-40 border-b border-ink-700/70 bg-ink-950/85 backdrop-blur">
+    <header data-app-header class="sticky top-0 z-40 border-b border-ink-700/70 bg-ink-950/85 backdrop-blur">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-3 py-2">
         <RouterLink to="/" class="text-sm font-bold tracking-wide text-amber-200">
           艾欧泽亚放置录
@@ -115,8 +115,9 @@ async function logout() {
       </nav>
     </header>
 
-    <main class="mx-auto w-full max-w-6xl flex-1 px-3 py-4">
-      <RouterView />
+    <main class="tutorial-layout mx-auto w-full max-w-6xl flex-1 px-3 py-4">
+      <div class="min-w-0"><RouterView /></div>
+      <TutorialOverlay />
     </main>
 
     <footer class="border-t border-ink-800 px-3 py-3 text-center text-[11px] text-ink-600">
@@ -127,6 +128,5 @@ async function logout() {
     <LootBubbles />
     <ItemActionDialogs />
     <TagDialog />
-    <TutorialOverlay />
   </div>
 </template>

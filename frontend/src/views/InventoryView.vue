@@ -261,7 +261,7 @@ async function batchSell() {
       </div>
     </section>
 
-    <section class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <section data-tutorial="inventory" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <ItemCard
         v-for="item in pageItems"
         :key="item.id"

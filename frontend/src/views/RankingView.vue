@@ -171,7 +171,7 @@ function pickDungeon(id: string) {
 
 <template>
   <div class="space-y-4">
-    <section class="card p-4">
+    <section data-tutorial="ranking" class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">排行榜</h2>
         <span class="text-xs text-ink-400">{{ current.hint }}</span>

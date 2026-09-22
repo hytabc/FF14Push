@@ -320,7 +320,7 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
         <p v-else class="mt-3 text-xs text-ink-500">当前没有英雄，可花费金币招募一名。</p>
       </section>
 
-      <section class="card p-4">
+      <section data-tutorial="recruit" class="card p-4">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold text-white">候选英雄</h3>
           <div class="flex gap-2">

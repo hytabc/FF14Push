@@ -145,7 +145,7 @@ function bestRarity(): string {
       </div>
     </section>
 
-    <section class="grid gap-3 md:grid-cols-2">
+    <section data-tutorial="chest" class="grid gap-3 md:grid-cols-2">
       <article v-for="chest in chests" :key="chest.id" class="card p-4">
         <div class="flex items-start justify-between">
           <div>
