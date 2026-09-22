@@ -25,7 +25,13 @@ const BOARDS = [
   { id: 'playtime', label: '游玩时间榜', hint: '累计在线时长降序' },
   { id: 'fish_species', label: '钓鱼种类榜', hint: '钓到的鱼类种类数降序' },
   { id: 'fish_count', label: '钓鱼数量榜', hint: '累计钓鱼数量降序' },
+  { id: 'doh_exp', label: '生产经验榜', hint: '累计生产经验降序（满级后仍继续累计）' },
+  { id: 'dol_exp', label: '采集经验榜', hint: '累计采集经验降序（含钓鱼，满级后仍继续累计）' },
+  { id: 'doh_attr', label: '生产属性榜', hint: '已装备生产专用装备属性总值降序' },
+  { id: 'dol_attr', label: '采集属性榜', hint: '已装备采集专用装备属性总值降序' },
 ]
+
+const DOHDOL_BOARDS = ['doh_exp', 'dol_exp', 'doh_attr', 'dol_attr']
 
 const board = ref('level')
 const page = ref(1)
@@ -67,6 +73,8 @@ function valueText(entry: RankingEntry): string {
   if (board.value === 'playtime') return formatPlaytime(entry.value)
   if (board.value === 'fish_species') return `${entry.value} 种`
   if (board.value === 'fish_count') return `${formatNumber(entry.value)} 条`
+  if (board.value === 'doh_exp' || board.value === 'dol_exp') return `${formatNumber(entry.value)} 经验`
+  if (board.value === 'doh_attr' || board.value === 'dol_attr') return `${formatNumber(entry.value)} 属性`
   return String(entry.value)
 }
 
@@ -91,6 +99,14 @@ function fishBreakdown(entry: RankingEntry): { normal: number; king: number; emp
     normal: Number(entry.payload?.fishNormal ?? 0),
     king: Number(entry.payload?.fishKing ?? 0),
     emperor: Number(entry.payload?.fishEmperor ?? 0),
+  }
+}
+
+/** 生产/采集榜：行内展示生产 / 采集等级（来自 payload）。 */
+function dohdolLevels(entry: RankingEntry): { doh: number; dol: number } {
+  return {
+    doh: Number(entry.payload?.dohLevel ?? 1),
+    dol: Number(entry.payload?.dolLevel ?? 1),
   }
 }
 
@@ -169,6 +185,9 @@ function openProfile(entry: RankingEntry) {
                 普通 {{ fishBreakdown(entry).normal }} ·
                 鱼王 {{ fishBreakdown(entry).king }}/{{ FISH_REGION_TOTAL }} ·
                 鱼皇 {{ fishBreakdown(entry).emperor }}/{{ FISH_REGION_TOTAL }}
+              </div>
+              <div v-if="DOHDOL_BOARDS.includes(board)" class="mt-0.5 text-[10px] text-ink-500">
+                生产 Lv.{{ dohdolLevels(entry).doh }} · 采集 Lv.{{ dohdolLevels(entry).dol }}
               </div>
             </td>
             <td class="whitespace-nowrap px-3 py-2 text-right text-ink-400">{{ playtimeText(entry) }}</td>

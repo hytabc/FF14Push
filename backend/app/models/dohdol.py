@@ -26,6 +26,8 @@ class DohDolProgress(Base, TimestampMixin):
     kind: Mapped[str] = mapped_column(sa.String(8))
     level: Mapped[int] = mapped_column(sa.Integer, default=1)
     exp: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    # 累计经验：升级扣减 / 满级清零都不影响它，用于排行榜（满级后仍继续累计）。
+    total_exp: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default="0")
 
 
 class StackItem(Base):

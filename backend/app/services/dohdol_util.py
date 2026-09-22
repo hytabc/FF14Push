@@ -39,6 +39,8 @@ def exp_to_next(level: int) -> int:
 def apply_level_exp(progress: Any, amount: int) -> dict[str, int]:
     if amount <= 0:
         return {"levelsGained": 0, "level": progress.level, "exp": progress.exp}
+    # 累计经验：与等级曲线无关，满级后仍继续累计（用于排行榜）。
+    progress.total_exp = int(getattr(progress, "total_exp", 0) or 0) + int(amount)
     progress.exp = int(progress.exp) + int(amount)
     gained = 0
     while progress.level < level_cap():

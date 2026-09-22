@@ -10,8 +10,11 @@ from app.models import Hero, User
 from app.services.admin import is_admin
 from app.services.ranking import (
     BOARDS,
+    DOHDOL_BOARDS,
     FISH_BOARDS,
     fetch_board,
+    fetch_dohdol_board,
+    fetch_dohdol_user_rank,
     fetch_fish_board,
     fetch_fish_user_rank,
     fetch_user_rank,
@@ -32,14 +35,20 @@ _DEDICATED_CATEGORIES = {"doh_tool", "doh_gear", "dol_tool", "dol_gear"}
 async def ranking(
     db: DbSession,
     user: OptionalUser,
-    board: str = Query("level", pattern="^(level|stage|power|gold|playtime|fish_species|fish_count)$"),
+    board: str = Query(
+        "level",
+        pattern="^(level|stage|power|gold|playtime|fish_species|fish_count|doh_exp|dol_exp|doh_attr|dol_attr)$",
+    ),
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=100),
 ) -> dict:
-    # 钓鱼榜实时聚合（刚钓完即可见），其余榜单读 5 分钟缓存
+    # 钓鱼榜 / 生产采集榜实时聚合（刚完成即可见），其余榜单读 5 分钟缓存
     if board in FISH_BOARDS:
         entries = await fetch_fish_board(db, board, page, pageSize)
         mine = await fetch_fish_user_rank(db, board, user.id) if user else None
+    elif board in DOHDOL_BOARDS:
+        entries = await fetch_dohdol_board(db, board, page, pageSize)
+        mine = await fetch_dohdol_user_rank(db, board, user.id) if user else None
     else:
         entries = await fetch_board(db, board, page, pageSize)
         mine = await fetch_user_rank(db, board, user.id) if user else None

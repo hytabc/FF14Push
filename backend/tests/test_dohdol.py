@@ -152,6 +152,24 @@ class TestSharedData:
         total = sum(dohdol_util.exp_to_next(l) for l in range(1, dohdol_util.level_cap()))
         assert total < 200_000, f"1→100 总经验 {total} 偏高，超出约 10h 的练满预算"
 
+    def test_total_exp_tracks_raw_award(self):
+        """累计经验按原始经验累加，与当前等级内经验相互独立。"""
+        progress = SimpleNamespace(level=1, exp=0, total_exp=0)
+        info = dohdol_util.apply_level_exp(progress, 50)
+        assert info["levelsGained"] == 0
+        assert progress.exp == 50
+        assert progress.total_exp == 50
+
+    def test_total_exp_accumulates_past_level_cap(self):
+        """满级后不再升级、当前等级经验清零，但累计经验继续增长。"""
+        progress = SimpleNamespace(level=dohdol_util.level_cap(), exp=0, total_exp=0)
+        dohdol_util.apply_level_exp(progress, 500)
+        assert progress.level == dohdol_util.level_cap()
+        assert progress.exp == 0, "满级后当前等级经验清零"
+        assert progress.total_exp == 500, "满级后累计经验仍继续累加"
+        dohdol_util.apply_level_exp(progress, 300)
+        assert progress.total_exp == 800
+
 
 class TestCraftedItem:
     def test_high_quality_combat_equipment(self):
@@ -721,9 +739,10 @@ class TestFishingRanking:
         assert payload["fishSpecies"] == payload["fishNormal"] + payload["fishKing"] + payload["fishEmperor"]
         assert payload["fishKing"] >= 0 and payload["fishEmperor"] >= 0
 
-        # 榜单是 5 个缓存榜（含游玩时间）+ 2 个钓鱼榜
+        # 榜单是 5 个缓存榜（含游玩时间）+ 2 个钓鱼榜 + 4 个生产采集榜
         assert board.json()["boards"] == [
             "level", "stage", "power", "gold", "playtime", "fish_species", "fish_count",
+            "doh_exp", "dol_exp", "doh_attr", "dol_attr",
         ]
 
     @pytest.mark.asyncio
@@ -731,6 +750,63 @@ class TestFishingRanking:
         """没钓鱼的玩家不应出现在钓鱼榜上。"""
         await auth_client.post("/api/v1/ranking/refresh", json={})
         board = await auth_client.get("/api/v1/ranking", params={"board": "fish_species"})
+        assert board.status_code == 200
+        assert board.json()["entries"] == []
+
+
+class TestDohDolRanking:
+    """生产/采集榜：实时聚合（不需缓存刷新），刚完成即可见。"""
+
+    async def _gather_once(self, auth_client, session_factory) -> None:
+        start = await auth_client.post("/api/v1/gather/session/start", json={"jobId": "MIN", "regionId": 1})
+        assert start.status_code == 200, start.text
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 20)
+            await db.commit()
+        rep = await auth_client.post("/api/v1/gather/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+
+    @pytest.mark.asyncio
+    async def test_exp_board_is_live_without_refresh(self, auth_client, session_factory):
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        await self._gather_once(auth_client, session_factory)
+
+        board = await auth_client.get("/api/v1/ranking", params={"board": "dol_exp"})
+        assert board.status_code == 200, board.text
+        row = next((e for e in board.json()["entries"] if e["userId"] == me["id"]), None)
+        assert row is not None, "采集后应立即出现在采集经验榜（不依赖缓存刷新）"
+        assert row["value"] > 0
+        assert row["payload"]["dolLevel"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_attr_board_counts_equipped_dedicated_gear(self, auth_client, session_factory):
+        from app.models import User
+        from app.services.grants import insert_items
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            user = (await db.execute(select(User).where(User.id == me["id"]))).scalar_one()
+            generated = generate_crafted_item("dh_dohTool_0", random.Random(5))
+            created = await insert_items(db, user, [generated], source="craft")
+            await db.commit()
+        item_id = created[0]["id"]
+
+        equip = await auth_client.post("/api/v1/dohdol/equip", json={"itemId": item_id, "slot": "dohTool"})
+        assert equip.status_code == 200, equip.text
+
+        board = await auth_client.get("/api/v1/ranking", params={"board": "doh_attr"})
+        assert board.status_code == 200, board.text
+        row = next((e for e in board.json()["entries"] if e["userId"] == me["id"]), None)
+        assert row is not None and row["value"] > 0, "装备生产专用装备后应出现在生产属性榜"
+
+    @pytest.mark.asyncio
+    async def test_no_activity_no_dohdol_entry(self, auth_client):
+        """没有生产/采集的玩家不应出现在这些榜上。"""
+        board = await auth_client.get("/api/v1/ranking", params={"board": "doh_exp"})
         assert board.status_code == 200
         assert board.json()["entries"] == []
 

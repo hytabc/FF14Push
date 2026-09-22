@@ -20,6 +20,45 @@ const loading = ref(false)
 const keyword = ref('')
 const onlyUnlocked = ref(false)
 
+/** 装备图鉴专属筛选：种类 / 部位 / 等级范围。 */
+const equipCategory = ref('all')
+const equipSlot = ref('all')
+const equipLevelMin = ref<number | ''>('')
+const equipLevelMax = ref<number | ''>('')
+
+const EQUIP_CATEGORY_ORDER = ['weapon', 'armor', 'accessory'] as const
+
+const equipCategoryOptions = computed(() => {
+  const present = new Set(entries.value.map((e) => String(e.category)))
+  return [
+    { id: 'all', label: '全部种类' },
+    ...EQUIP_CATEGORY_ORDER.filter((c) => present.has(c)).map((c) => ({ id: c as string, label: categoryName(c) })),
+  ]
+})
+
+const equipSlotOptions = computed(() => {
+  const present = new Set(entries.value.map((e) => String(e.equipSlots?.[0] ?? e.slot)))
+  return [
+    { id: 'all', label: '全部部位' },
+    ...data.slots.filter((s) => present.has(s.id)).map((s) => ({ id: s.id as string, label: s.name })),
+  ]
+})
+
+const hasEquipFilters = computed(
+  () =>
+    equipCategory.value !== 'all' ||
+    equipSlot.value !== 'all' ||
+    equipLevelMin.value !== '' ||
+    equipLevelMax.value !== '',
+)
+
+function resetEquipFilters() {
+  equipCategory.value = 'all'
+  equipSlot.value = 'all'
+  equipLevelMin.value = ''
+  equipLevelMax.value = ''
+}
+
 const TABS = [
   { id: 'equipment', label: '装备图鉴' },
   { id: 'monster', label: '怪物图鉴' },
@@ -60,13 +99,24 @@ async function load() {
 }
 
 onMounted(load)
-watch(category, load)
+watch(category, () => {
+  resetEquipFilters()
+  void load()
+})
 
 const filtered = computed(() => {
   let list = entries.value
   if (onlyUnlocked.value) list = list.filter((e) => e.unlocked)
   const kw = keyword.value.trim()
   if (kw) list = list.filter((e) => String(e.name ?? '').includes(kw))
+  if (category.value === 'equipment') {
+    const min = typeof equipLevelMin.value === 'number' ? equipLevelMin.value : null
+    const max = typeof equipLevelMax.value === 'number' ? equipLevelMax.value : null
+    list = list
+      .filter((e) => equipCategory.value === 'all' || e.category === equipCategory.value)
+      .filter((e) => equipSlot.value === 'all' || (e.equipSlots?.[0] ?? e.slot) === equipSlot.value)
+      .filter((e) => (min === null || e.levelReq >= min) && (max === null || e.levelReq <= max))
+  }
   return list
 })
 
@@ -122,6 +172,43 @@ function entryRarity(entry: Entry): RarityId {
         >
           {{ tab.label }}
         </button>
+      </div>
+
+      <div v-if="category === 'equipment'" class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <select v-model="equipCategory" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+          <option v-for="opt in equipCategoryOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+        </select>
+        <select v-model="equipSlot" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+          <option v-for="opt in equipSlotOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+        </select>
+        <label class="flex items-center gap-1 text-ink-400">
+          等级
+          <input
+            v-model.number="equipLevelMin"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="最低"
+            class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          />
+          <span class="text-ink-600">-</span>
+          <input
+            v-model.number="equipLevelMax"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="最高"
+            class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          />
+        </label>
+        <button
+          v-if="hasEquipFilters"
+          class="rounded bg-ink-800 px-2.5 py-1.5 text-ink-300 transition hover:bg-ink-700"
+          @click="resetEquipFilters"
+        >
+          重置
+        </button>
+        <span class="ml-auto text-ink-500">共 {{ filtered.length }} 件</span>
       </div>
     </section>
 
