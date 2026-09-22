@@ -1,15 +1,15 @@
 {
-  "$comment": "副本：无小怪、仅 BOSS；属性以玩家等级锚定后放大，BOSS 自带抗性。difficulty=normal 为普通高难（极*，Lv20/40/60/80），difficulty=hard 为高难度高难（绝*，满级 Lv100）。两者都按 requiredLevel 开放。来源：需求「高难副本」",
-  "$commentGate": "门槛字段：requiredLevel 为等级下限；minEquipRarity 为全部装备品阶下限；minAncientTermsPerItem 要求每件装备至少有 N 个太古词条。极* = 全神话 + 2 太古/件，绝* = 全神话 + 2（绝·究极神兵）/ 3（绝·巴哈姆特零式）太古/件。",
-  "$commentBalance": "战力缩放：BOSS 血量 ×(玩家DPS ÷ 本等级参考DPS)^powerScaleExponent，攻击 ×同比例的 attackScaleExponent 次方。参考DPS = 等级锚定DPS × refDpsMultiplier[难度]，即「刚好够门槛的装备」在该等级的输出；比值下限为 1，所以只有超出门槛的装备才会让 BOSS 变强。exponent=0 即只按等级锚定，=1 则耗时恒定。系数由真实模拟器（BattleSimulator）标定。",
+  "$comment": "副本：无小怪、仅 BOSS；BOSS 属性**固定锚定到 challengeLevel（目标等级）**，不再随玩家等级或战力变化。difficulty=normal 为普通高难（极*，进入 Lv20/40/60/80），difficulty=hard 为高难度高难（绝*，满级 Lv100）。来源：需求「高难副本」",
+  "$commentGate": "门槛字段：requiredLevel 为进入等级下限（普通副本为推荐值、不拦截，绝* 为硬门槛）；minEquipRarity 为全部装备品阶下限；minAncientTermsPerItem 要求每件装备至少有 N 个太古词条。极* = 全神话 + 2 太古/件，绝* = 全神话 + 2（绝·究极神兵）/ 3（绝·巴哈姆特零式）太古/件。",
+  "$commentChallenge": "challengeLevel = 该副本的目标等级：BOSS 数值固定按此等级锚定，且英雄等级低于它时按 regions.levelPenalty 受到等级压制（命中/输出/承伤/防御衰减）。因此「只到进入等级」不足以通关，需要练到目标等级并配好装备。绝* 目标等级为满级 100，靠装备门槛形成墙壁。",
+  "$commentReward": "奖励基准 = 同等级地区一次完整刷取（小怪 + BOSS）的金币 × 副本系数：极* 首通 ×10 / 重刷 ×1.5，绝* 首通 ×12~15 / 重刷 ×2；经验与金币同源（绝* 经验在满级溢出，取 1×）。",
+  "$commentDaily": "dailyRewardClears = 每个账号每天可获得的奖励通关次数（首通计入）；超出后仍可挑战/记录用时，但不再产出金币、经验与宝箱，用于防止反复刷取。",
   "$commentEnrage": "双 BOSS：一方阵亡后存活者狂暴（攻击 ×3.5、减伤 30%、攻速 +30%）。减伤过高会让第二只 BOSS 拖到必死，故取 30%。",
   "$commentSkillPool": "副本 BOSS 共享技能池：每个 BOSS 都会带上这些技能（与自身类型技能去重）。客户端为每个 BOSS 维护一个共享 CD（bossSkillIntervalSeconds），到点后从技能池中「随机」抽一个释放，而不是各技能独立 CD。",
-  "$commentRequiredPower": "战力按 v2 递减模型重标定；权威门槛位于 balance.json。普通为推荐战力，高难为最低战力。",
+  "$commentRequiredPower": "战力门槛按 v2 递减模型标定；权威门槛位于 balance.json（普通为推荐战力，高难为最低战力）。",
   "balance": {
-    "powerScaleExponent": 0.8,
-    "attackScaleExponent": 0.4,
-    "refDpsMultiplier": { "normal": 28, "hard": 28 },
-    "bossSkillIntervalSeconds": 6
+    "bossSkillIntervalSeconds": 6,
+    "dailyRewardClears": 3
   },
   "bossSkillPool": [
     { "id": "annihilation", "name": "湮灭", "effect": "nuke", "potency": 400, "desc": "造成 400% 攻击力的高威力伤害" },
@@ -33,12 +33,14 @@
       "difficulty": "normal",
       "name": "极·究极神兵",
       "requiredLevel": 20,
+      "challengeLevel": 27,
       "requiredPower": 10000,
       "requiresAllSlots": true,
       "minEquipRarity": "mythic",
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
+      "dailyRewardClears": 3,
       "enrage": null,
       "bosses": [
         {
@@ -53,12 +55,12 @@
         }
       ],
       "reward": {
-        "firstGold": 50000,
-        "firstExp": 80000,
+        "firstGold": 35000,
+        "firstExp": 70000,
         "chestId": "advWeaponBox",
         "boxCount": 2,
-        "repeatGold": 2000,
-        "repeatExp": 8000
+        "repeatGold": 5000,
+        "repeatExp": 10000
       }
     },
     {
@@ -67,12 +69,14 @@
       "difficulty": "normal",
       "name": "极·尼德霍格",
       "requiredLevel": 40,
+      "challengeLevel": 47,
       "requiredPower": 25000,
       "requiresAllSlots": true,
       "minEquipRarity": "mythic",
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
+      "dailyRewardClears": 3,
       "enrage": null,
       "bosses": [
         {
@@ -87,11 +91,11 @@
         }
       ],
       "reward": {
-        "firstGold": 300000,
-        "firstExp": 400000,
+        "firstGold": 135000,
+        "firstExp": 270000,
         "chestId": "advWeaponBox",
         "boxCount": 3,
-        "repeatGold": 8000,
+        "repeatGold": 20000,
         "repeatExp": 40000
       }
     },
@@ -101,12 +105,14 @@
       "difficulty": "normal",
       "name": "极·双神战",
       "requiredLevel": 60,
+      "challengeLevel": 67,
       "requiredPower": 42000,
       "requiresAllSlots": true,
       "minEquipRarity": "mythic",
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
+      "dailyRewardClears": 3,
       "enrage": { "attackMultiplier": 3.5, "damageReductionPct": 30, "attackSpeedBonusPct": 30 },
       "bosses": [
         {
@@ -131,12 +137,12 @@
         }
       ],
       "reward": {
-        "firstGold": 1200000,
-        "firstExp": 1500000,
+        "firstGold": 550000,
+        "firstExp": 1100000,
         "chestId": "advWeaponBox",
         "boxCount": 4,
-        "repeatGold": 25000,
-        "repeatExp": 150000
+        "repeatGold": 80000,
+        "repeatExp": 160000
       }
     },
     {
@@ -145,12 +151,14 @@
       "difficulty": "normal",
       "name": "极·暗黑双王",
       "requiredLevel": 80,
+      "challengeLevel": 87,
       "requiredPower": 52000,
       "requiresAllSlots": true,
       "minEquipRarity": "mythic",
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
+      "dailyRewardClears": 3,
       "enrage": { "attackMultiplier": 3.5, "damageReductionPct": 30, "attackSpeedBonusPct": 30 },
       "bosses": [
         {
@@ -175,12 +183,12 @@
         }
       ],
       "reward": {
-        "firstGold": 4000000,
-        "firstExp": 5000000,
+        "firstGold": 2700000,
+        "firstExp": 5400000,
         "chestId": "advWeaponBox",
         "boxCount": 5,
-        "repeatGold": 60000,
-        "repeatExp": 500000
+        "repeatGold": 400000,
+        "repeatExp": 800000
       }
     },
     {
@@ -189,12 +197,14 @@
       "difficulty": "hard",
       "name": "绝·究极神兵",
       "requiredLevel": 100,
+      "challengeLevel": 100,
       "requiredPower": 60000,
       "requiresAllSlots": true,
       "minEquipRarity": "mythic",
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
+      "dailyRewardClears": 1,
       "enrage": null,
       "bosses": [
         {
@@ -209,13 +219,13 @@
         }
       ],
       "reward": {
-        "firstGold": 3000000,
-        "firstExp": 5000000,
+        "firstGold": 9000000,
+        "firstExp": 9000000,
         "boxTier": "boss",
         "slotChoice": true,
         "boxCount": 5,
-        "repeatGold": 150000,
-        "repeatExp": 900000
+        "repeatGold": 1500000,
+        "repeatExp": 1500000
       }
     },
     {
@@ -224,12 +234,14 @@
       "difficulty": "hard",
       "name": "绝·巴哈姆特零式",
       "requiredLevel": 100,
+      "challengeLevel": 100,
       "requiredPower": 62000,
       "requiresAllSlots": true,
       "minEquipRarity": "mythic",
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 3,
+      "dailyRewardClears": 1,
       "enrage": { "attackMultiplier": 3.5, "damageReductionPct": 30, "attackSpeedBonusPct": 30 },
       "bosses": [
         {
@@ -254,13 +266,13 @@
         }
       ],
       "reward": {
-        "firstGold": 8000000,
-        "firstExp": 12000000,
+        "firstGold": 11500000,
+        "firstExp": 11500000,
         "boxTier": "boss",
         "slotChoice": true,
         "boxCount": 8,
-        "repeatGold": 400000,
-        "repeatExp": 2000000
+        "repeatGold": 1500000,
+        "repeatExp": 1500000
       }
     }
   ]

@@ -210,7 +210,12 @@ export interface RaidDef {
   order: number
   name: string
   difficulty?: 'normal' | 'hard'
+  /** 进入等级下限（普通副本为推荐值，绝* 为硬门槛）。 */
   requiredLevel: number
+  /** 目标等级：BOSS 数值固定按此等级锚定，低于它会被等级压制。 */
+  challengeLevel?: number
+  /** 每个账号每天可获得奖励的通关次数（首通计入）。 */
+  dailyRewardClears?: number
   requiredPower: number
   requiresAllSlots: boolean
   enrage: RaidEnrageDef | null
@@ -646,10 +651,9 @@ export const gameData = {
   },
   raids: raidsJson as unknown as {
     balance: {
-      powerScaleExponent: number
-      attackScaleExponent: number
-      refDpsMultiplier: Record<string, number>
       bossSkillIntervalSeconds: number
+      /** 默认每日奖励通关次数（副本可各自覆盖）。 */
+      dailyRewardClears: number
     }
     /** 副本 BOSS 共享技能池：附加到每个副本 BOSS 上。 */
     bossSkillPool: unknown[]

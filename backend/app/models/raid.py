@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime as dt
+
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,7 +30,7 @@ class RaidSession(Base, TimestampMixin):
 
 
 class RaidProgress(Base, TimestampMixin):
-    """每个账号对每个副本的进度：是否已通关、最快用时、通关次数。"""
+    """每个账号对每个副本的进度：是否已通关、最快用时、通关次数，以及每日奖励计数。"""
 
     __tablename__ = "raid_progress"
     __table_args__ = (sa.UniqueConstraint("user_id", "raid_id", name="uq_raid_progress"),)
@@ -40,3 +42,6 @@ class RaidProgress(Base, TimestampMixin):
     cleared_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     best_clear_ms: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     clear_count: Mapped[int] = mapped_column(sa.Integer, default=0)
+    # 每日奖励通关计数：reward_day 为计数所属日期（UTC），跨天自动清零，用于防刷。
+    reward_day: Mapped[dt.date | None] = mapped_column(sa.Date, nullable=True)
+    rewarded_today: Mapped[int] = mapped_column(sa.Integer, default=0)

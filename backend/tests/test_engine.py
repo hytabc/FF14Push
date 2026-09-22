@@ -45,9 +45,16 @@ from app.services.regions_util import (
     apply_exp_bonus,
     exp_bonus_from_terms,
     level_penalty,
+    level_penalty_for_level,
     monster_base_stats,
 )
-from app.services.raid_util import all_raids, boss_stats_for_raid
+from app.services.raid_util import (
+    all_raids,
+    boss_stats_for_raid,
+    challenge_level,
+    daily_reward_clears,
+    raid_penalty,
+)
 from app.services.slots_util import possible_slots
 from app.services.stats import compute_stats, convert_three_attrs
 from app.services.validator import validate_report
@@ -420,32 +427,55 @@ class TestSubAttrQuality:
         assert sell_price(ancient) > sell_price(plain)
 
 
-class TestRaidScaling:
-    """副本 BOSS 需随玩家战力缩放，避免装备超模后碾压。"""
+class TestRaidFixedDifficulty:
+    """副本取消战力动态缩放：BOSS 数值固定锚定目标等级，低于目标等级由等级压制兜底。"""
 
-    def test_boss_grows_with_player_power(self) -> None:
+    def test_boss_stats_ignore_player_level(self) -> None:
+        for raid in all_raids():
+            low = boss_stats_for_raid(raid, 1)[0]
+            high = boss_stats_for_raid(raid, 100)[0]
+            assert low["hp"] == high["hp"]
+            assert low["attack"] == high["attack"]
+            assert low["defense"] == high["defense"]
+            assert low["level"] == challenge_level(raid, 1)
+
+    def test_boss_stats_ignore_player_power(self) -> None:
         raid = CONFIG.raid_by_id["raid_h1"]
         pressure = TestRaidPressure()
         weak = compute_stats(FakeHero(level=100), pressure._bar_items(100, 2))
         strong = compute_stats(FakeHero(level=100), pressure._bar_items(100, 4))
+        assert boss_stats_for_raid(raid, 100, weak)[0]["hp"] == boss_stats_for_raid(raid, 100, strong)[0]["hp"]
 
-        weak_boss = boss_stats_for_raid(raid, 100, weak)[0]
-        strong_boss = boss_stats_for_raid(raid, 100, strong)[0]
-        assert strong_boss["hp"] > weak_boss["hp"]
-        assert strong_boss["attack"] > weak_boss["attack"]
+    def test_level_wall_uses_challenge_level(self) -> None:
+        """达到目标等级时无等级压制；低于目标等级四项压制均被触发。"""
+        for raid in all_raids():
+            anchor = challenge_level(raid, 1)
+            at_target = level_penalty_for_level(anchor, anchor)
+            assert at_target["damageDealtPenaltyPct"] == 0
+            assert at_target["damageTakenBonusPct"] == 0
+            assert at_target["defenseIgnorePct"] == 0
+            below = level_penalty_for_level(max(1, anchor - 10), anchor)
+            assert below["damageDealtPenaltyPct"] > 0
+            assert below["damageTakenBonusPct"] > 0
+            assert below["defenseIgnorePct"] > 0
 
-    def test_scaling_never_weakens_boss(self) -> None:
-        """低于本等级参考输出时应保持基准强度，不因战力低而变弱。"""
-        raid = CONFIG.raid_by_id["raid_1"]
-        naked = compute_stats(FakeHero(level=20), [])
-        assert boss_stats_for_raid(raid, 20, naked)[0]["hp"] == boss_stats_for_raid(raid, 20, None)[0]["hp"]
+    def test_raid_penalty_merges_level_suppression(self) -> None:
+        raid = CONFIG.raid_by_id["raid_3"]
+        anchor = challenge_level(raid, 1)
+        stats = compute_stats(FakeHero(level=anchor), TestRaidPressure()._bar_items(anchor, 2))
+        below = raid_penalty(raid, anchor - 10, stats)
+        expected = level_penalty_for_level(anchor - 10, anchor)
+        assert below["damageDealtPenaltyPct"] >= expected["damageDealtPenaltyPct"]
+        assert below["damageTakenBonusPct"] >= expected["damageTakenBonusPct"]
+        assert below["defenseIgnorePct"] >= expected["defenseIgnorePct"]
 
-    def test_boss_scales_with_level(self) -> None:
-        """等级越高，锚定的 BOSS 越强。"""
-        raid = CONFIG.raid_by_id["raid_1"]
-        low = boss_stats_for_raid(raid, 20, None)[0]["hp"]
-        high = boss_stats_for_raid(raid, 100, None)[0]["hp"]
-        assert high > low
+    def test_challenge_level_and_daily_limit_configured(self) -> None:
+        for raid in all_raids():
+            anchor = challenge_level(raid, 1)
+            assert anchor >= int(raid["requiredLevel"])
+            assert daily_reward_clears(raid) >= 1
+        assert daily_reward_clears(CONFIG.raid_by_id["raid_h1"]) == 1
+        assert daily_reward_clears(CONFIG.raid_by_id["raid_1"]) == 3
 
 
 class TestExpTerm:
@@ -522,7 +552,7 @@ class TestRaidPressure:
         return items
 
     def _bar_ancient(self, level: int) -> int:
-        """达标装的太古词条数（与 refDpsMultiplier / BOSS 倍率标定时一致）。"""
+        """达标装的太古词条数（与 BOSS 倍率标定时一致）。"""
         return 2 if level <= 60 else 3
 
     def test_required_power_is_reachable(self) -> None:
@@ -544,19 +574,14 @@ class TestRaidPressure:
         assert len(set(powers)) == len(powers), powers
 
     def test_ref_dps_matches_bar_gear(self) -> None:
-        """refDpsMultiplier 应接近达标装 DPS ÷ 等级锚定 DPS，否则战力缩放会失真。"""
-        balance = CONFIG.raids["balance"]["refDpsMultiplier"]
+        """达标装 DPS 必须明显高于等级锚定 DPS：BOSS 只按等级锚定，装备成长才有效。"""
         for raid in all_raids():
-            level = int(raid["requiredLevel"])
+            level = challenge_level(raid, int(raid["requiredLevel"]))
             stats = compute_stats(FakeHero(level=level), self._bar_items(level, self._bar_ancient(level)))
             anchor = monster_base_stats(level)["hp"] / float(
                 CONFIG.monsters["reference"]["targetKillSeconds"]
             )
-            ratio = theoretical_dps(stats, 0.0, None) / anchor
-            ref = float(balance[str(raid["difficulty"])])
-            assert 0.7 * ref <= ratio <= 1.4 * ref, (
-                f"{raid['id']} 达标装 DPS/锚定 = {ratio:.2f}，refDpsMultiplier = {ref}"
-            )
+            assert theoretical_dps(stats, 0.0, None) > anchor
 
     def test_incoming_damage_beats_passive_healing(self) -> None:
         for raid in all_raids():

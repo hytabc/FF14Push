@@ -161,8 +161,16 @@ def level_penalty(hero_level: int, region_id: int) -> dict[str, float]:
     `defenseIgnorePct` 用于削减英雄防御（否则高防御会把「受伤增加」吃掉，越级仍能磨过去）。
     来源：PRD 地区 7.3
     """
-    region = CONFIG.region_by_id[region_id]
-    deficit = max(0, int(region["levelMin"]) - int(hero_level))
+    return level_penalty_for_level(hero_level, int(CONFIG.region_by_id[region_id]["levelMin"]))
+
+
+def level_penalty_for_level(hero_level: int, target_level: int) -> dict[str, float]:
+    """英雄等级低于目标等级（地区下限 / 副本目标等级）时的软惩罚。
+
+    与 `level_penalty` 同源，只是把「地区下限」抽象成任意目标等级，
+    供高难副本按 `challengeLevel` 施加等级压制。
+    """
+    deficit = max(0, int(target_level) - int(hero_level))
     if deficit == 0:
         return {
             "hitRatePenaltyPct": 0.0,

@@ -117,6 +117,16 @@ async function closeResult() {
 function skillInfo(count: number) {
   return raidSkillExplain(count)
 }
+
+/** 英雄等级是否低于副本目标等级（低于会被等级压制）。 */
+function belowTarget(raid: RaidListEntry): boolean {
+  return (game.hero?.level ?? 0) < raid.challengeLevel
+}
+
+/** 当日奖励次数是否已用尽。 */
+function rewardExhausted(raid: RaidListEntry): boolean {
+  return raid.rewardedToday >= raid.dailyRewardClears
+}
 </script>
 
 <template>
@@ -125,7 +135,7 @@ function skillInfo(count: number) {
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">高难副本</h2>
         <span class="text-xs text-ink-400">
-          无小怪，只有 BOSS；属性按你的等级锚定并大幅强化，BOSS 每 6 秒随机释放一个技能。双 BOSS 需同步击杀，否则存活者会狂暴。
+          无小怪，只有 BOSS；属性固定锚定到副本「目标等级」，不再随战力变化。等级不足会被压制。BOSS 每 6 秒随机释放一个技能，双 BOSS 需同步击杀，否则存活者会狂暴。
         </span>
         <span class="ml-auto font-mono text-xs text-amber-300">当前战力 {{ formatNumber(game.state?.power ?? 0) }}</span>
       </div>
@@ -140,7 +150,7 @@ function skillInfo(count: number) {
       @claim="claimChest"
     />
 
-    <p class="text-xs text-ink-400">普通副本战力为推荐值，低于推荐值仍可挑战；伤害、承伤、治疗、资源、冷却、机制间隔及奖励效率随差距调整。高难未通过机制试炼时仅可练习。</p>
+    <p class="text-xs text-ink-400">副本难度固定：BOSS 属性锚定到目标等级，不随战力变化；等级低于目标等级会受到等级压制，需先练级并配好装备。每个副本每天有奖励通关次数上限，超出后仍可挑战但不再产出奖励。</p>
     <!-- 副本列表 -->
     <section v-if="!activeRaid" class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
       <button
@@ -177,6 +187,9 @@ function skillInfo(count: number) {
 
         <ul class="mt-2 space-y-0.5 text-[11px] text-ink-400">
           <li>· {{ raid.difficulty === "normal" ? "推荐等级" : "需要等级" }} Lv.{{ raid.requiredLevel }}</li>
+          <li :class="belowTarget(raid) ? 'text-amber-300' : ''">
+            · 目标等级 Lv.{{ raid.challengeLevel }}（BOSS 固定锚定<span v-if="belowTarget(raid)">，当前会被等级压制</span>）
+          </li>
           <li>· {{ raid.difficulty === "normal" ? "推荐战力" : "需要战力" }} {{ formatNumber(raid.requiredPower) }}</li>
           <li v-if="raid.difficulty === 'hard' && raid.requiresAllSlots">· 需要穿满全部装备栏位</li>
           <li v-if="raid.difficulty === 'hard'">
@@ -196,6 +209,14 @@ function skillInfo(count: number) {
           首通奖励：{{ formatNumber(raid.reward.firstGold) }} 金币 + {{ formatNumber(raid.reward.firstExp) }} 经验 +
           {{ raid.reward.boxCount }} 个装备箱 ·
           重刷 {{ formatNumber(raid.reward.repeatGold) }} 金币 + {{ formatNumber(raid.reward.repeatExp) }} 经验
+        </p>
+
+        <p
+          class="mt-1 text-[11px]"
+          :class="rewardExhausted(raid) ? 'text-rose-300' : 'text-ink-400'"
+        >
+          今日奖励 {{ Math.min(raid.rewardedToday, raid.dailyRewardClears) }}/{{ raid.dailyRewardClears }}
+          <template v-if="rewardExhausted(raid)">（已用尽，仍可挑战但不再产出奖励）</template>
         </p>
 
         <p v-if="raid.cleared" class="mt-2 text-[11px] text-emerald-300">
@@ -341,6 +362,12 @@ function skillInfo(count: number) {
         <p :class="game.raidResult.cleared ? 'text-emerald-300' : 'text-rose-300'">
           {{ game.raidResult.message }}
           <span v-if="game.raidResult.firstClear" class="ml-1 text-amber-300">（首次通关）</span>
+        </p>
+        <p
+          v-if="game.raidResult.cleared && !game.raidResult.rewardLimited && game.raidResult.remainingToday !== undefined"
+          class="text-[11px] text-ink-400"
+        >
+          今日剩余奖励次数：{{ game.raidResult.remainingToday }}
         </p>
         <ul v-if="game.raidResult.cleared" class="space-y-1 text-xs text-ink-300">
           <li>金币：<span class="font-mono text-amber-300">+{{ formatNumber(game.raidResult.goldGained) }}</span></li>

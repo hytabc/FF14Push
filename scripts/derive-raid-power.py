@@ -1,10 +1,16 @@
-"""开发用：打印每个副本的「门槛装」与「满配装」战力参考。
+"""开发用：打印每个副本的难度标定参考（数值以 shared/data 与真实模型推导）。
 
-`requiredPower` 现在是**人工设定的高线**（按当前玩家数据：Lv100 需 12w），不再等于
-「门槛装战力 × 0.95」。本脚本只做参考打印：
+`requiredLevel` 是进入等级，`challengeLevel` 是 BOSS 固定锚定的**目标等级**；BOSS 属性
+不再随玩家等级/战力动态变化，低于目标等级的英雄由 `regions.levelPenalty` 压制。
 
-- 门槛装战力：全神话底材 + N 个太古词条/件（N = minAncientTermsPerItem，副属性随机）。
-- 满配装战力：全神话 + 3 个攻击类太古词条 + **全部副属性取太古上限**（门槛可达性的上界）。
+对每个副本打印：
+- 门槛装战力 / DPS：全神话底材 + N 个太古词条/件（N = minAncientTermsPerItem，副属性随机），
+  分别取「进入等级」与「目标等级」。
+- 满配装战力 / DPS：全神话 + 3 个攻击类太古词条 + 全部副属性取太古上限（可达性上界）。
+- 目标等级地区「一次完整刷取（小怪 + BOSS）」的金币，作为奖励基准。
+- 按当前 BOSS 倍率预测的理论耗时与承伤（用于核对高难手感与 maxFightSeconds）。
+
+线上玩家分布用 `scripts/raid-player-baseline.py` 读取（只读）。
 
 运行：`python scripts/derive-raid-power.py`
 """
@@ -19,11 +25,19 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
+from app.services.combat_model import theoretical_dps  # noqa: E402
 from app.services.game_config import CONFIG  # noqa: E402
 from app.services.item_factory import generate_item  # noqa: E402
+from app.services.raid_util import all_raids, boss_stats_for_raid, challenge_level, daily_reward_clears  # noqa: E402
+from app.services.regions_util import monster_base_stats  # noqa: E402
 from app.services.slots_util import possible_slots  # noqa: E402
 from app.services.stats import compute_stats  # noqa: E402
 from app.services.valuation import hero_power  # noqa: E402
+
+# 奖励系数：首通 / 重刷 相对「同等级地区一次完整刷取」的倍数（经验与金币同源）。
+FIRST_FACTOR = {"normal": 10.0, "hard": 12.0}
+FIRST_FACTOR_OVERRIDE = {"raid_h2": 15.0}
+REPEAT_FACTOR = {"normal": 1.5, "hard": 2.0}
 
 
 class Hero:
@@ -85,15 +99,69 @@ def gear(level: int, ancient: int, max_subs: bool) -> list[GearItem]:
     return items
 
 
+def stats_at(level: int, ancient: int, max_subs: bool = False):
+    return compute_stats(Hero(level), gear(level, ancient, max_subs))
+
+
+def region_for_level(level: int) -> dict[str, Any]:
+    best = CONFIG.regions["regions"][0]
+    for region in CONFIG.regions["regions"]:
+        if int(region["levelMin"]) <= level:
+            best = region
+    return best
+
+
+def region_clear_gold(level: int) -> tuple[dict[str, Any], int]:
+    """同等级地区一次完整刷取的金币 = baseGold × (killsRequired + 15)。"""
+    region = region_for_level(level)
+    return region, int(region["baseGold"]) * (int(region["killsRequired"]) + 15)
+
+
+def predicted_fight(raid: dict[str, Any], stats) -> tuple[float, float, float]:
+    """按当前 BOSS 倍率预测：总耗时(s)、每秒承伤、可存活秒数。"""
+    bosses = boss_stats_for_raid(raid, 0)
+    seconds = 0.0
+    incoming = 0.0
+    for boss in bosses:
+        dps = theoretical_dps(stats, float(boss["defense"])) * (1 - float(boss["resistancePct"]) / 100)
+        seconds += float(boss["hp"]) / max(1.0, dps)
+        per_hit = max(float(boss["attack"]) * 0.1, float(boss["attack"]) - min(stats.phys_def, stats.magic_def))
+        incoming += per_hit / float(boss["attackInterval"])
+    survival = stats.max_hp / max(1.0, incoming)
+    return seconds, incoming, survival
+
+
 def main() -> None:
-    for raid in sorted(CONFIG.raids["raids"], key=lambda r: int(r["order"])):
-        level = int(raid["requiredLevel"])
+    for raid in all_raids():
+        required = int(raid["requiredLevel"])
+        anchor = challenge_level(raid, required)
         ancient = int(raid.get("minAncientTermsPerItem", 0) or 0)
-        gate = hero_power(compute_stats(Hero(level), gear(level, ancient, False)))
-        full = hero_power(compute_stats(Hero(level), gear(level, 3, True)))
+        difficulty = str(raid.get("difficulty", "normal"))
+        bar_req = stats_at(required, ancient)
+        bar_anchor = stats_at(anchor, ancient)
+        full_anchor = stats_at(anchor, 3, max_subs=True)
+        region, clear_gold = region_clear_gold(anchor)
+        first_factor = float(FIRST_FACTOR_OVERRIDE.get(raid["id"], FIRST_FACTOR.get(difficulty, 10.0)))
+        repeat_factor = float(REPEAT_FACTOR.get(difficulty, 1.5))
+        fight = predicted_fight(raid, bar_anchor)
         print(
-            f"{raid['id']:8s} Lv{level:<3d} {str(raid.get('difficulty')):6s} 太古/件={ancient} "
-            f"门槛装战力={gate:<8d} 满配装战力={full:<8d} 人工门槛={raid['requiredPower']}"
+            f"{raid['id']:8s} 进入Lv{required:<4d} 目标Lv{anchor:<4d} {difficulty:6s} 太古/件={ancient} "
+            f"每日奖励={daily_reward_clears(raid)}"
+        )
+        print(
+            f"    门槛装(进入等级) 战力={hero_power(bar_req):<7d} DPS={theoretical_dps(bar_req):<9.0f}"
+            f"| 门槛装(目标等级) 战力={hero_power(bar_anchor):<7d} DPS={theoretical_dps(bar_anchor):<9.0f}"
+        )
+        print(
+            f"    满配装(目标等级) 战力={hero_power(full_anchor):<7d} DPS={theoretical_dps(full_anchor):<9.0f}"
+            f"| 人工门槛={raid['requiredPower']}"
+        )
+        print(
+            f"    目标等级地区【{region['name']}】一次刷取金币={clear_gold} "
+            f"→ 建议首通≈{int(clear_gold * first_factor)} 重刷≈{int(clear_gold * repeat_factor)}"
+        )
+        print(
+            f"    预测耗时={fight[0]:.1f}s(上限600s) 承伤={fight[1]:.0f}/s 可存活={fight[2]:.0f}s"
         )
 
 

@@ -1377,12 +1377,12 @@ class TestRaid:
     async def test_raid_rejects_fabricated_fast_clear(self, auth_client, session_factory) -> None:
         """服务端时间不足时，客户端虚报通关不能获得奖励。"""
         await self._gear_up(auth_client, session_factory, ancient=2)
-        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
+        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
         resp = await auth_client.post(
             f"{API}/raid/session/report",
             json={
                 "sessionId": started["sessionId"],
-                "raidId": "raid_1",
+                "raidId": "raid_h1",
                 "cleared": True,
                 "died": False,
                 "elapsedMs": 1000,
@@ -1392,6 +1392,97 @@ class TestRaid:
         assert resp.status_code == 200, resp.text
         assert resp.json()["cleared"] is False
         assert "invalid_duration" in resp.json()["failures"]
+
+    async def test_list_reports_challenge_level_and_daily_limit(self, auth_client, session_factory) -> None:
+        """列表展示目标等级与每日奖励次数。"""
+        await self._gear_up(auth_client, session_factory, ancient=2)
+        body = (await auth_client.get(f"{API}/raid")).json()
+        raid = next(r for r in body["raids"] if r["id"] == "raid_3")
+        assert raid["challengeLevel"] == int(CONFIG.raid_by_id["raid_3"]["challengeLevel"])
+        assert raid["challengeLevel"] > raid["requiredLevel"]
+        assert raid["dailyRewardClears"] == int(CONFIG.raid_by_id["raid_3"]["dailyRewardClears"])
+        assert raid["rewardedToday"] == 0
+
+    async def test_daily_reward_limit_blocks_further_rewards(self, auth_client, session_factory) -> None:
+        """每个副本每天奖励通关次数有限：超出后仍记录通关，但不再产出金币/经验/宝箱。"""
+        await self._gear_up(auth_client, session_factory, ancient=2)
+        limit = int(CONFIG.raid_by_id["raid_1"]["dailyRewardClears"])
+
+        async def clear_once() -> dict:
+            started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
+            async with session_factory() as db:
+                session = await db.get(RaidSession, started["sessionId"])
+                session.started_at = datetime.now(timezone.utc) - timedelta(seconds=90)
+                await db.commit()
+            resp = await auth_client.post(
+                f"{API}/raid/session/report",
+                json={
+                    "sessionId": started["sessionId"],
+                    "raidId": "raid_1",
+                    "cleared": True,
+                    "died": False,
+                    "elapsedMs": 10_000_000,
+                    "fightMs": 90_000,
+                },
+            )
+            assert resp.status_code == 200, resp.text
+            return resp.json()
+
+        for index in range(limit):
+            body = await clear_once()
+            assert body["cleared"] is True
+            assert body["rewardLimited"] is False
+            assert body["remainingToday"] == limit - index - 1
+
+        over = await clear_once()
+        assert over["cleared"] is True
+        assert over["rewardLimited"] is True
+        assert over["goldGained"] == 0
+        assert over["expGained"] == 0
+        assert over["items"] == []
+        assert over["remainingToday"] == 0
+
+        listing = (await auth_client.get(f"{API}/raid")).json()
+        raid = next(r for r in listing["raids"] if r["id"] == "raid_1")
+        assert raid["rewardedToday"] == limit
+        assert raid["clearCount"] == limit + 1  # 无奖励通关也计入通关次数
+
+    async def test_raid_exp_includes_egg_passive_bonus(self, auth_client, session_factory) -> None:
+        """副本结算与地区一致：彩蛋「豆芽精」+25% 经验被动同样作用于副本通关经验。"""
+        await self._gear_up(auth_client, session_factory, ancient=2)
+
+        async def clear_once() -> int:
+            started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_1"})).json()
+            async with session_factory() as db:
+                session = await db.get(RaidSession, started["sessionId"])
+                session.started_at = datetime.now(timezone.utc) - timedelta(seconds=90)
+                await db.commit()
+            resp = await auth_client.post(
+                f"{API}/raid/session/report",
+                json={
+                    "sessionId": started["sessionId"],
+                    "raidId": "raid_1",
+                    "cleared": True,
+                    "died": False,
+                    "elapsedMs": 10_000_000,
+                    "fightMs": 90_000,
+                },
+            )
+            assert resp.status_code == 200, resp.text
+            return int(resp.json()["expGained"])
+
+        await clear_once()  # 首通（口径不同，忽略）
+        plain = await clear_once()  # 重刷：无彩蛋被动
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.egg_id = "liangshisi"
+            # 升级会改变追赶经验口径，重置回满级避免干扰
+            hero.level = 100
+            hero.exp = 0
+            await db.commit()
+        boosted = await clear_once()  # 重刷：彩蛋 +25%
+        assert boosted > plain, f"彩蛋经验被动未生效：plain={plain} boosted={boosted}"
 
     async def test_hard_raid_drops_chooseable_chest(self, auth_client, session_factory) -> None:
         """高难副本通关掉落自选种类宝箱：通关不直接给装备，自选后一次性开箱。"""
