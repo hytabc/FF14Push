@@ -52,11 +52,11 @@ async def active_effects(db: AsyncSession, user_id: int) -> dict[str, float]:
 
 
 async def use_consumable(db: AsyncSession, user_id: int, item_id: str) -> dict[str, Any]:
-    """使用一瓶药水 / 一份食物：消耗库存，并按服务端时钟累加该槽位的生效时长。
+    """使用一瓶药水 / 一份食物：消耗库存，并按服务端时钟更新该槽位的到期时间。
 
-    药水 / 食物各占一个槽位（`uq_consumable_user_kind`）：连续使用时**时长叠加**——
-    在原有剩余时间之上再累加一份 duration（而非重置为 now + duration）；效果与名称
-    取最近一次使用的那份。
+    药水 / 食物各占一个槽位（`uq_consumable_user_kind`）：**同一件**连续使用时时长叠加
+    （在原有剩余时间之上再累加一份 duration）；换成同槽位的**另一种**则重置为新的一份
+    时长（now + duration）。效果与名称始终取最近一次使用的那份。
     """
     spec = dohdol_util.consumable_def(item_id)
     if spec is None:
@@ -86,8 +86,8 @@ async def use_consumable(db: AsyncSession, user_id: int, item_id: str) -> dict[s
             )
         )
     else:
-        # 时长叠加：在原有剩余时间（已过期则为此刻）基础上再加一份 duration。
-        base = max(now, _aware(row.expires_at))
+        # 同一件：时长叠加（已过期则从此刻算起）；换成另一种：重置为新的一份时长。
+        base = max(now, _aware(row.expires_at)) if row.item_id == item_id else now
         row.item_id = item_id
         row.effects = list(spec["effects"])
         row.expires_at = base + timedelta(seconds=duration)

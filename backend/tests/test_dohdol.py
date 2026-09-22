@@ -528,10 +528,11 @@ class TestFishApi:
 
 class TestConsumableApi:
     @pytest.mark.asyncio
-    async def test_use_consumable_stacks_duration(self, auth_client, session_factory):
+    async def test_use_consumable_stacks_same_item_only(self, auth_client, session_factory):
         async with session_factory() as db:
             user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
             db.add(StackItem(user_id=user_id, kind="potion", item_id="p_expGainPct", count=2))
+            db.add(StackItem(user_id=user_id, kind="potion", item_id="p_goldGainPct", count=1))
             await db.commit()
 
         duration = int(CONFIG.consumables["kinds"]["potion"]["durationSec"])
@@ -542,14 +543,22 @@ class TestConsumableApi:
         first_remaining = resp.json()["active"][0]["remainingSec"]
         assert 0 < first_remaining <= duration
 
-        # 同槽位只有一条；再次使用不新增记录，而是把该槽位时长叠加
+        # 同一件再次使用：不新增记录，而是把该槽位时长叠加
         resp2 = await auth_client.post("/api/v1/consumable/use", json={"itemId": "p_expGainPct"})
         assert resp2.status_code == 200
         async with session_factory() as db:
             rows = (await db.execute(select(ActiveConsumable))).scalars().all()
             assert len(rows) == 1
-        second_remaining = resp2.json()["active"][0]["remainingSec"]
-        assert second_remaining > duration, "连续使用应叠加时长"
+        assert resp2.json()["active"][0]["remainingSec"] > duration, "同一件连续使用应叠加时长"
+
+        # 换成同槽位的另一种药水：重置为新的一份时长，不继承已累计的时长
+        resp3 = await auth_client.post("/api/v1/consumable/use", json={"itemId": "p_goldGainPct"})
+        assert resp3.status_code == 200
+        assert resp3.json()["active"][0]["remainingSec"] <= duration, "换成另一种消耗品应重置时长"
+        async with session_factory() as db:
+            rows = (await db.execute(select(ActiveConsumable))).scalars().all()
+            assert len(rows) == 1
+            assert rows[0].item_id == "p_goldGainPct"
 
 
 class TestSellApi:
