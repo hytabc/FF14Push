@@ -46,7 +46,9 @@ async def start_gather(
 
     await dohdol_util.end_active_sessions(db, user.id)
     await dohdol_util.end_other_battle_sessions(db, user.id)
+    now = datetime.now(timezone.utc)
     session = ActivitySession(
+        started_at=now, last_report_at=now,
         user_id=user.id, kind="gather", job_id=job_id, region_id=region_id, active=True, credit=0.0
     )
     db.add(session)
@@ -57,7 +59,7 @@ async def start_gather(
         "sessionId": session.id,
         "jobId": job_id,
         "regionId": region_id,
-        "cycle": dohdol_util.cycle_info(seconds, 0.0),
+        "cycle": dohdol_util.cycle_info(seconds, 0.0, now),
     }
 
 

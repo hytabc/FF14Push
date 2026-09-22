@@ -969,3 +969,75 @@ class TestMaterialAndFishCodex:
     async def test_unknown_codex_category_rejected(self, auth_client):
         resp = await auth_client.get("/api/v1/codex?category=bogus")
         assert resp.status_code == 422
+
+
+class TestActivityTiming:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "kind,payload",
+        [
+            ("gather", {"jobId": "MIN", "regionId": 1}),
+            ("produce", {"jobId": "CRP", "recipeId": "r_h_plank", "count": 10}),
+            ("fish", {"regionId": 1}),
+        ],
+    )
+    async def test_cycle_matches_settlement_after_speed_change(
+        self, auth_client, session_factory, monkeypatch, kind, payload
+    ):
+        from datetime import datetime, timedelta, timezone
+        from app.models import ActivitySession
+        from app.services import dohdol_util, fishing, gathering, production
+
+        # 使用小数秒起点，防止数据库默认时间截断造成首轮偏移。
+        current = datetime(2026, 9, 22, 0, 0, 0, 765432, tzinfo=timezone.utc)
+
+        class Clock:
+            @classmethod
+            def now(cls, tz=None):
+                return current
+
+        service = {"gather": gathering, "produce": production, "fish": fishing}[kind]
+        monkeypatch.setattr(service, "datetime", Clock)
+        bonus = {"gatherSpeedPct": 0.0, "craftSpeedPct": 0.0}
+        monkeypatch.setattr(dohdol_util, "equipped_bonus", lambda items: bonus)
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            db.add(StackItem(user_id=user_id, kind="material", item_id="g_wood", count=100))
+            await db.commit()
+
+        start = await auth_client.post(f"/api/v1/{kind}/session/start", json=payload)
+        assert start.status_code == 200, start.text
+        body = start.json()
+        initial_seconds = body["cycle"]["seconds"]
+        assert body["cycle"]["at"] == int(current.timestamp() * 1000)
+        async with session_factory() as db:
+            session = await db.get(ActivitySession, body["sessionId"])
+            assert session.last_report_at.replace(tzinfo=timezone.utc) == current
+
+        # 运行中属性加速，服务端实际扣除的时间与下发的周期必须一致。
+        bonus.update(gatherSpeedPct=100.0, craftSpeedPct=50.0)
+        elapsed = round(initial_seconds * 0.75, 6)
+        current += timedelta(seconds=elapsed)
+        report = await auth_client.post(
+            f"/api/v1/{kind}/session/report", json={"sessionId": body["sessionId"]}
+        )
+        assert report.status_code == 200, report.text
+        result = report.json()
+        seconds = result["cycle"]["seconds"]
+        assert seconds == pytest.approx(initial_seconds / 2)
+        count_key = {"gather": "actions", "produce": "crafts", "fish": "casts"}[kind]
+        assert result[count_key] == int(elapsed // seconds)
+        assert result["cycle"]["credit"] == pytest.approx(elapsed % seconds)
+
+        # 卸下加速装备后，余额保留，但下一动作按变慢后的真实耗时结算。
+        credit = result["cycle"]["credit"]
+        bonus.update(gatherSpeedPct=0.0, craftSpeedPct=0.0)
+        current += timedelta(seconds=initial_seconds - credit + 0.01)
+        report = await auth_client.post(
+            f"/api/v1/{kind}/session/report", json={"sessionId": body["sessionId"]}
+        )
+        assert report.status_code == 200, report.text
+        result = report.json()
+        assert result["cycle"]["seconds"] == pytest.approx(initial_seconds)
+        assert result[count_key] == 1
+        assert result["cycle"]["credit"] == pytest.approx(0.01, abs=1e-6)

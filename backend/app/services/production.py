@@ -73,7 +73,9 @@ async def start_produce(
 
     await dohdol_util.end_active_sessions(db, user.id)
     await dohdol_util.end_other_battle_sessions(db, user.id)
+    now = datetime.now(timezone.utc)
     session = ActivitySession(
+        started_at=now, last_report_at=now,
         user_id=user.id,
         kind="produce",
         job_id=job_id,
@@ -89,7 +91,7 @@ async def start_produce(
         "jobId": job_id,
         "recipeId": recipe_id,
         "targetActions": target,
-        "cycle": dohdol_util.cycle_info(craft_seconds(recipe, items), 0.0),
+        "cycle": dohdol_util.cycle_info(craft_seconds(recipe, items), 0.0, now),
     }
 
 

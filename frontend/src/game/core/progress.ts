@@ -1,17 +1,9 @@
 /**
- * 单次动作进度时钟（采集 / 生产 / 钓鱼）。
- *
- * 服务端下发的 `cycle { seconds, credit }` 只是「某一刻距下一次动作的余额」。
- * 客户端需要据此插值出连续进度条，但直接用 `credit + elapsed` 反复重算会在每次上报时
- * 产生相位跳变（旧实现甚至直接 `progress = 0`），导致进度条运行到一半来回抽搐。
- *
- * 这里用一个**单调推进**的虚拟毫秒数来驱动展示：
- * - 时间只前进，且对齐服务端时只做周期内的最小修正，不重置；
- * - 同一轮内展示进度只增不减，抵消网络抖动带来的轻微回退；
- * - 只有真正跨轮时才回绕到 0（进度条本该重新开始）。
+ * 用服务端实际耗时与余额驱动采集 / 生产 / 钓鱼进度。
+ * 只抑制同周期内的小幅网络抖动；初次同步、速度变化及大幅校正必须以服务端为准。
  */
 export class ProgressClock {
-  /** 单调推进的「距下一次动作」虚拟毫秒数。 */
+  /** 用于周期插值的累计毫秒数；服务端校正时可重新定位。 */
   private cycleMs = 0
   /** 一个动作的周期（毫秒）；0 表示未开始 / 无周期。 */
   private periodMs = 0
@@ -26,8 +18,17 @@ export class ProgressClock {
 
   /** 按服务端 cycle 对齐。creditMs 已含半 RTT 补偿。 */
   sync(creditMs: number, seconds: number): void {
+    const previousPeriod = this.periodMs
     this.setPeriod(seconds)
-    if (this.periodMs <= 0) return
+    if (this.periodMs <= 0) {
+      this.reset()
+      return
+    }
+    // 不能把旧周期累计的毫秒数按新周期重新分轮，也不能沿用旧展示进度。
+    if (previousPeriod !== this.periodMs) {
+      this.rebase(creditMs)
+      return
+    }
     const period = this.periodMs
     const targetPos = ((creditMs % period) + period) % period
     const index = Math.floor(this.cycleMs / period)
@@ -36,7 +37,17 @@ export class ProgressClock {
     let diff = targetPos - currentPos
     if (diff > period / 2) diff -= period
     else if (diff < -period / 2) diff += period
+    if (Math.abs(diff) > Math.min(100, period * 0.05)) {
+      this.rebase(creditMs)
+      return
+    }
     this.cycleMs = Math.max(0, this.cycleMs + diff)
+  }
+
+  private rebase(creditMs: number): void {
+    this.cycleMs = Math.max(0, creditMs)
+    this.shownCycle = Math.floor(this.cycleMs / this.periodMs)
+    this.shownPos = 0
   }
 
   /** 推进 deltaMs 毫秒，返回当前轮内进度 0..1。 */
@@ -60,6 +71,7 @@ export class ProgressClock {
 
   /** 停止 / 切换活动时清空。 */
   reset(): void {
+    this.periodMs = 0
     this.cycleMs = 0
     this.shownCycle = 0
     this.shownPos = 0

@@ -58,3 +58,40 @@ describe('ProgressClock（采集/生产/钓鱼进度条）', () => {
     expect(clock.position()).toBe(0)
   })
 })
+
+describe('服务端周期校正', () => {
+  it('首次同步超过半周期的余额时仍显示真实进度', () => {
+    const clock = new ProgressClock()
+    clock.sync(1800, 2)
+    expect(clock.position()).toBeCloseTo(0.9)
+  })
+
+  it.each([
+    [4, 2, 500, 0.25],
+    [2, 4, 500, 0.125],
+  ])('耗时从 %s 秒变为 %s 秒后按新余额重新计时', (before, after, credit, expected) => {
+    const clock = new ProgressClock()
+    clock.sync(0, before)
+    clock.advance(before * 1000 * 3.8)
+    clock.sync(credit, after)
+    expect(clock.position()).toBeCloseTo(expected)
+    expect(clock.advance(after * 1000 - credit + 50)).toBeCloseTo(50 / (after * 1000))
+  })
+
+  it('后台恢复或服务端大幅修正时不被旧进度夹住', () => {
+    const clock = new ProgressClock()
+    clock.sync(0, 4)
+    clock.advance(2800)
+    clock.sync(1800, 4)
+    expect(clock.position()).toBeCloseTo(0.45)
+  })
+
+  it('停止后不再按上一个活动的周期推进', () => {
+    const clock = new ProgressClock()
+    clock.sync(1200, 2)
+    clock.reset()
+    expect(clock.advance(1000)).toBe(0)
+    clock.sync(1800, 2)
+    expect(clock.position()).toBeCloseTo(0.9)
+  })
+})

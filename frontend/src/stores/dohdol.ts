@@ -9,7 +9,7 @@ import type { FishCatch } from '@/game/types'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 
-/** 上报节拍：与服务端窗口对齐即可（服务端只认自己的时钟）。 */
+/** 最长轮询间隔；临近动作完成时提前结算，同时定期获取属性变化后的周期。 */
 const REPORT_MS = 1500
 
 const TITLE_NAMES: Record<string, string> = Object.fromEntries(
@@ -47,6 +47,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
   let timer: number | null = null
   let ticker: number | null = null
   let lastTickMs = 0
+  let nextActionAt = 0
 
   const state = computed(() => game.state?.dohdol ?? null)
   const isRunning = computed(() => mode.value !== 'idle')
@@ -65,11 +66,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
 
   function syncCycle(cycle: { seconds: number; credit: number } | undefined, rttMs = 0) {
     // 半 RTT 校正：响应到达时，服务端时间约为「响应生成时刻 + RTT/2」。
-    // credit 是服务端生成响应那一刻的余额，把它推进到「客户端现在」，
+    // credit 是服务端结算时刻的余额，把它近似推进到「客户端现在」，
     // 进度条跑满的时刻才与服务端产出时刻对齐（也不用依赖客户端时钟）。
     const seconds = cycle?.seconds ?? 0
     clock.sync((cycle?.credit ?? 0) * 1000 + Math.max(0, rttMs) / 2, seconds)
     lastTickMs = performance.now()
+    // 以未平滑的服务端余额安排结算；错过截止点时立即补报，不能取模跳过一轮。
+    nextActionAt = lastTickMs + Math.max(0, seconds * 1000 - (cycle?.credit ?? 0) * 1000 - Math.max(0, rttMs) / 2)
     renderProgress()
   }
 
@@ -104,30 +107,43 @@ export const useDohDolStore = defineStore('dohdol', () => {
 
   function startLoop() {
     stopLoop()
-    timer = window.setInterval(() => {
-      void reportOnce()
-    }, REPORT_MS)
+    scheduleReport()
     startTicker()
+  }
+
+  function scheduleReport() {
+    if (!isRunning.value) return
+    timer = window.setTimeout(() => {
+      timer = null
+      void reportOnce()
+    }, Math.max(50, Math.min(REPORT_MS, nextActionAt - performance.now())))
   }
 
   function stopLoop() {
     if (timer !== null) {
-      window.clearInterval(timer)
+      window.clearTimeout(timer)
       timer = null
     }
     stopTicker()
   }
 
   async function reportOnce() {
-    if (sessionId.value === null || busy.value) return
+    if (sessionId.value === null) return
+    if (busy.value) {
+      scheduleReport()
+      return
+    }
+    const id = sessionId.value
     busy.value = true
     try {
       if (mode.value === 'gather') {
-        const [r, rtt] = await timed(() => api.gatherReport(sessionId.value!))
+        const [r, rtt] = await timed(() => api.gatherReport(id))
+        if (sessionId.value !== id) return
         lastGained.value = r.gained
         syncCycle(r.cycle, rtt)
       } else if (mode.value === 'produce') {
-        const [r, rtt] = await timed(() => api.produceReport(sessionId.value!))
+        const [r, rtt] = await timed(() => api.produceReport(id))
+        if (sessionId.value !== id) return
         lastGained.value = r.materials
         targetCount.value = r.targetActions
         producedCount.value = r.producedTotal
@@ -145,7 +161,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
           }
         }
       } else if (mode.value === 'fish') {
-        const [r, rtt] = await timed(() => api.fishReport(sessionId.value!))
+        const [r, rtt] = await timed(() => api.fishReport(id))
+        if (sessionId.value !== id) return
         lastGained.value = r.gained
         lastCaught.value = r.caught
         insightRemaining.value = r.insightRemainingSec
@@ -156,9 +173,10 @@ export const useDohDolStore = defineStore('dohdol', () => {
       }
       await game.loadState()
     } catch {
-      await stop(true)
+      if (sessionId.value === id) await stop(true)
     } finally {
       busy.value = false
+      if (timer === null) scheduleReport()
     }
   }
 

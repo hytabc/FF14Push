@@ -46,7 +46,9 @@ async def start_fish(db: AsyncSession, user: User, items: Sequence[Item], region
 
     await dohdol_util.end_active_sessions(db, user.id)
     await dohdol_util.end_other_battle_sessions(db, user.id)
+    now = datetime.now(timezone.utc)
     session = ActivitySession(
+        started_at=now, last_report_at=now,
         user_id=user.id, kind="fish", job_id="FSH", region_id=region_id, active=True,
         credit=0.0, session_fish=[],
     )
@@ -56,7 +58,7 @@ async def start_fish(db: AsyncSession, user: User, items: Sequence[Item], region
     return {
         "sessionId": session.id,
         "regionId": region_id,
-        "cycle": dohdol_util.cycle_info(dohdol_util.fish_seconds_per_cast(speed), 0.0),
+        "cycle": dohdol_util.cycle_info(dohdol_util.fish_seconds_per_cast(speed), 0.0, now),
     }
 
 
