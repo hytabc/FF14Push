@@ -310,7 +310,7 @@ monsterHp = refAttack(level) × refGearAttackMultiplier × (refPotencyPerSecond 
 | 抽箱 | 6 种箱子、单抽/十连、品阶概率、10/50/200 抽保底 |
 | 合成 | 16 件同品阶同类 → 高 1 阶，含一键合成与预览；**合成后弹窗展示本次产出**（消耗件数 / 手续费 / 逐件属性） |
 | 出售 | 底价 × 品阶系数 × 属性系数（饱和封顶）× 词条价值 × ±10%，支持批量与自动出售 |
-| 重造 | 两种模式：**彻底随机**（基础属性+副属性全部重洗，等同重获该装备）与**基于当前**（每条属性在现有值附近 ±区间宽度×10% 内独立浮动，可升可降）；保留品阶/类型/词条；**消耗随重造次数递增**（不封顶） |
+| 重造 | 两种模式：**彻底随机**（基础属性+副属性+全部 Buff/Debuff 重洗，等同重获该装备）与**基于当前**（属性与词条都在现有值附近 ±区间宽度×10% 内独立浮动，可升可降）；保留品阶/类型；**消耗随重造次数递增**（不封顶） |
 | 附魔 | 两种模式同重造（彻底随机 / 基于当前）；**Buff 有普通/稀有/太古品质**（稀有 1.0% / 太古 0.1%，太古以 🌟 标记），**Debuff 不参与品质判定（恒为普通）**；支持自动追梦 |
 | 属性区间 | 装备详情每条形如 `暴击 +85【48-144】`（基础属性 ±20% 带、副属性可达区间）；太古显示 `值🌟` 且金色 |
 | 装备标签 | 玩家自建**命名 + 调色板颜色**的标签（最多 30 个/账号，名称 ≤16 字），一件装备可贴多个；背包可按标签多选筛选（**命中任一即显示**）。标签按账号持久化（`item_tags` 表 + `items.tag_ids`） |
@@ -342,8 +342,8 @@ monsterHp = refAttack(level) × refGearAttackMultiplier × (refPotencyPerSecond 
 | 生产 | 8 个能工巧匠按配方制造材料 / 半成品 / 战斗装备 / 专用装备 / 药水食物。配方按**生产等级**解锁 |
 | 制造数量 | 每个配方提供 **「制作 X 个」**（X 由玩家填写）与 **「制作全部」** 两个按钮：「X 个」= 制造 `min(X, 当前材料上限)` 件；「全部」= 按当前材料能制造的上限件数。目标件数由**服务端**结算（`activity_sessions.target_actions`），达成后**自动结束会话**（前端停止上报并提示「制造完成」）；材料不足时返回 400「材料不足，无法制造」 |
 | 制造装备 | **恒为「高品质」**：属性区间整体上移（`recipes.equipment.highQualityMultiplier`）且**必带 1 条太古词条**；品阶按进度动态抽取（见「制造品阶概率」）。同品阶下强于抽奖装备 |
-| 制造品阶概率 | 像抽奖一样随进度提升：`t = Σ 权重 × min(当前值 / 参考值, 1)`，分布 = 基准 `rarityWeights` ×(1−t) + 目标 `targetWeights` × t。四项来源 = **英雄等级 / 通关地区数 / 生产等级 / 专用装备「制造品阶幸运」合计**，权重与参考值见 `recipes.json:equipment.rarityScaling`。**四项全满 → 神话概率 50%（硬上限，永不超出）**；神话以下随进度倾斜。生产页实时显示当前玩家各品阶概率，点「?」看公式与代入值 |
-| 专用装备词条 | 生产 / 采集专用装备也带 **Buff/Debuff 词条**（池在 `dohdol-equipment.json:terms`，仅限专用栏位，不污染战斗词条与词条图鉴）：如「品阶幸运」(制造品阶概率 +)、「品质洞察」、「巧手」、「丰收」、「渔王的直觉」等，品质规则与战斗词条一致（普通/稀有/太古）；含负面「品阶失衡 / 品质钝化 / 歉收」等。词条与固定加成一起计入 `equipped_bonus` |
+| 制造品阶概率 | 像抽奖一样随进度提升：`t = Σ 权重 × min(当前值 / 参考值, 1)`，分布 = 基准 `rarityWeights` ×(1−t) + 目标 `targetWeights` × t。四项来源 = **英雄等级 / 通关地区数 / 生产等级 / 专用装备「制造品阶幸运」合计**，权重与参考值见 `recipes.json:equipment.rarityScaling`。**四项全满 → 神话概率 20%（硬上限，永不超出）**；神话以下随进度倾斜。生产页实时显示当前玩家各品阶概率，点「?」看公式与代入值 |
+| 专用装备词条 | 生产 / 采集专用装备也带 **Buff/Debuff 词条**（池在 `dohdol-equipment.json:terms`，仅限专用栏位，不污染战斗词条与词条图鉴）：如「品阶幸运」(制造品阶概率 +)、「品质洞察」、「巧手」、「灵感」(制造经验)、「丰收」、「渔王的直觉」、「博识」(采集经验) 等，品质规则与战斗词条一致（普通/稀有/太古）；含负面「品阶失衡 / 品质钝化 / 歉收」等。词条与固定加成一起计入 `equipped_bonus` |
 | 专用装备 | 生产 / 采集各有独立栏位（主手工具 + 副手工具 + 5 防具），**仅能通过生产获取**，只影响采集产量 / 制造品阶与品质 / 制造速度 / 钓鱼概率，**不参与战斗结算、战力榜、地区与副本门槛**（`stats.aggregate_equipment` 显式跳过，且不能重造 / 附魔） |
 | 等级 | 所有能工巧匠共用**生产等级**，所有大地使者共用**采集等级**；由制造 / 采集 / 钓鱼获得经验 |
 | 钓鱼 | 捕鱼人为特殊场景：按地区钓场自动抛竿，普通鱼随机种类与尺寸；钓起指定普通鱼开启「**捕鱼人之识**」（30-60s，随鱼种），期间才有小概率出现**鱼王 / 鱼皇**（每钓场各 1 条，鱼皇概率低于鱼王）。钓全所有鱼王 / 鱼皇各解锁一个**称号** |
@@ -406,11 +406,11 @@ npm run gen:icons
 | 太古保底与「太古⇒神话」 | PRD 招募没有保底。本项目给英雄的「太古属性」（0.1% 概率）加**保底**：连续 `ancientPityCount`（500）个候选未出太古时，下一个必出；计数在刷新 / 招募 / 十连 / 注册时推进，出太古后归零并落库在 `tavern.ancient_pity`。并且**任何带太古属性的英雄都必定为神话（红色）资质**（保底或自然触发皆然）——因此太古判定先于点数抽取，总点数落在神话区间 220-260（太古 ×1.25 计算后总值可超出该区间）。见 `shared/data/talents.json`、`backend/app/services/recruiting.py:generate_candidate` |
 | 重造 / 附魔消耗 | PRD 重造 4.2 / 附魔 5.2 最高档为 60 万 / 300 万金币，远超实际收入；下调为**最高 3 万 / 5 万**，品阶递增且附魔始终比重造贵。见 `shared/data/rarities.json` 的 `refineCost` / `enchantCost` |
 | 重造递增 | PRD 未定义；本项目新增「每次重造在基准价上叠加 25%（不封顶）」，防止同一件装备无限重造刷属性。见 `shared/data/economy.json:refine.costGrowthPerRefine` |
-| 重造/附魔「基于当前」 | PRD 未定义；本项目为两系统各设两模式。**彻底随机** = 全部重洗（重造洗基础+副属性，附魔洗全部词条）。**基于当前** = 每条属性/词条在现有值附近 ±(区间宽度 × `basedOnCurrentSpreadPct`) 内独立浮动，可升可降并夹回合法区间（旧实现是「最优值搜索、总值保底不降」，已废弃）。见 `shared/data/economy.json:refine/enchant.basedOnCurrentSpreadPct`、`backend/app/services/item_factory.py:float_near_current` |
+| 重造/附魔「基于当前」 | PRD 未定义；本项目为两系统各设两模式。**彻底随机** = 全部重洗（重造洗基础+副属性+全部词条，附魔洗全部词条）。**基于当前** = 每条属性/词条在现有值附近 ±(区间宽度 × `basedOnCurrentSpreadPct`) 内独立浮动，可升可降并夹回合法区间（旧实现是「最优值搜索、总值保底不降」，已废弃）；另外**已有太古词条数不减少**，且每次有 `basedOnCurrentAncientUpgradeChance`（5%）概率把一条普通 Buff 升为太古。见 `shared/data/economy.json:refine/enchant`、`backend/app/services/item_factory.py:float_near_current / _roll_terms_based_on_current` |
 | Debuff 品质 | PRD 附魔 5.3 的稀有/太古对 Debuff 会放大负面数值（更差）。本项目**取消 Debuff 的稀有/太古**：Debuff 恒为普通，仅在随机池内随机；稀有/太古只保留给 Buff（与副属性）。见 `shared/data/economy.json:debuffQualityEnabled` |
-| 属性区间展示 | PRD 图鉴 3.4 只给底材展示理论范围，装备详情不展示。本项目让**装备详情**也显示「当前值【区间】」（基础属性 ±20% 带、副属性可达区间）；太古值超出区间，以 `值🌟` 金色展示。区间由 `baseId+品阶+属性` 推导，不落库（无迁移） |
-| 制造品阶概率 | PRD 生产部分未定义品阶概率（原实现为固定权重 白30/绿30/蓝22/紫12/橙5/红1）。现改为**随进度动态**：`t = Σ 权重 × min(值/参考值,1)`，分布 = 基准 ×(1−t) + 目标 ×t；四项来源 = 英雄等级 / 通关地区数 / 生产等级 / 专用装备 `craftRarityPct` 合计；**四项全满 → 神话 50%（硬上限）**。只改制造，箱子/掉落概率不变（`loot.roll_rarity` 未动）。见 `shared/data/recipes.json:equipment.rarityScaling`、`item_factory.craft_rarity_luck/craft_rarity_distribution`；回归保护 `tests/test_dohdol.py:TestCraftRarityScaling` |
-| 专用装备词条 | PRD 只给战斗装备定义了 Buff/Debuff（2.4）。本项目让**生产/采集专用装备**也带词条（`dohdol-equipment.json:terms`，仅限专用栏位），品质规则复用同一套（普通/稀有/太古），含 Buff「品阶幸运 / 品质洞察 / 巧手 / 丰收 / 渔王的直觉」与 Debuff「品阶失衡 / 品质钝化 / 歉收」等。词条池独立于 `terms.json`，**不入词条图鉴、不污染战斗词条**；计入 `equipped_bonus`。回归保护 `tests/test_shared_data.py:test_dedicated_terms_are_scoped_and_valid`、`tests/test_dohdol.py:TestDedicatedTerms` |
+| 属性区间展示 | PRD 图鉴 3.4 只给底材展示理论范围，装备详情不展示。本项目让**装备详情**也显示「当前值【区间】」（基础属性 ±20% 带、副属性可达区间）；太古值超出区间，以 `值🌟` 金色展示。区间由 `baseId+品阶+属性` 推导，不落库（无迁移）；生产/采集专用装备的基础属性同样展示区间（`dohdol_base_attr_range`，其数值也按 ±20% 浮动生成） |
+| 制造品阶概率 | PRD 生产部分未定义品阶概率（原实现为固定权重 白30/绿30/蓝22/紫12/橙5/红1）。现改为**随进度动态**：`t = Σ 权重 × min(值/参考值,1)`，分布 = 基准 ×(1−t) + 目标 ×t；四项来源 = 英雄等级 / 通关地区数 / 生产等级 / 专用装备 `craftRarityPct` 合计；**四项全满 → 神话 20%（硬上限）**。只改制造，箱子/掉落概率不变（`loot.roll_rarity` 未动）。见 `shared/data/recipes.json:equipment.rarityScaling`、`item_factory.craft_rarity_luck/craft_rarity_distribution`；回归保护 `tests/test_dohdol.py:TestCraftRarityScaling` |
+| 专用装备词条 | PRD 只给战斗装备定义了 Buff/Debuff（2.4）。本项目让**生产/采集专用装备**也带词条（`dohdol-equipment.json:terms`，仅限专用栏位），品质规则复用同一套（普通/稀有/太古），含 Buff「品阶幸运 / 品质洞察 / 巧手 / 灵感(制造经验) / 丰收 / 渔王的直觉 / 博识(采集经验)」与 Debuff「品阶失衡 / 品质钝化 / 歉收」等。词条池独立于 `terms.json`，**不入词条图鉴、不污染战斗词条**；计入 `equipped_bonus`。词条数上限为 4，故 DoH Buff 由 3 个扩到 4 个，避免神装必然带 1 个 Debuff。回归保护 `tests/test_shared_data.py:test_dedicated_terms_are_scoped_and_valid`、`tests/test_dohdol.py:TestDedicatedTerms` |
 | 制造出售防刷 | 制造品阶概率上限提高后，制造→出售仍是**净亏或在 t=0 时基本打平**；回归测试断言满进度下制造出售的**每制造秒金币**仍低于终局打怪金币下限（地区 40 普通怪 × 浮动下限 ÷ 8s）。见 `tests/test_dohdol.py:TestCraftEconomy` |
 | 副本 | 普通开放低战力挑战；高难要求等级、装备、战力、关键属性（输出/防御检查）。实际门槛及遥测规则见 `balance.json` 和「战力平衡 v2」 |
 | 副属性品质 | PRD 只给 Buff/Debuff 定义了稀有/太古（附魔 5.3）；本项目把同一套品质规则延伸到**副属性**：普通在区间内随机，稀有取上限，太古取上限 ×1.25（如暴击 100-400 → 太古 500），以 🌟 标记 |

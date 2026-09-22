@@ -19,45 +19,41 @@ interface AttrGroup {
   label: (attr: string) => string
 }
 
-/**
- * 重造 / 附魔前后的逐条涨跌。
- * 属性按 attr 匹配、词条按 id 匹配；仅存在于 after 的条目视为新增、仅存在于 before 的视为消失。
- * direction 表示「对玩家是好是坏」：up=涨（绿）、down=降（红）。
- */
-export function diffReroll(kind: RerollKind, before: Item, after: Item): RerollChange[] {
+/** 词条按 id 匹配：仅存在于 after 的视为新增、仅存在于 before 的视为消失。 */
+function diffTerms(before: Item, after: Item): RerollChange[] {
   const out: RerollChange[] = []
-
-  if (kind === 'enchant') {
-    const prev = new Map(before.terms.map((t) => [t.id, t]))
-    const next = new Map(after.terms.map((t) => [t.id, t]))
-    for (const [id, term] of next) {
-      const old = prev.get(id)
-      const beforeValue = old ? old.value : null
-      out.push({
-        key: `t_${id}`,
-        name: termLabel(term),
-        // 新增 Debuff 视为变差（红），新增 Buff 视为变好（绿）
-        direction: beforeValue == null ? (term.type === 'debuff' ? 'down' : 'up') : direction(beforeValue, term.value),
-        before: beforeValue,
-        after: term.value,
-        delta: beforeValue == null ? null : term.value - beforeValue,
-      })
-    }
-    for (const [id, term] of prev) {
-      if (next.has(id)) continue
-      out.push({
-        key: `t_${id}`,
-        name: termLabel(term),
-        // 失去 Buff 变差（红），失去 Debuff 变好（绿）
-        direction: term.type === 'debuff' ? 'up' : 'down',
-        before: term.value,
-        after: null,
-        delta: null,
-      })
-    }
-    return out
+  const prev = new Map(before.terms.map((t) => [t.id, t]))
+  const next = new Map(after.terms.map((t) => [t.id, t]))
+  for (const [id, term] of next) {
+    const old = prev.get(id)
+    const beforeValue = old ? old.value : null
+    out.push({
+      key: `t_${id}`,
+      name: termLabel(term),
+      // 新增 Debuff 视为变差（红），新增 Buff 视为变好（绿）
+      direction: beforeValue == null ? (term.type === 'debuff' ? 'down' : 'up') : direction(beforeValue, term.value),
+      before: beforeValue,
+      after: term.value,
+      delta: beforeValue == null ? null : term.value - beforeValue,
+    })
   }
+  for (const [id, term] of prev) {
+    if (next.has(id)) continue
+    out.push({
+      key: `t_${id}`,
+      name: termLabel(term),
+      // 失去 Buff 变差（红），失去 Debuff 变好（绿）
+      direction: term.type === 'debuff' ? 'up' : 'down',
+      before: term.value,
+      after: null,
+      delta: null,
+    })
+  }
+  return out
+}
 
+function diffAttrs(before: Item, after: Item): RerollChange[] {
+  const out: RerollChange[] = []
   const groups: AttrGroup[] = [
     { key: 'b', prev: before.baseAttrs, next: after.baseAttrs, label: baseAttrName },
     { key: 's', prev: before.subAttrs, next: after.subAttrs, label: attrName },
@@ -89,4 +85,15 @@ export function diffReroll(kind: RerollKind, before: Item, after: Item): RerollC
     }
   }
   return out
+}
+
+/**
+ * 重造 / 附魔前后的逐条涨跌。
+ * 属性按 attr 匹配、词条按 id 匹配；仅存在于 after 的条目视为新增、仅存在于 before 的视为消失。
+ * 重造现在也会改动词条（彻底随机重掷、基于当前浮动），因此合并展示属性与词条变化。
+ * direction 表示「对玩家是好是坏」：up=涨（绿）、down=降（红）。
+ */
+export function diffReroll(kind: RerollKind, before: Item, after: Item): RerollChange[] {
+  if (kind === 'enchant') return diffTerms(before, after)
+  return [...diffAttrs(before, after), ...diffTerms(before, after)]
 }

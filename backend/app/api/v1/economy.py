@@ -108,9 +108,10 @@ async def craft(
 async def refine(
     payload: RefineRequest, db: DbSession, user: CurrentUser, hero: CurrentHero
 ) -> dict:
-    """重造：重掷基础属性与副属性，保留品阶/类型/等级需求/词条。
+    """重造：重掷基础属性与副属性，并重掷/浮动词条，保留品阶/类型/等级需求。
 
-    mode=random：彻底随机（全部重新洗牌）；mode=basedOnCurrent：基于当前（每条在当前值附近浮动）。
+    mode=random：彻底随机（全部重新洗牌）；mode=basedOnCurrent：基于当前（属性与词条
+    都在现有值附近浮动，太古词条数不减少，并有概率把一条普通 Buff 升为太古）。
     """
     item = (
         await db.execute(select(Item).where(Item.id == payload.itemId, Item.user_id == user.id))
@@ -128,6 +129,7 @@ async def refine(
     result = regenerate_attrs(item, rng, payload.mode)
     item.base_attrs = result["baseAttrs"]
     item.sub_attrs = result["subAttrs"]
+    item.terms = result["terms"]
     item.refine_count = int(item.refine_count) + 1
     user.gold = int(user.gold) - cost
     await db.commit()

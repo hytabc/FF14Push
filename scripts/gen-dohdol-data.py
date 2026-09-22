@@ -161,9 +161,11 @@ SLOTS = [
 BONUS_NAMES = {
     "gatherYieldPct": "采集产量",
     "gatherSpeedPct": "采集速度",
+    "gatherXpPct": "采集经验",
     "craftQualityPct": "制造品质",
     "craftRarityPct": "制造品阶幸运",
     "craftSpeedPct": "制造速度",
+    "craftXpPct": "制造经验",
     "fishInsightPct": "捕鱼人之识时长",
     "fishChancePct": "鱼王/鱼皇概率",
 }
@@ -195,6 +197,8 @@ DOHDOL_TERMS = [
      "stat": "craftQualityPct", "range": [3, 12], "slots": DOH_SLOTS, "desc": "制造品质概率 +{v}%"},
     {"id": "dohDexterous", "name": "巧手", "type": "buff", "trigger": "常驻",
      "stat": "craftSpeedPct", "range": [3, 15], "slots": DOH_SLOTS, "desc": "制造速度 +{v}%"},
+    {"id": "dohInspiration", "name": "灵感", "type": "buff", "trigger": "常驻",
+     "stat": "craftXpPct", "range": [5, 20], "slots": DOH_SLOTS, "desc": "制造经验 +{v}%"},
     {"id": "dohRarityMisaligned", "name": "品阶失衡", "type": "debuff", "trigger": "常驻",
      "stat": "craftRarityPct", "range": [-8, -2], "slots": DOH_SLOTS, "desc": "制造品阶概率 {v}%"},
     {"id": "dohQualityDull", "name": "品质钝化", "type": "debuff", "trigger": "常驻",
@@ -209,6 +213,8 @@ DOHDOL_TERMS = [
      "stat": "fishInsightPct", "range": [5, 20], "slots": DOL_SLOTS, "desc": "捕鱼人之识时长 +{v}%"},
     {"id": "dolKingInstinct", "name": "渔王的直觉", "type": "buff", "trigger": "常驻",
      "stat": "fishChancePct", "range": [3, 10], "slots": DOL_SLOTS, "desc": "鱼王 / 鱼皇概率 +{v}%"},
+    {"id": "dolKeenSense", "name": "博识", "type": "buff", "trigger": "常驻",
+     "stat": "gatherXpPct", "range": [5, 20], "slots": DOL_SLOTS, "desc": "采集 / 钓鱼经验 +{v}%"},
     {"id": "dolPoorHarvest", "name": "歉收", "type": "debuff", "trigger": "常驻",
      "stat": "gatherYieldPct", "range": [-12, -3], "slots": DOL_SLOTS, "desc": "采集产量 {v}%"},
     {"id": "dolSluggishGather", "name": "迟缓", "type": "debuff", "trigger": "常驻",
@@ -462,16 +468,16 @@ for c in consumables:
 
 dump("recipes.json", {
     "$comment": "生产配方。按生产等级解锁；inputs 引用材料/半成品/鱼，output 可为材料/半成品/装备/消耗品。",
-    "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（四项来源满值 → 神话 50%）。",
+    "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（四项来源满值 → 神话 20%）。",
     "equipment": {
         "highQualityMultiplier": 1.15,
         "guaranteedAncientTerms": 1,
         "rarityWeights": {
             "common": 0.30, "uncommon": 0.30, "rare": 0.22, "epic": 0.12, "legendary": 0.05, "mythic": 0.01,
         },
-        "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)；分布 = 基准 ×(1−t) + 目标 × t。四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备 craftRarityPct 合计）全部拉满 → t=1 → 神话 = mythicCap（50%，硬上限）。",
+        "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)；分布 = 基准 ×(1−t) + 目标 × t。四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备 craftRarityPct 合计）全部拉满 → t=1 → 神话 = mythicCap（20%，硬上限）。",
         "rarityScaling": {
-            "mythicCap": 0.5,
+            "mythicCap": 0.2,
             "sources": {
                 "heroLevel": {"weight": 0.25, "ref": 100},
                 "clearedRegions": {"weight": 0.25, "ref": 40},
@@ -479,7 +485,7 @@ dump("recipes.json", {
                 "gearPct": {"weight": 0.25, "ref": 60},
             },
             "targetWeights": {
-                "common": 0.01, "uncommon": 0.02, "rare": 0.09, "epic": 0.18, "legendary": 0.20, "mythic": 0.50,
+                "common": 0.02, "uncommon": 0.03, "rare": 0.14, "epic": 0.29, "legendary": 0.32, "mythic": 0.20,
             },
         },
     },

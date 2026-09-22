@@ -111,9 +111,11 @@
   "bonusNames": {
     "gatherYieldPct": "采集产量",
     "gatherSpeedPct": "采集速度",
+    "gatherXpPct": "采集经验",
     "craftQualityPct": "制造品质",
     "craftRarityPct": "制造品阶幸运",
     "craftSpeedPct": "制造速度",
+    "craftXpPct": "制造经验",
     "fishInsightPct": "捕鱼人之识时长",
     "fishChancePct": "鱼王/鱼皇概率"
   },
@@ -180,6 +182,27 @@
         "dohFeet"
       ],
       "desc": "制造速度 +{v}%"
+    },
+    {
+      "id": "dohInspiration",
+      "name": "灵感",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "craftXpPct",
+      "range": [
+        5,
+        20
+      ],
+      "slots": [
+        "dohTool",
+        "dohOffTool",
+        "dohHead",
+        "dohBody",
+        "dohHands",
+        "dohLegs",
+        "dohFeet"
+      ],
+      "desc": "制造经验 +{v}%"
     },
     {
       "id": "dohRarityMisaligned",
@@ -327,6 +350,27 @@
         "dolFeet"
       ],
       "desc": "鱼王 / 鱼皇概率 +{v}%"
+    },
+    {
+      "id": "dolKeenSense",
+      "name": "博识",
+      "type": "buff",
+      "trigger": "常驻",
+      "stat": "gatherXpPct",
+      "range": [
+        5,
+        20
+      ],
+      "slots": [
+        "dolTool",
+        "dolOffTool",
+        "dolHead",
+        "dolBody",
+        "dolHands",
+        "dolLegs",
+        "dolFeet"
+      ],
+      "desc": "采集 / 钓鱼经验 +{v}%"
     },
     {
       "id": "dolPoorHarvest",

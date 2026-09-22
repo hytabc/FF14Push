@@ -172,7 +172,7 @@ async def report_produce(
     if equipment_out:
         produced = await insert_items(db, user, equipment_out, source="craft")
 
-    xp = crafts * int(recipe["xp"])
+    xp = round(crafts * int(recipe["xp"]) * (1.0 + max(0.0, equip.get("craftXpPct", 0.0)) / 100.0))
     level_info = dohdol_util.apply_level_exp(progress, xp)
 
     return {

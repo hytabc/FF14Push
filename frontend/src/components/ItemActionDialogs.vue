@@ -187,12 +187,14 @@ function close() {
 
       <p v-if="kind === 'refine'" class="text-xs text-ink-300">
         <template v-if="mode === 'basedOnCurrent'">
-          基于当前：<b class="text-white">每种属性独立</b>在现有值附近小幅浮动，
-          <b class="text-emerald-300">可能升也可能降</b>；副属性种类与品阶、类型、等级需求、词条均保持不变。
+          基于当前：<b class="text-white">属性与词条</b>都在现有值附近小幅浮动，
+          <b class="text-emerald-300">可能升也可能降</b>；副属性种类与品阶、类型、等级需求保持不变，
+          词条种类与品质保留，已有太古词条数不减少，并有
+          {{ (data.economy.refine.basedOnCurrentAncientUpgradeChance * 100).toFixed(0) }}% 概率把一条普通 Buff 升为太古。
         </template>
         <template v-else>
-          彻底随机：重新洗牌<b class="text-white">基础属性浮动值</b>与<b class="text-white">副属性（种类与数值）</b>，
-          等同重新获得该装备；品阶、类型、等级需求与所有 Buff/Debuff <b class="text-emerald-300">保持不变</b>。
+          彻底随机：重新洗牌<b class="text-white">基础属性浮动值</b>、<b class="text-white">副属性（种类与数值）</b>
+          与<b class="text-white">全部 Buff/Debuff</b>，等同重新获得该装备；品阶、类型、等级需求保持不变。
         </template>
         <span v-if="item.refineCount" class="text-amber-300">
           该装备已重造 {{ item.refineCount }} 次，重造费用会随次数继续上涨。
@@ -201,7 +203,8 @@ function close() {
       <p v-else-if="kind === 'enchant'" class="text-xs text-ink-300">
         <template v-if="mode === 'basedOnCurrent'">
           基于当前：保留现有词条种类，<b class="text-white">每条独立</b>在现有值附近小幅浮动，
-          <b class="text-emerald-300">可能升也可能降</b>；品质保留。
+          <b class="text-emerald-300">可能升也可能降</b>；品质保留，已有太古词条数不减少，并有
+          {{ (data.economy.enchant.basedOnCurrentAncientUpgradeChance * 100).toFixed(0) }}% 概率把一条普通 Buff 升为太古。
         </template>
         <template v-else>
           彻底随机：将<b class="text-rose-300">覆盖现有全部 Buff/Debuff</b>（数量、种类、数值均重新随机）。

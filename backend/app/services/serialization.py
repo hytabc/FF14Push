@@ -6,25 +6,42 @@ from typing import Any, Iterable
 
 from app.services.economy import enchant_cost, refine_cost
 from app.services.game_config import CONFIG
-from app.services.item_factory import base_attr_range, sub_attr_range
+from app.services.item_factory import base_attr_range, dohdol_base_attr_range, sub_attr_range
 from app.services.slots_util import possible_slots
 from app.services.valuation import item_score
 
 
-def _attrs_with_range(item: Any, base: Any, entries: Any, range_fn: Any) -> list[dict[str, Any]]:
+def _attrs_with_range(entries: Any, range_fn: Any) -> list[dict[str, Any]]:
     """为每条属性附加 min/max（供前端展示「当前值【区间】」）。不改动库中的 JSON。"""
     out: list[dict[str, Any]] = []
     for entry in entries or []:
         row = dict(entry)
-        if base is not None:
-            lo, hi = range_fn(base, item.rarity, entry["attr"])
-            row["min"], row["max"] = round(lo, 2), round(hi, 2)
+        if range_fn is not None:
+            band = range_fn(entry["attr"])
+            if band is not None:
+                lo, hi = band
+                row["min"], row["max"] = round(lo, 2), round(hi, 2)
         out.append(row)
     return out
 
 
 def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[str, Any]:
     base = CONFIG.base_item_by_id.get(item.base_id)
+    # 生产/采集专用装备走独立注册表：底材不是 BaseItem，需要单独算取值区间。
+    dohdol = CONFIG.dohdol_item_by_id.get(item.base_id) if base is None else None
+
+    def base_band(attr_id: str) -> tuple[float, float] | None:
+        if base is not None:
+            return base_attr_range(base, item.rarity, attr_id)
+        if dohdol is not None:
+            return dohdol_base_attr_range(item.rarity, float(dohdol["bonus"].get(attr_id, 0.0)))
+        return None
+
+    def sub_band(attr_id: str) -> tuple[float, float] | None:
+        if base is not None:
+            return sub_attr_range(base, item.rarity, attr_id)
+        return None
+
     data: dict[str, Any] = {
         "id": item.id,
         "baseId": item.base_id,
@@ -36,8 +53,8 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "levelReq": item.level_req,
         "score": int(round(item_score(item))),
         "highQuality": bool(getattr(item, "high_quality", False)),
-        "baseAttrs": _attrs_with_range(item, base, item.base_attrs, base_attr_range),
-        "subAttrs": _attrs_with_range(item, base, item.sub_attrs, sub_attr_range),
+        "baseAttrs": _attrs_with_range(item.base_attrs, base_band),
+        "subAttrs": _attrs_with_range(item.sub_attrs, sub_band),
         "terms": item.terms or [],
         "equippedSlot": item.equipped_slot,
         "refineCount": item.refine_count,

@@ -631,11 +631,15 @@ export const gameData = {
       costGrowthPerRefine: number
       basedOnCurrentCostMultiplier: number
       basedOnCurrentSpreadPct: number
+      /** 「基于当前」重造时把一条普通 Buff 升为太古的概率。 */
+      basedOnCurrentAncientUpgradeChance: number
     }
     enchant: {
       autoUntilRareExtraCostMultiplier: number
       basedOnCurrentCostMultiplier: number
       basedOnCurrentSpreadPct: number
+      /** 「基于当前」附魔时把一条普通 Buff 升为太古的概率。 */
+      basedOnCurrentAncientUpgradeChance: number
     }
     termQuality: Record<TermQuality, number>
     /** Debuff 是否参与稀有/太古品质判定（false = Debuff 恒为普通，仅在随机池内随机）。 */

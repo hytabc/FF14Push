@@ -195,7 +195,7 @@ def test_craft_rarity_scaling_is_consistent() -> None:
     scaling = equip["rarityScaling"]
     cap = float(scaling["mythicCap"])
     assert 0 < cap <= 1
-    assert abs(cap - 0.5) < 1e-9, "极限神话概率应为 50%"
+    assert abs(cap - 0.2) < 1e-9, "极限神话概率应为 20%"
 
     assert abs(sum(float(s["weight"]) for s in scaling["sources"].values()) - 1.0) < 1e-9
     assert abs(sum(float(v) for v in scaling["targetWeights"].values()) - 1.0) < 1e-9

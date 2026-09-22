@@ -10,7 +10,7 @@ import Modal from '@/components/Modal.vue'
 import TermBadges from '@/components/TermBadges.vue'
 import { useToastStore } from '@/stores/toast'
 import type { PlayerProfile } from '@/game/types'
-import { formatNumber, formatPlaytime, jobName, rarityBg, rarityClass, rarityName } from '@/utils/format'
+import { formatNumber, formatPlaytime, jobName, rarityBg, rarityClass, rarityName, attrRangeLabel } from '@/utils/format'
 import { equipmentSlotGroups } from '@/utils/slots'
 
 const props = defineProps<{ userId: number | null }>()
@@ -135,6 +135,7 @@ watch(
             <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
               <p v-for="entry in profile.dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
                 {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
               </p>
             </div>
             <TermBadges class="mt-1" :terms="profile.dohdolLoadout[slot.id]!.terms" />

@@ -10,7 +10,7 @@ import TermBadges from '@/components/TermBadges.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { Item, SlotId } from '@/game/types'
-import { rarityBg, rarityClass, rarityName, slotName, baseAttrName } from '@/utils/format'
+import { rarityBg, rarityClass, rarityName, slotName, baseAttrName, attrRangeLabel } from '@/utils/format'
 import { equipmentSlotGroups } from '@/utils/slots'
 
 const game = useGameStore()
@@ -161,6 +161,7 @@ async function unequipDohdol(slot: string) {
             <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
               <p v-for="entry in dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
                 {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
               </p>
             </div>
             <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
@@ -250,6 +251,7 @@ async function unequipDohdol(slot: string) {
               <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
                 <p v-for="entry in item.baseAttrs" :key="entry.attr">
                   {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                  <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
                 </p>
               </div>
               <TermBadges class="mt-1" :terms="item.terms" />

@@ -117,7 +117,7 @@ async def report_gather(
     for material_id, count in gained.items():
         await dohdol_util.stack_add(db, user.id, dohdol_util.STACK_MATERIAL, material_id, count)
 
-    xp = actions * int(CONFIG.dohdol_levels["actionXp"]["gather"])
+    xp = round(actions * int(CONFIG.dohdol_levels["actionXp"]["gather"]) * (1.0 + max(0.0, equip.get("gatherXpPct", 0.0)) / 100.0))
     level_info = dohdol_util.apply_level_exp(progress, xp)
 
     return {

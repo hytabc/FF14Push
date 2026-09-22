@@ -153,7 +153,7 @@ class TestCraftedItem:
 
 
 class TestCraftRarityScaling:
-    """制造品阶概率抽奖化：单调提升、神话硬上限 50%、四项全满 = 50%。"""
+    """制造品阶概率抽奖化：单调提升、神话硬上限 20%、四项全满 = 20%。"""
 
     def _scaling(self):
         return CONFIG.recipes["equipment"]["rarityScaling"]
@@ -173,11 +173,11 @@ class TestCraftRarityScaling:
             float(refs["gearPct"]["ref"]),
         )
         assert luck == pytest.approx(1.0)
-        assert craft_rarity_distribution(luck)["mythic"] == pytest.approx(0.5)
+        assert craft_rarity_distribution(luck)["mythic"] == pytest.approx(0.2)
 
     def test_mythic_never_exceeds_cap(self):
         cap = float(self._scaling()["mythicCap"])
-        assert cap == pytest.approx(0.5)
+        assert cap == pytest.approx(0.2)
         for t in (0.0, 0.25, 0.5, 0.75, 1.0, 2.0):
             dist = craft_rarity_distribution(t)
             assert dist["mythic"] <= cap + 1e-9
@@ -728,7 +728,7 @@ class TestDohDolState:
         }
         assert abs(sum(craft["odds"].values()) - 1.0) < 1e-6
         assert craft["odds"]["mythic"] <= craft["mythicCap"] + 1e-9
-        assert craft["mythicCap"] == 0.5
+        assert craft["mythicCap"] == 0.2
 
 
 class TestMaterialAndFishCodex:

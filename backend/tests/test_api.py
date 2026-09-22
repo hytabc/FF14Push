@@ -713,7 +713,8 @@ class TestEconomy:
         assert second.json()["cost"] == base + int(base * growth)
         assert second.json()["cost"] > first.json()["cost"]
 
-    async def test_refine_only_rerolls_attrs(self, auth_client, session_factory) -> None:
+    async def test_refine_rerolls_attrs_and_terms(self, auth_client, session_factory) -> None:
+        """彻底随机重造：属性与词条一起重掷，品阶/类型保持不变。"""
         opened = await _open_one(auth_client, session_factory)
         item = opened["items"][0]
         await _set_gold(auth_client, session_factory, 700000)
@@ -723,8 +724,11 @@ class TestEconomy:
         body = resp.json()
         assert body["cost"] == CONFIG_REFINE_COST[item["rarity"]]
         assert body["after"]["rarity"] == item["rarity"]
-        assert body["after"]["terms"] == item["terms"]  # 重造不改变词条
         assert body["after"]["refineCount"] == 1
+        # 词条会被重掷（数量/种类/数值），但仍是合法词条结构
+        assert 0 <= len(body["after"]["terms"]) <= 4
+        for term in body["after"]["terms"]:
+            assert term["type"] in ("buff", "debuff")
 
     async def test_enchant_rerolls_terms(self, auth_client, session_factory) -> None:
         opened = await _open_one(auth_client, session_factory)
@@ -778,6 +782,7 @@ class TestEconomy:
             # 种类不变；普通品质数值仍落在其可达区间内
             assert [a["attr"] for a in after["baseAttrs"]] == [a["attr"] for a in item["baseAttrs"]]
             assert [a["attr"] for a in after["subAttrs"]] == [a["attr"] for a in item["subAttrs"]]
+            assert [t["id"] for t in after["terms"]] == [t["id"] for t in item["terms"]]
             for entry in after["baseAttrs"] + after["subAttrs"]:
                 if entry.get("quality") in (None, "common"):
                     assert entry["min"] - 1e-6 <= entry["value"] <= entry["max"] + 1e-6

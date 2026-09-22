@@ -191,7 +191,7 @@ async def report_fish(
 
     session.session_fish = sorted(session_fish)
 
-    xp = sum(int(c["exp"]) for c in caught)
+    xp = round(sum(int(c["exp"]) for c in caught) * (1.0 + max(0.0, equip.get("gatherXpPct", 0.0)) / 100.0))
     level_info = dohdol_util.apply_level_exp(progress, xp)
 
     for kind, title_id in (("king", "fish_king_all"), ("emperor", "fish_emperor_all")):

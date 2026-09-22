@@ -9,21 +9,25 @@
     "autoSellRarities": ["common", "uncommon"]
   },
   "refine": {
-    "$comment": "重造：随机基础属性浮动值与副属性，保留品阶/类型/等级需求/词条",
-    "$commentMode": "mode=random：彻底随机（现价）——基础属性与副属性全部重新洗牌，等同重新获得该装备；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——每条属性在现有值附近 ±基于当前浮动幅度 内独立浮动，可升可降，夹在该属性合法区间内。",
+    "$comment": "重造：随机基础属性浮动值与副属性，并重掷/浮动词条；保留品阶/类型/等级需求",
+    "$commentMode": "mode=random：彻底随机（现价）——基础属性、副属性与词条全部重新洗牌，等同重新获得该装备；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——属性与词条都在现有值附近 ±基于当前浮动幅度 内独立浮动，可升可降，夹在合法区间内；已有太古词条数不减少。",
     "$commentSpread": "basedOnCurrentSpreadPct：浮动幅度 = 该属性总区间宽度(上限−下限) × 该系数。例：区间 0-100、当前 22、0.10 → 12~32。",
+    "$commentAncientUpgrade": "basedOnCurrentAncientUpgradeChance：每次「基于当前」重造有该概率把一条普通 Buff 升为太古（数值 = 范围上限 ×1.25）。",
     "baseAttrFloat": 0.20,
     "subAttrFloat": 0.20,
     "costGrowthPerRefine": 0.25,
     "basedOnCurrentCostMultiplier": 3,
-    "basedOnCurrentSpreadPct": 0.10
+    "basedOnCurrentSpreadPct": 0.10,
+    "basedOnCurrentAncientUpgradeChance": 0.05
   },
   "enchant": {
     "$comment": "附魔：重新随机全部 Buff/Debuff，含品质判定（Debuff 见 debuffQualityEnabled）",
-    "$commentMode": "mode=random：彻底随机（现价）——全部词条重新随机；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——每条词条在现有值附近 ±basedOnCurrentSpreadPct 内独立浮动，可升可降。",
+    "$commentMode": "mode=random：彻底随机（现价）——全部词条重新随机；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——每条词条在现有值附近 ±basedOnCurrentSpreadPct 内独立浮动，可升可降；已有太古词条数不减少。",
+    "$commentAncientUpgrade": "basedOnCurrentAncientUpgradeChance：每次「基于当前」附魔有该概率把一条普通 Buff 升为太古（数值 = 范围上限 ×1.25）。",
     "autoUntilRareExtraCostMultiplier": 10,
     "basedOnCurrentCostMultiplier": 3,
-    "basedOnCurrentSpreadPct": 0.10
+    "basedOnCurrentSpreadPct": 0.10,
+    "basedOnCurrentAncientUpgradeChance": 0.05
   },
   "termQuality": {
     "common": 0.989,

@@ -940,6 +940,48 @@ class TestBasedOnCurrentReroll:
         lo, hi = base_attr_range(base, "rare", "attack")
         assert lo - 1e-6 <= result["baseAttrs"][0]["value"] <= hi + 1e-6
         assert len(result["subAttrs"]) >= 1
+        assert "terms" in result, "彻底随机重造现在也会重掷词条"
+
+    def _common_buff_item(self, quality: str = "common", value: float = 8.0) -> FakeItem:
+        return FakeItem(
+            category="weapon",
+            base_id=BASE_ID,
+            rarity="legendary",
+            base_attrs=[{"attr": "attack", "value": 30.0}],
+            sub_attrs=[],
+            terms=[
+                {
+                    "id": "strBoost", "name": "力量增幅", "type": "buff", "stat": "attackPct",
+                    "trigger": "常驻", "value": value, "quality": quality, "desc": "",
+                },
+            ],
+        )
+
+    def test_based_on_current_can_upgrade_common_buff_to_ancient(self) -> None:
+        """基于当前：有 5% 概率把一条普通 Buff 升为太古（数值 = 上限 ×1.25）。"""
+        item = self._common_buff_item()
+        rng = random.Random(4)
+        upgraded = None
+        for _ in range(400):
+            result = regenerate_attrs(item, rng, "basedOnCurrent")
+            term = result["terms"][0]
+            if term["quality"] == "ancient":
+                upgraded = term
+                break
+            item.terms = result["terms"]
+        assert upgraded is not None, "多次基于当前应出现普通 Buff → 太古"
+        lo, hi = CONFIG.term_by_id["strBoost"]["range"]
+        assert upgraded["value"] == pytest.approx(round(hi * 1.25, 2))
+
+    def test_based_on_current_keeps_ancient_floor(self) -> None:
+        """已有太古词条时，基于当前浮动后太古词条数不得减少。"""
+        item = self._common_buff_item(quality="ancient", value=18.75)
+        rng = random.Random(5)
+        for _ in range(40):
+            result = regenerate_attrs(item, rng, "basedOnCurrent")
+            ancients = [t for t in result["terms"] if t["quality"] == "ancient"]
+            assert len(ancients) >= 1, "已有太古词条数不得减少"
+            item.terms = result["terms"]
 
     def test_enchant_keeps_terms_and_forces_debuff_common(self) -> None:
         item = FakeItem(

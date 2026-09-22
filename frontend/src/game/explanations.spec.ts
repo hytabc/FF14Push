@@ -12,7 +12,7 @@ function fakeCraft(): CraftOdds {
   return {
     odds,
     luck: 0.5,
-    mythicCap: 0.5,
+    mythicCap: 0.2,
     sources: [
       { key: 'heroLevel', value: 50, ref: 100, norm: 0.5, weight: 0.25 },
       { key: 'clearedRegions', value: 20, ref: 40, norm: 0.5, weight: 0.25 },
@@ -26,7 +26,7 @@ describe('craftRarityExplain', () => {
   it('explains the scaling formula from shared config without player context', () => {
     const text = craftRarityExplain().lines.join('\n')
     expect(text).toContain('rarityScaling')
-    expect(text).toContain('50%')
+    expect(text).toContain('20%')
   })
 
   it('lists all four sources and the resolved odds with player context', () => {
@@ -36,6 +36,6 @@ describe('craftRarityExplain', () => {
     expect(text).toContain('生产等级')
     expect(text).toContain('专用装备品阶幸运')
     expect(text).toContain('50.0%')
-    expect(text).toContain('硬上限 50%')
+    expect(text).toContain('硬上限 20%')
   })
 })

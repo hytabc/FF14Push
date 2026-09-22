@@ -87,6 +87,24 @@ def base_attr_range(base: BaseItem, rarity: str, attr_id: str) -> tuple[float, f
     return value * (1.0 - spread), value * (1.0 + spread)
 
 
+# 专用装备基础属性随品阶档位的抬升系数（与 generate_crafted_item 一致）。
+DOHDOL_TIER_COEF = 0.15
+
+
+def dohdol_center_value(rarity: str, bonus_value: float) -> float:
+    """生产/采集专用装备基础属性的中心值：底材加成 × 高品质倍率 × (1 + 系数 × 品阶档位)。"""
+    mult = float(CONFIG.recipes["equipment"]["highQualityMultiplier"])
+    tier = int(CONFIG.rarities[rarity]["tier"])
+    return float(bonus_value) * mult * (1.0 + DOHDOL_TIER_COEF * tier)
+
+
+def dohdol_base_attr_range(rarity: str, bonus_value: float) -> tuple[float, float]:
+    """专用装备基础属性的可达区间：[中心值 × (1 ± baseAttrFloat)]（与生成时浮动一致）。"""
+    center = dohdol_center_value(rarity, bonus_value)
+    spread = float(CONFIG.base_attr_float)
+    return center * (1.0 - spread), center * (1.0 + spread)
+
+
 def sub_attr_range(base: BaseItem, rarity: str, attr_id: str) -> tuple[float, float]:
     """副属性的**可达区间**：名义区间 × 档位缩放后再叠加 ±subAttrFloat 浮动。
 
@@ -462,10 +480,15 @@ def generate_crafted_item(
 
     dohdol = CONFIG.dohdol_item_by_id.get(base_id)
     if dohdol is not None:
-        mult = float(CONFIG.recipes["equipment"]["highQualityMultiplier"])
-        rarity_tier = int(CONFIG.rarities[rarity]["tier"])
         base_attrs = [
-            {"attr": stat, "value": round(float(value) * mult * (1.0 + 0.15 * rarity_tier), 2)}
+            {
+                "attr": stat,
+                "value": round(
+                    dohdol_center_value(rarity, float(value))
+                    * _float_factor(rng, CONFIG.base_attr_float),
+                    2,
+                ),
+            }
             for stat, value in dohdol["bonus"].items()
         ]
         force_ancient = int(CONFIG.recipes["equipment"]["guaranteedAncientTerms"])
@@ -511,11 +534,12 @@ def generate_by_rarity(
 def regenerate_attrs(
     item: Any, rng: random.Random | None = None, mode: str = "random"
 ) -> dict[str, Any]:
-    """重造：随机基础属性浮动与副属性，保留品阶/类型/等级需求/词条。
+    """重造：随机基础属性浮动与副属性，并重掷/浮动词条，保留品阶/类型/等级需求。
 
-    mode="random"（彻底随机）：基础属性与副属性全部重新洗牌，等同重新获得该装备。
-    mode="basedOnCurrent"（基于当前）：每条属性在现有值附近独立浮动（可升可降），
-    种类不变，保留品质，数值夹在该属性（或该品质）的合法区间内。
+    mode="random"（彻底随机）：基础属性、副属性与词条全部重新洗牌，等同重新获得该装备。
+    mode="basedOnCurrent"（基于当前）：属性与词条都在现有值附近独立浮动（可升可降），
+    种类不变，保留品质，数值夹在合法区间内；太古词条数不减少，且有概率把一条普通 Buff
+    升为太古（economy.refine.basedOnCurrentAncientUpgradeChance）。
     """
     rng = rng or random.Random()
     base = CONFIG.base_item_by_id[item.base_id]
@@ -529,7 +553,11 @@ def regenerate_attrs(
             }
             for entry in base.base_attrs
         ]
-        return {"baseAttrs": base_attrs, "subAttrs": pick_sub_attrs(base, item.rarity, rng)}
+        return {
+            "baseAttrs": base_attrs,
+            "subAttrs": pick_sub_attrs(base, item.rarity, rng),
+            "terms": roll_terms(base, item.rarity, rng),
+        }
 
     spread = float(CONFIG.economy["refine"]["basedOnCurrentSpreadPct"])
     base_attrs = []
@@ -546,7 +574,62 @@ def regenerate_attrs(
         value = float_near_current(rng, float(entry["value"]), lo, hi, quality, spread, cap)
         sub_attrs.append({**entry, "value": round(value, 2)})
 
-    return {"baseAttrs": base_attrs, "subAttrs": sub_attrs}
+    terms = _roll_terms_based_on_current(
+        item,
+        rng,
+        spread,
+        float(CONFIG.economy["refine"].get("basedOnCurrentAncientUpgradeChance", 0.0)),
+    )
+    return {"baseAttrs": base_attrs, "subAttrs": sub_attrs, "terms": terms}
+
+
+def _ancient_count(terms: list[dict[str, Any]]) -> int:
+    return sum(1 for t in terms if t.get("quality") == "ancient")
+
+
+def _upgrade_random_common_buff(terms: list[dict[str, Any]], rng: random.Random) -> bool:
+    """把一条普通 Buff 升为太古（数值 = 范围上限 ×1.25）；无候选时返回 False。"""
+    candidates = [
+        t for t in terms if t.get("type") == "buff" and t.get("quality", "common") == "common"
+    ]
+    if not candidates:
+        return False
+    term = rng.choice(candidates)
+    lo, hi = term_range(term["id"])
+    term["quality"] = "ancient"
+    term["value"] = round(_extreme_value(lo, hi) * ANCIENT_FACTOR, 2)
+    return True
+
+
+def _ensure_ancient_floor(terms: list[dict[str, Any]], floor: int, rng: random.Random) -> None:
+    """保证太古词条数不低于 floor（保留品质的浮动态下本已满足，作为显式保底）。"""
+    while _ancient_count(terms) < floor and _upgrade_random_common_buff(terms, rng):
+        pass
+
+
+def float_terms_based_on_current(
+    item: Any, rng: random.Random, spread: float
+) -> list[dict[str, Any]]:
+    """就地浮动词条：保留种类与品质，Debuff 恒为普通，值夹进该品质的数值带。"""
+    out: list[dict[str, Any]] = []
+    for term in item.terms or []:
+        quality = "common" if term.get("type") == "debuff" else term.get("quality", "common")
+        lo, hi = term_range(term["id"])
+        value = float_near_current(rng, float(term["value"]), lo, hi, quality, spread)
+        out.append({**term, "quality": quality, "value": round(value, 2)})
+    return out
+
+
+def _roll_terms_based_on_current(
+    item: Any, rng: random.Random, spread: float, upgrade_chance: float
+) -> list[dict[str, Any]]:
+    """「基于当前」词条处理：就地浮动 + 太古保底 + 概率升级普通 Buff 为太古。"""
+    floor = _ancient_count(item.terms or [])
+    out = float_terms_based_on_current(item, rng, spread)
+    _ensure_ancient_floor(out, floor, rng)
+    if upgrade_chance > 0 and rng.random() < upgrade_chance:
+        _upgrade_random_common_buff(out, rng)
+    return out
 
 
 def roll_terms_for_enchant(
@@ -556,7 +639,8 @@ def roll_terms_for_enchant(
 
     mode="random"（彻底随机）：全部词条重新随机（数量/种类/数值）。
     mode="basedOnCurrent"（基于当前）：保留现有词条种类，每条在现有值附近独立浮动
-    （可升可降），保留品质；Debuff 恒为普通。
+    （可升可降），保留品质；Debuff 恒为普通。太古词条数不减少，且有概率把一条普通
+    Buff 升为太古（economy.enchant.basedOnCurrentAncientUpgradeChance）。
     """
     rng = rng or random.Random()
     base = CONFIG.base_item_by_id[item.base_id]
@@ -564,11 +648,10 @@ def roll_terms_for_enchant(
     if mode != "basedOnCurrent":
         return roll_terms(base, item.rarity, rng)
 
-    spread = float(CONFIG.economy["enchant"]["basedOnCurrentSpreadPct"])
-    out: list[dict[str, Any]] = []
-    for term in item.terms or []:
-        quality = "common" if term.get("type") == "debuff" else term.get("quality", "common")
-        lo, hi = term_range(term["id"])
-        value = float_near_current(rng, float(term["value"]), lo, hi, quality, spread)
-        out.append({**term, "quality": quality, "value": round(value, 2)})
-    return out
+    cfg = CONFIG.economy["enchant"]
+    return _roll_terms_based_on_current(
+        item,
+        rng,
+        float(cfg["basedOnCurrentSpreadPct"]),
+        float(cfg.get("basedOnCurrentAncientUpgradeChance", 0.0)),
+    )
