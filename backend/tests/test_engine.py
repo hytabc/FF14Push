@@ -34,6 +34,7 @@ from app.services.loot import (
     roll_rarity,
 )
 from app.services.combat_model import theoretical_dps
+from app.services.egg_heroes import exp_bonus_pct, skills_for
 from app.services.recruiting import (
     ancient_pity_count,
     generate_candidate,
@@ -848,6 +849,36 @@ class TestRecruitingEgg:
         candidate = normalize_candidate({"eggId": egg["id"], "talent": "common", "ancientAttr": "str"})
         assert candidate["talent"] == egg["talent"]
         assert candidate["ancientAttr"] is None
+
+
+class TestEggHeroAdditions:
+    """新增彩蛋英雄：被动与技能配置齐全，共用同一出现概率。"""
+
+    def test_exp_passive_bonus_pct(self) -> None:
+        assert exp_bonus_pct("liangshisi") == pytest.approx(25.0)
+        assert exp_bonus_pct("zhongtian") == 0.0
+        assert exp_bonus_pct(None) == 0.0
+
+    def test_new_heroes_configured(self) -> None:
+        by_id = {h["id"]: h for h in CONFIG.egg_heroes["heroes"]}
+        expected = {
+            "liangshisi": (None, "int"),
+            "qingfeng": ("PLD", "str"),
+            "meiruoyu": ("DRG", "str"),
+            "aolongbaiban": ("SGE", "int"),
+        }
+        for hero_id, (job_id, bias) in expected.items():
+            hero = by_id[hero_id]
+            assert hero["talent"] == "legendary"
+            assert hero["attrBias"] == bias
+            assert hero["jobId"] == job_id
+
+    def test_skills_bound_to_job(self) -> None:
+        """技能型彩蛋只在绑定职业生效；无技能的被动型彩蛋不改变职业组。"""
+        for hero_id, job_id in (("qingfeng", "PLD"), ("meiruoyu", "DRG"), ("aolongbaiban", "SGE")):
+            assert skills_for(hero_id, job_id) is not None
+            assert skills_for(hero_id, "adventurer") is None
+        assert skills_for("liangshisi", "WAR") is None
 
 
 class TestReportDoubleCharges:

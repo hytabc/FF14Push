@@ -2,6 +2,7 @@ import data from '@shared/schema'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BattleSimulator } from '@/game/core/battle'
+import { eggSkillSet } from '@/game/core/egg'
 import { attackSpeedFactor, estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
 import { bossStats, getRegion, goldRange, levelPenalty, monsterStats } from '@/game/core/regions'
 import type { HeroStats, MonsterStats } from '@/game/types'
@@ -902,6 +903,71 @@ describe('彩蛋英雄技能', () => {
     } finally {
       spy.mockRestore()
     }
+  })
+
+  it('俍十四为任意职业提供经验被动且不追加技能', () => {
+    const egg = data.eggHeroes.byId['liangshisi']
+    expect(egg.jobId).toBeNull()
+    expect(egg.passive).toEqual({ type: 'expGainBonus', value: 0.25 })
+    expect(eggSkillSet('liangshisi', 'WAR')).toBeNull()
+    expect(eggSkillSet('liangshisi', 'BLM')).toBeNull()
+  })
+
+  it('「水群」使接下来 5 次技能魔力消耗减半并逐次消耗', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'PLD', maxMp: 5000, attack: 1000 }),
+      raid: { bosses: [attacker], enrage: null },
+      eggId: 'qingfeng',
+    })
+    sim.start()
+    forceCast(sim, 'eggWaterGroup')
+    expect(sim.halfMpCharges).toBe(5)
+
+    const skill = sim.skills.find((s) => s.mpCost > 0)!
+    const scale =
+      skill.damageType === 'magical'
+        ? data.heroes.mp.magicalSkillCostScale
+        : data.heroes.mp.physicalSkillCostScale
+    const raw = Math.floor(skill.mpCost * scale)
+    const before = sim.heroMp
+    forceCast(sim, skill.id)
+    expect(before - sim.heroMp).toBe(Math.floor(raw / 2))
+    expect(sim.halfMpCharges).toBe(4)
+  })
+
+  it('「苍天之龙骑士」恢复其他技能冷却但不重置自身', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'DRG', attack: 1000 }),
+      raid: { bosses: [attacker], enrage: null },
+      eggId: 'meiruoyu',
+    })
+    sim.start()
+    const other = sim.skills.find((s) => s.id !== 'eggAzureDragoon')!
+    sim.cooldowns[other.id] = 30
+    forceCast(sim, 'eggAzureDragoon')
+    expect(sim.cooldowns[other.id]).toBe(0)
+    expect(sim.cooldowns['eggAzureDragoon']).toBeGreaterThan(0)
+  })
+
+  it('「术道恒久」使自身治疗量提高 100%（10s）', () => {
+    const healSkill = data.jobById['SGE'].skills.find((s) =>
+      s.effects.some((e) => e.type === 'heal'),
+    )!
+    const healAmount = (eggId: string | null): number => {
+      const sim = new BattleSimulator({
+        stats: makeStats({ jobId: 'SGE', maxHp: 100000, hpRegen: 0 }),
+        raid: { bosses: [attacker], enrage: null },
+        eggId,
+      })
+      sim.start()
+      if (eggId) forceCast(sim, 'eggEternalWay')
+      sim.heroHp = 1000
+      forceCast(sim, healSkill.id)
+      return sim.heroHp - 1000
+    }
+    const plain = healAmount(null)
+    expect(plain).toBeGreaterThan(0)
+    expect(healAmount('aolongbaiban')).toBeCloseTo(plain * 2, 5)
   })
 })
 

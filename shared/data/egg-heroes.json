@@ -1,7 +1,7 @@
 {
   "$comment": "彩蛋英雄：共用 eggChance 出现概率，独立于 talentWeights / ancient 抽取，不影响原英雄池概率。命中后再从 heroes 中随机取一位。",
-  "$commentSkill": "技能字段与 jobs.json 的 SkillDef 一致。replaceSkills=true 时该职业只拥有这些技能；false 时在职业技能之外追加。新增 effect：skillDamageBuff（技能威力 +value，持续 duration 秒）、immunity（免疫下 value 次伤害）、doublePowerCharges（接下来 value 次技能威力翻倍）、doubleRewardCharges（接下来 value 个怪物经验/金币翻倍）。",
-  "$commentPassive": "passive 为常驻被动：chestLuckBonus 表示装备品阶高品质概率 +value（luck 系数）。",
+  "$commentSkill": "技能字段与 jobs.json 的 SkillDef 一致。replaceSkills=true 时该职业只拥有这些技能；false 时在职业技能之外追加。新增 effect：skillDamageBuff（技能威力 +value，持续 duration 秒）、immunity（免疫下 value 次伤害）、doublePowerCharges（接下来 value 次技能威力翻倍）、doubleRewardCharges（接下来 value 个怪物经验/金币翻倍）、mpCostHalveCharges（接下来 value 次技能释放的魔力消耗减半）、cdResetAll（立即恢复全部技能冷却时间）、healingBuff（自身治疗量 +value，持续 duration 秒）。",
+  "$commentPassive": "passive 为常驻被动：chestLuckBonus 表示装备品阶高品质概率 +value（luck 系数）；expGainBonus 表示获取经验倍率 +value（如 0.25 = +25%）。",
   "eggChance": 0.005,
   "heroes": [
     {
@@ -74,6 +74,53 @@
       "desc": "被动「幸运」：装备品阶高品质概率 +10%（任意职业）",
       "skills": [],
       "passive": { "type": "chestLuckBonus", "value": 0.1 }
+    },
+    {
+      "id": "liangshisi",
+      "name": "俍十四",
+      "talent": "legendary",
+      "attrBias": "int",
+      "jobId": null,
+      "replaceSkills": false,
+      "desc": "被动「豆芽精」：获取经验倍率 +25%（任意职业）",
+      "skills": [],
+      "passive": { "type": "expGainBonus", "value": 0.25 }
+    },
+    {
+      "id": "qingfeng",
+      "name": "清风",
+      "talent": "legendary",
+      "attrBias": "str",
+      "jobId": "PLD",
+      "replaceSkills": false,
+      "desc": "使用骑士时追加「水群」：接下来 5 次技能释放的魔力消耗减半（CD 120s）",
+      "skills": [
+        { "id": "eggWaterGroup", "name": "水群", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "mpCostHalveCharges", "value": 5 }] }
+      ]
+    },
+    {
+      "id": "meiruoyu",
+      "name": "玫若雨",
+      "talent": "legendary",
+      "attrBias": "str",
+      "jobId": "DRG",
+      "replaceSkills": false,
+      "desc": "使用龙骑士时追加「苍天之龙骑士」：开启后恢复所有技能的冷却时间（CD 120s）",
+      "skills": [
+        { "id": "eggAzureDragoon", "name": "苍天之龙骑士", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "cdResetAll" }] }
+      ]
+    },
+    {
+      "id": "aolongbaiban",
+      "name": "敖龙族的白板",
+      "talent": "legendary",
+      "attrBias": "int",
+      "jobId": "SGE",
+      "replaceSkills": false,
+      "desc": "使用贤者时追加「术道恒久」：开启后提高自身 100% 治疗量，持续 10s（CD 120s）",
+      "skills": [
+        { "id": "eggEternalWay", "name": "术道恒久", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "healingBuff", "value": 1, "duration": 10 }] }
+      ]
     }
   ]
 }

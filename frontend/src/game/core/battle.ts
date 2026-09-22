@@ -98,6 +98,8 @@ export class BattleSimulator {
   doublePowerCharges = 0
   /** 彩蛋技能「拔豆芽」剩余次数：接下来 N 个怪物经验/金币翻倍。 */
   doubleRewardCharges = 0
+  /** 彩蛋技能「水群」剩余次数：接下来 N 次技能释放的魔力消耗减半。 */
+  halfMpCharges = 0
 
   log: LogEntry[] = []
   floating: FloatingText[] = []
@@ -333,7 +335,7 @@ export class BattleSimulator {
       const ticks = Math.floor(this.regenTimer)
       this.regenTimer -= ticks
       const stats = this.stats
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + (stats.hpRegen + this.buffs.filter(b => b.stat === "healOverTime").reduce((sum,b) => sum + stats.maxHp * b.value,0)) * ticks * (this.penalty.healingMultiplier ?? 1))
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + (stats.hpRegen + this.buffs.filter(b => b.stat === "healOverTime").reduce((sum,b) => sum + stats.maxHp * b.value,0)) * ticks * this.healMultiplier)
       this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks * (this.penalty.resourceMultiplier ?? 1))
     }
 
@@ -480,17 +482,28 @@ export class BattleSimulator {
     return sorted[0] ?? ADVENTURER_SKILL
   }
 
-  private mpCost(skill: SkillLike): number {
+  private rawMpCost(skill: SkillLike): number {
     const scale = skill.damageType === 'magical' ? data.heroes.mp.magicalSkillCostScale : data.heroes.mp.physicalSkillCostScale
     return Math.floor(skill.mpCost * scale)
   }
 
+  /** 实际魔力消耗：彩蛋「水群」生效时减半（仅对有耗蓝的技能生效）。 */
+  private mpCost(skill: SkillLike): number {
+    const base = this.rawMpCost(skill)
+    return base > 0 && this.halfMpCharges > 0 ? Math.floor(base / 2) : base
+  }
+
   private cast(skill: SkillLike): void {
     const stats = this.stats
+    const rawCost = this.rawMpCost(skill)
     const cost = this.mpCost(skill)
     this.heroMp = Math.max(0, this.heroMp - cost)
+    if (rawCost > 0 && this.halfMpCharges > 0) {
+      this.halfMpCharges -= 1
+      this.pushLog(`「水群」生效，${skill.name} 魔力消耗减半（剩余 ${this.halfMpCharges} 次）`, 'skill')
+    }
     // 零耗蓝普攻作为兜底回蓝手段：蓝量见底时仍能缓慢回蓝，避免退化成「只剩普攻」。
-    if (cost <= 0) {
+    if (rawCost <= 0) {
       const restore = Math.floor(stats.maxMp * Number(data.heroes.mp.basicAttackRestorePct ?? 0))
       if (restore > 0) this.heroMp = Math.min(stats.maxMp, this.heroMp + restore)
     }
@@ -573,7 +586,7 @@ export class BattleSimulator {
       switch (type) {
         case 'heal':
         case 'fullHeal': {
-          const amount = (type === 'fullHeal' ? stats.maxHp : Math.floor(stats.maxHp * value)) * (this.penalty.healingMultiplier ?? 1)
+          const amount = (type === 'fullHeal' ? stats.maxHp : Math.floor(stats.maxHp * value)) * this.healMultiplier
           this.heroHp = Math.min(stats.maxHp, this.heroHp + amount)
           this.pushFloat(`+${Math.floor(amount)}`, 'hero', 'hero')
           break
@@ -582,7 +595,7 @@ export class BattleSimulator {
           this.buffs.push({ stat: 'healOverTime', value, remaining: duration, name: skill.name })
           break
         case 'shield':
-          this.shield += Math.floor(stats.maxHp * value * (this.penalty.healingMultiplier ?? 1))
+          this.shield += Math.floor(stats.maxHp * value * this.healMultiplier)
           break
         case 'mpRestore':
           this.heroMp = Math.min(stats.maxMp, this.heroMp + Math.floor(stats.maxMp * value * (this.penalty.resourceMultiplier ?? 1)))
@@ -633,6 +646,20 @@ export class BattleSimulator {
           this.doubleRewardCharges += Math.max(0, Math.floor(value))
           this.pushLog(`接下来 ${this.doubleRewardCharges} 个怪物经验/金币翻倍`, 'skill')
           break
+        case 'mpCostHalveCharges':
+          this.halfMpCharges += Math.max(0, Math.floor(value))
+          this.pushLog(`接下来 ${this.halfMpCharges} 次技能魔力消耗减半`, 'skill')
+          break
+        case 'cdResetAll':
+          for (const key of Object.keys(this.cooldowns)) {
+            if (key !== skill.id) this.cooldowns[key] = 0
+          }
+          this.pushLog('恢复全部技能冷却时间', 'skill')
+          break
+        case 'healingBuff':
+          this.buffs.push({ stat: 'healingBuff', value, remaining: duration, name: skill.name })
+          this.pushLog(`治疗量 +${Math.round(value * 100)}%${duration > 0 ? `（${duration}s）` : ''}`, 'skill')
+          break
         default:
           if (duration > 0 && (type.endsWith('Buff') || type === 'damageReduction')) {
             this.buffs.push({ stat: type, value, remaining: duration, name: skill.name })
@@ -647,6 +674,12 @@ export class BattleSimulator {
   /** 越级时英雄防御的剩余比例（0-1）。等级达标时为 1。 */
   private get defenseScale(): number {
     return Math.max(0, 1 - this.penalty.defenseIgnorePct / 100)
+  }
+
+  /** 治疗量倍率：等级压制系数 × 彩蛋「术道恒久」等治疗增益。 */
+  private get healMultiplier(): number {
+    const buff = this.buffs.reduce((sum, b) => (b.stat === 'healingBuff' ? sum + b.value : sum), 0)
+    return (this.penalty.healingMultiplier ?? 1) * (1 + buff)
   }
 
   /** 消耗一层彩蛋「免疫」：返回 true 表示本次伤害被免疫。 */
@@ -700,7 +733,7 @@ export class BattleSimulator {
 
     // 吸血
     if (stats.lifestealPct > 0) {
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(damage * (stats.lifestealPct / 100) * (this.penalty.healingMultiplier ?? 1)))
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(damage * (stats.lifestealPct / 100) * this.healMultiplier))
     }
 
     if (this.monsterHp <= 0) {
@@ -844,7 +877,7 @@ export class BattleSimulator {
       this.pushFloat(`-${damage}`, 'hero', 'monster')
     }
     if (stats.lifestealPct > 0) {
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * (this.penalty.healingMultiplier ?? 1)))
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * this.healMultiplier))
     }
     if (this.heroHp <= 0) { this.mechanismFailures.push(skill.id); this.heroDies() }
   }
