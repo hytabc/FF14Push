@@ -58,3 +58,6 @@ __all__ = [
     "ActiveConsumable",
     "UserTitle",
 ]
+
+from app.models.multiplayer import (HeroRegistration, CoopRoom, CoopMember, CoopSeat,
+    CoopBattle, CoopCommand, CoopReward, CoopProgress, PvpBattle, CoopTicket)

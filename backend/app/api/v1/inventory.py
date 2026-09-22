@@ -37,6 +37,8 @@ async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHe
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="未知栏位")
 
     item = await _owned_item(db, user.id, item_id)
+    if item.equipped_hero_id not in (None, hero.id):
+        raise HTTPException(409, "请先从原英雄卸下此装备")
     base = CONFIG.base_item_by_id.get(item.base_id)
     if base is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="底材配置缺失")
@@ -45,16 +47,19 @@ async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHe
 
     current = (
         await db.execute(
-            select(Item).where(Item.user_id == user.id, Item.equipped_slot == slot)
+            select(Item).where(Item.user_id == user.id, Item.equipped_slot == slot, Item.equipped_hero_id == hero.id)
         )
     ).scalar_one_or_none()
     if current is not None and current.id != item.id:
         current.equipped_slot = None
+        current.equipped_hero_id = None
+        await db.flush()
 
     if item.equipped_slot and item.equipped_slot != slot:
         item.equipped_slot = None
 
     item.equipped_slot = slot
+    item.equipped_hero_id = hero.id
     await db.commit()
 
     stats = compute_stats(hero, items)
@@ -67,12 +72,13 @@ async def unequip(
 ) -> dict:
     item = (
         await db.execute(
-            select(Item).where(Item.user_id == user.id, Item.equipped_slot == payload.slot)
+            select(Item).where(Item.user_id == user.id, Item.equipped_slot == payload.slot, Item.equipped_hero_id == hero.id)
         )
     ).scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="该栏位没有装备")
     item.equipped_slot = None
+    item.equipped_hero_id = None
     await db.commit()
     stats = compute_stats(hero, items)
     return {"stats": stats.to_dict()}

@@ -14,6 +14,7 @@ class RaidSession(Base, TimestampMixin):
     __tablename__ = "raid_sessions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL"), nullable=True)
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
     raid_id: Mapped[str] = mapped_column(sa.String(32), index=True)
     started_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())

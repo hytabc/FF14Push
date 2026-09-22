@@ -23,7 +23,7 @@ from app.services.stats import compute_stats
 
 router = APIRouter(prefix="/tavern", tags=["tavern"])
 
-MAX_HEROES = 1
+MAX_HEROES = 8
 
 
 async def _tavern(db: DbSession, user_id: int) -> TavernState:
@@ -53,13 +53,14 @@ def _hero_level(hero: Hero | None) -> int:
 async def _replace_hero(
     db: DbSession, user: User, hero: Hero | None, candidate: dict, cost: int
 ) -> Hero:
-    """扣费并替换当前英雄（旧英雄装备卸下回背包，等级经验不保留）。"""
+    """扣费并添加新英雄（现有英雄与装备保持独立）。"""
     candidate = normalize_candidate(candidate)  # 带太古属性必定为神话
-    await db.execute(update(Item).where(Item.user_id == user.id).values(equipped_slot=None))
+    from app.services.roster import require_idle_team
+    await require_idle_team(db, user.id)
+    count = len((await db.scalars(select(Hero.id).where(Hero.user_id == user.id))).all())
+    if count >= MAX_HEROES:
+        raise HTTPException(409, "英雄名册已满（最多8名）")
     user.gold = int(user.gold) - cost
-    if hero is not None:
-        await db.delete(hero)
-        await db.flush()
 
     new_hero = Hero(
         user_id=user.id,
@@ -80,6 +81,8 @@ async def _replace_hero(
     )
     db.add(new_hero)
     await db.flush()
+    if user.active_hero_id is None:
+        user.active_hero_id = new_hero.id
     return new_hero
 
 
@@ -186,7 +189,7 @@ async def recruit(
 ) -> dict:
     """招募新英雄并替换当前英雄。来源：PRD 招募 2.4"""
     if not payload.confirm:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先确认替换")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先确认招募")
 
     row = await _tavern(db, user.id)
     if row.candidate is None:
@@ -248,7 +251,7 @@ async def ten_pull_recruit(
 ) -> dict:
     """从十连候选中招募指定英雄（按该英雄 recruitCost 扣费），随后清空本批候选。"""
     if not payload.confirm:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先确认替换")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先确认招募")
 
     row = await _tavern(db, user.id)
     candidates = row.multi_candidates or []
@@ -289,16 +292,10 @@ async def ten_pull_clear(db: DbSession, user: CurrentUser) -> dict:
 
 
 @router.post("/dismiss")
-async def dismiss(db: DbSession, user: CurrentUser, hero: OptionalHero) -> dict:
-    """解雇当前英雄：装备卸下保留，等级经验不保留。"""
-    if hero is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="当前没有英雄")
-    if hero.is_initial:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="初始英雄不可解雇，请先招募新英雄进行替换",
-        )
-    await db.execute(update(Item).where(Item.user_id == user.id).values(equipped_slot=None))
-    await db.delete(hero)
+async def dismiss(payload: dict, db: DbSession, user: CurrentUser) -> dict:
+    from app.services.roster import dismiss_hero
+    if not isinstance(payload.get("heroId"), int):
+        raise HTTPException(422, "请指定要解雇的heroId")
+    await dismiss_hero(db, user, payload["heroId"])
     await db.commit()
-    return {"ok": True, "message": "英雄已解雇，装备已卸下并保留在背包中"}
+    return {"ok": True, "message": "英雄已解雇，装备已卸下保留"}

@@ -199,8 +199,8 @@ export const api = {
     return (await http.post('/tavern/recruit', { confirm })).data
   },
 
-  async tavernDismiss() {
-    return (await http.post('/tavern/dismiss', {})).data
+  async tavernDismiss(heroId: number) {
+    return (await http.post('/tavern/dismiss', { heroId })).data
   },
 
   async tavernTenPull() {

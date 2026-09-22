@@ -45,6 +45,7 @@ def _extract_token(authorization: str | None) -> str | None:
 
 
 async def get_current_user(
+    request: Request,
     db: DbSession,
     authorization: Annotated[str | None, Header()] = None,
 ) -> User:
@@ -60,6 +61,12 @@ async def get_current_user(
     # 封号：令牌仍可能有效，因此每个已认证请求都要在这里拦截，实现「强制下线」。
     if user.banned:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BANNED_DETAIL)
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        from app.services.roster import lock_user, require_idle_team
+        # Coop operations lock room then accounts; do not reverse that ordering here.
+        if "/coop" not in request.url.path:
+            user = await lock_user(db, user.id)
+            await require_idle_team(db, user.id)
     return user
 
 
@@ -67,7 +74,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 async def get_current_hero(db: DbSession, user: CurrentUser) -> Hero:
-    hero = (await db.execute(select(Hero).where(Hero.user_id == user.id))).scalar_one_or_none()
+    hero = (await db.execute(select(Hero).where(Hero.user_id == user.id, Hero.id == user.active_hero_id))).scalar_one_or_none()
     if hero is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="尚未招募英雄")
     return hero
@@ -81,7 +88,8 @@ async def load_user_items(db: AsyncSession, user_id: int) -> list[Item]:
 
 
 async def get_current_items(db: DbSession, user: CurrentUser) -> list[Item]:
-    return await load_user_items(db, user.id)
+    from app.services.stats import hero_items
+    return hero_items(await load_user_items(db, user.id), user.active_hero_id)
 
 
 CurrentItems = Annotated[list[Item], Depends(get_current_items)]
@@ -110,7 +118,7 @@ OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 
 async def get_optional_hero(db: DbSession, user: CurrentUser) -> Hero | None:
     """解雇英雄后酒馆等入口仍需可用。"""
-    return (await db.execute(select(Hero).where(Hero.user_id == user.id))).scalar_one_or_none()
+    return (await db.execute(select(Hero).where(Hero.user_id == user.id, Hero.id == user.active_hero_id))).scalar_one_or_none()
 
 
 OptionalHero = Annotated[Hero | None, Depends(get_optional_hero)]

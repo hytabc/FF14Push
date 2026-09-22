@@ -10,6 +10,8 @@ async def region_access(db, user_id, hero, items):
     rows = (await db.execute(select(RegionProgress).where(RegionProgress.user_id == user_id))).scalars().all()
     cleared = {r.region_id for r in rows if r.cleared}
     old = {r.region_id for r in rows if r.unlocked}
+    from app.services.stats import hero_items
+    items = hero_items(items, hero.id)
     stats = compute_stats(hero, items)
     return {int(r): region_gate(int(r), stats, items, cleared, int(r) in old) for r in BALANCE['regions']}
 

@@ -25,7 +25,9 @@ class User(Base, TimestampMixin):
     # 累计在线时长（毫秒）：由战斗 / 采集 / 生产 / 钓鱼 / 副本的服务端上报窗口累加，离线不计入。
     play_ms: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default="0")
 
-    hero: Mapped["Hero | None"] = relationship(back_populates="user", uselist=False)
+    active_hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL", use_alter=True, name="fk_users_active_hero"), nullable=True)
+    hero: Mapped["Hero | None"] = relationship(foreign_keys=[active_hero_id], post_update=True)
+    heroes: Mapped[list["Hero"]] = relationship(back_populates="user", foreign_keys="Hero.user_id")
     items: Mapped[list["Item"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
@@ -34,7 +36,7 @@ class Hero(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        sa.ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+        sa.ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     name: Mapped[str] = mapped_column(sa.String(64))
     level: Mapped[int] = mapped_column(sa.Integer, default=1)
@@ -54,7 +56,7 @@ class Hero(Base, TimestampMixin):
     region_kill_count: Mapped[int] = mapped_column(sa.Integer, default=0)
     is_initial: Mapped[bool] = mapped_column(sa.Boolean, default=False)
 
-    user: Mapped[User] = relationship(back_populates="hero")
+    user: Mapped[User] = relationship(back_populates="heroes", foreign_keys=[user_id])
     skill_stats: Mapped[list["HeroSkillStat"]] = relationship(
         back_populates="hero", cascade="all, delete-orphan"
     )

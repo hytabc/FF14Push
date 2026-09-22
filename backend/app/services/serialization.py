@@ -32,7 +32,7 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
 
     def base_band(attr_id: str) -> tuple[float, float] | None:
         if base is not None:
-            return base_attr_range(base, item.rarity, attr_id)
+            return base_attr_range(base, item.rarity, attr_id, getattr(item, "high_quality", False))
         if dohdol is not None:
             return dohdol_base_attr_range(item.rarity, float(dohdol["bonus"].get(attr_id, 0.0)))
         return None
@@ -57,6 +57,7 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "subAttrs": _attrs_with_range(item.sub_attrs, sub_band),
         "terms": item.terms or [],
         "equippedSlot": item.equipped_slot,
+        "equippedHeroId": getattr(item, "equipped_hero_id", None),
         "refineCount": item.refine_count,
         "enchantCount": item.enchant_count,
         # 实付价：重造随重造次数递增，前端直接显示这两个值即可与服务端扣费一致
@@ -97,8 +98,10 @@ def item_from_generated(generated: dict[str, Any], source: str) -> dict[str, Any
     }
 
 
-def loadout(items: Iterable[Any]) -> dict[str, dict[str, Any]]:
+def loadout(items: Iterable[Any], hero_id: int | None = None) -> dict[str, dict[str, Any]]:
     """当前穿戴 → {slotId: item}。"""
+    from app.services.stats import hero_items
+    items = hero_items(items, hero_id) if hero_id is not None else items
     out: dict[str, dict[str, Any]] = {}
     for item in items:
         if item.equipped_slot:

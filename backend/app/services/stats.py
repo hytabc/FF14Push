@@ -150,8 +150,14 @@ def _resolve_coef(coef: dict[str, float], attr_source: str | None) -> dict[str, 
     return {k: v for k, v in coef.items() if k == attr_source}
 
 
+def hero_items(items: Iterable[Any], hero_id: int | None) -> list[Any]:
+    """Unassigned inventory and account tools remain visible; other heroes' gear does not."""
+    return [i for i in items if getattr(i, "equipped_hero_id", None) in (None, hero_id)]
+
+
 def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
     """计算英雄最终面板属性。"""
+    items = hero_items(items, getattr(hero, "id", None))
     agg = aggregate_equipment(items)
     level = int(hero.level)
     gc = float(CONFIG.talents["talents"][hero.talent]["growthCoef"])

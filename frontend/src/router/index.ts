@@ -5,6 +5,9 @@ import { useAuthStore } from '@/stores/auth'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/roster', component: () => import('@/views/RosterView.vue') },
+    { path: '/coop', component: () => import('@/views/CoopView.vue') },
+    { path: '/arena', component: () => import('@/views/ArenaView.vue') },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
     { path: '/', name: 'main', component: () => import('@/views/MainView.vue') },
     { path: '/equipment', name: 'equipment', component: () => import('@/views/EquipmentView.vue') },

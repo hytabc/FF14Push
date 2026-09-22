@@ -57,6 +57,8 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
         is_initial=True,
     )
     db.add(hero)
+    await db.flush()
+    user.active_hero_id = hero.id
 
     for region in CONFIG.regions["regions"]:
         db.add(
@@ -92,6 +94,7 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
             user_id=user.id,
             **item_from_generated(generated, "starter"),
             equipped_slot="mainHand",
+            equipped_hero_id=hero.id,
         )
         db.add(starter_item)
 
@@ -175,7 +178,7 @@ async def change_password(payload: ChangePasswordRequest, db: DbSession, user: C
 
 @router.get("/me")
 async def me(user: CurrentUser, db: DbSession) -> dict:
-    hero = (await db.execute(select(Hero).where(Hero.user_id == user.id))).scalar_one_or_none()
+    hero = (await db.execute(select(Hero).where(Hero.user_id == user.id, Hero.id == user.active_hero_id))).scalar_one_or_none()
     return {
         "id": user.id,
         "username": user.username,

@@ -76,7 +76,7 @@ def roll_sub_attr_value(rng: random.Random, lo: float, hi: float, quality: str) 
     return rng.uniform(lo, hi) * _float_factor(rng, CONFIG.sub_attr_float)
 
 
-def base_attr_range(base: BaseItem, rarity: str, attr_id: str) -> tuple[float, float]:
+def base_attr_range(base: BaseItem, rarity: str, attr_id: str, high_quality: bool = False) -> tuple[float, float]:
     """基础属性的可达区间：[基准值 × 品阶倍率 × (1 ± baseAttrFloat)]。"""
     mult = float(CONFIG.rarities[rarity]["multiplier"])
     spread = float(CONFIG.base_attr_float)
@@ -84,6 +84,8 @@ def base_attr_range(base: BaseItem, rarity: str, attr_id: str) -> tuple[float, f
     if entry is None:
         return 0.0, 0.0
     value = float(entry["base"]) * mult
+    if high_quality:
+        value *= float(CONFIG.recipes["equipment"]["highQualityMultiplier"])
     return value * (1.0 - spread), value * (1.0 + spread)
 
 
@@ -552,6 +554,8 @@ def regenerate_attrs(
 
     if mode != "basedOnCurrent":
         mult = float(CONFIG.rarities[item.rarity]["multiplier"])
+        if getattr(item, "high_quality", False):
+            mult *= float(CONFIG.recipes["equipment"]["highQualityMultiplier"])
         base_attrs = [
             {
                 "attr": entry["attr"],
@@ -562,13 +566,13 @@ def regenerate_attrs(
         return {
             "baseAttrs": base_attrs,
             "subAttrs": pick_sub_attrs(base, item.rarity, rng),
-            "terms": roll_terms(base, item.rarity, rng),
+            "terms": roll_terms(base, item.rarity, rng, force_ancient=int(CONFIG.recipes["equipment"]["guaranteedAncientTerms"]) if getattr(item, "high_quality", False) else 0),
         }
 
     spread = float(CONFIG.economy["refine"]["basedOnCurrentSpreadPct"])
     base_attrs = []
     for entry in item.base_attrs or []:
-        lo, hi = base_attr_range(base, item.rarity, entry["attr"])
+        lo, hi = base_attr_range(base, item.rarity, entry["attr"], getattr(item, "high_quality", False))
         value = float_near_current(rng, float(entry["value"]), lo, hi, "common", spread)
         base_attrs.append({**entry, "value": round(value, 2)})
 

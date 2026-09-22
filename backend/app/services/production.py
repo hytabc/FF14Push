@@ -121,7 +121,7 @@ async def report_produce(
     ) / 100.0
 
     # 制造品阶概率随进度提升：英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运。
-    hero_level = await db.scalar(select(Hero.level).where(Hero.user_id == user.id))
+    hero_level = await db.scalar(select(Hero.level).where(Hero.id == user.active_hero_id))
     cleared_regions = await drop_luck.cleared_region_count(db, user.id)
     rarity_luck, _ = craft_rarity_luck(
         int(hero_level or 0), cleared_regions, int(progress.level), equip.get("craftRarityPct", 0.0)

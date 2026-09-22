@@ -92,7 +92,7 @@ async def start_session(
     hero.current_region_id = payload.regionId
     hero.region_kill_count = 0  # PRD 地区 6.2：切换地区后计数从 0 开始
 
-    session = BattleSession(user_id=user.id, region_id=payload.regionId, active=True, kill_credit=0.0)
+    session = BattleSession(user_id=user.id, hero_id=hero.id, region_id=payload.regionId, active=True, kill_credit=0.0)
     db.add(session)
     await db.commit()
 
@@ -122,6 +122,7 @@ async def report(
                 BattleSession.id == payload.sessionId,
                 BattleSession.user_id == user.id,
                 BattleSession.active.is_(True),
+                BattleSession.hero_id == hero.id,
             )
         )
     ).scalar_one_or_none()

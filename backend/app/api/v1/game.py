@@ -15,7 +15,7 @@ router = APIRouter(tags=["game"])
 async def game_state(
     db: DbSession, user: CurrentUser, hero: OptionalHero, items: CurrentItems
 ) -> dict:
-    return await build_game_state(db, user, hero, items)
+    return await build_game_state(db, user, hero)
 
 
 @router.get("/game/config")

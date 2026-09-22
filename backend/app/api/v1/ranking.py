@@ -82,14 +82,14 @@ async def player_profile(user_id: int, db: DbSession, viewer: CurrentUser) -> di
     if target is None or target.banned or is_admin(target):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="玩家不存在")
 
-    hero = (await db.execute(select(Hero).where(Hero.user_id == user_id))).scalar_one_or_none()
+    hero = (await db.execute(select(Hero).join(User, User.active_hero_id == Hero.id).where(User.id == user_id))).scalar_one_or_none()
     if hero is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="玩家不存在")
 
     items = await load_user_items(db, user_id)
     stats = compute_stats(hero, items)
     # 标签属于物主私有（id 只在物主账号内有意义），跨账号查看时清空
-    equipped = {slot: {**data, "tagIds": []} for slot, data in loadout(items).items()}
+    equipped = {slot: {**data, "tagIds": []} for slot, data in loadout(items, hero.id).items()}
     combat = {s: d for s, d in equipped.items() if d["category"] in _COMBAT_CATEGORIES}
     dedicated = {s: d for s, d in equipped.items() if d["category"] in _DEDICATED_CATEGORIES}
     return {

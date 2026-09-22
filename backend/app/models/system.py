@@ -12,6 +12,7 @@ class BattleSession(Base):
     __tablename__ = "battle_sessions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL"), nullable=True)
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
     region_id: Mapped[int] = mapped_column(sa.Integer)
     started_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())

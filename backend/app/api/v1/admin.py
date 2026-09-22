@@ -36,7 +36,7 @@ async def list_users(
     limit: int = Query(default=20, ge=1, le=MAX_RESULTS),
 ) -> dict:
     """按账号或昵称搜索用户（供改密前定位）。"""
-    stmt = select(User, Hero.level).outerjoin(Hero, Hero.user_id == User.id)
+    stmt = select(User, Hero.level).outerjoin(Hero, Hero.id == User.active_hero_id)
     keyword = query.strip()
     if keyword:
         like = f"%{keyword}%"

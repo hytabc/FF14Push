@@ -145,7 +145,7 @@ async def start_session(
     from app.services.dohdol_util import end_active_sessions as _end_activity
 
     await _end_activity(db, user.id)
-    session = RaidSession(user_id=user.id, raid_id=raid["id"], active=True, cleared=False)
+    session = RaidSession(user_id=user.id, hero_id=hero.id, raid_id=raid["id"], active=True, cleared=False)
     session.balance_snapshot = snapshot(raid,hero.level,stats,items)
     previous = await db.scalar(select(func.count(RaidSession.id)).where(RaidSession.user_id==user.id,RaidSession.raid_id==raid['id']))
     session.balance_snapshot = dict(session.balance_snapshot,firstEntry=not previous)
@@ -176,6 +176,7 @@ async def report_session(
         await db.execute(
             select(RaidSession).where(
                 RaidSession.id == payload.sessionId,
+                RaidSession.hero_id == hero.id,
                 RaidSession.user_id == user.id,
                 RaidSession.active.is_(True),
             ).with_for_update()
@@ -338,7 +339,8 @@ async def claim_chest(
 async def stop_session(payload: RaidStopRequest, db: DbSession, user: CurrentUser) -> dict:
     session = (
         await db.execute(
-            select(RaidSession).where(RaidSession.id == payload.sessionId, RaidSession.user_id == user.id)
+            select(RaidSession).where(RaidSession.id == payload.sessionId,
+                RaidSession.user_id == user.id)
         )
     ).scalar_one_or_none()
     if session is None:

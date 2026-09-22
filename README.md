@@ -447,3 +447,10 @@ npm run gen:icons
   由 `scripts/gen-dohdol-data.py` 生成、结构与数值集中可调；鱼类 / 材料图鉴已实现（见「图鉴」小节）。
 - 数值平衡为初版，虽有回归测试保护节奏区间，仍建议按 PRD 做一轮平衡性测试。
 - 容器编排为单机 Compose，未包含 HTTPS 证书与多实例横向扩展。
+
+
+## 联机 DLC：八英雄远征
+
+新增最多8名独立英雄、异步PvP、个人/离线/在线合作及12个团队副本。入口为「名册」「远征」「竞技场」。玩法、数值、接口与验收详见 [DLC设计文档](docs/multiplayer-dlc-design.md)。
+
+升级已有数据库前先备份并停止旧服务。PostgreSQL运行 `alembic upgrade head`；已有本地SQLite运行 `python -m app.migrate_local`（不能只依赖自动建表）。团队战斗需要独立 `python -m app.coop_worker`；Docker Compose和本地开发脚本已接入。客户端连接丢失15秒后英雄转为克隆体，重连恢复；所有操作者离线60秒终止战斗。

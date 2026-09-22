@@ -260,6 +260,12 @@ start_backend() {
       .venv/bin/uvicorn app.main:app --host "$HOST" --port "$BACKEND_PORT" --reload
   ) >"$LOG_DIR/backend.log" 2>&1 &
   PIDS+=("$!")
+  wait_for_backend
+  (
+    cd "$BACKEND_DIR"
+    exec env DATABASE_URL="$DATABASE_URL" JWT_SECRET="$JWT_SECRET" .venv/bin/python -m app.coop_worker
+  ) >"$LOG_DIR/coop-worker.log" 2>&1 &
+  PIDS+=("$!")
 }
 
 start_frontend() {

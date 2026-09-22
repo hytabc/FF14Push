@@ -7,7 +7,7 @@ from typing import Any, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DohDolProgress, FishRecord, Hero, Item, StackItem, UserTitle
+from app.models import User, DohDolProgress, FishRecord, Hero, Item, StackItem, UserTitle
 from app.services import consumables, dohdol_util, drop_luck
 from app.services.game_config import CONFIG
 from app.services.item_factory import (
@@ -125,7 +125,7 @@ async def build_dohdol_state(
 
     # 制造品阶概率（随进度提升）：与 report_produce 用同一套公式，保证展示与实际结算一致。
     if hero_level is None:
-        hero_level = await db.scalar(select(Hero.level).where(Hero.user_id == user_id))
+        hero_level = await db.scalar(select(Hero.level).join(User, User.active_hero_id == Hero.id).where(User.id == user_id))
     if cleared_regions is None:
         cleared_regions = await drop_luck.cleared_region_count(db, user_id)
     luck, factors = craft_rarity_luck(

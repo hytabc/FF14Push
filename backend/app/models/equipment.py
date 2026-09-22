@@ -14,6 +14,7 @@ from app.models.base import Base, JsonType
 class Item(Base):
     __tablename__ = "items"
     __table_args__ = (
+        sa.UniqueConstraint("equipped_hero_id", "equipped_slot", name="uq_hero_equipped_slot"),
         sa.Index("ix_items_user_slot", "user_id", "equipped_slot"),
         sa.Index("ix_items_user_base", "user_id", "base_id"),
     )
@@ -35,6 +36,7 @@ class Item(Base):
     high_quality: Mapped[bool] = mapped_column(
         sa.Boolean, default=False, server_default=sa.false()
     )
+    equipped_hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL"), nullable=True, index=True)
     equipped_slot: Mapped[str | None] = mapped_column(sa.String(16), nullable=True, index=True)
     source: Mapped[str] = mapped_column(sa.String(32), default="chest")
     # 玩家自定义标签（ItemTag.id 列表），用于背包筛选

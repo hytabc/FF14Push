@@ -164,7 +164,7 @@ async function recruit() {
   busy.value = true
   try {
     const res = await api.tavernRecruit(true)
-    toast.push('招募成功！新英雄已加入，旧英雄装备已卸下保留', 'success')
+    toast.push('招募成功！新英雄已加入名册，可在英雄名册中切换出战', 'success')
     await game.loadState()
     if (game.isRunning) await game.startBattle()
     void res
@@ -183,7 +183,7 @@ async function recruitMulti() {
   busy.value = true
   try {
     const res = await api.tavernTenPullRecruit(index, true)
-    toast.push('招募成功！新英雄已加入，旧英雄装备已卸下保留', 'success')
+    toast.push('招募成功！新英雄已加入名册，可在英雄名册中切换出战', 'success')
     await game.loadState()
     if (game.isRunning) await game.startBattle()
     void res
@@ -198,7 +198,7 @@ async function recruitMulti() {
 async function dismiss() {
   busy.value = true
   try {
-    const res = await api.tavernDismiss()
+    const res = await api.tavernDismiss(game.hero?.id ?? 0)
     toast.push((res as { message: string }).message, 'info')
     await game.loadState()
     await load()
@@ -283,7 +283,7 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">英雄酒馆</h2>
-        <span class="text-xs text-ink-400">英雄栏位上限 1 名，招募新英雄将替换当前英雄</span>
+        <span class="text-xs text-ink-400">英雄名册上限 8 名，新英雄独立养成，不替换现有英雄</span>
         <span class="ml-auto font-mono text-sm text-amber-300">💰 {{ game.gold.toLocaleString() }}</span>
       </div>
     </section>
@@ -306,7 +306,7 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
             🎁 彩蛋英雄 · {{ eggDesc(hero.eggId) }}
           </p>
           <p v-if="hero.isInitial" class="text-[11px] text-amber-300">
-            初始英雄不可解雇，请先招募新英雄进行替换
+            初始英雄不可解雇，可招募其他英雄加入名册
           </p>
           <button
             v-if="!hero.isInitial"
@@ -490,10 +490,9 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
       <p v-else class="mt-3 text-xs text-ink-500">尚未十连抽，点击右上角按钮开始。</p>
     </section>
 
-    <Modal :open="confirmRecruit" title="确认招募并替换英雄" @close="confirmRecruit = false">
+    <Modal :open="confirmRecruit" title="确认招募英雄" @close="confirmRecruit = false">
       <p class="text-sm text-ink-200">
-        将<b class="text-rose-300">替换当前英雄</b>：当前英雄装备会自动卸下并返回背包，
-        <b class="text-rose-300">等级与经验不保留</b>。新英雄以 1 级加入。
+        新英雄以 1 级加入名册，当前英雄的等级、经验和装备全部保留。最多拥有 8 名英雄。
       </p>
       <p v-if="candidate" class="mt-3 text-xs text-ink-400">
         新英雄：{{ candidate.name }} · {{ rarityName(candidate.talent) }} · {{ candidate.attrBiasLabel }} ·
@@ -514,12 +513,11 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
 
     <Modal
       :open="confirmMultiIndex !== null"
-      title="确认招募并替换英雄"
+      title="确认招募英雄"
       @close="confirmMultiIndex = null"
     >
       <p class="text-sm text-ink-200">
-        将<b class="text-rose-300">替换当前英雄</b>：当前英雄装备会自动卸下并返回背包，
-        <b class="text-rose-300">等级与经验不保留</b>。新英雄以 1 级加入。
+        新英雄以 1 级加入名册，当前英雄的等级、经验和装备全部保留。最多拥有 8 名英雄。
       </p>
       <p v-if="pickedMulti" class="mt-3 text-xs text-ink-400">
         新英雄：{{ pickedMulti.name }} · {{ rarityName(pickedMulti.talent) }} · {{ pickedMulti.attrBiasLabel }} ·

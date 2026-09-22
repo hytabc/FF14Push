@@ -58,6 +58,7 @@ export interface TermEntry {
 }
 
 export interface Item {
+  equippedHeroId?: number | null
   id: number
   baseId: string
   name: string
@@ -531,6 +532,8 @@ export interface TavernCandidate {
 }
 
 export interface GameState {
+  activeHeroId?: number | null
+  heroes?: Hero[]
   user: { id: number; nickname: string; gold: number }
   hero: Hero
   power: number

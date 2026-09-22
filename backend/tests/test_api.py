@@ -1130,15 +1130,16 @@ class TestTavern:
         assert info["multiCandidates"] == []
 
     async def test_initial_hero_cannot_be_dismissed(self, auth_client) -> None:
-        resp = await auth_client.post(f"{API}/tavern/dismiss")
+        hero_id = (await auth_client.get(f"{API}/game/state")).json()["hero"]["id"]
+        resp = await auth_client.post(f"{API}/tavern/dismiss", json={"heroId": hero_id})
         assert resp.status_code == 400
 
-    async def test_state_without_hero_shows_default_adventurer(self, auth_client, session_factory) -> None:
+    async def test_dismiss_recruited_hero_keeps_initial_hero(self, auth_client, session_factory) -> None:
         await _set_gold(auth_client, session_factory, 1_000_000)
         recruited = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})
         assert recruited.status_code == 200, recruited.text
 
-        dismissed = await auth_client.post(f"{API}/tavern/dismiss")
+        dismissed = await auth_client.post(f"{API}/tavern/dismiss", json={"heroId": recruited.json()["hero"]["id"]})
         assert dismissed.status_code == 200, dismissed.text
 
         state = await auth_client.get(f"{API}/game/state")
@@ -1146,9 +1147,9 @@ class TestTavern:
         hero = state.json()["hero"]
         assert hero["name"] == "冒险者"
         assert hero["level"] == 1
-        assert hero["jobId"] == "adventurer"
+        assert hero["jobId"] == "PLD"
         assert hero["isInitial"] is True
-        assert hero["currentRegionId"] is None
+        assert hero["currentRegionId"] == 1
 
 
 class TestRaid:
@@ -1785,6 +1786,8 @@ class TestPlayerProfile:
                     equipped_slot=None, source="chest", tag_ids=[],
                 )
             )
+            await db.flush()
+            user.active_hero_id = await db.scalar(select(Hero.id).where(Hero.user_id == user.id))
             await db.commit()
             return user.id
 
