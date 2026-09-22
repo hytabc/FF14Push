@@ -760,6 +760,7 @@ export const gameData = {
     equipment: {
       highQualityMultiplier: number
       guaranteedAncientTerms: number
+      xpRarityMultiplier: Record<RarityId, number>
       rarityWeights: Record<RarityId, number>
       rarityScaling: {
         mythicCap: number

@@ -1625,6 +1625,8 @@ class TestCodexAndRanking:
         assert body["progress"]["term"]["total"] == len(body["entries"]) * 3
         for entry in body["entries"]:
             assert set(entry["qualities"]) == {"common", "rare", "ancient"}
+        # 词条图鉴同时收录战斗装备与生产/采集专用装备的词条
+        assert {e["source"] for e in body["entries"]} == {"combat", "production"}
 
     async def test_ranking_boards(self, auth_client) -> None:
         await auth_client.post(f"{API}/ranking/refresh")

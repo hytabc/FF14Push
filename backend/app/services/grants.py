@@ -27,10 +27,11 @@ async def _persist(db: AsyncSession, user: User, generated_item: dict[str, Any],
     item = Item(user_id=user.id, **item_from_generated(generated_item, source))
     db.add(item)
     await db.flush()
-    # 生产/采集专用装备不属于战斗装备图鉴（底材不在 base-items 内），跳过解锁。
+    # 词条图鉴同时收录战斗与生产/采集词条，故两类装备都要解锁词条。
+    await unlock_terms(db, user.id, item.terms or [])
+    # 生产/采集专用装备不属于战斗装备图鉴（底材不在 base-items 内），跳过底材解锁。
     if item.category in _COMBAT_CATEGORIES:
         await unlock_equipment(db, user.id, item)
-        await unlock_terms(db, user.id, item.terms or [])
     return item
 
 

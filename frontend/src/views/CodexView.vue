@@ -316,7 +316,15 @@ function entryRarity(entry: Entry): RarityId {
     <section v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <article v-for="entry in filtered" :key="entry.termId" class="card p-3">
         <div class="flex items-start justify-between gap-2">
-          <p class="text-sm font-medium text-ink-100">{{ entry.name }}</p>
+          <div class="flex min-w-0 items-center gap-1.5">
+            <p class="truncate text-sm font-medium text-ink-100">{{ entry.name }}</p>
+            <span
+              v-if="entry.source === 'production'"
+              class="shrink-0 rounded bg-amber-500/20 px-1 py-0.5 text-[10px] text-amber-200"
+            >
+              生产
+            </span>
+          </div>
           <span
             class="shrink-0 rounded px-1.5 py-0.5 text-[10px]"
             :class="entry.type === 'buff' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'"

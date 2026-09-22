@@ -160,18 +160,31 @@ def monster_codex_entries() -> list[dict[str, Any]]:
 
 
 def term_codex_entries() -> list[dict[str, Any]]:
-    return [
-        {
-            "termId": t["id"],
-            "name": t["name"],
-            "type": t["type"],
-            "stat": t["stat"],
-            "range": t["range"],
-            "slots": t.get("slots", []),
-            "desc": t["desc"],
-        }
-        for t in CONFIG.terms["terms"]
-    ]
+    """全部 Buff/Debuff 词条：战斗装备词条 + 生产/采集专用装备词条。
+
+    两套词条池 id 互不重复（见 test_dohdol.test_pool_does_not_overlap_combat_terms），
+    但 slot 归属不同，故用 source 标注来源（combat / production）。
+    """
+    out: list[dict[str, Any]] = []
+    pools = (
+        ("combat", CONFIG.terms["terms"]),
+        ("production", CONFIG.dohdol_equipment.get("terms", [])),
+    )
+    for source, terms in pools:
+        for t in terms:
+            out.append(
+                {
+                    "termId": t["id"],
+                    "name": t["name"],
+                    "type": t["type"],
+                    "stat": t["stat"],
+                    "range": t["range"],
+                    "slots": t.get("slots", []),
+                    "desc": t["desc"],
+                    "source": source,
+                }
+            )
+    return out
 
 
 def material_codex_entries() -> list[dict[str, Any]]:
@@ -262,7 +275,7 @@ async def codex_progress(db: AsyncSession, user_id: int) -> dict[str, Any]:
     return {
         "equipment": {"unlocked": int(equip_count), "total": len(CONFIG.base_items)},
         "monster": {"unlocked": int(monster_count), "total": len(monster_codex_entries())},
-        "term": {"unlocked": int(term_count), "total": len(CONFIG.terms["terms"]) * 3},
+        "term": {"unlocked": int(term_count), "total": len(term_codex_entries()) * 3},
         "material": {"unlocked": int(material_count), "total": len(material_codex_entries())},
         "fish": {"unlocked": int(fish_count), "total": len(fish_codex_entries())},
     }

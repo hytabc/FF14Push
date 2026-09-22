@@ -61,6 +61,16 @@ export function termLabel(term: TermEntry): string {
   return term.name
 }
 
+/** 词条 id → 数值区间（战斗词条 + 生产/采集词条，两个池的 id 互不重复）。 */
+const TERM_RANGE_BY_ID: Record<string, readonly [number, number]> = Object.fromEntries(
+  [...data.terms.terms, ...data.dohdolEquipment.terms].map((t) => [t.id, t.range] as const),
+)
+
+/** 词条数值的上下限区间；未知词条返回 null。 */
+export function termRange(termId: string): readonly [number, number] | null {
+  return TERM_RANGE_BY_ID[termId] ?? null
+}
+
 export function termQualityClass(quality: TermQuality): string {
   return {
     common: 'border-term-common/40 text-ink-200',

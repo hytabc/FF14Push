@@ -15,6 +15,7 @@ from app.services.game_config import CONFIG
 from app.services.item_factory import (
     craft_rarity_distribution,
     craft_rarity_luck,
+    craft_xp_rarity_multiplier,
     generate_crafted_item,
 )
 from app.services.valuation import sell_price
@@ -134,6 +135,22 @@ class TestSharedData:
         for c in CONFIG.consumables["items"]:
             assert c["effects"]
         assert len(CONFIG.titles["titles"]) == 2
+
+    def test_craft_xp_rarity_multiplier(self):
+        """制造经验系数：覆盖全部品阶，最低品阶为 1.0，且随品阶单调递增。"""
+        table = CONFIG.recipes["equipment"]["xpRarityMultiplier"]
+        assert set(table) == set(CONFIG.rarity_order)
+        values = [float(table[r]) for r in CONFIG.rarity_order]
+        assert values[0] == pytest.approx(1.0)
+        assert values == sorted(values) and values[-1] > values[0]
+
+    def test_level_curve_fits_pacing_budget(self):
+        """1→100 的总经验控制在上限内，保证生产等级可在约 10 小时内练满。
+
+        配合配方经验上调与「品阶经验系数」。若曲线回退到 1.07（总经验 ≈ 92.6 万）本断言会失败。
+        """
+        total = sum(dohdol_util.exp_to_next(l) for l in range(1, dohdol_util.level_cap()))
+        assert total < 200_000, f"1→100 总经验 {total} 偏高，超出约 10h 的练满预算"
 
 
 class TestCraftedItem:
@@ -501,6 +518,61 @@ class TestProduceCount:
         assert start.status_code == 400
 
 
+class TestCraftXp:
+    """制造经验：材料按配方基础值；装备按实际抽到的品阶乘以经验系数。"""
+
+    async def _give(self, session_factory, recipe_id: str, count: int) -> None:
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            for entry in CONFIG.recipe_by_id[recipe_id]["inputs"]:
+                db.add(
+                    StackItem(
+                        user_id=user_id, kind="material", item_id=entry["itemId"], count=count
+                    )
+                )
+            await db.commit()
+
+    async def _run(self, auth_client, session_factory, recipe_id: str, backdate: float = 20.0) -> dict:
+        start = await auth_client.post(
+            "/api/v1/produce/session/start",
+            json={"jobId": CONFIG.recipe_by_id[recipe_id]["jobId"], "recipeId": recipe_id},
+        )
+        assert start.status_code == 200, start.text
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, backdate)
+            await db.commit()
+        rep = await auth_client.post("/api/v1/produce/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        return rep.json()
+
+    @pytest.mark.asyncio
+    async def test_material_craft_uses_base_xp(self, auth_client, session_factory):
+        recipe = CONFIG.recipe_by_id["r_h_plank"]
+        await self._give(session_factory, "r_h_plank", 9)  # 3 件
+        body = await self._run(auth_client, session_factory, "r_h_plank")
+        assert body["crafts"] == 3
+        assert body["xp"] == 3 * int(recipe["xp"])
+
+    @pytest.mark.asyncio
+    async def test_equipment_craft_scales_with_rarity(self, auth_client, session_factory):
+        recipe = CONFIG.recipe_by_id["r_dh_dohTool_0"]
+        await self._give(session_factory, "r_dh_dohTool_0", 10)  # 5 件
+        body = await self._run(auth_client, session_factory, "r_dh_dohTool_0")
+        items = body["items"]
+        assert len(items) == body["crafts"]
+        expected = round(
+            sum(craft_xp_rarity_multiplier(it["rarity"]) for it in items) * int(recipe["xp"])
+        )
+        assert body["xp"] == expected
+        # 有非最低品阶时，经验必须严格高于「件数 × 基础经验」。
+        if any(it["rarity"] != CONFIG.rarity_order[0] for it in items):
+            assert body["xp"] > body["crafts"] * int(recipe["xp"])
+
+
 class TestFishApi:
     @pytest.mark.asyncio
     async def test_fish_flow(self, auth_client, session_factory):
@@ -718,6 +790,23 @@ class TestDedicatedItemGuards:
             "/api/v1/economy/enchant", json={"itemId": item_id, "mode": "random"}
         )
         assert enchant.status_code == 400, enchant.text
+
+    @pytest.mark.asyncio
+    async def test_dedicated_gear_unlocks_codex_terms(self, auth_client, session_factory):
+        from app.models import User
+        from app.services.grants import insert_items
+
+        async with session_factory() as db:
+            user = (await db.execute(select(User))).scalars().first()
+            generated = generate_crafted_item("dh_dohTool_0", random.Random(3))
+            await insert_items(db, user, [generated], source="craft")
+            await db.commit()
+
+        body = (await auth_client.get("/api/v1/codex?category=term")).json()
+        production = [e for e in body["entries"] if e["source"] == "production"]
+        assert production, "生产装备词条应进入词条图鉴"
+        # 制造装备必带太古词条 → 至少一条生产词条被解锁进图鉴
+        assert any(q["unlocked"] for e in production for q in e["qualities"].values())
 
 
 class TestDohDolState:

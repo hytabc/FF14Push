@@ -401,6 +401,12 @@ def craft_rarity_scaling() -> dict[str, Any]:
     return CONFIG.recipes["equipment"].get("rarityScaling") or {}
 
 
+def craft_xp_rarity_multiplier(rarity: str) -> float:
+    """制造装备的经验系数：品阶越高，配方基础 xp 的乘数越大（材料 / 消耗品无品阶，恒 1.0）。"""
+    table = CONFIG.recipes["equipment"].get("xpRarityMultiplier") or {}
+    return float(table.get(rarity, 1.0))
+
+
 def craft_rarity_luck(
     hero_level: int, cleared_regions: int, prod_level: int, gear_pct: float
 ) -> tuple[float, list[dict[str, Any]]]:

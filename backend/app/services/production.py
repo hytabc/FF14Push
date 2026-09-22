@@ -16,7 +16,11 @@ from app.models import ActivitySession, DohDolProgress, Hero, Item, User
 from app.services import consumables, dohdol_util, drop_luck
 from app.services.game_config import CONFIG
 from app.services.grants import insert_items
-from app.services.item_factory import craft_rarity_luck, generate_crafted_item
+from app.services.item_factory import (
+    craft_rarity_luck,
+    craft_xp_rarity_multiplier,
+    generate_crafted_item,
+)
 from app.services.playtime import add_play_ms
 
 MAX_CRAFTS_PER_REPORT = 200
@@ -149,30 +153,34 @@ async def report_produce(
     material_out: dict[str, int] = {}
     equipment_out: list[dict[str, Any]] = []
     output = recipe["output"]
+    # 经验按每件实际产出累计：装备按其抽到的品阶加权，材料 / 半成品 / 消耗品恒为 1.0。
+    xp_units = 0.0
     for _ in range(crafts):
         for entry in recipe["inputs"]:
             await dohdol_util.stack_consume(
                 db, user.id, dohdol_util.STACK_MATERIAL, entry["itemId"], int(entry["count"])
             )
         if output["kind"] == "equipment":
-            equipment_out.append(
-                generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
-            )
+            crafted = generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
+            xp_units += craft_xp_rarity_multiplier(crafted["rarity"])
+            equipment_out.append(crafted)
         elif output["kind"] == "consumable":
             spec = dohdol_util.consumable_def(output["itemId"])
             kind = spec["kind"] if spec else "potion"
             await dohdol_util.stack_add(db, user.id, kind, output["itemId"], int(output.get("count", 1)))
             material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + int(output.get("count", 1))
+            xp_units += 1.0
         else:
             await dohdol_util.stack_add(
                 db, user.id, dohdol_util.STACK_MATERIAL, output["itemId"], int(output.get("count", 1))
             )
             material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + int(output.get("count", 1))
+            xp_units += 1.0
 
     if equipment_out:
         produced = await insert_items(db, user, equipment_out, source="craft")
 
-    xp = round(crafts * int(recipe["xp"]) * (1.0 + max(0.0, equip.get("craftXpPct", 0.0)) / 100.0))
+    xp = round(xp_units * int(recipe["xp"]) * (1.0 + max(0.0, equip.get("craftXpPct", 0.0)) / 100.0))
     level_info = dohdol_util.apply_level_exp(progress, xp)
 
     return {

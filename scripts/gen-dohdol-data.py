@@ -440,7 +440,7 @@ half_inputs = {
 half_job = {h[0]: h[2] for h in HALVES}
 half_level = {"h_steel": 5, "h_plate": 5, "h_alloy": 12, "h_gemcut": 8, "h_glass": 8, "h_oil": 6}
 for hid, inputs in half_inputs.items():
-    add(f"r_{hid}", half_job[hid], half_level.get(hid, 1), 2.0, 8 + half_level.get(hid, 1) * 4, inputs,
+    add(f"r_{hid}", half_job[hid], half_level.get(hid, 1), 2.0, 16 + half_level.get(hid, 1) * 8, inputs,
         {"kind": "material", "itemId": hid, "count": 1})
 
 GEAR_INPUTS = {
@@ -475,7 +475,7 @@ for item in dohdol_items:
         region_mat = f"flora{(flora_cursor % REGION_COUNT) + 1}"
         flora_cursor += 1
     inputs.append((region_mat, 1 + t))
-    add(f"r_{item['id']}", GEAR_JOB[(kind, suffix)], TIER_LEVEL[t], 3.0 + t * 0.6, 15 + t * 40,
+    add(f"r_{item['id']}", GEAR_JOB[(kind, suffix)], TIER_LEVEL[t], 3.0 + t * 0.6, 30 + t * 80,
         inputs, {"kind": "equipment", "baseId": item["id"]})
 
 COMBAT_RECIPES = [
@@ -488,7 +488,7 @@ for job, ids in COMBAT_RECIPES:
     for base_id in ids:
         tier = 4 if base_id.endswith("_4") else 2
         rid = ((tier * 11) % 40) + 1
-        add(f"r_{base_id}", job, 10 + tier * 12, 4.0 + tier, 30 + tier * 25,
+        add(f"r_{base_id}", job, 10 + tier * 12, 4.0 + tier, 60 + tier * 50,
             [("h_ingot", 3 + tier), ("h_alloy" if tier >= 3 else "h_plate", 2),
              ("g_gem", 2), ("ore" + str(rid), 2 + tier)],
             {"kind": "equipment", "baseId": base_id})
@@ -503,7 +503,7 @@ CONSUMABLE_INPUTS = {
 }
 for c in consumables:
     job = "ALC" if c["kind"] == "potion" else "CUL"
-    add(f"r_{c['id']}", job, 1, 2.5, 20, CONSUMABLE_INPUTS[c["id"]],
+    add(f"r_{c['id']}", job, 1, 2.5, 40, CONSUMABLE_INPUTS[c["id"]],
         {"kind": "consumable", "itemId": c["id"], "count": 1})
 
 dump("recipes.json", {
@@ -512,6 +512,10 @@ dump("recipes.json", {
     "equipment": {
         "highQualityMultiplier": 1.15,
         "guaranteedAncientTerms": 1,
+        "$commentXpRarityMultiplier": "制造装备的经验系数：按实际抽到的品阶乘在配方基础 xp 上，品阶越高经验越多（材料 / 半成品 / 消耗品无品阶，恒按 1.0）。",
+        "xpRarityMultiplier": {
+            "common": 1.0, "uncommon": 1.2, "rare": 1.5, "epic": 1.9, "legendary": 2.4, "mythic": 3.0,
+        },
         "rarityWeights": {
             "common": 0.30, "uncommon": 0.30, "rare": 0.22, "epic": 0.12, "legendary": 0.05, "mythic": 0.01,
         },
