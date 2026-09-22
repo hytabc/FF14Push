@@ -109,6 +109,9 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
       <p class="mt-2 text-[11px] text-ink-600">
         可用大类：{{ categories.map((c) => ({ weapon: '武器', armor: '防具', accessory: '饰品' })[c as 'weapon']).join(' / ') }}
       </p>
+      <p class="mt-1 text-[11px] text-ink-500">
+        产物以<b class="text-ink-300">最差素材</b>为准：装备种类 / 等级取该组 16 件中最低的一件，品质只有 16 件全部为高品质时才保留（1 件普通即产出普通）。
+      </p>
     </section>
 
     <section class="card p-4">

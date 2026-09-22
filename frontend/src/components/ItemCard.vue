@@ -45,6 +45,10 @@ const itemActions = useItemActions()
 const tagsStore = useTagsStore()
 const game = useGameStore()
 
+/** 生产/采集专用装备：无战斗战力、也不能重造 / 附魔。 */
+const DEDICATED_CATEGORIES = new Set(['doh_tool', 'doh_gear', 'dol_tool', 'dol_gear'])
+const isDedicated = computed(() => DEDICATED_CATEGORIES.has(props.item.category))
+
 const style = computed(() => ({
   borderColor: rarityHex(props.item.rarity),
   backgroundColor: 'transparent',
@@ -82,7 +86,7 @@ function tagStyle(colorId: string) {
           <p class="mt-0.5 text-[11px] text-ink-400">
             {{ rarityName(item.rarity) }} · {{ categoryName(item.category) }} ·
             {{ slotName(item.equipSlots[0] ?? item.slot) }} · Lv.{{ item.levelReq }}
-            <span class="ml-1 font-mono text-amber-300">战力 {{ formatNumber(item.score) }}</span>
+            <span v-if="!isDedicated" class="ml-1 font-mono text-amber-300">战力 {{ formatNumber(item.score) }}</span>
           </p>
         </div>
       </div>
@@ -145,12 +149,14 @@ function tagStyle(colorId: string) {
         装备
       </button>
       <button
+        v-if="!isDedicated"
         class="rounded bg-indigo-600/70 px-2 py-1 text-[11px] text-white hover:bg-indigo-500"
         @click="itemActions.requestRefine(item)"
       >
         重造
       </button>
       <button
+        v-if="!isDedicated"
         class="rounded bg-fuchsia-600/70 px-2 py-1 text-[11px] text-white hover:bg-fuchsia-500"
         @click="itemActions.requestEnchant(item)"
       >

@@ -102,6 +102,30 @@ async def _seed_items(session_factory, user_id: int, count: int, rarity: str = "
         await db.commit()
 
 
+async def _seed_gear(session_factory, user_id: int, specs: list[dict]) -> None:
+    """按规格插入装备，用于合成规则测试（可指定底材 / 品阶 / 等级 / 高品质）。"""
+    async with session_factory() as db:
+        for spec in specs:
+            db.add(
+                Item(
+                    user_id=user_id,
+                    base_id=spec.get("base_id", "w_sword_shield_0"),
+                    name="测试底材",
+                    category=spec.get("category", "weapon"),
+                    slot=spec.get("slot", "mainHand"),
+                    rarity=spec.get("rarity", "common"),
+                    level_req=spec.get("level_req", 1),
+                    high_quality=spec.get("high_quality", False),
+                    base_attrs=[{"attr": "attack", "value": 12.0}],
+                    sub_attrs=[],
+                    terms=[],
+                    equipped_slot=None,
+                    source="test",
+                )
+            )
+        await db.commit()
+
+
 async def _open_one(client, session_factory, chest_id: str = "weaponBox") -> dict:
     await _set_gold(client, session_factory, 5000)
     resp = await client.post(f"{API}/chest/open", json={"chestId": chest_id, "count": 1})
@@ -693,6 +717,56 @@ class TestEconomy:
         resp = await auth_client.post(f"{API}/economy/craft", json={"category": "weapon", "auto": True})
         assert resp.status_code == 400
         assert "手续费不足" in resp.json()["detail"]
+
+    async def test_craft_output_uses_worst_material(self, auth_client, session_factory) -> None:
+        """产物以最差素材为准：等级取最低、装备种类也取最差那件。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        specs = [{"base_id": "w_sword_shield_0", "level_req": 1}]
+        specs += [{"base_id": "w_sword_shield_2", "level_req": 40}] * 15
+        await _seed_gear(session_factory, me["id"], specs)
+        await _set_gold(auth_client, session_factory, 1000)
+
+        resp = await auth_client.post(f"{API}/economy/craft", json={"category": "weapon", "auto": True})
+        assert resp.status_code == 200, resp.text
+        item = resp.json()["produced"][0]
+        assert item["rarity"] == "uncommon"
+        assert item["levelReq"] == 1, "产物等级应取素材最低"
+        assert item["baseId"] == "w_sword_shield_0", "产物种类应取最差素材"
+
+    async def test_craft_output_quality_is_worst(self, auth_client, session_factory) -> None:
+        """1 件普通 + 15 件高品质 → 产物仍为普通（非高品质）。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        specs = [{"high_quality": False}] + [{"high_quality": True}] * 15
+        await _seed_gear(session_factory, me["id"], specs)
+        await _set_gold(auth_client, session_factory, 1000)
+
+        resp = await auth_client.post(f"{API}/economy/craft", json={"category": "weapon", "auto": True})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["produced"][0]["highQuality"] is False
+
+    async def test_craft_all_high_quality_keeps_quality(self, auth_client, session_factory) -> None:
+        """全为高品质时产物保留高品质。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        await _seed_gear(session_factory, me["id"], [{"high_quality": True}] * 16)
+        await _set_gold(auth_client, session_factory, 1000)
+
+        resp = await auth_client.post(f"{API}/economy/craft", json={"category": "weapon", "auto": True})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["produced"][0]["highQuality"] is True
+
+    async def test_craft_rejects_dedicated_category(self, auth_client, session_factory) -> None:
+        """合成仅支持战斗职业装备，专用装备大类被拒绝。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        await _seed_gear(
+            session_factory,
+            me["id"],
+            [{"category": "doh_tool", "slot": "dohTool", "base_id": "dh_dohTool_0"}] * 16,
+        )
+        await _set_gold(auth_client, session_factory, 1000)
+
+        resp = await auth_client.post(f"{API}/economy/craft", json={"category": "doh_tool", "auto": True})
+        assert resp.status_code == 400
+        assert "未知装备大类" in resp.json()["detail"]
 
     async def test_refine_cost_escalates(self, auth_client, session_factory) -> None:
         """同一件装备重造越多次越贵，防止无限重造刷属性。"""

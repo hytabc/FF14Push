@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
+import { api } from '@/api'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useTagsStore } from '@/stores/tags'
 import type { Category, Item, RarityId } from '@/game/types'
-import { RARITY_ORDER, formatNumber, rarityName, tagColorHex } from '@/utils/format'
+import { RARITY_ORDER, categoryName, formatNumber, rarityName, tagColorHex } from '@/utils/format'
 
 const game = useGameStore()
 const tagsStore = useTagsStore()
@@ -25,9 +26,18 @@ const page = ref(1)
 const PAGE_SIZE = 24
 const confirmBatch = ref(false)
 
+/** 背包分页：战斗职业装备 / 生产采集专用装备。 */
+const tab = ref<'combat' | 'dohdol'>('combat')
+const DEDICATED_CATEGORIES = new Set(['doh_tool', 'doh_gear', 'dol_tool', 'dol_gear'])
+const DEDICATED_ORDER = ['doh_tool', 'doh_gear', 'dol_tool', 'dol_gear']
+
 const filtered = computed(() => {
   let list = game.items.filter((i) => !i.equippedSlot)
-  if (category.value !== 'all') list = list.filter((i) => i.category === category.value)
+  list =
+    tab.value === 'dohdol'
+      ? list.filter((i) => DEDICATED_CATEGORIES.has(i.category))
+      : list.filter((i) => !DEDICATED_CATEGORIES.has(i.category))
+  if (tab.value === 'combat' && category.value !== 'all') list = list.filter((i) => i.category === category.value)
   if (rarityFilter.value !== 'all') list = list.filter((i) => i.rarity === rarityFilter.value)
   if (tagFilter.value.size) {
     // 多选标签：命中任一即显示（OR）
@@ -45,6 +55,11 @@ const filtered = computed(() => {
 
 watch([sortBy, category, rarityFilter, tagFilter], () => {
   page.value = 1
+})
+
+watch(tab, () => {
+  page.value = 1
+  if (tab.value === 'combat') category.value = 'all'
 })
 
 function toggleTagFilter(tagId: number) {
@@ -77,6 +92,14 @@ const counts = computed(() => {
   return map
 })
 
+/** 顶部计数随页签切换：战斗看武器/防具/饰品，专用看生产/采集 4 类。 */
+const countSummary = computed(() => {
+  if (tab.value === 'combat') {
+    return `武器 ${counts.value.weapon ?? 0} · 防具 ${counts.value.armor ?? 0} · 饰品 ${counts.value.accessory ?? 0}`
+  }
+  return DEDICATED_ORDER.map((c) => `${categoryName(c)} ${counts.value[c] ?? 0}`).join(' · ')
+})
+
 onMounted(async () => {
   if (!game.state) await game.loadState()
 })
@@ -86,6 +109,16 @@ function toggle(item: Item) {
   if (next.has(item.id)) next.delete(item.id)
   else next.add(item.id)
   selected.value = next
+}
+
+/** 装备分流：专用装备走 /dohdol/equip（槽位为字符），战斗装备走 /inventory/equip。 */
+async function equipItem(item: Item) {
+  if (DEDICATED_CATEGORIES.has(item.category)) {
+    await api.dohdolEquip(item.id, item.slot)
+    await game.loadState()
+  } else {
+    await game.equip(item.id, item.equipSlots[0])
+  }
 }
 
 function selectPage() {
@@ -152,14 +185,30 @@ async function batchSell() {
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">背包</h2>
-        <span class="text-xs text-ink-400">
-          武器 {{ counts.weapon ?? 0 }} · 防具 {{ counts.armor ?? 0 }} · 饰品 {{ counts.accessory ?? 0 }}
-        </span>
+        <span class="text-xs text-ink-400">{{ countSummary }}</span>
         <span class="ml-auto text-xs text-ink-400">已选 {{ selected.size }} 件 · 约 {{ formatNumber(selectedValue) }} 金币</span>
       </div>
 
+      <!-- 战斗装备 / 生产采集专用装备分页 -->
+      <div class="mt-3 flex gap-1 rounded-lg bg-ink-800 p-1 text-xs">
+        <button
+          class="flex-1 rounded-md py-1.5 transition"
+          :class="tab === 'combat' ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
+          @click="tab = 'combat'"
+        >
+          战斗装备
+        </button>
+        <button
+          class="flex-1 rounded-md py-1.5 transition"
+          :class="tab === 'dohdol' ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
+          @click="tab = 'dohdol'"
+        >
+          生产采集装备
+        </button>
+      </div>
+
       <div class="mt-3 flex flex-wrap gap-2 text-xs">
-        <select v-model="category" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+        <select v-if="tab === 'combat'" v-model="category" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
           <option value="all">全部大类</option>
           <option value="weapon">武器</option>
           <option value="armor">防具</option>
@@ -219,11 +268,11 @@ async function batchSell() {
         :item="item"
         :selected="selected.has(item.id)"
         @select="toggle(item)"
-        @equip="(i) => game.equip(i.id, i.equipSlots[0])"
+        @equip="equipItem"
         @filter-tag="toggleTagFilter"
       />
       <p v-if="!pageItems.length" class="col-span-full py-10 text-center text-xs text-ink-600">
-        背包是空的，去「抽箱」页面获取装备吧。
+        {{ tab === 'dohdol' ? '没有未装备的生产 / 采集专用装备。' : '背包是空的，去「抽箱」页面获取装备吧。' }}
       </p>
     </section>
 

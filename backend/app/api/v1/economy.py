@@ -13,7 +13,6 @@ from app.schemas.game import CraftRequest, EnchantRequest, RefineRequest
 from app.services.economy import REQUIRED, build_craft_plan, enchant_cost, refine_cost
 from app.services.grants import insert_items
 from app.services.item_factory import generate_item, regenerate_attrs, roll_terms_for_enchant
-from app.services.loot import RARITY_ORDER
 from app.services.serialization import item_to_dict
 from app.services.valuation import sell_price_range
 
@@ -64,9 +63,9 @@ async def craft(
     if int(user.gold) < total_fee:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"手续费不足，需要 {total_fee}")
 
-    # 可消耗池：未装备的同类装备（含新合成产物）
+    # 可消耗池：未装备的同类装备（含新合成产物）。产出一律以「最差素材」为准：
+    # 装备种类 / 等级取该组最低的一件，品质只有整组都是高品质时才保留。
     pool: list[Item] = [i for i in items if i.category == payload.category and i.equipped_slot is None]
-    pool.sort(key=lambda i: (RARITY_ORDER.index(i.rarity), i.level_req))
 
     rng = random.Random()
     produced: list[dict] = []
@@ -74,19 +73,31 @@ async def craft(
 
     for step in steps:
         need = int(step["crafts"]) * REQUIRED
-        take = [i for i in pool if i.rarity == step["from"]]
-        if len(take) < need:
+        # 最差优先：等级低者先消耗，其次非高品质者
+        candidates = [i for i in pool if i.rarity == step["from"]]
+        candidates.sort(key=lambda i: (i.level_req, bool(i.high_quality)))
+        if len(candidates) < need:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="装备数量不足")
-        take = take[:need]
+        take = candidates[:need]
         for item in take:
             pool.remove(item)
             await db.delete(item)
         consumed_count += need
 
-        for _ in range(int(step["crafts"])):
-            level = max(t.level_req for t in take) if take else hero.level
-            generated = generate_item(payload.category, hero.level, rarity=step["to"], rng=rng)[0]
-            generated["levelReq"] = level
+        # 每组 REQUIRED 件产出一件；产物取该组最差素材的种类 / 等级，品质取整组最差。
+        for idx in range(int(step["crafts"])):
+            group = take[idx * REQUIRED : (idx + 1) * REQUIRED]
+            worst = group[0]
+            high_quality = all(bool(t.high_quality) for t in group)
+            generated = generate_item(
+                payload.category,
+                worst.level_req,
+                rarity=step["to"],
+                rng=rng,
+                base_id=worst.base_id,
+                high_quality=high_quality,
+            )[0]
+            generated["levelReq"] = worst.level_req
             created = await insert_items(db, user, [generated], source="craft")
             produced.extend(created)
             row = (
