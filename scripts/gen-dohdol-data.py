@@ -23,6 +23,9 @@ def dump(name, obj):
 
 regions = json.loads((DATA / "regions.json").read_text(encoding="utf-8"))["regions"]
 
+# 战斗装备底材（族 / 档位 / 职能变体），供高档配方生成时保持同步。
+BASE_ITEMS = json.loads((DATA / "base-items.json").read_text(encoding="utf-8"))
+
 # 地区档位 → 出售单价（金币）。材料/鱼不随地区等级变强，仅种类不同，价格按档位递增。
 BAND_SELL = {1: 6, 9: 10, 17: 14, 23: 20, 29: 28, 35: 38}
 FISH_SELL = {1: 8, 9: 14, 17: 22, 23: 32, 29: 45, 35: 60}
@@ -492,6 +495,65 @@ for job, ids in COMBAT_RECIPES:
             [("h_ingot", 3 + tier), ("h_alloy" if tier >= 3 else "h_plate", 2),
              ("g_gem", 2), ("ore" + str(rid), 2 + tier)],
             {"kind": "equipment", "baseId": base_id})
+
+# 战斗职业装备配方：档位 6/7/8（苍穹/星辉/终末 = Lv90/95/100）。
+# 覆盖全部武器族 / 防具部位 / 饰品部位及其职能变体；生产门槛 = 装备等级。
+CRP_WEAPONS = {"bow", "rod", "staff", "lance", "katana", "brush", "chakram", "globe", "grimoire", "book"}
+COMBAT_MAIN_HALF = {"CRP": "h_plank", "BSM": "h_ingot", "ARM": "h_plate", "GSM": "h_gemcut"}
+
+
+def _variant_suffix(v):
+    return f"_{v['id']}" if v["id"] else ""
+
+
+_combat_ore = 0
+_combat_flora = 0
+
+
+def combat_inputs(job, tier_index, weight=1):
+    global _combat_ore, _combat_flora
+    base = tier_index - 4  # 6→2, 7→3, 8→4
+    if job == "CRP":
+        _combat_flora += 1
+        region_mat = f"flora{(_combat_flora - 1) % REGION_COUNT + 1}"
+    else:
+        _combat_ore += 1
+        region_mat = f"ore{(_combat_ore - 1) % REGION_COUNT + 1}"
+    return [
+        (COMBAT_MAIN_HALF[job], weight * 2 * base),
+        ("h_alloy", weight * base),
+        ("g_gem", 2 + base),
+        (region_mat, weight * 2 * base),
+    ]
+
+
+# 防具按部位给主料加权，越重的部位消耗越多
+ARMOR_WEIGHT = {"head": 1, "body": 2, "hands": 1, "legs": 2, "feet": 1}
+
+for t in (t for t in BASE_ITEMS["tiers"] if t["index"] in (6, 7, 8)):
+    for fam in BASE_ITEMS["weaponFamilies"]:
+        job = "CRP" if fam["weaponType"] in CRP_WEAPONS else "BSM"
+        for v in BASE_ITEMS["variants"]["weapon"]:
+            if v.get("minTier", 0) > t["index"]:
+                continue
+            bid = f"w_{fam['weaponType']}{_variant_suffix(v)}_{t['index']}"
+            add(f"r_{bid}", job, t["levelReq"], 8.0 + t["index"], 200 + t["index"] * 30,
+                combat_inputs(job, t["index"]), {"kind": "equipment", "baseId": bid})
+    for fam in BASE_ITEMS["armorFamilies"]:
+        for v in BASE_ITEMS["variants"]["armor"]:
+            if v.get("minTier", 0) > t["index"]:
+                continue
+            bid = f"a_{fam['slot']}{_variant_suffix(v)}_{t['index']}"
+            add(f"r_{bid}", "ARM", t["levelReq"], 8.0 + t["index"], 200 + t["index"] * 30,
+                combat_inputs("ARM", t["index"], weight=ARMOR_WEIGHT[fam["slot"]]),
+                {"kind": "equipment", "baseId": bid})
+    for fam in BASE_ITEMS["accessoryFamilies"]:
+        for v in BASE_ITEMS["variants"]["accessory"]:
+            if v.get("minTier", 0) > t["index"]:
+                continue
+            bid = f"c_{fam['slot']}{_variant_suffix(v)}_{t['index']}"
+            add(f"r_{bid}", "GSM", t["levelReq"], 8.0 + t["index"], 200 + t["index"] * 30,
+                combat_inputs("GSM", t["index"]), {"kind": "equipment", "baseId": bid})
 
 CONSUMABLE_INPUTS = {
     "p_expGainPct": [("h_ink", 2), ("g_herb", 3)], "p_goldGainPct": [("h_ink", 2), ("g_gem", 2)],
