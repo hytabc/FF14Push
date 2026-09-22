@@ -233,7 +233,7 @@ export const api = {
     ).data
   },
 
-  async ranking(board: string, page = 1) {
+  async ranking(board: string, page = 1, dungeon?: string) {
     return (
       await http.get<{
         board: string
@@ -242,7 +242,9 @@ export const api = {
         entries: RankingEntry[]
         me: { rank: number; value: number } | null
         loggedIn: boolean
-      }>('/ranking', { params: { board, page } })
+        dungeon?: string
+        dungeons?: { id: string; name: string; difficulty: string }[]
+      }>('/ranking', { params: { board, page, dungeon } })
     ).data
   },
 

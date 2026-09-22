@@ -84,6 +84,28 @@ class CoopProgress(Base):
     clears: Mapped[int] = mapped_column(default=0)
     records: Mapped[dict] = mapped_column(JsonType, default=dict)
 
+class CoopRecord(Base):
+    """一次远征通关的持久化记录：通关时长 + 参战账号 + 全席位战斗信息。
+
+    每个真实参战账号一行（外部克隆只出现在 party 展示里，不单独发记录）。
+    """
+    __tablename__ = 'coop_records'
+    __table_args__ = (
+        sa.UniqueConstraint('battle_id', 'user_id', name='uq_coop_record'),
+        sa.Index('ix_coop_record_dungeon_time', 'dungeon_id', 'clear_ms'),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    battle_id: Mapped[int] = mapped_column(sa.ForeignKey('coop_battles.id'), index=True)
+    room_id: Mapped[int] = mapped_column(sa.ForeignKey('coop_rooms.id'))
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey('users.id'), index=True)
+    dungeon_id: Mapped[str] = mapped_column(sa.String(32), index=True)
+    mode: Mapped[str] = mapped_column(sa.String(12))
+    had_clone: Mapped[bool] = mapped_column(default=False)
+    clear_ms: Mapped[int] = mapped_column()
+    party: Mapped[list] = mapped_column(JsonType)
+    created_at: Mapped[float] = mapped_column(sa.Float)
+
+
 class PvpBattle(Base):
     __tablename__ = 'pvp_battles'
     __table_args__ = (sa.UniqueConstraint('attacker_id', 'key', name='uq_pvp_request'),)

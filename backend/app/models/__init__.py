@@ -60,4 +60,4 @@ __all__ = [
 ]
 
 from app.models.multiplayer import (HeroRegistration, CoopRoom, CoopMember, CoopSeat,
-    CoopBattle, CoopCommand, CoopReward, CoopProgress, PvpBattle, CoopTicket)
+    CoopBattle, CoopCommand, CoopReward, CoopProgress, CoopRecord, PvpBattle, CoopTicket)

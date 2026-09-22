@@ -8,11 +8,14 @@ from sqlalchemy import select
 from app.core.deps import CurrentUser, DbSession, OptionalUser, load_user_items
 from app.models import Hero, User
 from app.services.admin import is_admin
+from app.services.multiplayer_config import DUNGEONS, MULTIPLAYER
 from app.services.ranking import (
     BOARDS,
     DOHDOL_BOARDS,
     FISH_BOARDS,
     fetch_board,
+    fetch_coop_board,
+    fetch_coop_user_rank,
     fetch_dohdol_board,
     fetch_dohdol_user_rank,
     fetch_fish_board,
@@ -37,30 +40,42 @@ async def ranking(
     user: OptionalUser,
     board: str = Query(
         "level",
-        pattern="^(level|stage|power|gold|playtime|fish_species|fish_count|doh_exp|dol_exp|doh_attr|dol_attr)$",
+        pattern="^(level|stage|power|gold|playtime|fish_species|fish_count|doh_exp|dol_exp|doh_attr|dol_attr|coop)$",
     ),
+    dungeon: str | None = Query(None),
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=100),
 ) -> dict:
-    # 钓鱼榜 / 生产采集榜实时聚合（刚完成即可见），其余榜单读 5 分钟缓存
+    # 钓鱼榜 / 生产采集榜 / 远征榜实时聚合（刚完成即可见），其余榜单读 5 分钟缓存
+    body: dict = {
+        "board": board,
+        "boards": list(BOARDS),
+        "page": page,
+        "pageSize": pageSize,
+        "loggedIn": user is not None,
+    }
     if board in FISH_BOARDS:
         entries = await fetch_fish_board(db, board, page, pageSize)
         mine = await fetch_fish_user_rank(db, board, user.id) if user else None
     elif board in DOHDOL_BOARDS:
         entries = await fetch_dohdol_board(db, board, page, pageSize)
         mine = await fetch_dohdol_user_rank(db, board, user.id) if user else None
+    elif board == "coop":
+        # 远征榜按副本筛选；未指定或非法时取配置里的第一个副本
+        dungeon_id = dungeon if dungeon in DUNGEONS else next(iter(DUNGEONS))
+        entries = await fetch_coop_board(db, dungeon_id, page, pageSize)
+        mine = await fetch_coop_user_rank(db, dungeon_id, user.id) if user else None
+        body["dungeon"] = dungeon_id
+        body["dungeons"] = [
+            {"id": d["id"], "name": d["name"], "difficulty": d["difficulty"]}
+            for d in MULTIPLAYER["dungeons"]
+        ]
     else:
         entries = await fetch_board(db, board, page, pageSize)
         mine = await fetch_user_rank(db, board, user.id) if user else None
-    return {
-        "board": board,
-        "boards": list(BOARDS),
-        "page": page,
-        "pageSize": pageSize,
-        "entries": entries,
-        "me": mine,
-        "loggedIn": user is not None,
-    }
+    body["entries"] = entries
+    body["me"] = mine
+    return body
 
 
 @router.post("/refresh")

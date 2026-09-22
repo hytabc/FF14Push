@@ -48,3 +48,17 @@ export function mergeEvents(previous: BattleEvent[], incoming: BattleEvent[]) {
   const byId = new Map([...previous, ...incoming].map(e => [e.seq, e]))
   return [...byId.values()].sort((a, b) => a.seq - b.seq).slice(-200)
 }
+
+/** 远征通关记录中的单个席位（含分角色战斗信息，来自服务端权威模拟）。 */
+export interface CoopPartyMember {
+  slot: number; heroId: number; ownerId: number; account: string; name: string
+  jobId: string; role: Role; level: number; clone: boolean
+  damage: number; healing: number; damageTaken: number
+  deaths: number; minHpRatio: number; dangerMs: number
+}
+
+/** 远征榜条目 payload（服务端实时聚合）。 */
+export interface CoopClearPayload {
+  nickname: string; level: number; clearMs: number; mode: Mode; hadClone: boolean
+  dungeonId: string; createdAt: number; party: CoopPartyMember[]
+}

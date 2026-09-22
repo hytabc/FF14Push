@@ -739,10 +739,10 @@ class TestFishingRanking:
         assert payload["fishSpecies"] == payload["fishNormal"] + payload["fishKing"] + payload["fishEmperor"]
         assert payload["fishKing"] >= 0 and payload["fishEmperor"] >= 0
 
-        # 榜单是 5 个缓存榜（含游玩时间）+ 2 个钓鱼榜 + 4 个生产采集榜
+        # 榜单是 5 个缓存榜（含游玩时间）+ 2 个钓鱼榜 + 4 个生产采集榜 + 1 个远征榜
         assert board.json()["boards"] == [
             "level", "stage", "power", "gold", "playtime", "fish_species", "fish_count",
-            "doh_exp", "dol_exp", "doh_attr", "dol_attr",
+            "doh_exp", "dol_exp", "doh_attr", "dol_attr", "coop",
         ]
 
     @pytest.mark.asyncio

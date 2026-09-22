@@ -6,6 +6,7 @@ from app.core.database import SessionLocal
 from app.models import User
 from app.models.multiplayer import CoopRoom,CoopMember,CoopBattle,CoopCommand
 from app.services.coop_engine import advance,command,event,fail
+from app.services.coop_records import record_clear
 
 log=logging.getLogger('coop-worker')
 
@@ -48,7 +49,10 @@ async def tick_rooms(session_factory=SessionLocal,worker_id='worker',now=None):
             if ticks:advance(state,dungeon,config,ticks*100)
             battle.updated_at=now if elapsed==.1 else battle.updated_at+ticks*.1
             battle.state=state;battle.sequence+=1;battle.status=state['status']
-            if state['status']!='running':room.status=state['status'];battle.lease_until=0
+            if state['status']!='running':
+                room.status=state['status'];battle.lease_until=0
+                # Record the clear in the same transaction; room leaves 'running' so it runs once.
+                if state['status']=='cleared':await record_clear(db,room,battle,now)
         await db.commit()
     return len(rooms)
 

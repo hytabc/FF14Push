@@ -4,11 +4,13 @@ import { computed, onMounted, ref, watch } from 'vue'
 import data from '@shared/schema'
 
 import { api } from '@/api'
+import CoopRecordDialog from '@/components/CoopRecordDialog.vue'
 import PlayerProfileDialog from '@/components/PlayerProfileDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
+import { modes, roles, type CoopClearPayload, type CoopPartyMember } from '@/game/multiplayer'
 import type { RankingEntry } from '@/game/types'
-import { formatNumber, formatPlaytime } from '@/utils/format'
+import { formatDuration, formatNumber, formatPlaytime, jobName } from '@/utils/format'
 
 const auth = useAuthStore()
 const toast = useToastStore()
@@ -29,6 +31,7 @@ const BOARDS = [
   { id: 'dol_exp', label: '采集经验榜', hint: '累计采集经验降序（含钓鱼，满级后仍继续累计）' },
   { id: 'doh_attr', label: '生产属性榜', hint: '已装备生产专用装备属性总值降序' },
   { id: 'dol_attr', label: '采集属性榜', hint: '已装备采集专用装备属性总值降序' },
+  { id: 'coop', label: '远征榜', hint: '同副本按通关时长升序（越小越快）' },
 ]
 
 const DOHDOL_BOARDS = ['doh_exp', 'dol_exp', 'doh_attr', 'dol_attr']
@@ -38,15 +41,21 @@ const page = ref(1)
 const entries = ref<RankingEntry[]>([])
 const me = ref<{ rank: number; value: number } | null>(null)
 const loading = ref(false)
+const dungeons = ref<{ id: string; name: string; difficulty: string }[]>([])
+const dungeon = ref('')
 
 const current = computed(() => BOARDS.find((b) => b.id === board.value)!)
 
 async function load() {
   loading.value = true
   try {
-    const res = await api.ranking(board.value, page.value)
+    const res = await api.ranking(board.value, page.value, board.value === 'coop' ? dungeon.value : undefined)
     entries.value = res.entries
     me.value = res.me
+    if (res.dungeons) {
+      dungeons.value = res.dungeons
+      if (!dungeon.value && res.dungeon) dungeon.value = res.dungeon
+    }
   } catch {
     toast.push('排行榜加载失败', 'error')
   } finally {
@@ -75,6 +84,7 @@ function valueText(entry: RankingEntry): string {
   if (board.value === 'fish_count') return `${formatNumber(entry.value)} 条`
   if (board.value === 'doh_exp' || board.value === 'dol_exp') return `${formatNumber(entry.value)} 经验`
   if (board.value === 'doh_attr' || board.value === 'dol_attr') return `${formatNumber(entry.value)} 属性`
+  if (board.value === 'coop') return formatDuration(entry.value)
   return String(entry.value)
 }
 
@@ -84,6 +94,7 @@ function playtimeText(entry: RankingEntry): string {
 }
 
 const profileId = ref<number | null>(null)
+const record = ref<CoopClearPayload | null>(null)
 
 function entryTitles(entry: RankingEntry): string[] {
   const ids = entry.payload?.titles
@@ -111,11 +122,50 @@ function dohdolLevels(entry: RankingEntry): { doh: number; dol: number } {
 }
 
 function openProfile(entry: RankingEntry) {
+  if (board.value === 'coop') {
+    record.value = entry.payload as unknown as CoopClearPayload
+    return
+  }
   if (!auth.isLoggedIn) {
     toast.push('登录后可查看他人装备', 'info')
     return
   }
   profileId.value = entry.userId
+}
+
+/** 远征榜：该行的通关阵容（服务端权威数据）。 */
+function partyOf(entry: RankingEntry): CoopPartyMember[] {
+  const party = (entry.payload as unknown as CoopClearPayload)?.party
+  return Array.isArray(party) ? party : []
+}
+
+const ROLE_DOT: Record<string, string> = {
+  tank: 'bg-sky-400',
+  healer: 'bg-emerald-400',
+  dps: 'bg-rose-400',
+}
+
+function roleDot(role: string): string {
+  return ROLE_DOT[role] ?? 'bg-ink-500'
+}
+
+function modeLabel(entry: RankingEntry): string {
+  const mode = (entry.payload as unknown as CoopClearPayload)?.mode
+  return mode ? modes[mode] ?? String(mode) : '—'
+}
+
+function hadClone(entry: RankingEntry): boolean {
+  return Boolean((entry.payload as unknown as CoopClearPayload)?.hadClone)
+}
+
+function dungeonName(id?: string): string {
+  return dungeons.value.find((d) => d.id === id)?.name ?? id ?? ''
+}
+
+function pickDungeon(id: string) {
+  dungeon.value = id
+  page.value = 1
+  load()
 }
 </script>
 
@@ -130,7 +180,12 @@ function openProfile(entry: RankingEntry) {
         </button>
       </div>
       <p class="mt-1 text-[11px] text-ink-500">
-        服务端每 5 分钟自动刷新一次，展示前 100 名。点击任意玩家可查看其当前装备（需登录）。
+        <template v-if="board === 'coop'">
+          按副本统计各玩家最快通关时长（越小越快），刚通关即可见。点击任意记录可查看该次通关的阵容与分角色输出。
+        </template>
+        <template v-else>
+          服务端每 5 分钟自动刷新一次，展示前 100 名。点击任意玩家可查看其当前装备（需登录）。
+        </template>
         <span v-if="!auth.isLoggedIn" class="text-amber-300">未登录可查看榜单，但不会上榜。</span>
       </p>
 
@@ -156,6 +211,19 @@ function openProfile(entry: RankingEntry) {
           {{ b.label }}
         </button>
       </div>
+
+      <!-- 远征榜：按副本筛选 -->
+      <div v-if="board === 'coop'" class="mt-3 flex flex-wrap items-center gap-2">
+        <label class="text-xs text-ink-400">副本</label>
+        <select
+          :value="dungeon"
+          aria-label="选择副本"
+          class="rounded-lg border border-ink-600 bg-ink-900 px-3 py-1.5 text-sm text-ink-100 outline-none focus:border-amber-400"
+          @change="pickDungeon(($event.target as HTMLSelectElement).value)"
+        >
+          <option v-for="d in dungeons" :key="d.id" :value="d.id">{{ d.name }}</option>
+        </select>
+      </div>
     </section>
 
     <section class="card overflow-x-auto">
@@ -175,7 +243,7 @@ function openProfile(entry: RankingEntry) {
             v-for="entry in entries"
             :key="entry.userId"
             class="cursor-pointer border-t border-ink-800 transition hover:bg-ink-800/60"
-            title="查看该玩家当前装备"
+            :title="board === 'coop' ? '查看该次通关阵容与输出' : '查看该玩家当前装备'"
             @click="openProfile(entry)"
           >
             <td class="px-3 py-2 font-mono" :class="entry.rank <= 3 ? 'text-amber-300' : 'text-ink-400'">
@@ -188,10 +256,25 @@ function openProfile(entry: RankingEntry) {
                 :key="t"
                 class="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
               >{{ t }}</span>
+              <!-- 远征榜：行内展示该次通关的阵容 -->
+              <div v-if="board === 'coop' && partyOf(entry).length" class="mt-1 flex flex-wrap gap-1">
+                <span
+                  v-for="m in partyOf(entry)"
+                  :key="m.slot"
+                  class="inline-flex items-center gap-1 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-300"
+                  :title="`${roles[m.role]} · Lv.${m.level}`"
+                >
+                  <span class="inline-block h-1.5 w-1.5 rounded-full" :class="roleDot(m.role)" />
+                  {{ jobName(m.jobId) }}
+                </span>
+              </div>
             </td>
             <td class="hidden px-3 py-2 text-ink-400 sm:table-cell">{{ entry.payload?.level ?? '—' }}</td>
             <td class="px-3 py-2 text-right">
               <div class="font-mono text-ink-200">{{ valueText(entry) }}</div>
+              <div v-if="board === 'coop'" class="mt-0.5 text-[10px] text-ink-500">
+                {{ modeLabel(entry) }}<span v-if="hadClone(entry)"> · 含克隆</span>
+              </div>
               <div v-if="board === 'fish_species'" class="mt-0.5 text-[10px] text-ink-500">
                 普通 {{ fishBreakdown(entry).normal }} ·
                 鱼王 {{ fishBreakdown(entry).king }}/{{ FISH_REGION_TOTAL }} ·
@@ -202,7 +285,7 @@ function openProfile(entry: RankingEntry) {
               </div>
             </td>
             <td class="hidden whitespace-nowrap px-3 py-2 text-right text-ink-400 sm:table-cell">{{ playtimeText(entry) }}</td>
-            <td class="hidden px-3 py-2 text-right text-ink-400 sm:table-cell">查看</td>
+            <td class="hidden px-3 py-2 text-right text-ink-400 sm:table-cell">{{ board === 'coop' ? '阵容' : '查看' }}</td>
           </tr>
           <tr v-if="!entries.length && !loading">
             <td colspan="6" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
@@ -230,5 +313,15 @@ function openProfile(entry: RankingEntry) {
     </nav>
 
     <PlayerProfileDialog :user-id="profileId" @close="profileId = null" />
+    <CoopRecordDialog
+      :open="record !== null"
+      :dungeon-name="dungeonName(record?.dungeonId)"
+      :clear-ms="record?.clearMs"
+      :mode="record?.mode"
+      :had-clone="record?.hadClone"
+      :created-at="record?.createdAt"
+      :party="record?.party ?? []"
+      @close="record = null"
+    />
   </div>
 </template>

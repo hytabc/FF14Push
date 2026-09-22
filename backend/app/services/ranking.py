@@ -5,6 +5,7 @@
   不依赖缓存，避免「刚钓完却看不到自己」。
 - 生产/采集经验 / 生产/采集属性：同样**实时**聚合（`dohdol_progress` 累计经验 +
   已装备专用装备的展示属性之和），刚制造/采集完即可见。
+- 远征榜：**实时**聚合 `coop_records`（按副本取各账号最快通关时长），刚通关即可见。
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from app.models import (
     User,
     UserTitle,
 )
+from app.models.multiplayer import CoopRecord
 from app.services.admin import is_admin
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
@@ -36,8 +38,10 @@ CACHED_BOARDS = ("level", "stage", "power", "gold", "playtime")
 FISH_BOARDS = ("fish_species", "fish_count")
 # 实时聚合的生产/采集榜（累计经验 + 已装备专用装备属性总值）
 DOHDOL_BOARDS = ("doh_exp", "dol_exp", "doh_attr", "dol_attr")
+# 实时聚合的远征榜（按副本取各账号最快通关记录）
+COOP_BOARDS = ("coop",)
 # 对外暴露的全部榜单
-BOARDS = CACHED_BOARDS + FISH_BOARDS + DOHDOL_BOARDS
+BOARDS = CACHED_BOARDS + FISH_BOARDS + DOHDOL_BOARDS + COOP_BOARDS
 
 
 async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
@@ -343,6 +347,102 @@ async def fetch_dohdol_user_rank(
             return {
                 "rank": index + 1,
                 "value": round(float(row[_DOHDOL_METRIC[board]])),
+                "nickname": row["nickname"],
+                "username": row["username"],
+                "userId": user_id,
+            }
+    return None
+
+
+# ---------------------------------------------------------------- 远征榜（实时）
+async def _coop_rows(db: AsyncSession, dungeon_id: str) -> list[dict[str, Any]]:
+    """按账号聚合该副本的最快通关记录（刚通关即可见，不依赖缓存刷新）。
+
+    通关时长越小越好，因此这里用升序；同一账号只取其最快的一次，
+    并保留该次的阵容（含分角色战斗信息）。
+    """
+    records = (
+        await db.execute(select(CoopRecord).where(CoopRecord.dungeon_id == dungeon_id))
+    ).scalars().all()
+    if not records:
+        return []
+
+    best: dict[int, CoopRecord] = {}
+    for row in records:
+        current = best.get(row.user_id)
+        if current is None or (row.clear_ms, row.created_at) < (current.clear_ms, current.created_at):
+            best[row.user_id] = row
+
+    users = (
+        await db.execute(
+            select(User).options(selectinload(User.hero)).where(User.id.in_(list(best.keys())))
+        )
+    ).scalars().all()
+
+    out: list[dict[str, Any]] = []
+    for user in users:
+        if is_admin(user) or user.banned or user.hero is None:
+            continue
+        row = best[user.id]
+        out.append(
+            {
+                "userId": user.id,
+                "nickname": user.nickname,
+                "username": user.username,
+                "level": user.hero.level,
+                "clearMs": int(row.clear_ms),
+                "mode": row.mode,
+                "hadClone": bool(row.had_clone),
+                "dungeonId": row.dungeon_id,
+                "createdAt": float(row.created_at),
+                "party": row.party or [],
+            }
+        )
+    out.sort(key=lambda row: (row["clearMs"], row["createdAt"]))
+    return out
+
+
+def _coop_payload(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "nickname": row["nickname"],
+        "level": row["level"],
+        "clearMs": row["clearMs"],
+        "mode": row["mode"],
+        "hadClone": row["hadClone"],
+        "dungeonId": row["dungeonId"],
+        "createdAt": row["createdAt"],
+        "party": row["party"],
+    }
+
+
+async def fetch_coop_board(
+    db: AsyncSession, dungeon_id: str, page: int = 1, page_size: int = 100
+) -> list[dict[str, Any]]:
+    rows = await _coop_rows(db, dungeon_id)
+    offset = max(0, (page - 1) * page_size)
+    return [
+        {
+            "rank": offset + index + 1,
+            "userId": row["userId"],
+            "nickname": row["nickname"],
+            "username": row["username"],
+            "value": row["clearMs"],
+            "payload": _coop_payload(row),
+        }
+        for index, row in enumerate(rows[offset : offset + page_size])
+    ]
+
+
+async def fetch_coop_user_rank(
+    db: AsyncSession, dungeon_id: str, user_id: int
+) -> dict[str, Any] | None:
+    rows = await _coop_rows(db, dungeon_id)
+    for index, row in enumerate(rows):
+        if row["userId"] == user_id:
+            return {
+                "rank": index + 1,
+                "value": row["clearMs"],
+                "clearMs": row["clearMs"],
                 "nickname": row["nickname"],
                 "username": row["username"],
                 "userId": user_id,
