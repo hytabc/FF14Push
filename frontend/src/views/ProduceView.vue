@@ -24,16 +24,45 @@ const router = useRouter()
 const job = ref('CRP')
 const error = ref('')
 
+/** 配方筛选：名称 / 种类 / 等级范围。 */
+const keyword = ref('')
+const kindFilter = ref('all')
+const levelMin = ref<number | ''>('')
+const levelMax = ref<number | ''>('')
+
+const kindOptions = [
+  { id: 'all', label: '全部种类' },
+  { id: 'material', label: '材料' },
+  { id: 'equipment', label: '装备' },
+  { id: 'consumable', label: '消耗品' },
+]
+
 const dohJobs = data.dohdolJobs.jobs.filter((j) => j.kind === 'doh')
 const progress = computed(() => dohdol.state?.progress?.doh ?? null)
 const running = computed(() => dohdol.isRunning && dohdol.mode === 'produce')
 
-const recipes = computed(() =>
-  (dohdol.state?.recipes ?? [])
-    .filter((r) => r.jobId === job.value)
-    .slice()
-    .sort((a, b) => a.requiredLevel - b.requiredLevel),
+const hasFilters = computed(
+  () => !!keyword.value.trim() || kindFilter.value !== 'all' || levelMin.value !== '' || levelMax.value !== '',
 )
+
+function resetFilters() {
+  keyword.value = ''
+  kindFilter.value = 'all'
+  levelMin.value = ''
+  levelMax.value = ''
+}
+
+const recipes = computed(() => {
+  const kw = keyword.value.trim()
+  const min = typeof levelMin.value === 'number' ? levelMin.value : null
+  const max = typeof levelMax.value === 'number' ? levelMax.value : null
+  return (dohdol.state?.recipes ?? [])
+    .filter((r) => r.jobId === job.value)
+    .filter((r) => kindFilter.value === 'all' || r.output.kind === kindFilter.value)
+    .filter((r) => (min === null || r.requiredLevel >= min) && (max === null || r.requiredLevel <= max))
+    .filter((r) => !kw || r.output.name.includes(kw))
+    .sort((a, b) => a.requiredLevel - b.requiredLevel)
+})
 
 const materials = computed(() => dohdol.state?.materials ?? [])
 const consumables = computed(() => dohdol.state?.consumables ?? [])
@@ -178,6 +207,46 @@ async function stop() {
           停止生产
         </button>
       </div>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <input
+          v-model="keyword"
+          placeholder="按名称搜索"
+          class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+        >
+        <select v-model="kindFilter" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+          <option v-for="k in kindOptions" :key="k.id" :value="k.id">{{ k.label }}</option>
+        </select>
+        <label class="flex items-center gap-1 text-ink-400">
+          等级
+          <input
+            v-model.number="levelMin"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="最低"
+            class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          >
+          <span class="text-ink-600">-</span>
+          <input
+            v-model.number="levelMax"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="最高"
+            class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          >
+        </label>
+        <button
+          v-if="hasFilters"
+          class="rounded bg-ink-800 px-2.5 py-1.5 text-ink-300 transition hover:text-white"
+          @click="resetFilters"
+        >
+          重置
+        </button>
+        <span class="ml-auto text-ink-500">共 {{ recipes.length }} 个配方</span>
+      </div>
+
       <p v-if="error" class="mt-2 text-xs text-red-400">{{ error }}</p>
 
       <div v-if="running" class="mt-3">
@@ -272,7 +341,9 @@ async function stop() {
           <span class="text-ink-500">可制造 {{ r.craftable }} 次 · 每次 {{ r.craftSeconds }}s · +{{ r.xp }} 经验</span>
         </div>
       </div>
-      <p v-if="!recipes.length" class="text-xs text-ink-500">该职业暂无可制造配方。</p>
+      <p v-if="!recipes.length" class="text-xs text-ink-500">
+        {{ hasFilters ? '没有符合筛选条件的配方。' : '该职业暂无可制造配方。' }}
+      </p>
     </section>
 
     <section class="grid gap-3 md:grid-cols-3">

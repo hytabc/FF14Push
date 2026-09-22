@@ -873,63 +873,58 @@ const ORNAMENTS = [
 ]
 
 /**
- * 变体识别色：把档位调色板向该色混合，得到同档不同变体的视觉差异。
- * key = 变体 id；基础型（''）不染色。
+ * 职能识别色：战斗装备变体的名称中段是 FF14 官方职能词缀（御敌/强袭/制敌/游击/精准/治愈/咏咒），
+ * 图标据此染色 —— 同一职能无论武器 / 防具 / 饰品都取同一色，玩家一眼即可把图对上名字。
+ * key = 变体 name；基础型（''）不染色。
  */
-const VARIANT_TINTS = {
-  crit: [0xe0, 0x50, 0x50],
-  dh: [0x40, 0xc8, 0xe0],
-  det: [0xb0, 0x70, 0xe8],
-  bal: [0xd0, 0xd0, 0xd0],
-  str: [0xe0, 0x5a, 0x4a],
-  dex: [0x58, 0xc8, 0x68],
-  int: [0x58, 0x88, 0xe8],
-  vit: [0xe0, 0x9a, 0x48],
-  tank: [0x9a, 0x96, 0x82],
-  gold: [0xf0, 0xd0, 0x50],
-  haste: [0xf0, 0xa0, 0x38],
-  fish: [0x50, 0xc0, 0xd0],
+const ROLE_TINTS = {
+  御敌: [0xb0, 0x96, 0x5a],
+  强袭: [0xe0, 0x52, 0x48],
+  制敌: [0xb0, 0x70, 0xe8],
+  游击: [0x58, 0xc8, 0x68],
+  精准: [0x3e, 0xc8, 0xe0],
+  治愈: [0xf2, 0xdc, 0x86],
+  咏咒: [0x58, 0x88, 0xe8],
+}
+
+/**
+ * 职能角标（3×3），画在图标右上角空白处，用 'a' 字符（职能强调色）。
+ * 只有空白像素才落笔，因此不会破坏底形。
+ */
+const ROLE_MARKS = {
+  御敌: ['aaa', 'a.a', 'aaa'],
+  强袭: ['aa.', 'aa.', '...'],
+  制敌: ['.a.', 'aaa', '.a.'],
+  游击: ['.aa', '..a', '.a.'],
+  精准: ['aa.', 'a..', '...'],
+  治愈: ['aaa', '.a.', 'aaa'],
+  咏咒: ['aaa', '..a', 'aaa'],
+}
+
+/**
+ * 专用装备（生产/采集）变体识别色：key = 变体 id；基础变体（''）不染色。
+ */
+const DOHDOL_TINTS = {
   yield: [0x68, 0xb8, 0x48],
   xp: [0xc0, 0x90, 0xe0],
   quality: [0xd8, 0xa8, 0x40],
   speed: [0xe8, 0x78, 0x38],
   master: [0xf0, 0xd8, 0x70],
+  fish: [0x50, 0xc0, 0xd0],
 }
 
-/**
- * 变体角标（3×3），画在图标右上角空白处，用 'a' 字符（变体强调色）。
- * 只有空白像素才落笔，因此不会破坏底形。
- */
-const VARIANT_MARKS = {
-  crit: ['.aa', '.a.', '...'],
-  dh: ['aa.', 'a..', '...'],
-  det: ['.a.', 'aaa', '.a.'],
-  bal: ['a.a', '.a.', 'a.a'],
-  str: ['aa.', 'aa.', '...'],
-  dex: ['.aa', '..a', '.a.'],
-  int: ['aaa', '..a', 'aaa'],
-  vit: ['.a.', 'aaa', '.a.'],
-  tank: ['aaa', 'a.a', 'aaa'],
-  gold: ['..a', '.a.', 'a..'],
-  haste: ['a.a', '.a.', '...'],
-  fish: ['aaa', '..a', '.aa'],
+/** 专用装备变体角标（3×3）：key = 变体 id。 */
+const DOHDOL_MARKS = {
   yield: ['.a.', 'aaa', '...'],
   xp: ['a.a', 'aaa', '.a.'],
   quality: ['.a.', 'aaa', '.a.'],
   speed: ['a..', 'aa.', 'aaa'],
   master: ['aaa', 'aaa', 'aaa'],
+  fish: ['aaa', '..a', '.aa'],
 }
 
-/** 变体强调色（角标色）：变体识别色提亮后使用 */
-function variantAccent(variantId) {
-  const tint = VARIANT_TINTS[variantId]
-  if (!tint) return null
-  return tint.map((c) => Math.min(255, Math.round(c * 1.15 + 25)))
-}
-
-/** 把档位调色板向变体色混合（t=0.32），并附加角标色 a */
-function tintPalette(palette, variantId) {
-  const tint = VARIANT_TINTS[variantId]
+/** 把档位调色板向识别色混合（t=0.32），并附加角标色 a；tint 为空则不染色。 */
+function tintPalette(palette, tint) {
   if (!tint) return palette
   const t = 0.32
   const blend = (c, i) => Math.round(c * (1 - t) + tint[i] * t)
@@ -937,7 +932,7 @@ function tintPalette(palette, variantId) {
     m: palette.m.map(blend),
     d: palette.d.map(blend),
     l: palette.l.map(blend),
-    a: variantAccent(variantId),
+    a: tint.map((c) => Math.min(255, Math.round(c * 1.15 + 25))),
   }
 }
 
@@ -1335,22 +1330,27 @@ function encodePng(width, height, rgba) {
 /** 与 shared/schema/index.ts 的 expandBaseItems() 保持一致的 id 规则（族 × 档位 × 变体） */
 const BASE_VARIANT = { id: '', minTier: 0 }
 
-function decoratedPalette(tier, variantId) {
+function decoratedPalette(tier, tint) {
   const base = TIER_PALETTES[tier]
   if (!base) throw new Error(`缺少档位 ${tier} 的调色板`)
-  return variantId ? tintPalette(base, variantId) : base
+  return tintPalette(base, tint)
 }
 
 function listBaseItems(data) {
   const items = []
   const variants = data.variants ?? {}
-  const push = (id, shape, tier, variantId) => {
+  // 变体的视觉标识取自 name（FF14 职能词缀），而非 id：同一职能跨武器/防具/饰品统一配色，
+  // 改名后图与名始终对应。基础型（name 为空）不染色。
+  const push = (id, shape, tier, role) => {
+    if (role && !ROLE_TINTS[role]) {
+      throw new Error(`未知职能「${role}」（${id}），请在 ROLE_TINTS / ROLE_MARKS 中登记`)
+    }
     items.push({
       id,
       shape,
-      palette: decoratedPalette(tier, variantId),
+      palette: decoratedPalette(tier, ROLE_TINTS[role]),
       ornament: ORNAMENTS[tier],
-      variantMark: variantId ? VARIANT_MARKS[variantId] ?? null : null,
+      variantMark: role ? ROLE_MARKS[role] : null,
     })
   }
   const forEachVariant = (list, tier, cb) => {
@@ -1362,21 +1362,21 @@ function listBaseItems(data) {
   for (const family of data.weaponFamilies) {
     for (const tier of data.tiers) {
       forEachVariant(variants.weapon, tier.index, (v) =>
-        push(`w_${family.weaponType}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.weaponType, tier.index, v.id),
+        push(`w_${family.weaponType}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.weaponType, tier.index, v.name ?? ''),
       )
     }
   }
   for (const family of data.armorFamilies) {
     for (const tier of data.tiers) {
       forEachVariant(variants.armor, tier.index, (v) =>
-        push(`a_${family.slot}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.slot, tier.index, v.id),
+        push(`a_${family.slot}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.slot, tier.index, v.name ?? ''),
       )
     }
   }
   for (const family of data.accessoryFamilies) {
     for (const tier of data.tiers) {
       forEachVariant(variants.accessory, tier.index, (v) =>
-        push(`c_${family.slot}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.slot, tier.index, v.id),
+        push(`c_${family.slot}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.slot, tier.index, v.name ?? ''),
       )
     }
   }
@@ -1426,9 +1426,9 @@ function listDohdolItems(equipJson) {
     return {
       id: it.id,
       shape,
-      palette: variantId ? tintPalette(base, variantId) : base,
+      palette: tintPalette(base, DOHDOL_TINTS[variantId]),
       ornament: null,
-      variantMark: variantId ? VARIANT_MARKS[variantId] ?? null : null,
+      variantMark: variantId ? DOHDOL_MARKS[variantId] ?? null : null,
     }
   })
 }

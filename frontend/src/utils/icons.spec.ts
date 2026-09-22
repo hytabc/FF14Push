@@ -23,6 +23,16 @@ describe('物品像素图标索引', () => {
     }
   })
 
+  it('每件战斗装备都有各自独立的像素图（同职能同色，改名后图名仍对应）', () => {
+    const owner = new Map<string, string>()
+    for (const id of Object.keys(data.baseItemById)) {
+      const url = itemIconUrl(id)!
+      const prev = owner.get(url)
+      expect(prev, `${id} 与 ${prev} 使用了同一张像素图`).toBeUndefined()
+      owner.set(url, id)
+    }
+  })
+
   it('名称可解析到中文名而非 id 本身', () => {
     expect(itemIconName('w_sword_shield_0')).not.toBe('w_sword_shield_0')
     expect(itemIconName('g_ore')).toBe('铁矿')
