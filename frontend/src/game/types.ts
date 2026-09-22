@@ -440,6 +440,7 @@ export interface RaidReportResponse {
   goldGained: number
   /** 本次通关获得的经验（首通用 firstExp，重刷用 repeatExp）。 */
   expGained: number
+  expCalculation?: ExpCalculation
   /** 高难宝箱：通关后待开启的数量与可自选装备种类。 */
   pendingChest?: { count: number; slots: string[] } | null
   items: Item[]
@@ -576,6 +577,7 @@ export interface BattleReportResponse {
   gold: number
   goldGained: number
   expGained: number
+  expCalculation?: ExpCalculation
   level: { levelsGained: number; exp: number; level: number }
   killCount: number
   killsRequired: number
@@ -585,6 +587,7 @@ export interface BattleReportResponse {
   boss: {
     gold: number
     exp: number
+    expCalculation?: ExpCalculation
     level: { levelsGained: number; exp: number; level: number }
     firstClear: boolean
     nextRegionId: number | null
@@ -621,4 +624,13 @@ export interface RankingEntry {
   username: string
   value: number
   payload: Record<string, unknown>
+}
+
+
+/** Server settlement basis already includes monster/reward multipliers and penalties. */
+export interface ExpCalculation {
+  base: number
+  efficiencyBonus: number
+  catchUpBonus: number
+  totalBonusPct: number
 }

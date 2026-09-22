@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import data from '@shared/schema'
+import { consumableBonus } from '@/utils/consumables'
 
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
@@ -282,6 +283,9 @@ async function stop() {
         <div class="flex flex-wrap items-center gap-2">
           <ItemIcon :base-id="r.output.baseId ?? r.output.itemId ?? ''" variant="plain" :size="24" />
           <span class="text-sm text-ink-100">{{ r.output.name }}</span>
+          <span v-if="r.output.kind === 'consumable'" class="text-xs leading-relaxed text-emerald-300">
+            {{ consumableBonus(r.output.itemId) }}
+          </span>
           <span v-if="r.output.quality === 'high'" class="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200">
             高品质
           </span>
@@ -353,7 +357,7 @@ async function stop() {
           <li v-for="g in dohdol.lastGained" :key="g.itemId" class="flex justify-between text-ink-200">
             <span class="flex min-w-0 items-center gap-1.5">
               <ItemIcon :base-id="g.itemId" variant="plain" :size="18" />
-              <span class="truncate">{{ g.name }}</span>
+              <span class="min-w-0"><span class="block">{{ g.name }}</span><span class="block text-[11px] leading-relaxed text-emerald-300">{{ consumableBonus(g.itemId) }}</span></span>
             </span>
             <span class="text-emerald-300">+{{ g.count }}</span>
           </li>
@@ -397,7 +401,7 @@ async function stop() {
           <div v-for="c in consumables" :key="c.itemId" class="flex items-center justify-between text-ink-200">
             <span class="flex min-w-0 items-center gap-1.5">
               <ItemIcon :base-id="c.itemId" variant="plain" :size="18" />
-              <span class="truncate">{{ c.name }}</span>
+              <span class="min-w-0"><span class="block">{{ c.name }}</span><span class="block text-[11px] leading-relaxed text-emerald-300">{{ consumableBonus(c.itemId) }}</span></span>
             </span>
             <span class="flex shrink-0 items-center gap-2">
               <span class="font-mono text-ink-400">×{{ c.count }}</span>

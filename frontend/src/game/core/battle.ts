@@ -335,7 +335,10 @@ export class BattleSimulator {
       const ticks = Math.floor(this.regenTimer)
       this.regenTimer -= ticks
       const stats = this.stats
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + (stats.hpRegen + this.buffs.filter(b => b.stat === "healOverTime").reduce((sum,b) => sum + stats.maxHp * b.value,0)) * ticks * this.healMultiplier)
+      this.heroHp = Math.min(stats.maxHp, this.heroHp + stats.hpRegen * ticks * this.healMultiplier)
+      for (const buff of this.buffs.filter((b) => b.stat === 'healOverTime')) {
+        this.restoreHealth(stats.maxHp * buff.value * ticks * this.healMultiplier, buff.name + '（持续治疗）')
+      }
       this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks * (this.penalty.resourceMultiplier ?? 1))
     }
 
@@ -577,6 +580,16 @@ export class BattleSimulator {
     }
   }
 
+  private restoreHealth(amount: number, source: string): void {
+    const before = this.heroHp
+    this.heroHp = Math.min(this.stats.maxHp, this.heroHp + amount)
+    const restored = Math.max(0, this.heroHp - before)
+    const shown = Number(restored.toFixed(2))
+    const overflow = Number(Math.max(0, amount - restored).toFixed(2))
+    this.pushLog(source + ' 恢复 ' + shown + ' 生命值' + (overflow > 0 ? '（溢出 ' + overflow + '）' : ''), 'skill')
+    if (restored > 0) this.pushFloat('+' + shown, 'hero', 'hero')
+  }
+
   private applyEffects(skill: SkillLike): void {
     const stats = this.stats
     for (const effect of skill.effects as Array<Record<string, number | string>>) {
@@ -587,8 +600,7 @@ export class BattleSimulator {
         case 'heal':
         case 'fullHeal': {
           const amount = (type === 'fullHeal' ? stats.maxHp : Math.floor(stats.maxHp * value)) * this.healMultiplier
-          this.heroHp = Math.min(stats.maxHp, this.heroHp + amount)
-          this.pushFloat(`+${Math.floor(amount)}`, 'hero', 'hero')
+          this.restoreHealth(amount, skill.name)
           break
         }
         case 'healOverTime':
@@ -1097,6 +1109,10 @@ export class BattleSimulator {
   private pushFloat(text: string, side: 'hero' | 'monster', tone: FloatTone): void {
     this.floating.push({ id: nextId(), text, tone, side })
     if (this.floating.length > MAX_FLOAT) this.floating.splice(0, this.floating.length - MAX_FLOAT)
+  }
+
+  recordReward(text: string): void {
+    this.pushLog(text, 'loot')
   }
 
   private pushLog(text: string, tone: LogEntry['tone']): void {

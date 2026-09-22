@@ -365,6 +365,9 @@ class TestBattleLoop:
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body["goldGained"] > 0
+        detail = body["expCalculation"]
+        assert detail["base"] + detail["efficiencyBonus"] + detail["catchUpBonus"] == body["expGained"]
+        assert detail["totalBonusPct"] == round((body["expGained"] / detail["base"] - 1) * 100, 2)
         assert body["items"] == []
         assert body["autoSold"] == []
         # 打怪不产装备：背包里始终只有开局的起始武器

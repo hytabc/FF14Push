@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { consumableBonus } from "@/utils/consumables"
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
@@ -159,11 +160,11 @@ async function batchSell() {
         <div
           v-for="c in consumables"
           :key="c.itemId"
-          class="flex items-center gap-2 rounded border border-ink-700 bg-ink-900/50 px-2 py-1 text-[11px]"
+          class="flex flex-wrap items-center gap-2 rounded border border-ink-700 bg-ink-900/50 px-2 py-1 text-[11px]"
           :title="c.desc"
         >
           <ItemIcon :base-id="c.itemId" variant="plain" :size="20" />
-          <span class="text-ink-200">{{ c.name }}</span>
+          <span class="min-w-0 text-ink-200">{{ c.name }}<span class="block text-emerald-300">{{ consumableBonus(c.itemId) }}</span></span>
           <span class="font-mono text-ink-400">×{{ c.count }}</span>
           <button
             class="rounded bg-emerald-600/80 px-2 py-0.5 text-white hover:bg-emerald-500"

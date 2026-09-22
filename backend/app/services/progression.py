@@ -68,3 +68,13 @@ def catch_up_exp(hero: Any, amount: int, highest_level: int) -> int:
 
 async def combat_exp(db: AsyncSession, hero: Hero, amount: int) -> int:
     return catch_up_exp(hero, amount, await highest_hero_level(db, hero.user_id))
+
+
+def exp_calculation(base: int, after_bonus: int, gained: int) -> dict[str, int | float]:
+    """Describe actual settlement stages, including a partially capped catch-up bonus."""
+    return {
+        "base": base,
+        "efficiencyBonus": after_bonus - base,
+        "catchUpBonus": gained - after_bonus,
+        "totalBonusPct": round((gained / base - 1) * 100, 2) if base > 0 else 0,
+    }

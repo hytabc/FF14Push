@@ -999,3 +999,25 @@ describe('装备触发效果（proc）', () => {
     expect(text).not.toContain('疾风')
   })
 })
+
+describe('技能治疗日志', () => {
+  it('直接治疗记录实际恢复和溢出，满血不虚报恢复量', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ maxHp: 1000 }), regionId: 1 })
+    const engine = sim as any
+    sim.heroHp = 980
+    engine.applyEffects({ name: '测试治疗', effects: [{ type: 'heal', value: .1 }] })
+    expect(sim.heroHp).toBe(1000)
+    expect(sim.log.at(-1)?.text).toBe('测试治疗 恢复 20 生命值（溢出 80）')
+    engine.applyEffects({ name: '测试治疗', effects: [{ type: 'heal', value: .1 }] })
+    expect(sim.log.at(-1)?.text).toBe('测试治疗 恢复 0 生命值（溢出 100）')
+  })
+  it('持续治疗逐跳记录技能名称和有效治疗量', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ maxHp: 1000, hpRegen: 0 }), regionId: 1 })
+    sim.start()
+    sim.heroHp = 100
+    const engine = sim as any
+    engine.applyEffects({ name: '再生', effects: [{ type: 'healOverTime', value: .01, duration: 5 }] })
+    sim.tick(1)
+    expect(sim.log.some(e => e.text === '再生（持续治疗） 恢复 10 生命值')).toBe(true)
+  })
+})
