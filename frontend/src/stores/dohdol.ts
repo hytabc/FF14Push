@@ -30,8 +30,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const mode = ref<ActivityMode>('idle')
   const sessionId = ref<number | null>(null)
   const busy = ref(false)
-  const lastGained = ref<Array<{ name: string; count: number }>>([])
-  const lastProduced = ref<Array<{ name: string; rarity: string }>>([])
+  const lastGained = ref<Array<{ itemId: string; name: string; count: number }>>([])
+  const lastProduced = ref<Array<{ baseId: string; name: string; rarity: string }>>([])
   const lastCaught = ref<FishCatch[]>([])
   const insightRemaining = ref(0)
   /** 当前生产会话选中的配方（用于判断材料是否耗尽）。 */
@@ -139,7 +139,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
           syncCycle(r.cycle, rtt)
         }
         if (r.items.length) {
-          lastProduced.value = r.items.map((i) => ({ name: i.name, rarity: i.rarity }))
+          lastProduced.value = r.items.map((i) => ({ baseId: i.baseId, name: i.name, rarity: i.rarity }))
           for (const item of r.items) {
             toast.push(`制造出 ${item.name}（高品质）`, 'loot')
           }

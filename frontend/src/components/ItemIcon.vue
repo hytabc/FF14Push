@@ -7,32 +7,29 @@ import { itemIconName, itemIconUrl } from '@/utils/icons'
 
 const props = withDefaults(
   defineProps<{
+    /** 图标 id：战斗底材 baseId、采集材料 itemId、专用装备 baseId、消耗品 itemId、鱼获 id。 */
     baseId: string
-    rarity: RarityId
+    /** 品阶色（描边/光晕）。无稀有度的物品（材料/消耗品）可省略。 */
+    rarity?: RarityId
     /** 渲染边长（px）。源图为 16×16，建议取 16 的整数倍。 */
     size?: number
-    /** full：品阶色描边 + 光晕；lite：仅单侧光晕（用于图鉴等大批量场景）。 */
-    variant?: 'full' | 'lite'
+    /** full：品阶色描边 + 光晕；lite：仅单侧光晕；plain：无滤镜（材料/消耗品/专用装备）。 */
+    variant?: 'full' | 'lite' | 'plain'
     /** 灰黑剪影，用于图鉴未解锁条目。 */
     silhouette?: boolean
   }>(),
-  { size: 32, variant: 'full', silhouette: false },
+  { rarity: 'common', size: 32, variant: 'full', silhouette: false },
 )
 
 const url = computed(() => itemIconUrl(props.baseId))
-
-/** 生产/采集专用装备没有像素图，回退为职业图标。 */
-const fallbackGlyph = computed(() => {
-  if (url.value) return null
-  if (props.baseId.startsWith('dh_doh')) return '🔨'
-  if (props.baseId.startsWith('dh_dol')) return '⛏'
-  return null
-})
 
 const style = computed(() => {
   const box = { width: `${props.size}px`, height: `${props.size}px` }
   if (props.silhouette) {
     return { ...box, filter: 'grayscale(1) brightness(0.35)' }
+  }
+  if (props.variant === 'plain') {
+    return box
   }
 
   const color = rarityHex(props.rarity)
@@ -64,10 +61,4 @@ const style = computed(() => {
     decoding="async"
     draggable="false"
   />
-  <span
-    v-else-if="fallbackGlyph"
-    class="shrink-0 select-none text-center leading-none"
-    :style="{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.6)}px` }"
-    >{{ fallbackGlyph }}</span
-  >
 </template>

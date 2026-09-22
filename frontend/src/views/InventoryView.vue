@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import ItemCard from '@/components/ItemCard.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useTagsStore } from '@/stores/tags'
@@ -128,6 +129,7 @@ async function batchSell() {
           class="flex items-center gap-2 rounded border border-ink-700 bg-ink-900/50 px-2 py-1 text-[11px]"
           :title="c.desc"
         >
+          <ItemIcon :base-id="c.itemId" variant="plain" :size="20" />
           <span class="text-ink-200">{{ c.name }}</span>
           <span class="font-mono text-ink-400">×{{ c.count }}</span>
           <button

@@ -4,11 +4,13 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
 import { fishChanceExplain } from '@/game/explanations'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
+import { fishKindFromId, fishKindRarity } from '@/utils/icons'
 
 const game = useGameStore()
 const dohdol = useDohDolStore()
@@ -142,9 +144,15 @@ async function toggle() {
           />
         </div>
       </div>
-      <div v-if="currentRegion" class="mt-2 text-[11px] text-ink-500">
-        鱼王：{{ currentRegion.king.name }}（{{ (currentRegion.king.chance * 100).toFixed(1) }}%，前置 {{ currentRegion.king.prereqFishIds.length }} 种普通鱼）·
-        鱼皇：{{ currentRegion.emperor.name }}（{{ (currentRegion.emperor.chance * 100).toFixed(1) }}%）
+      <div v-if="currentRegion" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-500">
+        <span class="inline-flex items-center gap-1">
+          <ItemIcon :base-id="currentRegion.king.id" :rarity="fishKindRarity('king')" :size="20" />
+          鱼王：{{ currentRegion.king.name }}（{{ (currentRegion.king.chance * 100).toFixed(1) }}%，前置 {{ currentRegion.king.prereqFishIds.length }} 种普通鱼）
+        </span>
+        <span class="inline-flex items-center gap-1">
+          <ItemIcon :base-id="currentRegion.emperor.id" :rarity="fishKindRarity('emperor')" :size="20" />
+          鱼皇：{{ currentRegion.emperor.name }}（{{ (currentRegion.emperor.chance * 100).toFixed(1) }}%）
+        </span>
       </div>
     </section>
 
@@ -153,7 +161,10 @@ async function toggle() {
         <h2 class="mb-2 text-xs font-semibold text-ink-300">本次鱼获</h2>
         <ul v-if="dohdol.lastCaught.length" class="max-h-64 space-y-1 overflow-y-auto text-xs">
           <li v-for="(f, i) in dohdol.lastCaught" :key="i" class="flex justify-between">
-            <span :class="kindClass(f.kind)">{{ f.name }}</span>
+            <span class="flex min-w-0 items-center gap-1.5" :class="kindClass(f.kind)">
+              <ItemIcon :base-id="f.id" :rarity="fishKindRarity(f.kind)" :size="20" />
+              <span class="truncate">{{ f.name }}</span>
+            </span>
             <span class="text-ink-400">{{ kindLabel(f.kind) }} · {{ f.size }}cm</span>
           </li>
         </ul>
@@ -198,7 +209,10 @@ async function toggle() {
           :key="f.itemId"
           class="flex items-center justify-between gap-2 rounded border border-ink-800 bg-ink-950/40 px-2 py-1"
         >
-          <span class="truncate text-ink-200">{{ f.name }}</span>
+          <span class="flex min-w-0 items-center gap-1.5 text-ink-200">
+            <ItemIcon :base-id="f.itemId" :rarity="fishKindRarity(fishKindFromId(f.itemId))" :size="20" />
+            <span class="truncate">{{ f.name }}</span>
+          </span>
           <span class="flex shrink-0 items-center gap-2">
             <span class="font-mono text-ink-400">×{{ f.count }}</span>
             <span class="font-mono text-ink-500">{{ (f.sell ?? 0) * f.count }}</span>

@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
 import { findGatherTarget } from '@/game/core/gather'
 import { craftQualityExplain, craftRarityExplain } from '@/game/explanations'
 import { useAuthStore } from '@/stores/auth'
@@ -210,6 +211,7 @@ async function stop() {
         :class="r.unlocked ? 'border-ink-700/60 bg-ink-900/40' : 'border-ink-800/60 bg-ink-950/40 opacity-60'"
       >
         <div class="flex flex-wrap items-center gap-2">
+          <ItemIcon :base-id="r.output.baseId ?? r.output.itemId ?? ''" variant="plain" :size="24" />
           <span class="text-sm text-ink-100">{{ r.output.name }}</span>
           <span v-if="r.output.quality === 'high'" class="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200">
             高品质
@@ -256,6 +258,7 @@ async function stop() {
             class="inline-flex items-center gap-1"
             :class="i.have >= i.count ? 'text-ink-300' : 'text-red-400'"
           >
+            <ItemIcon :base-id="i.itemId" variant="plain" :size="16" />
             {{ i.name }} {{ i.have }}/{{ i.count }}
             <button
               v-if="i.have < i.count && gatherTargets.get(i.itemId)"
@@ -276,12 +279,19 @@ async function stop() {
       <div class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
         <h2 class="mb-2 text-xs font-semibold text-ink-300">本次生产</h2>
         <ul v-if="dohdol.lastGained.length" class="space-y-1 text-xs">
-          <li v-for="g in dohdol.lastGained" :key="g.name" class="flex justify-between text-ink-200">
-            <span>{{ g.name }}</span><span class="text-emerald-300">+{{ g.count }}</span>
+          <li v-for="g in dohdol.lastGained" :key="g.itemId" class="flex justify-between text-ink-200">
+            <span class="flex min-w-0 items-center gap-1.5">
+              <ItemIcon :base-id="g.itemId" variant="plain" :size="18" />
+              <span class="truncate">{{ g.name }}</span>
+            </span>
+            <span class="text-emerald-300">+{{ g.count }}</span>
           </li>
         </ul>
         <ul v-if="dohdol.lastProduced.length" class="space-y-1 text-xs">
-          <li v-for="(p, i) in dohdol.lastProduced" :key="i" class="text-amber-200">★ {{ p.name }}（高品质）</li>
+          <li v-for="(p, i) in dohdol.lastProduced" :key="i" class="flex items-center gap-1.5 text-amber-200">
+            <ItemIcon :base-id="p.baseId" variant="plain" :size="18" />
+            <span class="truncate">★ {{ p.name }}（高品质）</span>
+          </li>
         </ul>
         <p v-if="!dohdol.lastGained.length && !dohdol.lastProduced.length" class="text-xs text-ink-500">尚未生产。</p>
       </div>
@@ -290,7 +300,10 @@ async function stop() {
         <h2 class="mb-2 text-xs font-semibold text-ink-300">材料库存</h2>
         <div class="max-h-56 space-y-1 overflow-y-auto text-xs">
           <div v-for="m in materials" :key="m.itemId" class="flex items-center justify-between text-ink-200">
-            <span class="truncate">{{ m.name }}</span>
+            <span class="flex min-w-0 items-center gap-1.5">
+              <ItemIcon :base-id="m.itemId" variant="plain" :size="18" />
+              <span class="truncate">{{ m.name }}</span>
+            </span>
             <span class="flex shrink-0 items-center gap-2">
               <span class="font-mono text-ink-400">×{{ m.count }}</span>
               <span class="font-mono text-ink-500">{{ (m.sell ?? 0) * m.count }}</span>
@@ -311,7 +324,10 @@ async function stop() {
         <h2 class="mb-2 text-xs font-semibold text-ink-300">药水 / 食物</h2>
         <div class="max-h-56 space-y-1 overflow-y-auto text-xs">
           <div v-for="c in consumables" :key="c.itemId" class="flex items-center justify-between text-ink-200">
-            <span class="truncate">{{ c.name }}</span>
+            <span class="flex min-w-0 items-center gap-1.5">
+              <ItemIcon :base-id="c.itemId" variant="plain" :size="18" />
+              <span class="truncate">{{ c.name }}</span>
+            </span>
             <span class="flex shrink-0 items-center gap-2">
               <span class="font-mono text-ink-400">×{{ c.count }}</span>
               <button class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-emerald-300 hover:bg-ink-700" @click="dohdol.useConsumable(c.itemId)">

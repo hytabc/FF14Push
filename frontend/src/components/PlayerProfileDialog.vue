@@ -6,6 +6,7 @@ import data from '@shared/schema'
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
 import ItemCard from '@/components/ItemCard.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import TermBadges from '@/components/TermBadges.vue'
 import { useToastStore } from '@/stores/toast'
@@ -126,21 +127,31 @@ watch(
               : 'border-ink-700 bg-ink-800/60'
           "
         >
-          <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
-          <template v-if="profile.dohdolLoadout[slot.id]">
-            <p class="truncate text-sm font-medium">{{ profile.dohdolLoadout[slot.id]!.name }}</p>
-            <p class="text-[10px] text-ink-400">
-              {{ rarityName(profile.dohdolLoadout[slot.id]!.rarity) }} · Lv.{{ profile.dohdolLoadout[slot.id]!.levelReq }}
-            </p>
-            <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
-              <p v-for="entry in profile.dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
-                {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
-                <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
-              </p>
+          <div class="flex items-start gap-2">
+            <ItemIcon
+              v-if="profile.dohdolLoadout[slot.id]"
+              :base-id="profile.dohdolLoadout[slot.id]!.baseId"
+              :rarity="profile.dohdolLoadout[slot.id]!.rarity"
+              :size="28"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
+              <template v-if="profile.dohdolLoadout[slot.id]">
+                <p class="truncate text-sm font-medium">{{ profile.dohdolLoadout[slot.id]!.name }}</p>
+                <p class="text-[10px] text-ink-400">
+                  {{ rarityName(profile.dohdolLoadout[slot.id]!.rarity) }} · Lv.{{ profile.dohdolLoadout[slot.id]!.levelReq }}
+                </p>
+                <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+                  <p v-for="entry in profile.dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
+                    {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                    <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
+                  </p>
+                </div>
+                <TermBadges class="mt-1" :terms="profile.dohdolLoadout[slot.id]!.terms" />
+              </template>
+              <p v-else class="mt-1 text-xs text-ink-600">空</p>
             </div>
-            <TermBadges class="mt-1" :terms="profile.dohdolLoadout[slot.id]!.terms" />
-          </template>
-          <p v-else class="mt-1 text-xs text-ink-600">空</p>
+          </div>
         </div>
       </div>
 

@@ -155,18 +155,28 @@ async function unequipDohdol(slot: string) {
           "
           @click="dohdolSlot = slot.id"
         >
-          <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
-          <template v-if="dohdolLoadout[slot.id]">
-            <p class="truncate text-sm font-medium">{{ dohdolLoadout[slot.id]!.name }}</p>
-            <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
-              <p v-for="entry in dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
-                {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
-                <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
-              </p>
+          <div class="flex items-start gap-2">
+            <ItemIcon
+              v-if="dohdolLoadout[slot.id]"
+              :base-id="dohdolLoadout[slot.id]!.baseId"
+              :rarity="dohdolLoadout[slot.id]!.rarity"
+              :size="28"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
+              <template v-if="dohdolLoadout[slot.id]">
+                <p class="truncate text-sm font-medium">{{ dohdolLoadout[slot.id]!.name }}</p>
+                <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+                  <p v-for="entry in dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
+                    {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                    <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
+                  </p>
+                </div>
+                <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
+              </template>
+              <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择</p>
             </div>
-            <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
-          </template>
-          <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择</p>
+          </div>
         </button>
       </div>
     </section>

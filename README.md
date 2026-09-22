@@ -369,21 +369,24 @@ python scripts/gen-dohdol-data.py
 
 ---
 
-## 装备像素图标
+## 物品像素图标
 
-180 件装备底材各有 1 张 16×16 像素 PNG（`frontend/src/assets/icons/<baseId>.png`），
-由 `scripts/gen-icons.mjs` 生成。不手写 180 份网格，而是组合
-**30 个部位底形 × 6 个档位装饰戳 × 6 套材质调色板**：
+每个物品都有 1 张 16×16 像素 PNG（`frontend/src/assets/icons/<id>.png`），由 `scripts/gen-icons.mjs` 生成，
+共 **572 张**：战斗装备 180（30 个部位底形 × 6 个档位装饰戳 × 6 套材质调色板）+
+采集材料 / 半成品 98 + 生产·采集专用装备 42 + 鱼获 240 + 药水食物 12。
 
 ```bash
 npm run gen:icons
 ```
 
-- 主体配色 = 材质档位色（铁制 → 星辉）；同档位不同部位靠底形区分，同部位不同档位靠装饰戳 + 材质色区分。
-- **6 个品阶色不烘焙进图片**，由 `ItemIcon.vue` 用 CSS 描边/光晕施加，所以 180 张图就能覆盖全部底材与品阶组合。
-- 单张约 130 字节、180 张合计约 24 KB，低于 Vite 默认 `assetsInlineLimit`，构建时全部内联为 data URI ⇒ **渲染装备时零图片请求**。图鉴页 180 条用 `variant="lite"`（单侧光晕）进一步压低滤镜开销。
-- 想改某件装备的造型，只改 `gen-icons.mjs` 里的 `SHAPES` / `ORNAMENTS` / `TIER_PALETTES` 字符画再重跑即可。
-- 生成器与 `shared/schema` 的 `expandBaseItems()` 是两份 id 规则实现，由 `frontend/src/utils/icons.spec.ts` 一致性测试锁住。
+- 战斗装备：主体配色 = 材质档位色（铁制 → 星辉）；同档位不同部位靠底形区分，同部位不同档位靠装饰戳 + 材质色区分。
+- 材料 / 半成品 / 专用装备 / 鱼获 / 消耗品：按**形状族**（矿块·晶石·岩石·粉末·原木·草药·花·果实·蘑菇、木板·锭·板材·宝石·玻璃·皮革·布料·瓶·面袋、小鱼·鱼王·鱼皇、药瓶·餐盘、锤·锉·镐·斧）+ **名称关键词配色**（铜=铜色、松木=木色、紫水晶=紫…）组合，再用 id 哈希做确定性微调；专用装备用暖棕（生产）/ 青绿（采集）档位色，鱼按普通 / 鱼王 / 鱼皇上色并按地区生态色微调。
+- **品阶 / 稀有度不烘焙进图片**，由 `ItemIcon.vue` 用 CSS 描边 / 光晕施加（战斗装备 `variant="full|lite"`，材料等无稀有度物品 `variant="plain"`，鱼按普通 / 鱼王 / 鱼皇给光晕色）。
+- 单张约 130 字节、合计约 72 KB，低于 Vite 默认 `assetsInlineLimit`，构建时全部内联为 data URI ⇒ **渲染物品时零图片请求**。
+- 想改某件物品的造型，改 `gen-icons.mjs` 里的 `SHAPES` / `ORNAMENTS` / `TIER_PALETTES` / `KEYWORD_COLORS` 再重跑即可。
+- 生成器与 `shared/schema` 的 `expandBaseItems()` 是两份 id 规则实现，由 `frontend/src/utils/icons.spec.ts` 一致性测试锁住（断言图标集合 == 战斗底材 ∪ 材料 / 半成品 / 鱼获 ∪ 专用装备 ∪ 消耗品）。
+- 图标已接入**采集页 / 生产页 / 背包 / 装备栏（含他人装备弹窗）/ 鱼获页 / 图鉴（材料、鱼获）**；采集页另有「**各地区产出总览**」，展开后逐地区（含未解锁，置灰）列出采矿工 / 园艺工各自的可采材料（图标 + 名称 + 权重概率）。
+- 内容生成器 `scripts/gen-dohdol-data.py` 改完材料 / 配方 / 鱼后，需再跑一次 `npm run gen:icons` 同步图标。
 
 ---
 

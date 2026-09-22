@@ -7,6 +7,7 @@ import ItemIcon from '@/components/ItemIcon.vue'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, RarityId } from '@/game/types'
 import { RARITY_ORDER, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termQualityClass, termQualityName } from '@/utils/format'
+import { fishKindRarity } from '@/utils/icons'
 
 type Entry = Record<string, any>
 
@@ -240,15 +241,18 @@ function entryRarity(entry: Entry): RarityId {
         :class="entry.unlocked ? '' : 'opacity-55'"
       >
         <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
-              {{ entry.unlocked ? entry.name : '未获得' }}
-            </p>
-            <p class="text-[10px] text-ink-400">
-              {{ MATERIAL_KIND_LABEL[entry.kind] ?? '材料' }}
-              <span v-if="entry.jobId"> · {{ dohJobName(entry.jobId) }}</span>
-              <span v-if="entry.regionId"> · {{ regionName(entry.regionId) }}</span>
-            </p>
+          <div class="flex min-w-0 items-start gap-2">
+            <ItemIcon :base-id="entry.itemId" variant="plain" :size="32" :silhouette="!entry.unlocked" />
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
+                {{ entry.unlocked ? entry.name : '未获得' }}
+              </p>
+              <p class="text-[10px] text-ink-400">
+                {{ MATERIAL_KIND_LABEL[entry.kind] ?? '材料' }}
+                <span v-if="entry.jobId"> · {{ dohJobName(entry.jobId) }}</span>
+                <span v-if="entry.regionId"> · {{ regionName(entry.regionId) }}</span>
+              </p>
+            </div>
           </div>
           <span v-if="entry.common" class="shrink-0 rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-ink-300">
             通用
@@ -277,11 +281,14 @@ function entryRarity(entry: Entry): RarityId {
         :class="entry.unlocked ? '' : 'opacity-55'"
       >
         <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
-              {{ entry.unlocked ? entry.name : '未钓起' }}
-            </p>
-            <p class="text-[10px] text-ink-400">{{ entry.regionName }} 钓场</p>
+          <div class="flex min-w-0 items-start gap-2">
+            <ItemIcon :base-id="entry.fishId" :rarity="fishKindRarity(entry.kind)" :size="32" :silhouette="!entry.unlocked" />
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
+                {{ entry.unlocked ? entry.name : '未钓起' }}
+              </p>
+              <p class="text-[10px] text-ink-400">{{ entry.regionName }} 钓场</p>
+            </div>
           </div>
           <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px]" :class="FISH_KIND_CLASS[entry.kind]">
             {{ FISH_KIND_LABEL[entry.kind] ?? '普通鱼' }}

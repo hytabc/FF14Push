@@ -6,6 +6,7 @@ import data from '@shared/schema'
 import type { GatherNodeDef } from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
 import { gatherYieldExplain } from '@/game/explanations'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
@@ -49,9 +50,53 @@ const yieldRows = computed(() => {
   const yields = (currentNode.value?.yields ?? []) as Array<{ materialId: string; weight: number }>
   const total = yields.reduce((sum, y) => sum + Math.max(0, y.weight), 0) || 1
   return yields.map((y) => ({
+    itemId: y.materialId,
     name: data.materialById[y.materialId]?.name ?? y.materialId,
     pct: (Math.max(0, y.weight) / total) * 100,
   }))
+})
+
+/** 各地区产出总览（含未解锁地区，仅供预览）。 */
+const overviewOpen = ref(false)
+const regionOverview = computed(() => {
+  const jobIds = dolJobs.map((j) => j.id)
+  const byRegion = new Map<
+    number,
+    {
+      regionId: number
+      name: string
+      unlocked: boolean
+      nodes: Array<{ jobId: string; jobName: string; levelReq: number; yields: typeof yieldRows.value }>
+    }
+  >()
+  for (const node of data.gatherNodes.nodes as GatherNodeDef[]) {
+    if (!jobIds.includes(node.jobId)) continue
+    const entry = game.state?.regionProgress?.[String(node.regionId)]
+    const unlocked = entry ? entry.unlocked : node.regionId === 1
+    let region = byRegion.get(node.regionId)
+    if (!region) {
+      region = {
+        regionId: node.regionId,
+        name: data.regions.regions.find((r) => r.id === node.regionId)?.name ?? `地区 ${node.regionId}`,
+        unlocked,
+        nodes: [],
+      }
+      byRegion.set(node.regionId, region)
+    }
+    const total = node.yields.reduce((sum, y) => sum + Math.max(0, y.weight), 0) || 1
+    region.nodes.push({
+      jobId: node.jobId,
+      jobName: data.dohdolJobById[node.jobId]?.name ?? node.jobId,
+      levelReq: node.levelReq,
+      yields: node.yields.map((y) => ({
+        itemId: y.materialId,
+        name: data.materialById[y.materialId]?.name ?? y.materialId,
+        pct: (Math.max(0, y.weight) / total) * 100,
+      })),
+    })
+  }
+  for (const region of byRegion.values()) region.nodes.sort((a, b) => a.levelReq - b.levelReq)
+  return [...byRegion.values()].sort((a, b) => a.regionId - b.regionId)
 })
 const materials = computed(() =>
   (dohdol.state?.materials ?? []).slice().sort((a, b) => b.count - a.count),
@@ -163,15 +208,12 @@ async function toggle() {
       </div>
       <p v-if="error" class="mt-2 text-xs text-red-400">{{ error }}</p>
 
-      <p v-if="yieldRows.length" class="mt-2 text-[11px] text-ink-500">
+      <p v-if="yieldRows.length" class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-500">
         该采集点产出：
-        <span v-for="(row, idx) in yieldRows" :key="row.name">
-          {{ row.name }} {{ row.pct.toFixed(row.pct < 1 ? 1 : 0) }}%<span
-            v-if="idx < yieldRows.length - 1"
-            class="text-ink-600"
-          >
-            /
-          </span>
+        <span v-for="row in yieldRows" :key="row.itemId" class="inline-flex items-center gap-1">
+          <ItemIcon :base-id="row.itemId" variant="plain" :size="16" />
+          <span class="text-ink-300">{{ row.name }}</span>
+          {{ row.pct.toFixed(row.pct < 1 ? 1 : 0) }}%
         </span>
         <InfoTip :title="yieldInfo.title">
           <p v-for="(line, i) in yieldInfo.lines" :key="i">{{ line }}</p>
@@ -192,12 +234,52 @@ async function toggle() {
       </div>
     </section>
 
+    <section class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
+      <button class="flex w-full items-center justify-between text-left" @click="overviewOpen = !overviewOpen">
+        <h2 class="text-xs font-semibold text-ink-300">各地区产出总览</h2>
+        <span class="text-[11px] text-ink-400">{{ overviewOpen ? '收起 ▲' : '展开 ▼' }}</span>
+      </button>
+      <p class="mt-1 text-[11px] text-ink-500">
+        每个地区能采集到的材料（含未解锁地区，仅作预览）；概率为该采集点内各材料的相对权重。
+      </p>
+      <div v-if="overviewOpen" class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <div
+          v-for="r in regionOverview"
+          :key="r.regionId"
+          class="rounded border border-ink-800 bg-ink-950/40 p-2"
+          :class="r.unlocked ? '' : 'opacity-50'"
+        >
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-ink-200">{{ r.name }}</span>
+            <span v-if="!r.unlocked" class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">未解锁</span>
+          </div>
+          <div v-for="n in r.nodes" :key="n.jobId" class="mt-1.5">
+            <p class="text-[10px] text-ink-500">{{ n.jobName }} · 要求 Lv.{{ n.levelReq }}</p>
+            <div class="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+              <span
+                v-for="y in n.yields"
+                :key="y.itemId"
+                class="inline-flex items-center gap-1 text-[11px] text-ink-300"
+              >
+                <ItemIcon :base-id="y.itemId" variant="plain" :size="16" />
+                {{ y.name }}
+                <span class="text-ink-600">{{ y.pct.toFixed(y.pct < 1 ? 1 : 0) }}%</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="grid gap-3 md:grid-cols-2">
       <div class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
         <h2 class="mb-2 text-xs font-semibold text-ink-300">本次产出</h2>
         <ul v-if="dohdol.lastGained.length" class="space-y-1 text-xs">
-          <li v-for="g in dohdol.lastGained" :key="g.name" class="flex justify-between text-ink-200">
-            <span>{{ g.name }}</span>
+          <li v-for="g in dohdol.lastGained" :key="g.itemId" class="flex justify-between text-ink-200">
+            <span class="flex min-w-0 items-center gap-1.5">
+              <ItemIcon :base-id="g.itemId" variant="plain" :size="18" />
+              <span class="truncate">{{ g.name }}</span>
+            </span>
             <span class="text-emerald-300">+{{ g.count }}</span>
           </li>
         </ul>
@@ -217,7 +299,10 @@ async function toggle() {
         </div>
         <div class="max-h-64 space-y-1 overflow-y-auto text-xs">
           <div v-for="m in materials" :key="m.itemId" class="flex items-center justify-between text-ink-200">
-            <span>{{ m.name }}</span>
+            <span class="flex min-w-0 items-center gap-1.5">
+              <ItemIcon :base-id="m.itemId" variant="plain" :size="18" />
+              <span class="truncate">{{ m.name }}</span>
+            </span>
             <span class="flex items-center gap-2">
               <span class="font-mono text-ink-400">×{{ m.count }}</span>
               <span class="font-mono text-ink-500">{{ (m.sell ?? 0) * m.count }}</span>
