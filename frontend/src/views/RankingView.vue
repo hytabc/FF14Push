@@ -134,7 +134,18 @@ function openProfile(entry: RankingEntry) {
         <span v-if="!auth.isLoggedIn" class="text-amber-300">未登录可查看榜单，但不会上榜。</span>
       </p>
 
-      <div class="mt-3 flex gap-1 overflow-x-auto rounded-lg bg-ink-800 p-1 text-xs">
+      <!-- 移动端：下拉切换榜单（11 个榜在手机上放不下，下拉更省空间） -->
+      <select
+        v-model="board"
+        aria-label="选择排行榜"
+        class="mt-3 w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2.5 text-base text-ink-100 outline-none focus:border-amber-400 md:hidden"
+        @change="page = 1"
+      >
+        <option v-for="b in BOARDS" :key="b.id" :value="b.id">{{ b.label }}</option>
+      </select>
+
+      <!-- 桌面端：页签切换 -->
+      <div class="mt-3 hidden gap-1 overflow-x-auto rounded-lg bg-ink-800 p-1 text-xs md:flex">
         <button
           v-for="b in BOARDS"
           :key="b.id"
@@ -147,16 +158,16 @@ function openProfile(entry: RankingEntry) {
       </div>
     </section>
 
-    <section class="card overflow-hidden">
+    <section class="card overflow-x-auto">
       <table class="w-full text-xs">
         <thead class="bg-ink-800/80 text-ink-400">
           <tr>
-            <th class="w-16 px-3 py-2 text-left">排名</th>
+            <th class="w-12 px-3 py-2 text-left sm:w-16">排名</th>
             <th class="px-3 py-2 text-left">玩家昵称</th>
-            <th class="px-3 py-2 text-left">英雄等级</th>
+            <th class="hidden px-3 py-2 text-left sm:table-cell">英雄等级</th>
             <th class="px-3 py-2 text-right">数值</th>
-            <th class="px-3 py-2 text-right">游玩时间</th>
-            <th class="w-14 px-3 py-2 text-right">装备</th>
+            <th class="hidden whitespace-nowrap px-3 py-2 text-right sm:table-cell">游玩时间</th>
+            <th class="hidden w-14 px-3 py-2 text-right sm:table-cell">装备</th>
           </tr>
         </thead>
         <tbody>
@@ -178,7 +189,7 @@ function openProfile(entry: RankingEntry) {
                 class="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
               >{{ t }}</span>
             </td>
-            <td class="px-3 py-2 text-ink-400">{{ entry.payload?.level ?? '—' }}</td>
+            <td class="hidden px-3 py-2 text-ink-400 sm:table-cell">{{ entry.payload?.level ?? '—' }}</td>
             <td class="px-3 py-2 text-right">
               <div class="font-mono text-ink-200">{{ valueText(entry) }}</div>
               <div v-if="board === 'fish_species'" class="mt-0.5 text-[10px] text-ink-500">
@@ -190,8 +201,8 @@ function openProfile(entry: RankingEntry) {
                 生产 Lv.{{ dohdolLevels(entry).doh }} · 采集 Lv.{{ dohdolLevels(entry).dol }}
               </div>
             </td>
-            <td class="whitespace-nowrap px-3 py-2 text-right text-ink-400">{{ playtimeText(entry) }}</td>
-            <td class="px-3 py-2 text-right text-ink-400">查看</td>
+            <td class="hidden whitespace-nowrap px-3 py-2 text-right text-ink-400 sm:table-cell">{{ playtimeText(entry) }}</td>
+            <td class="hidden px-3 py-2 text-right text-ink-400 sm:table-cell">查看</td>
           </tr>
           <tr v-if="!entries.length && !loading">
             <td colspan="6" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
