@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { requestKey } from '@/utils/requestKey'
 import { jobName } from '@/utils/format'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { http, toApiError } from '@/api/client'
@@ -16,7 +17,6 @@ const state = computed(() => room.value?.battle?.state)
 const available = computed(() => dungeons.value.filter(d => d.difficulty === filter.value))
 const mySeats = computed(() => room.value?.seats.filter(s => s.controllerId === uid.value) ?? [])
 let interval: ReturnType<typeof setInterval> | undefined, socket: WebSocket | undefined, disposed = false, polling = false, connecting = false
-function key() { return crypto.randomUUID() }
 async function act(fn: () => Promise<unknown>) {
   busy.value = true; error.value = ''; notice.value = ''
   try { await fn() } catch (e) { error.value = toApiError(e).message } finally { busy.value = false }
@@ -80,13 +80,13 @@ async function start() {
 async function send(mechanic: { id: string; action: string }) {
   await act(async () => {
     for (const slot of selected.value) await http.post(`/coop/rooms/${room.value!.id}/commands`, {
-      key: key(), slots: [slot], mechanicId: mechanic.id, action: mechanic.action,
+      key: requestKey(), slots: [slot], mechanicId: mechanic.id, action: mechanic.action,
       value: values.value[slot] ?? (mechanic.action === 'spread' ? slot : mechanic.action === 'stack' ? slot % 2 : 0),
     })
     notice.value = '指令已提交，执行结果见战斗日志。'
   })
 }
-async function target(id: number) { await act(() => http.post(`/coop/rooms/${room.value!.id}/commands`, { key: key(), slots: selected.value, action: 'target', target: id })) }
+async function target(id: number) { await act(() => http.post(`/coop/rooms/${room.value!.id}/commands`, { key: requestKey(), slots: selected.value, action: 'target', target: id })) }
 async function claim() { await act(async () => { receipt.value = (await http.post(`/coop/rooms/${room.value!.id}/claim`)).data; await game.loadState() }) }
 async function back(leave = false) {
   await act(async () => {

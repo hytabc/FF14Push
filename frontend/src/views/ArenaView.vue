@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { requestKey } from '@/utils/requestKey'
 import { jobName } from '@/utils/format'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { http, toApiError } from '@/api/client'
@@ -17,7 +18,7 @@ async function load() {
   roster.value = h.data; heroId.value ??= h.data.activeHeroId ?? undefined; registrations.value = r.data.registrations; history.value = b.data.battles
 }
 async function act(fn: () => Promise<unknown>) { busy.value = true; error.value = ''; try { await fn() } catch (e) { error.value = toApiError(e).message } finally { busy.value = false } }
-async function challenge(id: number) { await act(async () => { report.value = (await http.post<{ report: Report }>('/pvp/challenge', { heroId: heroId.value, registrationId: id, key: crypto.randomUUID() })).data.report; cursor.value = 0; playing.value = true; await load() }) }
+async function challenge(id: number) { await act(async () => { report.value = (await http.post<{ report: Report }>('/pvp/challenge', { heroId: heroId.value, registrationId: id, key: requestKey() })).data.report; cursor.value = 0; playing.value = true; await load() }) }
 async function replay(id: number) { await act(async () => { report.value = (await http.get<{ report: Report }>(`/pvp/${id}`)).data.report; cursor.value = 0; playing.value = false }) }
 onMounted(() => { void act(load); timer = setInterval(() => { if (playing.value && report.value) { if (cursor.value < report.value.events.length - 1) cursor.value++; else playing.value = false } }, 150) })
 onUnmounted(() => clearInterval(timer))

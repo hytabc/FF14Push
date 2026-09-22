@@ -43,13 +43,15 @@ def test_all_dungeons_reference_can_clear(dungeon,mode):
 
 @pytest.mark.parametrize('dungeon',[d for d in DUNGEONS.values() if d['seats']==8],ids=[k for k,d in DUNGEONS.items() if d['seats']==8])
 @pytest.mark.parametrize('weak_role',['tank','healer','dps'])
-def test_seven_strong_cannot_carry_one(dungeon,weak_role):
+def test_entry_and_active_trial_reject_underqualified_hero(dungeon,weak_role):
     seats=reference_seats(dungeon,10)
     weak=next(s['snapshot'] for s in seats if s['snapshot']['role']==weak_role)
     for k in ('attack','magic_attack','max_hp','phys_def','magic_def'):weak['stats'][k]*=.001
     for k in ('dps','healing','durability'):weak[k]*=.001
     assert entry_failures(weak,dungeon,CFG)
     state=new_battle(dungeon,seats,'online',CFG)
+    # 保持 Boss 存活以实际触发职责检查；爆发击杀现在允许跳过后续机制。
+    for boss in state['bosses']:boss['hp']=boss['maxHp']=10**20
     advance(state,dungeon,CFG,45000)
     assert state['status']=='failed',state
     assert '职责' in state['reason']
@@ -71,11 +73,11 @@ def test_revive_weakness_refresh_and_wipe_priority():
     step(state,d,CFG);assert state['status']=='failed' and state['reason']=='全员倒下'
 
 
-def test_manual_mechanic_ownership_and_phase_cannot_skip():
-    d=DUNGEONS['extreme_1'];seats=reference_seats(d,1000)
+def test_manual_mechanic_ownership_and_failure():
+    d=DUNGEONS['extreme_1'];seats=reference_seats(d)
     for s in seats:s['snapshot']['strategy']='manual'
     st=new_battle(d,seats,'online',CFG);advance(st,d,CFG,4000)
-    m=st['mechanics'][0];assert st['phase']==0 and st['bosses'][0]['hp']==1
+    m=st['mechanics'][0];assert st['phase']==0 and st['bosses'][0]['hp']>0
     assert not command(st,{'slots':[0],'action':m['action'],'mechanicId':m['id']},999)
     assert command(st,{'slots':[0],'action':m['action'],'mechanicId':m['id']},1)
     advance(st,d,CFG,9000);assert st['status']=='failed'
@@ -212,3 +214,37 @@ async def test_pvp_registration_history_and_idempotency(auth_client,session_fact
     b=await c.post(API+'/pvp/challenge',json=payload);assert a.json()==b.json()
     assert len((await c.get(API+'/pvp')).json()['battles'])==1
     assert (await c.get(f"{API}/pvp/{a.json()['id']}")).json()['report']['events']
+
+
+@pytest.mark.parametrize('dungeon', list(DUNGEONS.values()), ids=list(DUNGEONS))
+def test_burst_kills_skip_pending_mechanics_and_trials(dungeon):
+    seats = reference_seats(dungeon, 1000000)
+    for seat in seats: seat['snapshot']['strategy'] = 'manual'
+    state = new_battle(dungeon, seats, 'online', CFG)
+    advance(state, dungeon, CFG, 15000)
+    assert state['status'] == 'cleared', state['reason']
+    assert all(boss['hp'] == 0 for boss in state['bosses'])
+    assert not any(e['kind'] in ('mechanicFail', 'failed') for e in state['events'])
+
+
+def test_kill_cancels_cast_expiring_on_same_tick():
+    dungeon = DUNGEONS['extreme_1']
+    state = new_battle(dungeon, reference_seats(dungeon), 'online', CFG)
+    for boss in state['bosses']: boss['hp'] = 1
+    mechanic = state['mechanics'][0]
+    mechanic.update(opened=True, deadline=100, hard=True, responses={})
+    step(state, dungeon, CFG)
+    assert state['status'] == 'running'
+    assert state['phase'] == 1
+
+
+def test_partial_boss_kill_still_requires_synchronized_kill():
+    dungeon = next(d for d in DUNGEONS.values() if len(d['phases'][0]['bosses']) > 1)
+    state = new_battle(dungeon, reference_seats(dungeon, 100), 'online', CFG)
+    state['bosses'][0]['hp'] = 0
+    state['bosses'][1]['hp'] = 10**20
+    state['firstBossDeath'] = 0
+    state['elapsedMs'] = dungeon['syncKillSeconds'] * 1000
+    step(state, dungeon, CFG)
+    assert state['status'] == 'failed'
+    assert state['reason'] == '双Boss未同步击杀'

@@ -162,8 +162,7 @@ def deal_damage(state,hero,damage):
     target=next((b for b in living if b['id']==hero['target']),min(living,key=lambda b:b['hp']))
     # Auto balance simultaneous bosses; manual target overrides via 'manual' strategy.
     if hero['clone'] or hero['snapshot']['strategy']=='assist':target=max(living,key=lambda b:b['hp'])
-    gated=not state['trialDone'] or any(not m['resolved'] for m in state['mechanics'])
-    target['hp']=max(1 if gated else 0,target['hp']-amount)
+    target['hp']=max(0,target['hp']-amount)
     hero['damage']+=amount;hero['threat']+=amount*(5 if hero['snapshot']['role']=='tank' else 1)
 
 def auto_actions(state,hero):
@@ -230,6 +229,9 @@ def step(state,dungeon,config):
             if b['type']=='healOverTime':h['hp']=min(stats['max_hp'],h['hp']+b['value']*.1)
         for dot in h['dots']:damage_hero(state,h,dot['damage']*.1,'持续伤害')
         if h['hp']>0:auto_actions(state,h)
+    if all(b['hp']<=0 for b in state['bosses']):
+        finish_phase(state,dungeon,config)
+        return
     for m in state['mechanics']:
         if not m['opened'] and state['phaseMs']>=m['at']*1000:
             m['opened']=True;m['deadline']=now+m['window']*1000
@@ -252,6 +254,7 @@ def step(state,dungeon,config):
             if source['hp']>0:
                 stats=source['snapshot']['stats'];power=stats['magic_attack'] if stats['main_attr']=='int' else stats['attack']
                 deal_damage(state,source,power*dot['potency']/100*.1)
+        if boss['hp']<=0:continue
         if now>=boss['nextAttack'] and now>=boss['stunUntil']:
             alive=[h for h in state['heroes'] if h['hp']>0]
             if not alive:break
@@ -260,6 +263,9 @@ def step(state,dungeon,config):
             target=ordered[boss['id']%len(ordered)]
             damage_hero(state,target,max(boss['attack']*.1,boss['attack']-target['snapshot']['stats']['phys_def']*.8),boss['name'])
             boss['nextAttack']=now+2000
+    if all(b['hp']<=0 for b in state['bosses']):
+        finish_phase(state,dungeon,config)
+        return
     refs=config['references'][dungeon['referenceTier']]
     pressure=dungeon['pressure']
     if now>=state['nextRaidwide']:
@@ -278,11 +284,16 @@ def step(state,dungeon,config):
             damage_hero(state,target,max(ref['max_hp']*.1,ref['max_hp']*pressure['busterHpRatio']+ref['phys_def']*3-stats['phys_def']*3),'坦克重击')
         state['nextBuster']=now+25000
     if not any(h['hp']>0 for h in state['heroes']):fail(state,'全员倒下');return
+    finish_phase(state,dungeon,config)
+
+def finish_phase(state,dungeon,config):
+    """Defeated bosses never wait for future mechanics or personal trials."""
+    if not any(h['hp']>0 for h in state['heroes']):fail(state,'全员倒下');return
     dead=sum(b['hp']<=0 for b in state['bosses'])
     if 0<dead<len(state['bosses']):
-        if state['firstBossDeath'] is None:state['firstBossDeath']=now
-        elif now-state['firstBossDeath']>=dungeon['syncKillSeconds']*1000:fail(state,'双Boss未同步击杀');return
-    if dead==len(state['bosses']) and state['trialDone']:
+        if state['firstBossDeath'] is None:state['firstBossDeath']=state['elapsedMs']
+        elif state['elapsedMs']-state['firstBossDeath']>=dungeon['syncKillSeconds']*1000:fail(state,'双Boss未同步击杀');return
+    if dead==len(state['bosses']):
         state['phase']+=1
         if state['phase']==len(dungeon['phases']):
             state['status']='cleared';event(state,'cleared','挑战成功');return
