@@ -43,6 +43,10 @@ export const api = {
     ).data
   },
 
+  async changeNickname(nickname: string) {
+    return (await http.post<{ nickname: string; message: string }>('/auth/change-nickname', { nickname })).data
+  },
+
   async changePassword(currentPassword: string, newPassword: string, confirmPassword: string) {
     return (await http.post<{ ok: boolean; message: string }>('/auth/change-password', {
       currentPassword,

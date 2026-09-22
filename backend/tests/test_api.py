@@ -196,6 +196,41 @@ class TestAuth:
         resp = await client.post(f"{API}/auth/login", json={"username": "nobody", "password": "x"})
         assert resp.status_code == 401
 
+    async def test_change_nickname_persists_and_updates_ranking(self, auth_client, session_factory) -> None:
+        other = await auth_client.post(
+            f"{API}/auth/register",
+            json={"username": "other", "password": "secret123", "nickname": "旁观者"},
+        )
+        assert other.status_code == 201
+        async with session_factory() as db:
+            await refresh_all_rankings(db)
+            await db.commit()
+
+        resp = await auth_client.post(f"{API}/auth/change-nickname", json={"nickname": "  <新>光\x00战士  "})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["nickname"] == "新光战士"
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        assert me["nickname"] == "新光战士"
+        assert me["username"] == "tester"
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        assert state["user"]["nickname"] == "新光战士"
+        from app.models import RankingEntry
+        async with session_factory() as db:
+            rows = (await db.execute(select(RankingEntry).where(RankingEntry.user_id == me["id"]))).scalars().all()
+            assert rows and all(row.nickname == "新光战士" for row in rows)
+            other_user = (await db.execute(select(User).where(User.username == "other"))).scalar_one()
+            assert other_user.nickname == "旁观者"
+
+    @pytest.mark.parametrize("nickname", ["", "   ", "<>\n\x00", "名" * 33, None])
+    async def test_change_nickname_rejects_invalid_input(self, auth_client, nickname) -> None:
+        resp = await auth_client.post(f"{API}/auth/change-nickname", json={"nickname": nickname})
+        assert resp.status_code in (400, 422)
+        assert (await auth_client.get(f"{API}/auth/me")).json()["nickname"] == "光之战士"
+
+    async def test_change_nickname_requires_token(self, client) -> None:
+        resp = await client.post(f"{API}/auth/change-nickname", json={"nickname": "新昵称"})
+        assert resp.status_code == 401
+
     async def test_requires_token(self, client) -> None:
         resp = await client.get(f"{API}/game/state")
         assert resp.status_code == 401

@@ -24,6 +24,10 @@ class ChangePasswordRequest(BaseModel):
     confirmPassword: str
 
 
+class ChangeNicknameRequest(BaseModel):
+    nickname: str = Field(min_length=1, max_length=32)
+
+
 class TokenResponse(BaseModel):
     accessToken: str
     tokenType: str = "bearer"

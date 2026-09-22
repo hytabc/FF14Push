@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.config import get_settings
 from app.core.deps import CurrentUser, DbSession, client_ip, guard_rate
@@ -14,11 +14,12 @@ from app.models import (
     Hero,
     Item,
     RegionProgress,
+    RankingEntry,
     TavernState,
     TutorialProgress,
     User,
 )
-from app.schemas.game import ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.game import ChangeNicknameRequest, ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
 from app.services.admin import admin_username, is_admin
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
@@ -174,6 +175,18 @@ async def change_password(payload: ChangePasswordRequest, db: DbSession, user: C
     user.password_hash = hash_password(payload.newPassword)
     await db.commit()
     return {"ok": True, "message": "密码已修改"}
+
+
+@router.post("/change-nickname")
+async def change_nickname(payload: ChangeNicknameRequest, db: DbSession, user: CurrentUser) -> dict:
+    nickname = sanitize_nickname(payload.nickname)
+    if not nickname:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="昵称不能为空")
+    user.nickname = nickname
+    # 缓存榜单同步改名，无需等待下一次定时刷新。
+    await db.execute(update(RankingEntry).where(RankingEntry.user_id == user.id).values(nickname=nickname))
+    await db.commit()
+    return {"nickname": nickname, "message": "昵称已修改"}
 
 
 @router.get("/me")

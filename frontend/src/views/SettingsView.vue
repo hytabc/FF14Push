@@ -1,16 +1,41 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
 import data from '@shared/schema'
 import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { RARITY_ORDER, formatNumber, rarityName } from '@/utils/format'
 
 const game = useGameStore()
 const toast = useToastStore()
+const auth = useAuthStore()
+const nickname = ref(auth.nickname)
+const changingNickname = ref(false)
+watch(() => auth.nickname, (value) => { nickname.value = value })
+const canChangeNickname = computed(() => {
+  const value = nickname.value.trim()
+  return value.length > 0 && value.length <= 32 && value !== auth.nickname && !changingNickname.value
+})
+
+async function submitChangeNickname() {
+  if (!canChangeNickname.value) return
+  changingNickname.value = true
+  try {
+    const res = await api.changeNickname(nickname.value.trim())
+    auth.nickname = res.nickname
+    nickname.value = res.nickname
+    if (game.state) game.state.user.nickname = res.nickname
+    toast.push(res.message, 'success')
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    changingNickname.value = false
+  }
+}
 
 const enabled = ref(false)
 const rarities = ref<string[]>([])
@@ -129,6 +154,31 @@ async function replayFromSettings() {
   <div class="space-y-4">
     <section class="card p-4">
       <h2 class="text-lg font-semibold text-white">设置</h2>
+    </section>
+
+    <section id="profile" class="card scroll-mt-40 p-4">
+      <h3 class="text-sm font-semibold text-white">个人信息</h3>
+      <p class="mt-2 text-xs text-ink-400">账号：{{ auth.username }}</p>
+      <form class="mt-3 grid gap-2 sm:max-w-md" @submit.prevent="submitChangeNickname">
+        <label for="profile-nickname" class="text-xs text-ink-200">昵称（1–32 个字符）</label>
+        <input
+          id="profile-nickname"
+          v-model="nickname"
+          type="text"
+          autocomplete="nickname"
+          required
+          maxlength="32"
+          :disabled="changingNickname"
+          class="min-w-0 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs"
+        />
+        <button
+          type="submit"
+          :disabled="!canChangeNickname"
+          class="justify-self-start rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+        >
+          {{ changingNickname ? '保存中…' : '保存昵称' }}
+        </button>
+      </form>
     </section>
 
     <section class="card p-4">

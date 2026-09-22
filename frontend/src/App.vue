@@ -91,12 +91,14 @@ async function logout() {
           <span v-if="game.hero" class="hidden rounded bg-ink-800 px-2 py-1 text-ink-200 sm:inline">
             Lv.{{ game.hero.level }} · {{ game.hero.name }}
           </span>
-          <span class="hidden text-ink-400 md:inline">{{ auth.nickname }}</span>
+          <RouterLink to="/settings#profile" class="hidden max-w-40 truncate text-ink-400 hover:text-white md:inline" title="个人信息">
+            {{ auth.nickname }}
+          </RouterLink>
           <button class="text-ink-400 transition hover:text-white" @click="logout">退出</button>
         </div>
       </div>
 
-      <nav class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 pb-2 text-xs">
+      <nav aria-label="主导航" class="mx-auto flex w-full min-w-0 max-w-6xl gap-1 overflow-x-auto px-2 pb-2 text-xs md:flex-wrap md:overflow-x-visible">
         <RouterLink
           v-for="nav in navItems"
           :key="nav.to"
