@@ -9,6 +9,7 @@ import data from '@shared/schema'
 import type { BossSkill, HeroStats, MonsterStats, RaidBossEntry, RaidEnrage, RegionDef } from '../types'
 import {
   ADVENTURER_SKILL,
+  attackSpeedFactor,
   isMagical,
   jobSkills,
   powerAttack,
@@ -493,8 +494,11 @@ export class BattleSimulator {
       const restore = Math.floor(stats.maxMp * Number(data.heroes.mp.basicAttackRestorePct ?? 0))
       if (restore > 0) this.heroMp = Math.min(stats.maxMp, this.heroMp + restore)
     }
-    this.cooldowns[skill.id] = skillCooldown(stats, skill.cd) * (this.penalty.cooldownMultiplier ?? 1)
-    this.gcd = data.combat.gcdSeconds as number
+    // 攻速：缩短 GCD，并让普攻（基础攻击）出手更快
+    const speed = attackSpeedFactor(stats)
+    const cdMult = (this.penalty.cooldownMultiplier ?? 1) / (skill.id === ADVENTURER_SKILL.id ? speed : 1)
+    this.cooldowns[skill.id] = skillCooldown(stats, skill.cd) * cdMult
+    this.gcd = (data.combat.gcdSeconds as number) / speed
     this.pendingSkillCasts[skill.id] = (this.pendingSkillCasts[skill.id] ?? 0) + 1
 
     if (skill.potency > 0 && this.monster) {
@@ -525,6 +529,7 @@ export class BattleSimulator {
         )
         if (roll.isCrit) this.pushLog(`${skill.name} 暴击 ${roll.amount} 伤害`, 'damage')
         else this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+        this.rollProcs(stats)
       }
     } else {
       this.pushLog(`施放 ${skill.name}`, 'skill')
@@ -533,6 +538,30 @@ export class BattleSimulator {
     this.applyEffects(skill)
 
     if (this.monster && this.monsterHp <= 0) this.killMonster()
+  }
+
+  /** 命中触发效果（proc）：灼烧 DOT / 疾风限时攻速。与后端 `combat_model.proc_dps_bonus` 同源。 */
+  private rollProcs(stats: HeroStats): void {
+    if (!this.monster) return
+    const proc = (data.combat.proc ?? {}) as {
+      burn?: { potencyPct: number; durationSec: number }
+      haste?: { attackSpeedPct: number; durationSec: number }
+    }
+    const burnChance = Math.max(0, stats.termMods.burnProcPct ?? 0)
+    if (proc.burn && burnChance > 0 && Math.random() * 100 < burnChance) {
+      this.dots.push({ remaining: proc.burn.durationSec, potency: proc.burn.potencyPct, tick: 1 })
+      this.pushLog('装备触发「灼烧」', 'skill')
+    }
+    const hasteChance = Math.max(0, stats.termMods.hasteProcPct ?? 0)
+    if (proc.haste && hasteChance > 0 && Math.random() * 100 < hasteChance) {
+      this.buffs.push({
+        stat: 'attackSpeedBuff',
+        value: proc.haste.attackSpeedPct / 100,
+        remaining: proc.haste.durationSec,
+        name: '疾风',
+      })
+      this.pushLog('装备触发「疾风」', 'skill')
+    }
   }
 
   private applyEffects(skill: SkillLike): void {

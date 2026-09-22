@@ -56,7 +56,22 @@ def test_weapon_types_cover_jobs() -> None:
 
 
 def test_base_items_expanded() -> None:
-    assert len(CONFIG.base_items) == 180
+    """底材 = 族 × 档位 × 变体(minTier ≤ 档位)，且 id 唯一。"""
+    raw = CONFIG.raw["baseItems"]
+    tiers = raw["tiers"]
+    variants = raw.get("variants", {})
+
+    def per_family(specs) -> int:
+        return sum(sum(1 for v in specs if v["minTier"] <= t["index"]) for t in tiers)
+
+    expected = (
+        len(raw["weaponFamilies"]) * per_family(variants["weapon"])
+        + len(raw["armorFamilies"]) * per_family(variants["armor"])
+        + len(raw["accessoryFamilies"]) * per_family(variants["accessory"])
+    )
+    ids = [item.id for item in CONFIG.base_items]
+    assert len(ids) == expected
+    assert len(ids) == len(set(ids)), "底材 id 必须唯一"
     for item in CONFIG.base_items:
         assert item.base_attrs, item.id
         assert item.sub_attr_pool, item.id

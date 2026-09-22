@@ -162,6 +162,8 @@ export interface BaseItem {
   tierScale: number
   baseAttrs: BaseAttrEntry[]
   subAttrPool: AttrId[]
+  /** 变体 id（同档多套底材）。空串表示「基础型」，沿用 w_/a_/c_ 前缀 + 族 + 档位的旧 id。 */
+  variantId?: string
 }
 
 export interface MonsterTemplate {
@@ -451,14 +453,37 @@ const jobsData = jobsJson as unknown as {
   jobs: JobDef[]
 }
 
+interface BaseItemVariant {
+  id: string
+  name: string
+  minTier: number
+  pool?: AttrId[]
+  subAttrScale?: number
+  baseAttr?: AttrId
+}
+
 const baseItemsDataRaw = baseItemsJson as unknown as {
   tiers: Array<{ index: number; name: string; levelReq: number; weaponAttack: number; defense: number; hp: number; mainAttr: number; subAttrScale: number }>
   subAttrPools: Record<string, AttrId[]>
+  variants?: { weapon?: BaseItemVariant[]; armor?: BaseItemVariant[]; accessory?: BaseItemVariant[] }
   baseAttrFloat: number
   subAttrFloat: number
   weaponFamilies: Array<{ weaponType: string; jobId: string; suffix: string; pool: string }>
   armorFamilies: Array<{ slot: SlotId; suffix: string; baseAttrs: Array<{ attr: BaseAttrId; ratio: number }> }>
   accessoryFamilies: Array<{ slot: SlotId; suffix: string; baseAttr: AttrId; pool: string }>
+}
+
+/** 未定义 variants 时的兜底「基础型」变体。 */
+const BASE_VARIANT: BaseItemVariant = { id: '', name: '', minTier: 0, subAttrScale: 1 }
+
+/** 变体的副属性池：与族自身池求交后取用；交集为空则退回族自身池（基础型 pool 为空即此意）。 */
+function variantPool(variant: BaseItemVariant, basePool: AttrId[]): AttrId[] {
+  const wanted = (variant.pool ?? []).filter((a) => basePool.includes(a))
+  return wanted.length ? wanted : [...basePool]
+}
+
+function variantIdSuffix(variant: BaseItemVariant): string {
+  return variant.id ? `_${variant.id}` : ''
 }
 
 /** 基础属性 ID 到中文名 */
@@ -470,66 +495,84 @@ export const ATTR_NAMES: Record<string, string> = Object.fromEntries(
   subAttrData.attributes.map((a) => [a.id, a.name]),
 )
 
-/** 展开底材：武器族 × 档位、防具族 × 档位、饰品族 × 档位 */
+/** 展开底材：武器/防具/饰品族 × 档位 × 变体（minTier ≤ 档位） */
 export function expandBaseItems(): BaseItem[] {
   const d = baseItemsDataRaw
   const jobMainAttr = new Map(jobsData.jobs.map((j) => [j.id, j.mainAttr]))
+  const weaponVariants = d.variants?.weapon ?? [BASE_VARIANT]
+  const armorVariants = d.variants?.armor ?? [BASE_VARIANT]
+  const accessoryVariants = d.variants?.accessory ?? [BASE_VARIANT]
   const out: BaseItem[] = []
 
   for (const fam of d.weaponFamilies) {
     const isMagical = jobMainAttr.get(fam.jobId) === 'int'
+    const basePool = d.subAttrPools[fam.pool]
     for (const t of d.tiers) {
-      out.push({
-        id: `w_${fam.weaponType}_${t.index}`,
-        name: `${t.name}${fam.suffix}`,
-        category: 'weapon',
-        slot: 'mainHand',
-        weaponType: fam.weaponType,
-        jobId: fam.jobId,
-        levelReq: t.levelReq,
-        tierIndex: t.index,
-        tierName: t.name,
-        tierScale: t.subAttrScale,
-        baseAttrs: [{ attr: isMagical ? 'magicAttack' : 'attack', base: t.weaponAttack }],
-        subAttrPool: d.subAttrPools[fam.pool],
-      })
+      for (const v of weaponVariants) {
+        if (v.minTier > t.index) continue
+        out.push({
+          id: `w_${fam.weaponType}${variantIdSuffix(v)}_${t.index}`,
+          name: `${t.name}${v.name}${fam.suffix}`,
+          category: 'weapon',
+          slot: 'mainHand',
+          weaponType: fam.weaponType,
+          jobId: fam.jobId,
+          levelReq: t.levelReq,
+          tierIndex: t.index,
+          tierName: t.name,
+          tierScale: t.subAttrScale * (v.subAttrScale ?? 1),
+          baseAttrs: [{ attr: isMagical ? 'magicAttack' : 'attack', base: t.weaponAttack }],
+          subAttrPool: variantPool(v, basePool),
+          variantId: v.id,
+        })
+      }
     }
   }
 
   for (const fam of d.armorFamilies) {
+    const basePool = d.subAttrPools.armor
     for (const t of d.tiers) {
-      out.push({
-        id: `a_${fam.slot}_${t.index}`,
-        name: `${t.name}${fam.suffix}`,
-        category: 'armor',
-        slot: fam.slot,
-        levelReq: t.levelReq,
-        tierIndex: t.index,
-        tierName: t.name,
-        tierScale: t.subAttrScale,
-        baseAttrs: fam.baseAttrs.map((b) => ({
-          attr: b.attr,
-          base: b.attr === 'hp' ? t.hp * b.ratio : t.defense * b.ratio,
-        })),
-        subAttrPool: d.subAttrPools.armor,
-      })
+      for (const v of armorVariants) {
+        if (v.minTier > t.index) continue
+        out.push({
+          id: `a_${fam.slot}${variantIdSuffix(v)}_${t.index}`,
+          name: `${t.name}${v.name}${fam.suffix}`,
+          category: 'armor',
+          slot: fam.slot,
+          levelReq: t.levelReq,
+          tierIndex: t.index,
+          tierName: t.name,
+          tierScale: t.subAttrScale * (v.subAttrScale ?? 1),
+          baseAttrs: fam.baseAttrs.map((b) => ({
+            attr: b.attr,
+            base: b.attr === 'hp' ? t.hp * b.ratio : t.defense * b.ratio,
+          })),
+          subAttrPool: variantPool(v, basePool),
+          variantId: v.id,
+        })
+      }
     }
   }
 
   for (const fam of d.accessoryFamilies) {
+    const basePool = d.subAttrPools[fam.pool]
     for (const t of d.tiers) {
-      out.push({
-        id: `c_${fam.slot}_${t.index}`,
-        name: `${t.name}${fam.suffix}`,
-        category: 'accessory',
-        slot: fam.slot,
-        levelReq: t.levelReq,
-        tierIndex: t.index,
-        tierName: t.name,
-        tierScale: t.subAttrScale,
-        baseAttrs: [{ attr: fam.baseAttr, base: t.mainAttr }],
-        subAttrPool: d.subAttrPools[fam.pool],
-      })
+      for (const v of accessoryVariants) {
+        if (v.minTier > t.index) continue
+        out.push({
+          id: `c_${fam.slot}${variantIdSuffix(v)}_${t.index}`,
+          name: `${t.name}${v.name}${fam.suffix}`,
+          category: 'accessory',
+          slot: fam.slot,
+          levelReq: t.levelReq,
+          tierIndex: t.index,
+          tierName: t.name,
+          tierScale: t.subAttrScale * (v.subAttrScale ?? 1),
+          baseAttrs: [{ attr: v.baseAttr ?? fam.baseAttr, base: t.mainAttr }],
+          subAttrPool: variantPool(v, basePool),
+          variantId: v.id,
+        })
+      }
     }
   }
 

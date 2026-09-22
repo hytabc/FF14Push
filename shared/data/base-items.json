@@ -1,20 +1,51 @@
 {
-  "$comment": "装备底材（base items）。来源：PRD 2.3.1（底材决定固定属性种类）、图鉴 3.1。使用「档位 × 族」的紧凑定义，由加载器展开为具体底材。",
-  "$commentTiers": "每档提供武器攻击 / 防御 / 生命 / 主属性 四个锚定数值，各部位按 ratio 取用。精金档对应 PRD 示例中的 Lv.80 装备。",
-  "$commentSubAttrScale": "副属性 = ranges[品阶] × subAttrScale（按档位缩放）。底材固定属性本就随档位缩放，副属性同步缩放后 item_score 才会随档位单调增长，避免「低档高品阶」装备战力虚高。取值 = levelReq / 95，与 weaponAttack 锚点（≈12.6×levelReq）的缩放一致；高档 5 为基准 1.0。",
+  "$comment": "装备底材（base items）。来源：PRD 2.3.1（底材决定固定属性种类）、图鉴 3.1。使用「档位 × 族 × 变体」的紧凑定义，由加载器展开为具体底材。",
+  "$commentTiers": "每档提供武器攻击 / 防御 / 生命 / 主属性 四个锚定数值，各部位按 ratio 取用。精金档对应 PRD 示例中的 Lv.80 装备。档位按 levelReq 单调排列（index 越大等级越高），80-100 区间细分为 80/85/90/95/100。",
+  "$commentSubAttrScale": "副属性 = ranges[品阶] × subAttrScale（按档位缩放）。底材固定属性本就随档位缩放，副属性同步缩放后 item_score 才会随档位单调增长，避免「低档高品阶」装备战力虚高。取值 = levelReq / 95，与 weaponAttack 锚点（≈12.6×levelReq）的缩放一致；星辉档（Lv.95）为基准 1.0。",
+  "$commentVariants": "同档多套底材（变体）。加载器按「族 × 档位 × 变体(minTier ≤ 档位)」展开：minTier 控制变体从哪一档开始出现，档位越高变体越多。pool 为副属性种类，会与族自身池求交（法系武器自动滤掉力量等）；subAttrScale 乘在档位缩放上，用于拉开副属性数值上下限；baseAttr 仅饰品使用（覆盖固定主属性）。变体 id 为空串表示「基础型」，沿用旧 id 规则（w_/a_/c_ 前缀 + 族 + 档位），其余为 `前缀_族_变体_档位`，末段始终是数字档位。",
   "tiers": [
     { "index": 0, "name": "铁制", "levelReq": 1, "weaponAttack": 12, "defense": 4, "hp": 30, "mainAttr": 3, "subAttrScale": 0.011 },
     { "index": 1, "name": "白钢", "levelReq": 20, "weaponAttack": 250, "defense": 45, "hp": 320, "mainAttr": 7, "subAttrScale": 0.211 },
     { "index": 2, "name": "秘银", "levelReq": 40, "weaponAttack": 480, "defense": 95, "hp": 720, "mainAttr": 10, "subAttrScale": 0.421 },
     { "index": 3, "name": "钛合金", "levelReq": 60, "weaponAttack": 750, "defense": 155, "hp": 1200, "mainAttr": 15, "subAttrScale": 0.632 },
     { "index": 4, "name": "精金", "levelReq": 80, "weaponAttack": 1000, "defense": 225, "hp": 1800, "mainAttr": 20, "subAttrScale": 0.842 },
-    { "index": 5, "name": "星辉", "levelReq": 95, "weaponAttack": 1200, "defense": 290, "hp": 2300, "mainAttr": 26, "subAttrScale": 1.0 }
+    { "index": 5, "name": "龙鳞", "levelReq": 85, "weaponAttack": 1060, "defense": 255, "hp": 2050, "mainAttr": 23, "subAttrScale": 0.895 },
+    { "index": 6, "name": "苍穹", "levelReq": 90, "weaponAttack": 1120, "defense": 270, "hp": 2150, "mainAttr": 24, "subAttrScale": 0.947 },
+    { "index": 7, "name": "星辉", "levelReq": 95, "weaponAttack": 1200, "defense": 290, "hp": 2300, "mainAttr": 26, "subAttrScale": 1.0 },
+    { "index": 8, "name": "终末", "levelReq": 100, "weaponAttack": 1260, "defense": 305, "hp": 2500, "mainAttr": 28, "subAttrScale": 1.053 }
   ],
   "subAttrPools": {
     "physical": ["str", "dex", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
     "magical": ["int", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
     "armor": ["str", "dex", "int", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
     "accessory": ["str", "dex", "int", "vit", "crit", "dh", "det", "sks", "sps", "lifesteal", "dodge", "acc"]
+  },
+  "variants": {
+    "weapon": [
+      { "id": "", "name": "", "minTier": 0, "pool": [], "subAttrScale": 1.0 },
+      { "id": "crit", "name": "暴击", "minTier": 4, "pool": ["crit", "dh", "det", "vit", "str", "dex", "int", "sks", "acc"], "subAttrScale": 1.15 },
+      { "id": "dh", "name": "直击", "minTier": 4, "pool": ["dh", "crit", "det", "vit", "str", "dex", "int", "acc", "sks"], "subAttrScale": 1.15 },
+      { "id": "det", "name": "信念", "minTier": 6, "pool": ["det", "crit", "dh", "vit", "str", "dex", "int"], "subAttrScale": 1.2 },
+      { "id": "bal", "name": "均衡", "minTier": 6, "pool": [], "subAttrScale": 0.95 }
+    ],
+    "armor": [
+      { "id": "", "name": "", "minTier": 0, "pool": [], "subAttrScale": 1.0 },
+      { "id": "str", "name": "力量", "minTier": 2, "pool": ["str", "vit", "crit", "dh", "det", "tenacity"], "subAttrScale": 1.05 },
+      { "id": "dex", "name": "敏捷", "minTier": 2, "pool": ["dex", "vit", "crit", "dh", "sks", "dodge", "acc"], "subAttrScale": 1.05 },
+      { "id": "int", "name": "智力", "minTier": 3, "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.05 },
+      { "id": "tank", "name": "坦克", "minTier": 3, "pool": ["vit", "str", "tenacity", "regen", "dodge"], "subAttrScale": 1.1 },
+      { "id": "crit", "name": "暴击", "minTier": 4, "pool": ["crit", "dh", "det", "str", "dex", "int", "vit"], "subAttrScale": 1.15 },
+      { "id": "det", "name": "信念", "minTier": 4, "pool": ["det", "crit", "dh", "str", "dex", "int", "vit"], "subAttrScale": 1.15 },
+      { "id": "bal", "name": "均衡", "minTier": 4, "pool": [], "subAttrScale": 0.95 }
+    ],
+    "accessory": [
+      { "id": "", "name": "", "minTier": 0, "pool": [], "subAttrScale": 1.0 },
+      { "id": "str", "name": "力量", "minTier": 2, "baseAttr": "str", "pool": ["str", "vit", "crit", "dh", "det", "acc", "lifesteal"], "subAttrScale": 1.05 },
+      { "id": "dex", "name": "敏捷", "minTier": 2, "baseAttr": "dex", "pool": ["dex", "vit", "crit", "dh", "sks", "dodge", "acc"], "subAttrScale": 1.05 },
+      { "id": "int", "name": "智力", "minTier": 3, "baseAttr": "int", "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.05 },
+      { "id": "vit", "name": "体力", "minTier": 3, "baseAttr": "vit", "pool": ["vit", "tenacity", "regen", "dodge", "str", "dex", "int"], "subAttrScale": 1.1 },
+      { "id": "gold", "name": "财富", "minTier": 4, "pool": ["str", "dex", "int", "vit", "crit", "det", "lifesteal", "acc", "sps"], "subAttrScale": 1.0 }
+    ]
   },
   "$commentBaseFloat": "基础属性 = 底材基准 × 品阶倍率 × (1 ± 20%)。来源：PRD 2.3.3",
   "baseAttrFloat": 0.20,

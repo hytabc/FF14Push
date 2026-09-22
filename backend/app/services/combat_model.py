@@ -41,6 +41,34 @@ def damage_multiplier(stats: HeroStats) -> float:
     return max(0.0, det * crit * dh)
 
 
+def proc_dps_bonus(stats: HeroStats, base_dps: float, attack_rate: float) -> float:
+    """装备触发效果（proc）的期望每秒收益。
+
+    与前端 `battle.ts` 的实际结算口径对应：
+      - 灼烧：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
+      - 疾风：命中概率获得限时攻速，等价于按攻速加成比例提升输出。
+    """
+    cfg = CONFIG.combat.get("proc") or {}
+    power = stats.power_attack
+    extra = 0.0
+
+    burn = cfg.get("burn")
+    if burn:
+        chance = max(0.0, stats.term_mods.get("burnProcPct", 0.0)) / 100.0
+        if chance > 0:
+            uptime = min(1.0, chance * attack_rate * float(burn["durationSec"]))
+            extra += uptime * power * float(burn["potencyPct"]) / 100.0
+
+    haste = cfg.get("haste")
+    if haste:
+        chance = max(0.0, stats.term_mods.get("hasteProcPct", 0.0)) / 100.0
+        if chance > 0:
+            uptime = min(1.0, chance * attack_rate * float(haste["durationSec"]))
+            extra += uptime * float(haste["attackSpeedPct"]) / 100.0 * base_dps
+
+    return extra
+
+
 def theoretical_dps(
     stats: HeroStats,
     target_defense: float = 0.0,
@@ -65,7 +93,8 @@ def theoretical_dps(
         potency_per_sec += potency / cd
         max_potency = max(max_potency, potency)
 
-    # 受 GCD 约束
+    # 受 GCD 约束。攻速只在客户端模拟里缩短 GCD 与普攻间隔；本模型只计技能循环、
+    # 本就不含普攻输出，因此不随攻速放大 DPS，以保持与既有战力标定一致。
     gcd_cap = 1.0 / GCD
     if cast_rate > gcd_cap:
         potency_per_sec = potency_per_sec * (gcd_cap / cast_rate)
@@ -77,6 +106,8 @@ def theoretical_dps(
     mitigated = max(gross * 0.10, gross - target_defense * attack_rate)
     # 彩蛋技能增伤按平均覆盖计入，避免合法的高输出上报被击杀额度误判
     dps = max(1.0, mitigated) * dps_uplift(stats.egg_id)
+    # 装备触发效果（灼烧 / 疾风）的期望收益
+    dps += proc_dps_bonus(stats, dps, attack_rate)
 
     if penalty:
         dps *= hit_chance(stats, float(penalty.get("hitRatePenaltyPct", 0.0)))

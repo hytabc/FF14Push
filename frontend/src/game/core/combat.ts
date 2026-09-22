@@ -55,6 +55,13 @@ export function skillCooldown(stats: HeroStats, baseCd: number): number {
   return Math.max(0.5, baseCd * (1 - reduce))
 }
 
+/** 攻速系数 = 1 + 攻击速度% / 100，上限 2.0。用于缩短 GCD 与普攻间隔（服务端不建模出手频率）。 */
+export const MAX_ATTACK_SPEED_FACTOR = 2
+
+export function attackSpeedFactor(stats: HeroStats): number {
+  return Math.min(MAX_ATTACK_SPEED_FACTOR, 1 + Math.max(0, stats.attackSpeedPct) / 100)
+}
+
 export function isMagical(stats: HeroStats): boolean {
   const job = data.jobById[stats.jobId]
   return Boolean(job && job.mainAttr === 'int')
@@ -148,6 +155,7 @@ export function estimateDps(
     potencyPerSec += skill.potency / cd
     maxPotency = Math.max(maxPotency, skill.potency)
   }
+  // 与后端 combat_model 一致：模型只计技能循环，不随攻速放大 DPS（攻速在 battle.ts 中生效）
   const gcdCap = 1 / gcd
   if (castRate > gcdCap) {
     potencyPerSec *= gcdCap / castRate
@@ -157,7 +165,8 @@ export function estimateDps(
 
   const attackRate = Math.max(castRate, 1 / (data.combat.basicAttackCd as number))
   const gross = powerAttack(stats) * (potencyPerSec / 100) * damageMult * mult
-  const dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * attackRate))
+  let dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * attackRate))
+  dps += procDpsBonus(stats, dps, attackRate)
   if (!penalty) return dps
   return Math.max(
     0.01,
@@ -165,6 +174,33 @@ export function estimateDps(
       hitChance(stats, penalty.hitRatePenaltyPct, penalty.hitFloor) *
       Math.max(0, 1 - penalty.damageDealtPenaltyPct / 100),
   )
+}
+
+/** 装备触发效果（proc）的期望每秒收益。与后端 `combat_model.py:proc_dps_bonus` 同源。 */
+export function procDpsBonus(stats: HeroStats, baseDps: number, attackRate: number): number {
+  const proc = (data.combat.proc ?? {}) as {
+    burn?: { potencyPct: number; durationSec: number; tickSec: number }
+    haste?: { attackSpeedPct: number; durationSec: number }
+  }
+  const power = powerAttack(stats)
+  let extra = 0
+  const burn = proc.burn
+  if (burn) {
+    const chance = Math.max(0, stats.termMods.burnProcPct ?? 0) / 100
+    if (chance > 0) {
+      const uptime = Math.min(1, chance * attackRate * burn.durationSec)
+      extra += uptime * power * (burn.potencyPct / 100)
+    }
+  }
+  const haste = proc.haste
+  if (haste) {
+    const chance = Math.max(0, stats.termMods.hasteProcPct ?? 0) / 100
+    if (chance > 0) {
+      const uptime = Math.min(1, chance * attackRate * haste.durationSec)
+      extra += (uptime * haste.attackSpeedPct) / 100 * baseDps
+    }
+  }
+  return extra
 }
 
 export function secondsToKill(

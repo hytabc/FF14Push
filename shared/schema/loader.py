@@ -33,6 +33,7 @@ class BaseItem:
     sub_attr_scale: float = 1.0
     weapon_type: str | None = None
     job_id: str | None = None
+    variant_id: str = ""
 
 
 @dataclass
@@ -88,69 +89,99 @@ class GameConfig:
     raw: dict[str, Any] = field(default_factory=dict)
 
 
+def _variant_pool(variant: dict[str, Any], base_pool: list[str]) -> list[str]:
+    """变体的副属性池：与族自身池求交后取用；交集为空则退回族自身池（基础型 pool 为空即此意）。"""
+    wanted = [a for a in (variant.get("pool") or []) if a in base_pool]
+    return wanted or list(base_pool)
+
+
+def _variant_id_suffix(variant: dict[str, Any]) -> str:
+    vid = variant.get("id") or ""
+    return f"_{vid}" if vid else ""
+
+
 def _expand_base_items(data: dict[str, Any], job_main_attr: dict[str, str]) -> list[BaseItem]:
     pools = data["subAttrPools"]
+    variants = data.get("variants", {})
+    weapon_variants = variants.get("weapon") or [{}]
+    armor_variants = variants.get("armor") or [{}]
+    accessory_variants = variants.get("accessory") or [{}]
     out: list[BaseItem] = []
 
     for fam in data["weaponFamilies"]:
         is_magical = job_main_attr.get(fam["jobId"]) == "int"
+        base_pool = list(pools[fam["pool"]])
         for t in data["tiers"]:
-            out.append(
-                BaseItem(
-                    id=f"w_{fam['weaponType']}_{t['index']}",
-                    name=f"{t['name']}{fam['suffix']}",
-                    category="weapon",
-                    slot="mainHand",
-                    weapon_type=fam["weaponType"],
-                    job_id=fam["jobId"],
-                    level_req=t["levelReq"],
-                    tier_index=t["index"],
-                    tier_name=t["name"],
-                    base_attrs=[
-                        {"attr": "magicAttack" if is_magical else "attack", "base": t["weaponAttack"]}
-                    ],
-                    sub_attr_pool=list(pools[fam["pool"]]),
-                    sub_attr_scale=float(t.get("subAttrScale", 1.0)),
+            for v in weapon_variants:
+                if int(v.get("minTier", 0)) > int(t["index"]):
+                    continue
+                out.append(
+                    BaseItem(
+                        id=f"w_{fam['weaponType']}{_variant_id_suffix(v)}_{t['index']}",
+                        name=f"{t['name']}{v.get('name', '')}{fam['suffix']}",
+                        category="weapon",
+                        slot="mainHand",
+                        weapon_type=fam["weaponType"],
+                        job_id=fam["jobId"],
+                        level_req=t["levelReq"],
+                        tier_index=t["index"],
+                        tier_name=t["name"],
+                        base_attrs=[
+                            {"attr": "magicAttack" if is_magical else "attack", "base": t["weaponAttack"]}
+                        ],
+                        sub_attr_pool=_variant_pool(v, base_pool),
+                        sub_attr_scale=float(t.get("subAttrScale", 1.0)) * float(v.get("subAttrScale", 1.0)),
+                        variant_id=v.get("id", ""),
+                    )
                 )
-            )
 
     for fam in data["armorFamilies"]:
+        base_pool = list(pools["armor"])
         for t in data["tiers"]:
-            attrs = []
-            for b in fam["baseAttrs"]:
-                value = t["hp"] * b["ratio"] if b["attr"] == "hp" else t["defense"] * b["ratio"]
-                attrs.append({"attr": b["attr"], "base": value})
-            out.append(
-                BaseItem(
-                    id=f"a_{fam['slot']}_{t['index']}",
-                    name=f"{t['name']}{fam['suffix']}",
-                    category="armor",
-                    slot=fam["slot"],
-                    level_req=t["levelReq"],
-                    tier_index=t["index"],
-                    tier_name=t["name"],
-                    base_attrs=attrs,
-                    sub_attr_pool=list(pools["armor"]),
-                    sub_attr_scale=float(t.get("subAttrScale", 1.0)),
+            for v in armor_variants:
+                if int(v.get("minTier", 0)) > int(t["index"]):
+                    continue
+                attrs = []
+                for b in fam["baseAttrs"]:
+                    value = t["hp"] * b["ratio"] if b["attr"] == "hp" else t["defense"] * b["ratio"]
+                    attrs.append({"attr": b["attr"], "base": value})
+                out.append(
+                    BaseItem(
+                        id=f"a_{fam['slot']}{_variant_id_suffix(v)}_{t['index']}",
+                        name=f"{t['name']}{v.get('name', '')}{fam['suffix']}",
+                        category="armor",
+                        slot=fam["slot"],
+                        level_req=t["levelReq"],
+                        tier_index=t["index"],
+                        tier_name=t["name"],
+                        base_attrs=attrs,
+                        sub_attr_pool=_variant_pool(v, base_pool),
+                        sub_attr_scale=float(t.get("subAttrScale", 1.0)) * float(v.get("subAttrScale", 1.0)),
+                        variant_id=v.get("id", ""),
+                    )
                 )
-            )
 
     for fam in data["accessoryFamilies"]:
+        base_pool = list(pools[fam["pool"]])
         for t in data["tiers"]:
-            out.append(
-                BaseItem(
-                    id=f"c_{fam['slot']}_{t['index']}",
-                    name=f"{t['name']}{fam['suffix']}",
-                    category="accessory",
-                    slot=fam["slot"],
-                    level_req=t["levelReq"],
-                    tier_index=t["index"],
-                    tier_name=t["name"],
-                    base_attrs=[{"attr": fam["baseAttr"], "base": t["mainAttr"]}],
-                    sub_attr_pool=list(pools[fam["pool"]]),
-                    sub_attr_scale=float(t.get("subAttrScale", 1.0)),
+            for v in accessory_variants:
+                if int(v.get("minTier", 0)) > int(t["index"]):
+                    continue
+                out.append(
+                    BaseItem(
+                        id=f"c_{fam['slot']}{_variant_id_suffix(v)}_{t['index']}",
+                        name=f"{t['name']}{v.get('name', '')}{fam['suffix']}",
+                        category="accessory",
+                        slot=fam["slot"],
+                        level_req=t["levelReq"],
+                        tier_index=t["index"],
+                        tier_name=t["name"],
+                        base_attrs=[{"attr": v.get("baseAttr") or fam["baseAttr"], "base": t["mainAttr"]}],
+                        sub_attr_pool=_variant_pool(v, base_pool),
+                        sub_attr_scale=float(t.get("subAttrScale", 1.0)) * float(v.get("subAttrScale", 1.0)),
+                        variant_id=v.get("id", ""),
+                    )
                 )
-            )
 
     return out
 

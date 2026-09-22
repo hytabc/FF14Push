@@ -237,7 +237,7 @@ class TestInitialState:
     async def test_config_endpoint_exposes_shared_data(self, auth_client) -> None:
         cfg = (await auth_client.get(f"{API}/game/config")).json()
         assert len(cfg["jobs"]) == 21
-        assert len(cfg["baseItems"]) == 180
+        assert len(cfg["baseItems"]) == len(CONFIG.base_items)
         assert len(cfg["regions"]["regions"]) == 40
         assert len(cfg["tutorial"]["steps"]) == 15
 
@@ -1614,7 +1614,7 @@ class TestCodexAndRanking:
     async def test_equipment_codex_closed_until_obtain(self, auth_client) -> None:
         resp = await auth_client.get(f"{API}/codex?category=equipment")
         body = resp.json()
-        assert body["progress"]["equipment"]["total"] == 180
+        assert body["progress"]["equipment"]["total"] == len(CONFIG.base_items)
         # 开局只有起始武器已解锁，其余（含更高品阶）保持剪影
         unlocked = [e for e in body["entries"] if e["unlocked"]]
         assert [e["baseId"] for e in unlocked] == [STARTER_BASE_ID]

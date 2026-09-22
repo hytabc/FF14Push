@@ -56,7 +56,9 @@
       "lifesteal": 0.5,
       "dodge": 0.5,
       "acc": 0.4,
-      "tenacity": 0.5
+      "tenacity": 0.5,
+      "burnProcPct": 1.5,
+      "hasteProcPct": 1.2
     }
   }
 }

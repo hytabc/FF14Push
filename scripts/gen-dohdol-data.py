@@ -95,17 +95,8 @@ dump("materials.json", {
 
 # ---------------------------------------------------------------- 采集点
 def band_level(rid: int) -> int:
-    if rid <= 8:
-        return 1
-    if rid <= 16:
-        return 6
-    if rid <= 22:
-        return 11
-    if rid <= 28:
-        return 16
-    if rid <= 34:
-        return 21
-    return 26
+    """地区序号 → 采集等级门槛，覆盖 1-100（40 个地区线性铺满）。"""
+    return min(100, 1 + (rid - 1) * 99 // 39)
 
 
 MIN_COMMONS = ["g_ore", "g_stone", "g_gem"]
@@ -144,11 +135,42 @@ dump("gather-nodes.json", {
 })
 
 # ---------------------------------------------------------------- 专用装备
+# 覆盖生产/采集 0-100 级；power 决定 bonus 数值（≈1.26^index）。
 DOHDOL_TIERS = [
     {"index": 0, "name": "制式", "levelReq": 1, "power": 1.0},
-    {"index": 1, "name": "精制", "levelReq": 25, "power": 2.2},
-    {"index": 2, "name": "秘传", "levelReq": 50, "power": 4.0},
+    {"index": 1, "name": "标准", "levelReq": 10, "power": 1.3},
+    {"index": 2, "name": "精制", "levelReq": 20, "power": 1.6},
+    {"index": 3, "name": "良品", "levelReq": 30, "power": 2.0},
+    {"index": 4, "name": "高级", "levelReq": 40, "power": 2.5},
+    {"index": 5, "name": "秘传", "levelReq": 50, "power": 3.2},
+    {"index": 6, "name": "名匠", "levelReq": 60, "power": 4.0},
+    {"index": 7, "name": "大师", "levelReq": 70, "power": 5.0},
+    {"index": 8, "name": "传说", "levelReq": 80, "power": 6.4},
+    {"index": 9, "name": "神话", "levelReq": 90, "power": 8.0},
+    {"index": 10, "name": "终末", "levelReq": 100, "power": 10.1},
 ]
+
+# 同一档位的多套装备（变体）：bias 为对应 bonus 数值的乘数。minTier 控制出现档位，
+# 档位越高变体越多（基础型 → 专项 → 全项）。
+DOH_VARIANTS = [
+    {"id": "", "name": "", "minTier": 0, "bias": {}},
+    {"id": "quality", "name": "匠心", "minTier": 2, "bias": {"craftQualityPct": 1.4, "craftRarityPct": 1.3}},
+    {"id": "speed", "name": "迅捷", "minTier": 2, "bias": {"craftSpeedPct": 1.5}},
+    {"id": "xp", "name": "悟道", "minTier": 4, "bias": {"craftXpPct": 1.6}},
+    {"id": "master", "name": "大师", "minTier": 6,
+     "bias": {"craftQualityPct": 1.3, "craftRarityPct": 1.3, "craftSpeedPct": 1.3, "craftXpPct": 1.3}},
+]
+DOL_VARIANTS = [
+    {"id": "", "name": "", "minTier": 0, "bias": {}},
+    {"id": "yield", "name": "丰饶", "minTier": 2, "bias": {"gatherYieldPct": 1.4}},
+    {"id": "speed", "name": "疾行", "minTier": 2, "bias": {"gatherSpeedPct": 1.5}},
+    {"id": "xp", "name": "博识", "minTier": 4, "bias": {"gatherXpPct": 1.6}},
+    {"id": "fish", "name": "渔猎", "minTier": 4, "bias": {"fishInsightPct": 1.5, "fishChancePct": 1.5}},
+    {"id": "master", "name": "大师", "minTier": 6,
+     "bias": {"gatherYieldPct": 1.3, "gatherSpeedPct": 1.3, "gatherXpPct": 1.3,
+              "fishInsightPct": 1.3, "fishChancePct": 1.3}},
+]
+VARIANTS_BY_KIND = {"doh": DOH_VARIANTS, "dol": DOL_VARIANTS}
 SLOTS = [
     ("Tool", "主手工具", "tool"),
     ("OffTool", "副手工具", "tool"),
@@ -225,19 +247,28 @@ dohdol_items = []
 for kind in ("doh", "dol"):
     cat_tool = f"{kind}_tool"
     cat_gear = f"{kind}_gear"
+    flavor = "巧匠" if kind == "doh" else "大地"
     for suffix, name, stype in SLOTS:
         for t in DOHDOL_TIERS:
-            bonus = {stat: round(coef * float(t["power"]), 1) for stat, coef in SLOT_BONUS[(kind, suffix)].items()}
-            dohdol_items.append({
-                "id": f"dh_{kind}{suffix}_{t['index']}",
-                "name": f"{t['name']}{'巧匠' if kind == 'doh' else '大地'}{name}",
-                "category": cat_tool if stype == "tool" else cat_gear,
-                "slot": f"{kind}{suffix}",
-                "kind": kind,
-                "tierIndex": t["index"],
-                "levelReq": t["levelReq"],
-                "bonus": bonus,
-            })
+            for v in VARIANTS_BY_KIND[kind]:
+                if v["minTier"] > t["index"]:
+                    continue
+                bonus = {
+                    stat: round(coef * float(t["power"]) * float(v["bias"].get(stat, 1.0)), 1)
+                    for stat, coef in SLOT_BONUS[(kind, suffix)].items()
+                }
+                vid = v["id"]
+                dohdol_items.append({
+                    "id": f"dh_{kind}{suffix}{f'_{vid}' if vid else ''}_{t['index']}",
+                    "name": f"{t['name']}{v['name']}{flavor}{name}",
+                    "category": cat_tool if stype == "tool" else cat_gear,
+                    "slot": f"{kind}{suffix}",
+                    "kind": kind,
+                    "variant": vid,
+                    "tierIndex": t["index"],
+                    "levelReq": t["levelReq"],
+                    "bonus": bonus,
+                })
 
 dump("dohdol-equipment.json", {
     "$comment": "生产/采集专用装备：仅能通过生产制造获取，只影响采集/制造/钓鱼，不参与战斗结算与战力。",
@@ -427,15 +458,24 @@ GEAR_JOB = {
     ("dol", "Tool"): "BSM", ("dol", "OffTool"): "CRP", ("dol", "Head"): "LTW",
     ("dol", "Body"): "WVR", ("dol", "Hands"): "LTW", ("dol", "Legs"): "WVR", ("dol", "Feet"): "LTW",
 }
+TIER_LEVEL = {t["index"]: t["levelReq"] for t in DOHDOL_TIERS}
+# 每件装备都消耗一份地区专属材料，并按游标轮转，保证 40 个地区的 ore / flora 全部被配方用到。
+REGION_COUNT = len(regions)
+ore_cursor = 0
+flora_cursor = 0
 for item in dohdol_items:
     suffix = item["slot"][3:]
     kind = item["kind"]
     t = item["tierIndex"]
     inputs = [(m, c * (t + 1)) for m, c in GEAR_INPUTS[suffix]]
-    if t >= 1:
-        rid = ((t * 17) % 40) + 1
-        inputs.append((("ore" if suffix in ("Tool", "Hands") else "flora") + str(rid), 2 + t))
-    add(f"r_{item['id']}", GEAR_JOB[(kind, suffix)], 1 + t * 15, 3.0 + t, 15 + t * 30,
+    if suffix in ("Tool", "Hands"):
+        region_mat = f"ore{(ore_cursor % REGION_COUNT) + 1}"
+        ore_cursor += 1
+    else:
+        region_mat = f"flora{(flora_cursor % REGION_COUNT) + 1}"
+        flora_cursor += 1
+    inputs.append((region_mat, 1 + t))
+    add(f"r_{item['id']}", GEAR_JOB[(kind, suffix)], TIER_LEVEL[t], 3.0 + t * 0.6, 15 + t * 40,
         inputs, {"kind": "equipment", "baseId": item["id"]})
 
 COMBAT_RECIPES = [
@@ -481,7 +521,7 @@ dump("recipes.json", {
             "sources": {
                 "heroLevel": {"weight": 0.25, "ref": 100},
                 "clearedRegions": {"weight": 0.25, "ref": 40},
-                "prodLevel": {"weight": 0.25, "ref": 50},
+                "prodLevel": {"weight": 0.25, "ref": 100},
                 "gearPct": {"weight": 0.25, "ref": 60},
             },
             "targetWeights": {

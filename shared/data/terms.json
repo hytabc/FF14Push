@@ -32,6 +32,9 @@
     { "id": "critDmgBoost", "name": "暴击伤害强化", "type": "buff", "trigger": "常驻", "stat": "critDamagePct", "range": [3, 12], "slots": ["mainHand", "ring1", "ring2"], "desc": "暴击伤害倍率额外 +{v}%" },
     { "id": "dhConvert", "name": "直击转化", "type": "buff", "trigger": "常驻", "stat": "dhConvertPct", "range": [5, 15], "slots": ["earring", "bracelet"], "desc": "暴击率的 {v}% 转化为直击率" },
 
+    { "id": "burnOnHit", "name": "灼烧", "type": "buff", "trigger": "触发", "stat": "burnProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标灼烧，持续 6 秒每秒受到攻击力 40% 的伤害" },
+    { "id": "hasteOnHit", "name": "疾风", "type": "buff", "trigger": "触发", "stat": "hasteProcPct", "range": [5, 15], "slots": ["mainHand", "head", "body", "necklace"], "desc": "攻击命中时 {v}% 概率获得「疾风」，8 秒内攻击速度 +15%" },
+
     { "id": "weaken", "name": "虚弱", "type": "debuff", "trigger": "常驻", "stat": "attackPct", "range": [-15, -3], "desc": "攻击力 {v}%" },
     { "id": "slow", "name": "迟缓", "type": "debuff", "trigger": "常驻", "stat": "attackSpeedPct", "range": [-10, -2], "desc": "攻击速度 {v}%" },
     { "id": "fragile", "name": "脆弱", "type": "debuff", "trigger": "常驻", "stat": "damageTakenPct", "range": [3, 12], "desc": "受到伤害 +{v}%" },

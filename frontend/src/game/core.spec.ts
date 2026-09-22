@@ -2,7 +2,7 @@ import data from '@shared/schema'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BattleSimulator } from '@/game/core/battle'
-import { estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
+import { attackSpeedFactor, estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
 import { bossStats, getRegion, goldRange, levelPenalty, monsterStats } from '@/game/core/regions'
 import type { HeroStats, MonsterStats } from '@/game/types'
 
@@ -638,7 +638,8 @@ describe('普通副本多维软惩罚', () => {
     expect(sim.heroMp).toBe(Math.floor(sim.stats.maxMp*.1*.8))
     expect(engine.bossSkillInterval({skillInterval:6})).toBeCloseTo(4.8)
     engine.cast(ADVENTURER_SKILL)
-    expect(sim.cooldowns[ADVENTURER_SKILL.id]).toBeCloseTo(skillCooldown(sim.stats,ADVENTURER_SKILL.cd)*1.15)
+    // 普攻 CD 额外受攻速缩短（见 battle.ts cast）
+    expect(sim.cooldowns[ADVENTURER_SKILL.id]).toBeCloseTo(skillCooldown(sim.stats,ADVENTURER_SKILL.cd)*1.15/attackSpeedFactor(sim.stats))
     const baseline = rollDamage(makeStats({attack:1000}),100,'physical',500,1,null,0,()=>.5)
     const weakened = rollDamage(makeStats({attack:1000}),100,'physical',500,1,penalty,0,()=>.5)
     expect(weakened.amount).toBe(Math.floor(baseline.amount*.65))
@@ -901,5 +902,34 @@ describe('彩蛋英雄技能', () => {
     } finally {
       spy.mockRestore()
     }
+  })
+})
+
+describe('装备触发效果（proc）', () => {
+  it('命中时按概率触发灼烧 DOT 与疾风攻速', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ termMods: { burnProcPct: 100, hasteProcPct: 100 } }),
+      regionId: 1,
+    })
+    sim.start()
+    for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
+    expect(sim.monster).toBeTruthy()
+
+    const engine = sim as unknown as { cast(s: unknown): void }
+    engine.cast(ADVENTURER_SKILL)
+    const text = sim.log.map((l) => l.text).join(' | ')
+    expect(text).toContain('灼烧')
+    expect(text).toContain('疾风')
+  })
+
+  it('无 proc 词条时不触发', () => {
+    const sim = new BattleSimulator({ stats: makeStats(), regionId: 1 })
+    sim.start()
+    for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
+    const engine = sim as unknown as { cast(s: unknown): void }
+    engine.cast(ADVENTURER_SKILL)
+    const text = sim.log.map((l) => l.text).join(' | ')
+    expect(text).not.toContain('灼烧')
+    expect(text).not.toContain('疾风')
   })
 })

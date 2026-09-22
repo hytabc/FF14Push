@@ -57,7 +57,7 @@
     {
       "regionId": 2,
       "jobId": "MIN",
-      "levelReq": 1,
+      "levelReq": 3,
       "yields": [
         {
           "materialId": "ore2",
@@ -82,7 +82,7 @@
     {
       "regionId": 2,
       "jobId": "BTN",
-      "levelReq": 1,
+      "levelReq": 3,
       "yields": [
         {
           "materialId": "flora2",
@@ -107,7 +107,7 @@
     {
       "regionId": 3,
       "jobId": "MIN",
-      "levelReq": 1,
+      "levelReq": 6,
       "yields": [
         {
           "materialId": "ore3",
@@ -132,7 +132,7 @@
     {
       "regionId": 3,
       "jobId": "BTN",
-      "levelReq": 1,
+      "levelReq": 6,
       "yields": [
         {
           "materialId": "flora3",
@@ -157,7 +157,7 @@
     {
       "regionId": 4,
       "jobId": "MIN",
-      "levelReq": 1,
+      "levelReq": 8,
       "yields": [
         {
           "materialId": "ore4",
@@ -182,7 +182,7 @@
     {
       "regionId": 4,
       "jobId": "BTN",
-      "levelReq": 1,
+      "levelReq": 8,
       "yields": [
         {
           "materialId": "flora4",
@@ -207,7 +207,7 @@
     {
       "regionId": 5,
       "jobId": "MIN",
-      "levelReq": 1,
+      "levelReq": 11,
       "yields": [
         {
           "materialId": "ore5",
@@ -232,7 +232,7 @@
     {
       "regionId": 5,
       "jobId": "BTN",
-      "levelReq": 1,
+      "levelReq": 11,
       "yields": [
         {
           "materialId": "flora5",
@@ -257,7 +257,7 @@
     {
       "regionId": 6,
       "jobId": "MIN",
-      "levelReq": 1,
+      "levelReq": 13,
       "yields": [
         {
           "materialId": "ore6",
@@ -282,7 +282,7 @@
     {
       "regionId": 6,
       "jobId": "BTN",
-      "levelReq": 1,
+      "levelReq": 13,
       "yields": [
         {
           "materialId": "flora6",
@@ -307,7 +307,7 @@
     {
       "regionId": 7,
       "jobId": "MIN",
-      "levelReq": 1,
+      "levelReq": 16,
       "yields": [
         {
           "materialId": "ore7",
@@ -332,7 +332,7 @@
     {
       "regionId": 7,
       "jobId": "BTN",
-      "levelReq": 1,
+      "levelReq": 16,
       "yields": [
         {
           "materialId": "flora7",
@@ -357,7 +357,7 @@
     {
       "regionId": 8,
       "jobId": "MIN",
-      "levelReq": 1,
+      "levelReq": 18,
       "yields": [
         {
           "materialId": "ore8",
@@ -382,7 +382,7 @@
     {
       "regionId": 8,
       "jobId": "BTN",
-      "levelReq": 1,
+      "levelReq": 18,
       "yields": [
         {
           "materialId": "flora8",
@@ -407,7 +407,7 @@
     {
       "regionId": 9,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 21,
       "yields": [
         {
           "materialId": "ore9",
@@ -432,7 +432,7 @@
     {
       "regionId": 9,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 21,
       "yields": [
         {
           "materialId": "flora9",
@@ -457,7 +457,7 @@
     {
       "regionId": 10,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 23,
       "yields": [
         {
           "materialId": "ore10",
@@ -482,7 +482,7 @@
     {
       "regionId": 10,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 23,
       "yields": [
         {
           "materialId": "flora10",
@@ -507,7 +507,7 @@
     {
       "regionId": 11,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 26,
       "yields": [
         {
           "materialId": "ore11",
@@ -532,7 +532,7 @@
     {
       "regionId": 11,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 26,
       "yields": [
         {
           "materialId": "flora11",
@@ -557,7 +557,7 @@
     {
       "regionId": 12,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 28,
       "yields": [
         {
           "materialId": "ore12",
@@ -582,7 +582,7 @@
     {
       "regionId": 12,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 28,
       "yields": [
         {
           "materialId": "flora12",
@@ -607,7 +607,7 @@
     {
       "regionId": 13,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 31,
       "yields": [
         {
           "materialId": "ore13",
@@ -632,7 +632,7 @@
     {
       "regionId": 13,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 31,
       "yields": [
         {
           "materialId": "flora13",
@@ -657,7 +657,7 @@
     {
       "regionId": 14,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 34,
       "yields": [
         {
           "materialId": "ore14",
@@ -682,7 +682,7 @@
     {
       "regionId": 14,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 34,
       "yields": [
         {
           "materialId": "flora14",
@@ -707,7 +707,7 @@
     {
       "regionId": 15,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 36,
       "yields": [
         {
           "materialId": "ore15",
@@ -732,7 +732,7 @@
     {
       "regionId": 15,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 36,
       "yields": [
         {
           "materialId": "flora15",
@@ -757,7 +757,7 @@
     {
       "regionId": 16,
       "jobId": "MIN",
-      "levelReq": 6,
+      "levelReq": 39,
       "yields": [
         {
           "materialId": "ore16",
@@ -782,7 +782,7 @@
     {
       "regionId": 16,
       "jobId": "BTN",
-      "levelReq": 6,
+      "levelReq": 39,
       "yields": [
         {
           "materialId": "flora16",
@@ -807,7 +807,7 @@
     {
       "regionId": 17,
       "jobId": "MIN",
-      "levelReq": 11,
+      "levelReq": 41,
       "yields": [
         {
           "materialId": "ore17",
@@ -832,7 +832,7 @@
     {
       "regionId": 17,
       "jobId": "BTN",
-      "levelReq": 11,
+      "levelReq": 41,
       "yields": [
         {
           "materialId": "flora17",
@@ -857,7 +857,7 @@
     {
       "regionId": 18,
       "jobId": "MIN",
-      "levelReq": 11,
+      "levelReq": 44,
       "yields": [
         {
           "materialId": "ore18",
@@ -882,7 +882,7 @@
     {
       "regionId": 18,
       "jobId": "BTN",
-      "levelReq": 11,
+      "levelReq": 44,
       "yields": [
         {
           "materialId": "flora18",
@@ -907,7 +907,7 @@
     {
       "regionId": 19,
       "jobId": "MIN",
-      "levelReq": 11,
+      "levelReq": 46,
       "yields": [
         {
           "materialId": "ore19",
@@ -932,7 +932,7 @@
     {
       "regionId": 19,
       "jobId": "BTN",
-      "levelReq": 11,
+      "levelReq": 46,
       "yields": [
         {
           "materialId": "flora19",
@@ -957,7 +957,7 @@
     {
       "regionId": 20,
       "jobId": "MIN",
-      "levelReq": 11,
+      "levelReq": 49,
       "yields": [
         {
           "materialId": "ore20",
@@ -982,7 +982,7 @@
     {
       "regionId": 20,
       "jobId": "BTN",
-      "levelReq": 11,
+      "levelReq": 49,
       "yields": [
         {
           "materialId": "flora20",
@@ -1007,7 +1007,7 @@
     {
       "regionId": 21,
       "jobId": "MIN",
-      "levelReq": 11,
+      "levelReq": 51,
       "yields": [
         {
           "materialId": "ore21",
@@ -1032,7 +1032,7 @@
     {
       "regionId": 21,
       "jobId": "BTN",
-      "levelReq": 11,
+      "levelReq": 51,
       "yields": [
         {
           "materialId": "flora21",
@@ -1057,7 +1057,7 @@
     {
       "regionId": 22,
       "jobId": "MIN",
-      "levelReq": 11,
+      "levelReq": 54,
       "yields": [
         {
           "materialId": "ore22",
@@ -1082,7 +1082,7 @@
     {
       "regionId": 22,
       "jobId": "BTN",
-      "levelReq": 11,
+      "levelReq": 54,
       "yields": [
         {
           "materialId": "flora22",
@@ -1107,7 +1107,7 @@
     {
       "regionId": 23,
       "jobId": "MIN",
-      "levelReq": 16,
+      "levelReq": 56,
       "yields": [
         {
           "materialId": "ore23",
@@ -1132,7 +1132,7 @@
     {
       "regionId": 23,
       "jobId": "BTN",
-      "levelReq": 16,
+      "levelReq": 56,
       "yields": [
         {
           "materialId": "flora23",
@@ -1157,7 +1157,7 @@
     {
       "regionId": 24,
       "jobId": "MIN",
-      "levelReq": 16,
+      "levelReq": 59,
       "yields": [
         {
           "materialId": "ore24",
@@ -1182,7 +1182,7 @@
     {
       "regionId": 24,
       "jobId": "BTN",
-      "levelReq": 16,
+      "levelReq": 59,
       "yields": [
         {
           "materialId": "flora24",
@@ -1207,7 +1207,7 @@
     {
       "regionId": 25,
       "jobId": "MIN",
-      "levelReq": 16,
+      "levelReq": 61,
       "yields": [
         {
           "materialId": "ore25",
@@ -1232,7 +1232,7 @@
     {
       "regionId": 25,
       "jobId": "BTN",
-      "levelReq": 16,
+      "levelReq": 61,
       "yields": [
         {
           "materialId": "flora25",
@@ -1257,7 +1257,7 @@
     {
       "regionId": 26,
       "jobId": "MIN",
-      "levelReq": 16,
+      "levelReq": 64,
       "yields": [
         {
           "materialId": "ore26",
@@ -1282,7 +1282,7 @@
     {
       "regionId": 26,
       "jobId": "BTN",
-      "levelReq": 16,
+      "levelReq": 64,
       "yields": [
         {
           "materialId": "flora26",
@@ -1307,7 +1307,7 @@
     {
       "regionId": 27,
       "jobId": "MIN",
-      "levelReq": 16,
+      "levelReq": 67,
       "yields": [
         {
           "materialId": "ore27",
@@ -1332,7 +1332,7 @@
     {
       "regionId": 27,
       "jobId": "BTN",
-      "levelReq": 16,
+      "levelReq": 67,
       "yields": [
         {
           "materialId": "flora27",
@@ -1357,7 +1357,7 @@
     {
       "regionId": 28,
       "jobId": "MIN",
-      "levelReq": 16,
+      "levelReq": 69,
       "yields": [
         {
           "materialId": "ore28",
@@ -1382,7 +1382,7 @@
     {
       "regionId": 28,
       "jobId": "BTN",
-      "levelReq": 16,
+      "levelReq": 69,
       "yields": [
         {
           "materialId": "flora28",
@@ -1407,7 +1407,7 @@
     {
       "regionId": 29,
       "jobId": "MIN",
-      "levelReq": 21,
+      "levelReq": 72,
       "yields": [
         {
           "materialId": "ore29",
@@ -1432,7 +1432,7 @@
     {
       "regionId": 29,
       "jobId": "BTN",
-      "levelReq": 21,
+      "levelReq": 72,
       "yields": [
         {
           "materialId": "flora29",
@@ -1457,7 +1457,7 @@
     {
       "regionId": 30,
       "jobId": "MIN",
-      "levelReq": 21,
+      "levelReq": 74,
       "yields": [
         {
           "materialId": "ore30",
@@ -1482,7 +1482,7 @@
     {
       "regionId": 30,
       "jobId": "BTN",
-      "levelReq": 21,
+      "levelReq": 74,
       "yields": [
         {
           "materialId": "flora30",
@@ -1507,7 +1507,7 @@
     {
       "regionId": 31,
       "jobId": "MIN",
-      "levelReq": 21,
+      "levelReq": 77,
       "yields": [
         {
           "materialId": "ore31",
@@ -1532,7 +1532,7 @@
     {
       "regionId": 31,
       "jobId": "BTN",
-      "levelReq": 21,
+      "levelReq": 77,
       "yields": [
         {
           "materialId": "flora31",
@@ -1557,7 +1557,7 @@
     {
       "regionId": 32,
       "jobId": "MIN",
-      "levelReq": 21,
+      "levelReq": 79,
       "yields": [
         {
           "materialId": "ore32",
@@ -1582,7 +1582,7 @@
     {
       "regionId": 32,
       "jobId": "BTN",
-      "levelReq": 21,
+      "levelReq": 79,
       "yields": [
         {
           "materialId": "flora32",
@@ -1607,7 +1607,7 @@
     {
       "regionId": 33,
       "jobId": "MIN",
-      "levelReq": 21,
+      "levelReq": 82,
       "yields": [
         {
           "materialId": "ore33",
@@ -1632,7 +1632,7 @@
     {
       "regionId": 33,
       "jobId": "BTN",
-      "levelReq": 21,
+      "levelReq": 82,
       "yields": [
         {
           "materialId": "flora33",
@@ -1657,7 +1657,7 @@
     {
       "regionId": 34,
       "jobId": "MIN",
-      "levelReq": 21,
+      "levelReq": 84,
       "yields": [
         {
           "materialId": "ore34",
@@ -1682,7 +1682,7 @@
     {
       "regionId": 34,
       "jobId": "BTN",
-      "levelReq": 21,
+      "levelReq": 84,
       "yields": [
         {
           "materialId": "flora34",
@@ -1707,7 +1707,7 @@
     {
       "regionId": 35,
       "jobId": "MIN",
-      "levelReq": 26,
+      "levelReq": 87,
       "yields": [
         {
           "materialId": "ore35",
@@ -1732,7 +1732,7 @@
     {
       "regionId": 35,
       "jobId": "BTN",
-      "levelReq": 26,
+      "levelReq": 87,
       "yields": [
         {
           "materialId": "flora35",
@@ -1757,7 +1757,7 @@
     {
       "regionId": 36,
       "jobId": "MIN",
-      "levelReq": 26,
+      "levelReq": 89,
       "yields": [
         {
           "materialId": "ore36",
@@ -1782,7 +1782,7 @@
     {
       "regionId": 36,
       "jobId": "BTN",
-      "levelReq": 26,
+      "levelReq": 89,
       "yields": [
         {
           "materialId": "flora36",
@@ -1807,7 +1807,7 @@
     {
       "regionId": 37,
       "jobId": "MIN",
-      "levelReq": 26,
+      "levelReq": 92,
       "yields": [
         {
           "materialId": "ore37",
@@ -1832,7 +1832,7 @@
     {
       "regionId": 37,
       "jobId": "BTN",
-      "levelReq": 26,
+      "levelReq": 92,
       "yields": [
         {
           "materialId": "flora37",
@@ -1857,7 +1857,7 @@
     {
       "regionId": 38,
       "jobId": "MIN",
-      "levelReq": 26,
+      "levelReq": 94,
       "yields": [
         {
           "materialId": "ore38",
@@ -1882,7 +1882,7 @@
     {
       "regionId": 38,
       "jobId": "BTN",
-      "levelReq": 26,
+      "levelReq": 94,
       "yields": [
         {
           "materialId": "flora38",
@@ -1907,7 +1907,7 @@
     {
       "regionId": 39,
       "jobId": "MIN",
-      "levelReq": 26,
+      "levelReq": 97,
       "yields": [
         {
           "materialId": "ore39",
@@ -1932,7 +1932,7 @@
     {
       "regionId": 39,
       "jobId": "BTN",
-      "levelReq": 26,
+      "levelReq": 97,
       "yields": [
         {
           "materialId": "flora39",
@@ -1957,7 +1957,7 @@
     {
       "regionId": 40,
       "jobId": "MIN",
-      "levelReq": 26,
+      "levelReq": 100,
       "yields": [
         {
           "materialId": "ore40",
@@ -1982,7 +1982,7 @@
     {
       "regionId": 40,
       "jobId": "BTN",
-      "levelReq": 26,
+      "levelReq": 100,
       "yields": [
         {
           "materialId": "flora40",

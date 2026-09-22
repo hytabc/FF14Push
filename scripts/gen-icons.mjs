@@ -55,7 +55,10 @@ const TIER_PALETTES = [
   { name: '秘银', m: [0x9f, 0xe8, 0xe0], d: [0x5f, 0xb3, 0xac], l: [0xd6, 0xff, 0xfb] },
   { name: '钛合金', m: [0xb9, 0xa7, 0xff], d: [0x7a, 0x68, 0xc9], l: [0xe2, 0xd9, 0xff] },
   { name: '精金', m: [0xf5, 0xc5, 0x42], d: [0xb8, 0x86, 0x0b], l: [0xff, 0xe9, 0xa3] },
+  { name: '龙鳞', m: [0x6f, 0xc0, 0x8a], d: [0x3a, 0x7a, 0x52], l: [0xb8, 0xf0, 0xd0] },
+  { name: '苍穹', m: [0x8a, 0xa8, 0xe8], d: [0x4a, 0x68, 0xa8], l: [0xd0, 0xe0, 0xff] },
   { name: '星辉', m: [0x7f, 0xd4, 0xff], d: [0x3f, 0x8f, 0xd0], l: [0xd6, 0xf2, 0xff] },
+  { name: '终末', m: [0xe0, 0x8a, 0x5a], d: [0x9a, 0x4a, 0x2a], l: [0xff, 0xd0, 0xa0] },
 ]
 
 // ──────────────────────────────── 像素定义 ────────────────────────────────
@@ -845,22 +848,128 @@ const ORNAMENTS = [
     'lgggl',
     '.lgl.',
     '..l..',
-  ], // 5 星辉：星芒
+  ], // 5 龙鳞：菱形鳞纹
+  [
+    '.g.g.',
+    'glglg',
+    '.glg.',
+    'glglg',
+    '.g.g.',
+  ], // 6 苍穹：编织
+  [
+    '..l..',
+    '.lgl.',
+    'lgggl',
+    '.lgl.',
+    '..l..',
+  ], // 7 星辉：星芒
+  [
+    'l.g.l',
+    '.lgl.',
+    'ggggg',
+    '.lgl.',
+    'l.g.l',
+  ], // 8 终末：终焉之印
 ]
+
+/**
+ * 变体识别色：把档位调色板向该色混合，得到同档不同变体的视觉差异。
+ * key = 变体 id；基础型（''）不染色。
+ */
+const VARIANT_TINTS = {
+  crit: [0xe0, 0x50, 0x50],
+  dh: [0x40, 0xc8, 0xe0],
+  det: [0xb0, 0x70, 0xe8],
+  bal: [0xd0, 0xd0, 0xd0],
+  str: [0xe0, 0x5a, 0x4a],
+  dex: [0x58, 0xc8, 0x68],
+  int: [0x58, 0x88, 0xe8],
+  vit: [0xe0, 0x9a, 0x48],
+  tank: [0x9a, 0x96, 0x82],
+  gold: [0xf0, 0xd0, 0x50],
+  haste: [0xf0, 0xa0, 0x38],
+  fish: [0x50, 0xc0, 0xd0],
+  yield: [0x68, 0xb8, 0x48],
+  xp: [0xc0, 0x90, 0xe0],
+  quality: [0xd8, 0xa8, 0x40],
+  speed: [0xe8, 0x78, 0x38],
+  master: [0xf0, 0xd8, 0x70],
+}
+
+/**
+ * 变体角标（3×3），画在图标右上角空白处，用 'a' 字符（变体强调色）。
+ * 只有空白像素才落笔，因此不会破坏底形。
+ */
+const VARIANT_MARKS = {
+  crit: ['.aa', '.a.', '...'],
+  dh: ['aa.', 'a..', '...'],
+  det: ['.a.', 'aaa', '.a.'],
+  bal: ['a.a', '.a.', 'a.a'],
+  str: ['aa.', 'aa.', '...'],
+  dex: ['.aa', '..a', '.a.'],
+  int: ['aaa', '..a', 'aaa'],
+  vit: ['.a.', 'aaa', '.a.'],
+  tank: ['aaa', 'a.a', 'aaa'],
+  gold: ['..a', '.a.', 'a..'],
+  haste: ['a.a', '.a.', '...'],
+  fish: ['aaa', '..a', '.aa'],
+  yield: ['.a.', 'aaa', '...'],
+  xp: ['a.a', 'aaa', '.a.'],
+  quality: ['.a.', 'aaa', '.a.'],
+  speed: ['a..', 'aa.', 'aaa'],
+  master: ['aaa', 'aaa', 'aaa'],
+}
+
+/** 变体强调色（角标色）：变体识别色提亮后使用 */
+function variantAccent(variantId) {
+  const tint = VARIANT_TINTS[variantId]
+  if (!tint) return null
+  return tint.map((c) => Math.min(255, Math.round(c * 1.15 + 25)))
+}
+
+/** 把档位调色板向变体色混合（t=0.32），并附加角标色 a */
+function tintPalette(palette, variantId) {
+  const tint = VARIANT_TINTS[variantId]
+  if (!tint) return palette
+  const t = 0.32
+  const blend = (c, i) => Math.round(c * (1 - t) + tint[i] * t)
+  return {
+    m: palette.m.map(blend),
+    d: palette.d.map(blend),
+    l: palette.l.map(blend),
+    a: variantAccent(variantId),
+  }
+}
 
 // ──────────────────── 采集/半成品/鱼/消耗品/专用装备 调色板 ────────────────────
 
-/** 生产专用装备（暖棕橙）3 档 */
+/** 生产专用装备（暖棕 → 琥珀）11 档 */
 const DOH_PALETTES = [
   { m: [0xa8, 0x76, 0x3f], d: [0x6f, 0x4a, 0x24], l: [0xd0, 0xa4, 0x68] },
+  { m: [0xb4, 0x80, 0x40], d: [0x78, 0x50, 0x24], l: [0xdc, 0xb0, 0x70] },
+  { m: [0xc0, 0x8a, 0x3e], d: [0x82, 0x58, 0x22], l: [0xe4, 0xba, 0x72] },
   { m: [0xc9, 0x8a, 0x3a], d: [0x8a, 0x5a, 0x20], l: [0xe8, 0xb9, 0x6a] },
+  { m: [0xd2, 0x96, 0x40], d: [0x92, 0x60, 0x1e], l: [0xec, 0xc0, 0x74] },
   { m: [0xd9, 0xa9, 0x4a], d: [0x9a, 0x6a, 0x1a], l: [0xf0, 0xd0, 0x8a] },
+  { m: [0xdd, 0xa0, 0x50], d: [0xa0, 0x64, 0x20], l: [0xf2, 0xc8, 0x86] },
+  { m: [0xe0, 0x9a, 0x54], d: [0xa6, 0x60, 0x24], l: [0xf6, 0xc4, 0x88] },
+  { m: [0xe4, 0x96, 0x58], d: [0xac, 0x5e, 0x28], l: [0xf8, 0xc0, 0x8c] },
+  { m: [0xe8, 0x92, 0x5c], d: [0xb0, 0x5c, 0x2c], l: [0xfa, 0xbc, 0x90] },
+  { m: [0xec, 0x8e, 0x60], d: [0xb4, 0x5a, 0x30], l: [0xfc, 0xb8, 0x94] },
 ]
 
-/** 采集专用装备（青绿）3 档 */
+/** 采集专用装备（草绿 → 青蓝）11 档 */
 const DOL_PALETTES = [
   { m: [0x5f, 0x8f, 0x5a], d: [0x3a, 0x5f, 0x36], l: [0x94, 0xc0, 0x8a] },
+  { m: [0x5c, 0x94, 0x62], d: [0x38, 0x62, 0x3c], l: [0x92, 0xc6, 0x92] },
+  { m: [0x58, 0x99, 0x6e], d: [0x36, 0x66, 0x44], l: [0x90, 0xcc, 0x9a] },
+  { m: [0x54, 0x9e, 0x7a], d: [0x34, 0x6a, 0x4c], l: [0x8e, 0xd0, 0xa2] },
+  { m: [0x50, 0xa3, 0x86], d: [0x32, 0x6e, 0x54], l: [0x8c, 0xd4, 0xaa] },
   { m: [0x4a, 0x9f, 0x88], d: [0x2a, 0x6a, 0x5a], l: [0x86, 0xd0, 0xb8] },
+  { m: [0x46, 0xa4, 0x94], d: [0x28, 0x6e, 0x62], l: [0x84, 0xd4, 0xc2] },
+  { m: [0x42, 0xa9, 0xa0], d: [0x26, 0x72, 0x6a], l: [0x82, 0xd8, 0xcc] },
+  { m: [0x3f, 0xae, 0xac], d: [0x24, 0x76, 0x72], l: [0x80, 0xdc, 0xd6] },
+  { m: [0x3f, 0xb0, 0xbb], d: [0x22, 0x74, 0x7e], l: [0x84, 0xde, 0xdc] },
   { m: [0x3f, 0xb0, 0xc0], d: [0x1f, 0x70, 0x80], l: [0x86, 0xe0, 0xe8] },
 ]
 
@@ -1073,7 +1182,8 @@ function drawCentered(grid, macro, label) {
 }
 
 function assertKnownChar(char, label) {
-  const known = char in FIXED_COLORS || 'mdl'.includes(char)
+  // a = 变体强调色（来自变体调色板的 a 通道）
+  const known = char in FIXED_COLORS || 'mdla'.includes(char)
   if (!known) throw new Error(`${label} 出现未定义的像素字符「${char}」`)
 }
 
@@ -1121,6 +1231,26 @@ function applyOrnament(grid, stamp, label) {
       const targetY = anchorY + y - Math.floor(height / 2)
       if (targetX < 0 || targetY < 0 || targetX >= SIZE || targetY >= SIZE) return
       if (grid[targetY][targetX] === EMPTY) return
+      grid[targetY][targetX] = char
+    })
+  })
+}
+
+/** 变体角标：画在右上角，只落笔在空白像素上，不破坏底形 */
+function applyVariantMark(grid, stamp, label) {
+  if (!stamp) return
+  const height = stamp.length
+  const width = Math.max(...stamp.map((row) => row.length))
+  const offsetX = SIZE - width
+  const offsetY = 0
+  stamp.forEach((row, y) => {
+    [...row].forEach((char, x) => {
+      if (char === EMPTY || char === ' ') return
+      assertKnownChar(char, `${label} 角标`)
+      const targetX = offsetX + x
+      const targetY = offsetY + y
+      if (targetX < 0 || targetY < 0 || targetX >= SIZE || targetY >= SIZE) return
+      if (grid[targetY][targetX] !== EMPTY) return
       grid[targetY][targetX] = char
     })
   })
@@ -1202,22 +1332,70 @@ function encodePng(width, height, rgba) {
 
 // ──────────────────────────────── 主流程 ────────────────────────────────
 
-/** 与 shared/schema/index.ts 的 expandBaseItems() 保持一致的 id 规则 */
+/** 与 shared/schema/index.ts 的 expandBaseItems() 保持一致的 id 规则（族 × 档位 × 变体） */
+const BASE_VARIANT = { id: '', minTier: 0 }
+
+function decoratedPalette(tier, variantId) {
+  const base = TIER_PALETTES[tier]
+  if (!base) throw new Error(`缺少档位 ${tier} 的调色板`)
+  return variantId ? tintPalette(base, variantId) : base
+}
+
 function listBaseItems(data) {
   const items = []
-  const push = (id, shape, tier) => {
-    items.push({ id, shape, palette: TIER_PALETTES[tier], ornament: ORNAMENTS[tier] })
+  const variants = data.variants ?? {}
+  const push = (id, shape, tier, variantId) => {
+    items.push({
+      id,
+      shape,
+      palette: decoratedPalette(tier, variantId),
+      ornament: ORNAMENTS[tier],
+      variantMark: variantId ? VARIANT_MARKS[variantId] ?? null : null,
+    })
+  }
+  const forEachVariant = (list, tier, cb) => {
+    for (const v of list ?? [BASE_VARIANT]) {
+      if ((v.minTier ?? 0) > tier) continue
+      cb(v)
+    }
   }
   for (const family of data.weaponFamilies) {
-    for (const tier of data.tiers) push(`w_${family.weaponType}_${tier.index}`, family.weaponType, tier.index)
+    for (const tier of data.tiers) {
+      forEachVariant(variants.weapon, tier.index, (v) =>
+        push(`w_${family.weaponType}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.weaponType, tier.index, v.id),
+      )
+    }
   }
   for (const family of data.armorFamilies) {
-    for (const tier of data.tiers) push(`a_${family.slot}_${tier.index}`, family.slot, tier.index)
+    for (const tier of data.tiers) {
+      forEachVariant(variants.armor, tier.index, (v) =>
+        push(`a_${family.slot}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.slot, tier.index, v.id),
+      )
+    }
   }
   for (const family of data.accessoryFamilies) {
-    for (const tier of data.tiers) push(`c_${family.slot}_${tier.index}`, family.slot, tier.index)
+    for (const tier of data.tiers) {
+      forEachVariant(variants.accessory, tier.index, (v) =>
+        push(`c_${family.slot}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.slot, tier.index, v.id),
+      )
+    }
   }
   return items
+}
+
+/** 与 listBaseItems 同源的期望数量（用于断言镜像未漂移） */
+function expectedBaseCount(data) {
+  const variants = data.variants ?? {}
+  const perFamily = (list) =>
+    data.tiers.reduce(
+      (sum, t) => sum + (list ?? [BASE_VARIANT]).filter((v) => (v.minTier ?? 0) <= t.index).length,
+      0,
+    )
+  return (
+    data.weaponFamilies.length * perFamily(variants.weapon) +
+    data.armorFamilies.length * perFamily(variants.armor) +
+    data.accessoryFamilies.length * perFamily(variants.accessory)
+  )
 }
 
 /** 采集材料 + 半成品（materials.json） */
@@ -1243,7 +1421,15 @@ function listDohdolItems(equipJson) {
   return equipJson.items.map((it) => {
     const shape = TOOL_SHAPE_BY_SLOT[it.slot] ?? it.slot.replace(/^doh|^dol/, '').toLowerCase()
     const palettes = it.kind === 'doh' ? DOH_PALETTES : DOL_PALETTES
-    return { id: it.id, shape, palette: palettes[it.tierIndex] ?? palettes[0], ornament: null }
+    const base = palettes[it.tierIndex] ?? palettes[palettes.length - 1]
+    const variantId = it.variant ?? ''
+    return {
+      id: it.id,
+      shape,
+      palette: variantId ? tintPalette(base, variantId) : base,
+      ornament: null,
+      variantMark: variantId ? VARIANT_MARKS[variantId] ?? null : null,
+    }
   })
 }
 
@@ -1293,7 +1479,7 @@ function main() {
   const fish = listFish(fishJson)
   const consumables = listConsumables(consumablesJson)
 
-  const expectedBase = (weapons + armors + accessories) * tiers
+  const expectedBase = expectedBaseCount(data)
   if (baseItems.length !== expectedBase) {
     throw new Error(`底材数量不符：期望 ${expectedBase}，实际 ${baseItems.length}`)
   }
@@ -1312,6 +1498,7 @@ function main() {
     const grid = blankGrid()
     drawCentered(grid, macro, item.id)
     if (item.ornament) applyOrnament(grid, item.ornament, item.id)
+    if (item.variantMark) applyVariantMark(grid, item.variantMark, item.id)
 
     const palette = item.palette
     if (!palette) throw new Error(`缺少「${item.id}」的调色板`)
