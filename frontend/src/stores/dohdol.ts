@@ -228,7 +228,10 @@ export const useDohDolStore = defineStore('dohdol', () => {
 
   async function useConsumable(itemId: string) {
     const res = await api.consume(itemId)
-    toast.push(`已使用 ${res.name}（${res.durationSec}s）`, 'success')
+    // 同槽位时长叠加：提示当前该槽位的剩余时长，而不是单次时长
+    const active = res.active.find((a) => a.kind === res.kind)
+    const remaining = active ? `，剩余 ${active.remainingSec}s` : ''
+    toast.push(`已使用 ${res.name}（+${res.durationSec}s${remaining}）`, 'success')
     await game.loadState()
   }
 

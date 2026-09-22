@@ -87,7 +87,7 @@ class FishRecord(Base):
 
 
 class ActiveConsumable(Base):
-    """生效中的药水 / 食物，二者各占一个槽位，可共存。"""
+    """生效中的药水 / 食物，二者各占一个槽位，可共存；同槽位连续使用时长叠加。"""
 
     __tablename__ = "active_consumables"
     __table_args__ = (sa.UniqueConstraint("user_id", "kind", name="uq_consumable_user_kind"),)
