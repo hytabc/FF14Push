@@ -532,6 +532,8 @@ export interface TavernCandidate {
 }
 
 export interface GameState {
+  /** 当前英雄低于账号最高等级时的战斗经验追赶加成。 */
+  catchUpExpBonusPct?: number
   activeHeroId?: number | null
   heroes?: Hero[]
   user: { id: number; nickname: string; gold: number }

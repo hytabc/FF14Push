@@ -3,7 +3,7 @@ from sqlalchemy import select
 from app.models import Hero
 from app.models.multiplayer import CoopReward,CoopProgress
 from app.services.roster import lock_user
-from app.services.progression import apply_exp
+from app.services.progression import apply_exp, catch_up_exp, highest_hero_level
 from app.services.item_factory import generate_item
 from app.services.grants import grant_generated_items
 
@@ -22,10 +22,13 @@ async def grant_reward(db,user_id,room,battle):
     reward=dungeon['reward'];gold=reward['firstGold' if first else 'repeatGold'];exp=reward['firstExp' if first else 'repeatExp']
     user.gold=int(user.gold)+gold
     allocations=[]
+    highest_level=await highest_hero_level(db,user_id)
     for i,h in enumerate(sorted(heroes,key=lambda h:h['snapshot']['heroId'])):
         hero=await db.get(Hero,h['snapshot']['heroId'])
         amount=exp//len(heroes)+(1 if i<exp%len(heroes) else 0)
-        if hero and hero.user_id==user_id:apply_exp(hero,amount)
+        if hero and hero.user_id==user_id:
+            amount=catch_up_exp(hero,amount,highest_level)
+            apply_exp(hero,amount)
         allocations.append({'heroId':h['snapshot']['heroId'],'exp':amount})
     items=[]
     for _ in range(reward['chests']):

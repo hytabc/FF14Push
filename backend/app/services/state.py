@@ -24,7 +24,7 @@ from app.services.dohdol_state import build_dohdol_state
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
 from app.services.loot import drop_rate_multiplier
-from app.services.progression import exp_to_next
+from app.services.progression import exp_to_next, highest_hero_level
 from app.services.recruiting import initial_hero, recruit_cost, with_recruit_cost
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
 from app.services.serialization import hero_to_dict, item_to_dict, loadout, tag_to_dict
@@ -128,6 +128,7 @@ async def build_game_state(
         "power": hero_power(stats),
         "powerAudit": power_audit(stats),
         "expToNext": exp_to_next(hero.level),
+        "catchUpExpBonusPct": 100 if hero.level < await highest_hero_level(db, user.id) else 0,
         "recruitCost": recruit_cost(hero.talent, hero.level),
         "loadout": loadout(items, hero.id),
         "activeHeroId": user.active_hero_id,

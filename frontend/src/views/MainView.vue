@@ -223,6 +223,7 @@ function dodgeInfo() {
           <div>
             <div class="mb-1 flex justify-between text-[11px] text-ink-400">
               <span>经验</span>
+              <span v-if="game.state?.catchUpExpBonusPct" class="text-amber-300">追赶经验 +100%</span>
               <span>{{ hero?.exp }} / {{ game.state?.expToNext }}</span>
             </div>
             <div class="h-1.5 overflow-hidden rounded-full bg-ink-800">

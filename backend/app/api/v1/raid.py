@@ -25,7 +25,7 @@ from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item, generate_item_for_slot
 from app.services.loot import chest_by_id
 from app.services.playtime import MAX_RAID_PLAY_MS, add_play_ms
-from app.services.progression import apply_exp
+from app.services.progression import apply_exp, combat_exp
 from app.services.raid_util import (
     all_raids,
     boss_stats_for_raid,
@@ -231,6 +231,7 @@ async def report_session(
     raw_exp = int(reward["firstExp"]) if first_clear else int(reward.get("repeatExp", 0))
     raw_exp = int(raw_exp * reward_multiplier)
     exp_gained = apply_exp_bonus(raw_exp, stats.term_mods) if raw_exp > 0 else 0
+    exp_gained = await combat_exp(db, hero, exp_gained)
     level_info = apply_exp(hero, exp_gained)
 
     grant = EMPTY_GRANT

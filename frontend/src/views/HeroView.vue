@@ -112,6 +112,7 @@ function hasteInfo() {
             <div class="mb-1 flex justify-between text-[11px] text-ink-400">
               <span>等级 {{ hero.level }} / {{ data.heroes.levelCap }}</span>
               <span>{{ hero.exp }} / {{ game.state?.expToNext }} 经验</span>
+              <span v-if="game.state?.catchUpExpBonusPct" class="text-amber-300">追赶经验 +100%</span>
             </div>
             <div class="h-2 overflow-hidden rounded-full bg-ink-800">
               <div class="h-full rounded-full bg-amber-400 transition-all" :style="{ width: `${expPct}%` }" />

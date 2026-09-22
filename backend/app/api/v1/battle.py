@@ -35,7 +35,7 @@ from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import boss_box_for_region, chest_by_id
-from app.services.progression import apply_exp
+from app.services.progression import apply_exp, combat_exp
 from app.services.playtime import add_play_ms
 from app.services.regions_util import apply_exp_bonus, kills_required, roll_gold, spawn_interval
 from app.services.stats import compute_stats
@@ -207,6 +207,7 @@ async def report(
     result.total_exp = int(result.total_exp * reward_multiplier)
     user.gold = int(user.gold) + result.total_gold
     gained_exp = apply_exp_bonus(result.total_exp, merged_mods)  # 经验获取效率 Buff
+    gained_exp = await combat_exp(db, hero, gained_exp)
     level_info = apply_exp(hero, gained_exp)
 
     # 装备：怪物不掉落，仅能通过抽箱获取（BOSS 宝箱见 _settle_boss）
@@ -288,6 +289,7 @@ async def _settle_boss(
     boss_exp = apply_exp_bonus(max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"]))), term_mods or {})
 
     user.gold = int(user.gold) + boss_gold
+    boss_exp = await combat_exp(db, hero, boss_exp)
     level_info = apply_exp(hero, boss_exp)
     await unlock_monster(db, user.id, f"boss_r{payload.regionId}")
 

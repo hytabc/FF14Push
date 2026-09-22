@@ -273,6 +273,22 @@ class TestBattleLoop:
         assert result["expGained"] > 0
         assert result["killCount"] > 0
 
+    async def test_lower_level_hero_gets_double_battle_exp(self, auth_client, session_factory):
+        async with session_factory() as db:
+            hero = (await db.scalars(select(Hero))).first()
+            hero.level = 10
+            hero.exp = 0
+            user_id = hero.user_id
+            await db.commit()
+        base = await _farm(auth_client, session_factory, 1, reports=1)
+        async with session_factory() as db:
+            db.add(Hero(user_id=user_id, name="最高等级英雄", level=60,
+                        talent="common", attr_bias="balanced"))
+            await db.commit()
+        boosted = await _farm(auth_client, session_factory, 1, reports=1)
+        assert base['expGained'] > 0
+        assert boosted['expGained'] == base['expGained'] * 2
+
     async def test_exp_gain_term_boosts_exp(self, auth_client, session_factory) -> None:
         """经验获取效率词条：服务端按百分比加成结算经验。"""
         base = await _farm(auth_client, session_factory, 1, reports=4)

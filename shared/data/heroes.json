@@ -2,10 +2,14 @@
   "$comment": "英雄属性与成长公式。来源：PRD 招募 4.1（基础属性）、6.1-6.2（成长）、7.2（MP 系统）、2.11.3（等级影响）",
   "levelCap": 100,
   "initialLevel": 1,
-  "$commentExp": "升级所需经验 = round(base × growth^(level-1))。PRD 未给出曲线，此处可调。",
+  "$commentExp": "升级所需经验 = round(base × growth^(level-1) × 等级段系数)。60–99 级系数由 0.9 线性降至 0.7，1–59 级不变。",
   "expCurve": {
     "base": 120,
-    "growth": 1.16
+    "growth": 1.16,
+    "reductionStartLevel": 60,
+    "reductionEndLevel": 99,
+    "startMultiplier": 0.9,
+    "endMultiplier": 0.7
   },
   "$commentAttr": "面板属性 = base + Σ(coef[核心属性] × 核心属性总量)，再叠加等级成长；cap 为百分数上限。核心属性 = 英雄自身三维 + 装备三维（按 attrGainRate 折算）。",
   "attributes": {

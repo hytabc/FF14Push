@@ -308,6 +308,7 @@ function skillInfo(count: number) {
               <div class="mb-1 flex justify-between text-[11px] text-ink-400">
                 <span>经验</span>
                 <span>{{ game.hero?.exp }} / {{ game.state?.expToNext }}</span>
+              <span v-if="game.state?.catchUpExpBonusPct" class="text-amber-300">追赶经验 +100%</span>
               </div>
               <div class="h-1.5 overflow-hidden rounded-full bg-ink-800">
                 <div class="h-full rounded-full bg-amber-400 transition-all" :style="{ width: `${expPct}%` }" />
