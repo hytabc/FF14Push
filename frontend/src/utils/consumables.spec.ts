@@ -4,7 +4,7 @@ import { activityExpLog, experienceLog } from './battleLog'
 
 describe('消耗品与经验展示', () => {
   it('显示所有效果和时长，并正确换算抽箱幸运比例', () => {
-    expect(consumableBonus('p_chestLuck')).toBe('抽箱品阶概率 +15% · 持续 60 秒')
+    expect(consumableBonus('p_chestLuck')).toBe('抽箱品阶概率 +15% · 持续 600 秒')
     expect(consumableBonus('f_fishInsightPct')).toBe('捕鱼人之识时长 +20% · 鱼王/鱼皇概率 +1.2% · 持续 1800 秒')
     expect(consumableBonus(null)).toBe('')
   })

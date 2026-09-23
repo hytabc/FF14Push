@@ -339,9 +339,9 @@ def test_exp_gain_term_covers_all_accessories() -> None:
 
 
 def test_consumable_tiers_keep_durations() -> None:
-    """高等级药食只放大效果，单个物品的持续时长仍由 kind 决定（秘药 60s / 料理 1800s）。"""
+    """高等级药食只放大效果，单个物品的持续时长仍由 kind 决定（秘药 600s / 料理 1800s）。"""
     kinds = CONFIG.consumables["kinds"]
-    assert int(kinds["potion"]["durationSec"]) == 60
+    assert int(kinds["potion"]["durationSec"]) == 600
     assert int(kinds["food"]["durationSec"]) == 1800
 
     by_stat: dict[tuple[str, str], list[float]] = {}

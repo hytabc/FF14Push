@@ -394,7 +394,7 @@ dump("fish.json", {
 
 # ---------------------------------------------------------------- 消耗品
 # 药食分三档：I 档（生产 Lv1，现有）、II 档（Lv40）、III 档（Lv80）。效果按 scale 放大，
-# 但单个物品的持续时长不变（由 kinds 决定：药水 60s / 食物 1800s）。
+# 但单个物品的持续时长不变（由 kinds 决定：药水 600s / 食物 1800s）。
 CONSUMABLE_TIERS = [
     {"suffix": "", "label": "", "level": 1, "scale": 1.0, "seconds": 2.5, "xp": 40},
     {"suffix": "2", "label": " II", "level": 40, "scale": 2.0, "seconds": 5.0, "xp": 80},
@@ -433,7 +433,7 @@ for tier in CONSUMABLE_TIERS:
         cid = f"p_{stat}{tier['suffix']}"
         consumables.append({
             "id": cid, "name": f"{label}秘药{tier['label']}", "kind": "potion",
-            "effects": effects, "desc": f"60 秒内{label}提升。",
+            "effects": effects, "desc": f"600 秒内{label}提升。",
             "sell": int(round(120 * scale)),
         })
         CONSUMABLE_TIER_BY_ID[cid] = tier
@@ -461,9 +461,9 @@ def consumable_stat_max(stat):
     return sum(best.values())
 
 dump("consumables.json", {
-    "$comment": "药水（60s，效果强）与食物（1800s，效果弱）。分 I/II/III 三档，档位越高效果越强（×1/×2/×4），但单个物品的持续时长不变；II/III 档配方需生产等级 40/80。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。sell 为出售单价（金币）。",
+    "$comment": "药水（600s，效果强）与食物（1800s，效果弱）。分 I/II/III 三档，档位越高效果越强（×1/×2/×4），但单个物品的持续时长不变；II/III 档配方需生产等级 40/80。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。sell 为出售单价（金币）。",
     "kinds": {
-        "potion": {"name": "药水", "durationSec": 60},
+        "potion": {"name": "药水", "durationSec": 600},
         "food": {"name": "食物", "durationSec": 1800},
     },
     "effectNames": {
