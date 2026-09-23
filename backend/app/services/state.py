@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import (
     AutoSellSetting,
     ChestPity,
+    ChestUnlock,
     Hero,
     HeroSkillStat,
     Item,
@@ -105,6 +106,9 @@ async def build_game_state(
     auto_sell = (
         await db.execute(select(AutoSellSetting).where(AutoSellSetting.user_id == user.id))
     ).scalar_one_or_none()
+    chest_unlocks = (
+        await db.execute(select(ChestUnlock).where(ChestUnlock.user_id == user.id))
+    ).scalars().all()
     tag_rows = (
         await db.execute(
             select(ItemTag).where(ItemTag.user_id == user.id).order_by(ItemTag.id)
@@ -164,7 +168,9 @@ async def build_game_state(
                 "rarities": list(auto_sell.rarities)
                 if auto_sell
                 else list(CONFIG.economy["sell"]["autoSellRarities"]),
-            }
+            },
+            # 已一次性金币解锁的连抽档位（如 50 / 100 连）；账号级。
+            "chestUnlocks": sorted(int(row.draw_count) for row in chest_unlocks),
         },
         "dohdol": await build_dohdol_state(
             db, user.id, items, hero.level, cleared_count

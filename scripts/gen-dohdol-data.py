@@ -393,6 +393,13 @@ dump("fish.json", {
 })
 
 # ---------------------------------------------------------------- 消耗品
+# 药食分三档：I 档（生产 Lv1，现有）、II 档（Lv40）、III 档（Lv80）。效果按 scale 放大，
+# 但单个物品的持续时长不变（由 kinds 决定：药水 60s / 食物 1800s）。
+CONSUMABLE_TIERS = [
+    {"suffix": "", "label": "", "level": 1, "scale": 1.0, "seconds": 2.5, "xp": 40},
+    {"suffix": "2", "label": " II", "level": 40, "scale": 2.0, "seconds": 5.0, "xp": 80},
+    {"suffix": "3", "label": " III", "level": 80, "scale": 4.0, "seconds": 8.0, "xp": 160},
+]
 POTION_EFFECTS = [
     ("expGainPct", 25, "经验获取"), ("goldGainPct", 25, "金币获取"),
     ("chestLuck", 0.15, "抽箱品阶概率"), ("craftQualityPct", 10, "制造品质概率"),
@@ -405,26 +412,56 @@ FOOD_EFFECTS = [
     ("craftRarityPct", 6, "制造品阶概率"),
     ("fishInsightPct", 20, "捕鱼人之识时长"), ("gatherYieldPct", 12, "采集产量"),
 ]
+
+
+def scaled_effect(value, scale):
+    """按档位放大效果值；I 档原样返回，整数保持整数（避免无谓的 JSON 漂移）。"""
+    if scale == 1.0:
+        return value
+    out = value * scale
+    return int(out) if isinstance(value, int) else round(out, 2)
+
+
 consumables = []
-for stat, value, label in POTION_EFFECTS:
-    effects = [{"stat": stat, "value": value}]
-    if stat == "fishInsightPct":
-        effects.append({"stat": "fishChancePct", "value": 3.0})
-    consumables.append({
-        "id": f"p_{stat}", "name": f"{label}秘药", "kind": "potion",
-        "effects": effects, "desc": f"60 秒内{label}提升。", "sell": 120,
-    })
-for stat, value, label in FOOD_EFFECTS:
-    effects = [{"stat": stat, "value": value}]
-    if stat == "fishInsightPct":
-        effects.append({"stat": "fishChancePct", "value": 1.2})
-    consumables.append({
-        "id": f"f_{stat}", "name": f"{label}料理", "kind": "food",
-        "effects": effects, "desc": f"1800 秒内{label}小幅提升，可与药水共存。", "sell": 50,
-    })
+CONSUMABLE_TIER_BY_ID = {}
+for tier in CONSUMABLE_TIERS:
+    scale = tier["scale"]
+    for stat, value, label in POTION_EFFECTS:
+        effects = [{"stat": stat, "value": scaled_effect(value, scale)}]
+        if stat == "fishInsightPct":
+            effects.append({"stat": "fishChancePct", "value": scaled_effect(3.0, scale)})
+        cid = f"p_{stat}{tier['suffix']}"
+        consumables.append({
+            "id": cid, "name": f"{label}秘药{tier['label']}", "kind": "potion",
+            "effects": effects, "desc": f"60 秒内{label}提升。",
+            "sell": int(round(120 * scale)),
+        })
+        CONSUMABLE_TIER_BY_ID[cid] = tier
+    for stat, value, label in FOOD_EFFECTS:
+        effects = [{"stat": stat, "value": scaled_effect(value, scale)}]
+        if stat == "fishInsightPct":
+            effects.append({"stat": "fishChancePct", "value": scaled_effect(1.2, scale)})
+        cid = f"f_{stat}{tier['suffix']}"
+        consumables.append({
+            "id": cid, "name": f"{label}料理{tier['label']}", "kind": "food",
+            "effects": effects,
+            "desc": f"1800 秒内{label}{'小幅' if scale == 1.0 else '大幅'}提升，可与药水共存。",
+            "sell": int(round(50 * scale)),
+        })
+        CONSUMABLE_TIER_BY_ID[cid] = tier
+
+
+def consumable_stat_max(stat):
+    """某 stat 的可达上限：药水 / 食物各占一个槽位，故按 kind 取最大值再求和。"""
+    best = {}
+    for c in consumables:
+        for e in c["effects"]:
+            if e["stat"] == stat:
+                best[c["kind"]] = max(best.get(c["kind"], 0.0), float(e["value"]))
+    return sum(best.values())
 
 dump("consumables.json", {
-    "$comment": "药水（60s，效果强）与食物（1800s，效果弱）。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。sell 为出售单价（金币）。",
+    "$comment": "药水（60s，效果强）与食物（1800s，效果弱）。分 I/II/III 三档，档位越高效果越强（×1/×2/×4），但单个物品的持续时长不变；II/III 档配方需生产等级 40/80。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。sell 为出售单价（金币）。",
     "kinds": {
         "potion": {"name": "药水", "durationSec": 60},
         "food": {"name": "食物", "durationSec": 1800},
@@ -578,6 +615,8 @@ for t in (t for t in BASE_ITEMS["tiers"] if t["index"] in (6, 7, 8)):
             add(f"r_{bid}", "GSM", t["levelReq"], 8.0 + t["index"], 200 + t["index"] * 30,
                 combat_inputs("GSM", t["index"]), {"kind": "equipment", "baseId": bid})
 
+# I 档（现有）用通用材料；II/III 档换用对应地区的采集材料（flora17/ore17、flora32/ore32），
+# 且输入出售价合计不低于产出，避免「采集 → 制造 → 出售」成为刷金币路线。
 CONSUMABLE_INPUTS = {
     "p_expGainPct": [("h_ink", 2), ("g_herb", 3)], "p_goldGainPct": [("h_ink", 2), ("g_gem", 2)],
     "p_chestLuck": [("h_gemcut", 2), ("h_ink", 2)], "p_craftQualityPct": [("h_oil", 2), ("h_ink", 2)],
@@ -587,10 +626,33 @@ CONSUMABLE_INPUTS = {
     "f_chestLuck": [("h_flour", 2), ("h_gemcut", 1)], "f_craftQualityPct": [("h_flour", 2), ("h_oil", 1)],
     "f_craftRarityPct": [("h_flour", 2), ("h_gemcut", 1)],
     "f_fishInsightPct": [("h_flour", 3), ("g_herb", 2)], "f_gatherYieldPct": [("h_flour", 2), ("g_fiber", 2)],
+
+    # II 档（生产 Lv40，地区 17 材料，单价 32）
+    "p_expGainPct2": [("h_ink", 2), ("flora17", 5)], "p_goldGainPct2": [("h_ink", 2), ("ore17", 5)],
+    "p_chestLuck2": [("h_gemcut", 2), ("h_ink", 2), ("flora17", 2)],
+    "p_craftQualityPct2": [("h_oil", 2), ("h_ink", 2), ("ore17", 2)],
+    "p_craftRarityPct2": [("h_gemcut", 2), ("h_oil", 2), ("ore17", 2)],
+    "p_fishInsightPct2": [("h_oil", 3), ("flora17", 4)], "p_gatherYieldPct2": [("h_oil", 2), ("flora17", 5)],
+    "f_expGainPct2": [("h_flour", 2), ("flora17", 2)], "f_goldGainPct2": [("h_flour", 2), ("ore17", 2)],
+    "f_chestLuck2": [("h_flour", 2), ("flora17", 2)], "f_craftQualityPct2": [("h_flour", 2), ("ore17", 2)],
+    "f_craftRarityPct2": [("h_flour", 2), ("ore17", 2)],
+    "f_fishInsightPct2": [("h_flour", 3), ("flora17", 2)], "f_gatherYieldPct2": [("h_flour", 2), ("flora17", 2)],
+
+    # III 档（生产 Lv80，地区 32 材料，单价 128）
+    "p_expGainPct3": [("h_ink", 2), ("flora32", 3)], "p_goldGainPct3": [("h_ink", 2), ("ore32", 3)],
+    "p_chestLuck3": [("h_gemcut", 2), ("h_ink", 2), ("flora32", 3)],
+    "p_craftQualityPct3": [("h_oil", 2), ("h_ink", 2), ("ore32", 3)],
+    "p_craftRarityPct3": [("h_gemcut", 2), ("h_oil", 2), ("ore32", 3)],
+    "p_fishInsightPct3": [("h_oil", 3), ("flora32", 3)], "p_gatherYieldPct3": [("h_oil", 2), ("flora32", 3)],
+    "f_expGainPct3": [("h_flour", 2), ("flora32", 1)], "f_goldGainPct3": [("h_flour", 2), ("ore32", 1)],
+    "f_chestLuck3": [("h_flour", 2), ("flora32", 1)], "f_craftQualityPct3": [("h_flour", 2), ("ore32", 1)],
+    "f_craftRarityPct3": [("h_flour", 2), ("ore32", 1)],
+    "f_fishInsightPct3": [("h_flour", 3), ("flora32", 1)], "f_gatherYieldPct3": [("h_flour", 2), ("flora32", 1)],
 }
 for c in consumables:
     job = "ALC" if c["kind"] == "potion" else "CUL"
-    add(f"r_{c['id']}", job, 1, 2.5, 40, CONSUMABLE_INPUTS[c["id"]],
+    tier = CONSUMABLE_TIER_BY_ID[c["id"]]
+    add(f"r_{c['id']}", job, tier["level"], tier["seconds"], tier["xp"], CONSUMABLE_INPUTS[c["id"]],
         {"kind": "consumable", "itemId": c["id"], "count": 1})
 
 dump("recipes.json", {
@@ -614,7 +676,7 @@ dump("recipes.json", {
                 "clearedRegions": {"weight": 0.10, "ref": 40},
                 "prodLevel": {"weight": 0.15, "ref": 100},
                 "gearPct": {"weight": 0.25, "ref": 186.1},
-                "consumablePct": {"weight": 0.10, "ref": 21},
+                "consumablePct": {"weight": 0.10, "ref": int(consumable_stat_max("craftRarityPct"))},
                 "coopClears": {"weight": 0.15, "ref": 33},
                 "raidClears": {"weight": 0.10, "ref": 10},
             },

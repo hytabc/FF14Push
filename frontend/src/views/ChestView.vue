@@ -8,17 +8,20 @@ import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { chestLuckExplain, chestRarityExplain, pityExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
-import { useToastStore } from '@/stores/toast'
 import type { Item } from '@/game/types'
 import { attrName, attrSuffix, formatNumber, rarityBg, rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
-const toast = useToastStore()
 
 const chests = data.chests.chests
 const LEVEL_BANDS = data.chests.levelBands
+const DRAW_COUNTS = data.chests.drawCounts
 const busy = ref<string | null>(null)
-const revealItems = ref<Item[]>([])
+const unlocking = ref<number | null>(null)
+/** 抽奖展示物品：包含被自动出售的物品（结果页再做出售结算展示）。 */
+type RevealItem = Item & { autoSold?: boolean; price?: number }
+const revealItems = ref<RevealItem[]>([])
+const autoGold = ref(0)
 const showReveal = ref(false)
 const phase = ref<'spinning' | 'result'>('result')
 const spinKey = ref(0)
@@ -27,6 +30,8 @@ const lastDraw = ref<{ chestId: string; count: number } | null>(null)
 /** 开箱转盘节奏（毫秒）：与 ChestReel 保持一致。 */
 const REEL_DURATION = 2600
 const REEL_STAGGER = 120
+/** 大数量（>10）网格波浪揭晓的错峰上限与总时长。 */
+const GRID_WAVE_MS = 1200
 
 const reducedMotion =
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -76,6 +81,42 @@ function odds(chest: { tier: string }) {
 
 const canAfford = computed(() => (price: number, count: number) => game.gold >= price * count)
 
+/** 已解锁的连抽档位：unlockCost=0 的恒可用；其余看账号解锁记录（账号级，所有箱子通用）。 */
+const unlockedCounts = computed(
+  () =>
+    new Set<number>([
+      ...DRAW_COUNTS.filter((d) => d.unlockCost === 0).map((d) => d.count),
+      ...(game.state?.settings.chestUnlocks ?? []),
+    ]),
+)
+/** 待解锁（需一次性金币）的连抽档位。 */
+const lockedCounts = computed(() => DRAW_COUNTS.filter((d) => !unlockedCounts.value.has(d.count)))
+/** 箱子卡片上展示的连抽按钮：单抽/十连恒显示，高连抽解锁后显示。 */
+const cardCounts = computed(() =>
+  DRAW_COUNTS.filter((d) => d.count <= 10 || unlockedCounts.value.has(d.count)),
+)
+/** 本次抽奖中被自动出售的件数。 */
+const soldCount = computed(() => revealItems.value.filter((i) => i.autoSold).length)
+
+function countLabel(count: number): string {
+  return count === 1 ? '单抽' : count === 10 ? '十连' : `${count} 连`
+}
+
+/** 大数量网格波浪揭晓的单件错峰（毫秒），总量封顶 GRID_WAVE_MS。 */
+function gridStagger(count: number): number {
+  return count > 0 ? Math.min(30, GRID_WAVE_MS / count) : 0
+}
+
+async function unlock(count: number) {
+  if (unlocking.value) return
+  unlocking.value = count
+  try {
+    await game.unlockChestDraw(count)
+  } finally {
+    unlocking.value = null
+  }
+}
+
 const luckExplain = computed(() => chestLuckExplain(chestLuck.value))
 const pityExplanation = pityExplain()
 
@@ -113,21 +154,24 @@ async function draw(chestId: string, count: number) {
   try {
     const res = await game.openChest(chestId, count, band.value)
     if (!res) return
-    revealItems.value = res.items
+    // 被自动出售的物品也并入展示：动画照常播放，出售结算在结果页展示。
+    revealItems.value = [...res.items, ...res.autoSold]
+    autoGold.value = res.autoGold
     lastDraw.value = { chestId, count }
     spinKey.value += 1
     showReveal.value = true
-    if (reducedMotion || res.items.length === 0) {
+    if (reducedMotion || revealItems.value.length === 0) {
       phase.value = 'result'
     } else {
       phase.value = 'spinning'
-      const total = (res.items.length - 1) * REEL_STAGGER + REEL_DURATION + 250
+      const len = revealItems.value.length
+      const total =
+        len <= 10
+          ? (len - 1) * REEL_STAGGER + REEL_DURATION + 250
+          : len * gridStagger(len) + 300
       revealTimer = window.setTimeout(() => {
         phase.value = 'result'
       }, total)
-    }
-    if (res.autoSold.length) {
-      toast.push(`自动出售 ${res.autoSold.length} 件装备`, 'info')
     }
   } finally {
     busy.value = null
@@ -190,6 +234,35 @@ function bestRarity(): string {
       </div>
     </section>
 
+    <section v-if="lockedCounts.length" class="card p-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <h3 class="text-sm font-semibold text-white">连抽解锁</h3>
+        <span class="text-[11px] text-ink-400">
+          用金币一次性解锁高连抽档位，解锁后所有箱子通用（账号级，永久有效）。
+        </span>
+      </div>
+      <div class="mt-3 grid gap-2 sm:grid-cols-2">
+        <div
+          v-for="d in lockedCounts"
+          :key="d.count"
+          class="flex items-center justify-between gap-3 rounded-md border border-ink-700 px-3 py-2"
+        >
+          <div>
+            <p class="text-sm text-white">{{ d.count }} 连抽</p>
+            <p class="text-[11px] text-ink-400">解锁价 {{ formatNumber(d.unlockCost) }} 金币</p>
+          </div>
+          <button
+            class="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-40"
+            :disabled="game.gold < d.unlockCost || unlocking === d.count"
+            :title="game.gold < d.unlockCost ? '金币不足' : `解锁 ${d.count} 连抽`"
+            @click="unlock(d.count)"
+          >
+            {{ unlocking === d.count ? '解锁中…' : '解锁' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
     <section data-tutorial="chest" class="grid gap-3 md:grid-cols-2">
       <article v-for="chest in chests" :key="chest.id" class="card p-4">
         <div class="flex items-start justify-between">
@@ -245,27 +318,27 @@ function bestRarity(): string {
           </div>
         </div>
 
-        <div class="mt-4 flex gap-2">
+        <div class="mt-4 grid grid-cols-2 gap-2">
           <button
-            class="flex-1 rounded-md bg-ink-700 py-2 text-xs hover:bg-ink-600 disabled:opacity-40"
-            :disabled="!canAfford(unitPrice(chest), 1) || busy === chest.id"
-            @click="draw(chest.id, 1)"
+            v-for="d in cardCounts"
+            :key="d.count"
+            class="rounded-md py-2 text-xs disabled:opacity-40"
+            :class="
+              d.count >= 10
+                ? 'bg-amber-500 font-medium text-ink-950 hover:bg-amber-400'
+                : 'bg-ink-700 hover:bg-ink-600'
+            "
+            :disabled="!canAfford(unitPrice(chest), d.count) || busy === chest.id"
+            @click="draw(chest.id, d.count)"
           >
-            单抽 · {{ formatNumber(unitPrice(chest)) }}
-          </button>
-          <button
-            class="flex-1 rounded-md bg-amber-500 py-2 text-xs font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-40"
-            :disabled="!canAfford(unitPrice(chest), 10) || busy === chest.id"
-            @click="draw(chest.id, 10)"
-          >
-            十连 · {{ formatNumber(unitPrice(chest) * 10) }}
+            {{ countLabel(d.count) }} · {{ formatNumber(unitPrice(chest) * d.count) }}
           </button>
         </div>
       </article>
     </section>
 
     <Modal :open="showReveal" :title="modalTitle" max-width="max-w-4xl" @close="closeReveal()">
-      <!-- 开箱转盘：单抽 1 个，十连 10 个并行 -->
+      <!-- 开箱动画：单抽 1 个滚轮，十连 10 个并行滚轮，50/100 连网格波浪揭晓 -->
       <div v-if="phase === 'spinning'" class="space-y-3">
         <div v-if="revealItems.length === 1" class="mx-auto w-full max-w-xl">
           <ChestReel
@@ -276,7 +349,7 @@ function bestRarity(): string {
             :duration="REEL_DURATION"
           />
         </div>
-        <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div v-else-if="revealItems.length <= 10" class="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <ChestReel
             v-for="(item, index) in revealItems"
             :key="`${spinKey}-${index}`"
@@ -289,6 +362,23 @@ function bestRarity(): string {
             compact
           />
         </div>
+        <div
+          v-else
+          class="grid max-h-[60vh] grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-5 lg:grid-cols-8"
+        >
+          <div
+            v-for="(item, index) in revealItems"
+            :key="`spin-${index}`"
+            class="animate-rise rounded-lg border p-1.5"
+            :class="[rarityClass(item.rarity), rarityBg(item.rarity)]"
+            :style="{ animationDelay: `${index * gridStagger(revealItems.length)}ms` }"
+          >
+            <div class="flex flex-col items-center gap-1">
+              <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="32" variant="lite" />
+              <span class="w-full truncate text-center text-[9px] text-ink-200">{{ item.name }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 详细结果 -->
@@ -300,13 +390,16 @@ function bestRarity(): string {
           </span>
           <span class="ml-auto text-ink-400">共 {{ revealItems.length }} 件</span>
         </div>
+        <p v-if="soldCount" class="text-[11px] text-amber-300">
+          自动出售 {{ soldCount }} 件，+{{ formatNumber(autoGold) }} 金币（已结算，未入背包）
+        </p>
 
         <div class="grid max-h-[55vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
           <div
             v-for="(item, index) in revealItems"
-            :key="item.id"
+            :key="`result-${index}`"
             class="animate-rise rounded-lg border p-3"
-            :class="[rarityClass(item.rarity), rarityBg(item.rarity)]"
+            :class="[rarityClass(item.rarity), rarityBg(item.rarity), item.autoSold ? 'opacity-75' : '']"
             :style="{ animationDelay: `${Math.min(index * 45, 400)}ms` }"
           >
             <div class="flex items-center gap-2">
@@ -316,6 +409,12 @@ function bestRarity(): string {
                 <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>
               </div>
             </div>
+            <p
+              v-if="item.autoSold"
+              class="mt-1 inline-block rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
+            >
+              已自动出售 +{{ formatNumber(item.price ?? 0) }}
+            </p>
             <p v-for="entry in item.subAttrs" :key="entry.attr" class="text-[10px] text-ink-300">
               {{ attrName(entry.attr) }} +{{ entry.value.toFixed(2) }}{{ attrSuffix(entry.attr) }}
             </p>

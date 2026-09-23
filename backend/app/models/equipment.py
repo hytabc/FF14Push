@@ -73,3 +73,17 @@ class ChestPity(Base):
     since_rare: Mapped[int] = mapped_column(sa.Integer, default=0)
     since_epic: Mapped[int] = mapped_column(sa.Integer, default=0)
     since_legendary: Mapped[int] = mapped_column(sa.Integer, default=0)
+
+
+class ChestUnlock(Base):
+    """已用金币一次性解锁的抽箱连抽档位（如 50 / 100 连）。账号级，解锁后所有箱子通用。"""
+
+    __tablename__ = "chest_unlocks"
+    __table_args__ = (sa.UniqueConstraint("user_id", "draw_count", name="uq_chest_unlock_user_count"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    draw_count: Mapped[int] = mapped_column(sa.Integer)
+    unlocked_at: Mapped[sa.DateTime] = mapped_column(
+        sa.DateTime(timezone=True), server_default=sa.func.now()
+    )

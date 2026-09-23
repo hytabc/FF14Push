@@ -10,7 +10,7 @@ from app.models.dohdol import (
     StackItem,
     UserTitle,
 )
-from app.models.equipment import ChestPity, Item, ItemTag
+from app.models.equipment import ChestPity, ChestUnlock, Item, ItemTag
 from app.models.progress import (
     AutoSellSetting,
     CodexEquipment,
@@ -36,6 +36,7 @@ __all__ = [
     "Item",
     "ItemTag",
     "ChestPity",
+    "ChestUnlock",
     "RegionProgress",
     "CodexEquipment",
     "CodexMonster",

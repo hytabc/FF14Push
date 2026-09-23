@@ -1,5 +1,5 @@
 {
-  "$comment": "药水（60s，效果强）与食物（1800s，效果弱）。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。sell 为出售单价（金币）。",
+  "$comment": "药水（60s，效果强）与食物（1800s，效果弱）。分 I/II/III 三档，档位越高效果越强（×1/×2/×4），但单个物品的持续时长不变；II/III 档配方需生产等级 40/80。可同时生效（各占一个槽位），由玩家手动使用。效果不影响战力与地区/副本门槛。sell 为出售单价（金币）。",
   "kinds": {
     "potion": {
       "name": "药水",
@@ -210,6 +210,386 @@
       ],
       "desc": "1800 秒内采集产量小幅提升，可与药水共存。",
       "sell": 50
+    },
+    {
+      "id": "p_expGainPct2",
+      "name": "经验获取秘药 II",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "expGainPct",
+          "value": 50
+        }
+      ],
+      "desc": "60 秒内经验获取提升。",
+      "sell": 240
+    },
+    {
+      "id": "p_goldGainPct2",
+      "name": "金币获取秘药 II",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "goldGainPct",
+          "value": 50
+        }
+      ],
+      "desc": "60 秒内金币获取提升。",
+      "sell": 240
+    },
+    {
+      "id": "p_chestLuck2",
+      "name": "抽箱品阶概率秘药 II",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "chestLuck",
+          "value": 0.3
+        }
+      ],
+      "desc": "60 秒内抽箱品阶概率提升。",
+      "sell": 240
+    },
+    {
+      "id": "p_craftQualityPct2",
+      "name": "制造品质概率秘药 II",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "craftQualityPct",
+          "value": 20
+        }
+      ],
+      "desc": "60 秒内制造品质概率提升。",
+      "sell": 240
+    },
+    {
+      "id": "p_craftRarityPct2",
+      "name": "制造品阶概率秘药 II",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "craftRarityPct",
+          "value": 30
+        }
+      ],
+      "desc": "60 秒内制造品阶概率提升。",
+      "sell": 240
+    },
+    {
+      "id": "p_fishInsightPct2",
+      "name": "捕鱼人之识时长秘药 II",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "fishInsightPct",
+          "value": 100
+        },
+        {
+          "stat": "fishChancePct",
+          "value": 6.0
+        }
+      ],
+      "desc": "60 秒内捕鱼人之识时长提升。",
+      "sell": 240
+    },
+    {
+      "id": "p_gatherYieldPct2",
+      "name": "采集产量秘药 II",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "gatherYieldPct",
+          "value": 60
+        }
+      ],
+      "desc": "60 秒内采集产量提升。",
+      "sell": 240
+    },
+    {
+      "id": "f_expGainPct2",
+      "name": "经验获取料理 II",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "expGainPct",
+          "value": 20
+        }
+      ],
+      "desc": "1800 秒内经验获取大幅提升，可与药水共存。",
+      "sell": 100
+    },
+    {
+      "id": "f_goldGainPct2",
+      "name": "金币获取料理 II",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "goldGainPct",
+          "value": 20
+        }
+      ],
+      "desc": "1800 秒内金币获取大幅提升，可与药水共存。",
+      "sell": 100
+    },
+    {
+      "id": "f_chestLuck2",
+      "name": "抽箱品阶概率料理 II",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "chestLuck",
+          "value": 0.12
+        }
+      ],
+      "desc": "1800 秒内抽箱品阶概率大幅提升，可与药水共存。",
+      "sell": 100
+    },
+    {
+      "id": "f_craftQualityPct2",
+      "name": "制造品质概率料理 II",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "craftQualityPct",
+          "value": 8
+        }
+      ],
+      "desc": "1800 秒内制造品质概率大幅提升，可与药水共存。",
+      "sell": 100
+    },
+    {
+      "id": "f_craftRarityPct2",
+      "name": "制造品阶概率料理 II",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "craftRarityPct",
+          "value": 12
+        }
+      ],
+      "desc": "1800 秒内制造品阶概率大幅提升，可与药水共存。",
+      "sell": 100
+    },
+    {
+      "id": "f_fishInsightPct2",
+      "name": "捕鱼人之识时长料理 II",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "fishInsightPct",
+          "value": 40
+        },
+        {
+          "stat": "fishChancePct",
+          "value": 2.4
+        }
+      ],
+      "desc": "1800 秒内捕鱼人之识时长大幅提升，可与药水共存。",
+      "sell": 100
+    },
+    {
+      "id": "f_gatherYieldPct2",
+      "name": "采集产量料理 II",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "gatherYieldPct",
+          "value": 24
+        }
+      ],
+      "desc": "1800 秒内采集产量大幅提升，可与药水共存。",
+      "sell": 100
+    },
+    {
+      "id": "p_expGainPct3",
+      "name": "经验获取秘药 III",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "expGainPct",
+          "value": 100
+        }
+      ],
+      "desc": "60 秒内经验获取提升。",
+      "sell": 480
+    },
+    {
+      "id": "p_goldGainPct3",
+      "name": "金币获取秘药 III",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "goldGainPct",
+          "value": 100
+        }
+      ],
+      "desc": "60 秒内金币获取提升。",
+      "sell": 480
+    },
+    {
+      "id": "p_chestLuck3",
+      "name": "抽箱品阶概率秘药 III",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "chestLuck",
+          "value": 0.6
+        }
+      ],
+      "desc": "60 秒内抽箱品阶概率提升。",
+      "sell": 480
+    },
+    {
+      "id": "p_craftQualityPct3",
+      "name": "制造品质概率秘药 III",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "craftQualityPct",
+          "value": 40
+        }
+      ],
+      "desc": "60 秒内制造品质概率提升。",
+      "sell": 480
+    },
+    {
+      "id": "p_craftRarityPct3",
+      "name": "制造品阶概率秘药 III",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "craftRarityPct",
+          "value": 60
+        }
+      ],
+      "desc": "60 秒内制造品阶概率提升。",
+      "sell": 480
+    },
+    {
+      "id": "p_fishInsightPct3",
+      "name": "捕鱼人之识时长秘药 III",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "fishInsightPct",
+          "value": 200
+        },
+        {
+          "stat": "fishChancePct",
+          "value": 12.0
+        }
+      ],
+      "desc": "60 秒内捕鱼人之识时长提升。",
+      "sell": 480
+    },
+    {
+      "id": "p_gatherYieldPct3",
+      "name": "采集产量秘药 III",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "gatherYieldPct",
+          "value": 120
+        }
+      ],
+      "desc": "60 秒内采集产量提升。",
+      "sell": 480
+    },
+    {
+      "id": "f_expGainPct3",
+      "name": "经验获取料理 III",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "expGainPct",
+          "value": 40
+        }
+      ],
+      "desc": "1800 秒内经验获取大幅提升，可与药水共存。",
+      "sell": 200
+    },
+    {
+      "id": "f_goldGainPct3",
+      "name": "金币获取料理 III",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "goldGainPct",
+          "value": 40
+        }
+      ],
+      "desc": "1800 秒内金币获取大幅提升，可与药水共存。",
+      "sell": 200
+    },
+    {
+      "id": "f_chestLuck3",
+      "name": "抽箱品阶概率料理 III",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "chestLuck",
+          "value": 0.24
+        }
+      ],
+      "desc": "1800 秒内抽箱品阶概率大幅提升，可与药水共存。",
+      "sell": 200
+    },
+    {
+      "id": "f_craftQualityPct3",
+      "name": "制造品质概率料理 III",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "craftQualityPct",
+          "value": 16
+        }
+      ],
+      "desc": "1800 秒内制造品质概率大幅提升，可与药水共存。",
+      "sell": 200
+    },
+    {
+      "id": "f_craftRarityPct3",
+      "name": "制造品阶概率料理 III",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "craftRarityPct",
+          "value": 24
+        }
+      ],
+      "desc": "1800 秒内制造品阶概率大幅提升，可与药水共存。",
+      "sell": 200
+    },
+    {
+      "id": "f_fishInsightPct3",
+      "name": "捕鱼人之识时长料理 III",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "fishInsightPct",
+          "value": 80
+        },
+        {
+          "stat": "fishChancePct",
+          "value": 4.8
+        }
+      ],
+      "desc": "1800 秒内捕鱼人之识时长大幅提升，可与药水共存。",
+      "sell": 200
+    },
+    {
+      "id": "f_gatherYieldPct3",
+      "name": "采集产量料理 III",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "gatherYieldPct",
+          "value": 48
+        }
+      ],
+      "desc": "1800 秒内采集产量大幅提升，可与药水共存。",
+      "sell": 200
     }
   ]
 }

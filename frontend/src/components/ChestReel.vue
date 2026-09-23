@@ -54,6 +54,17 @@ const stripStyle = computed(() => ({
   animationDelay: `${props.delay}ms`,
 }))
 
+/** 每个格子按品阶着色：四周实线边框 + 淡色底 + 内发光，方便抽奖时辨认品质。 */
+function slotStyle(slot: ReelSlot) {
+  const color = rarityHex(slot.rarity)
+  return {
+    width: `${props.slotWidth}px`,
+    borderColor: color,
+    background: `color-mix(in srgb, ${color} 12%, transparent)`,
+    boxShadow: `inset 0 0 8px -3px ${color}`,
+  }
+}
+
 function pickRarity(roll: number): RarityId {
   const weights = rarities.map((r) => data.rarities.byId[r].boxChance[props.tier] ?? 0)
   const total = weights.reduce((sum, w) => sum + w, 0) || 1
@@ -108,7 +119,7 @@ onMounted(() => {
         v-for="(slot, index) in slots"
         :key="index"
         class="reel-slot"
-        :style="{ width: `${slotWidth}px`, borderColor: `${rarityHex(slot.rarity)}55` }"
+        :style="slotStyle(slot)"
       >
         <ItemIcon :base-id="slot.baseId" :rarity="slot.rarity" :size="iconSize" :variant="iconVariant" />
       </div>
@@ -142,9 +153,9 @@ onMounted(() => {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border-right-width: 1px;
-  border-right-style: solid;
-  background: rgb(255 255 255 / 0.02);
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.375rem;
 }
 
 .reel-marker {

@@ -7,6 +7,12 @@ import pytest
 from app.services.game_config import CONFIG
 
 
+def test_draw_counts_unlock_costs() -> None:
+    """连抽档位与一次性解锁价：单抽/十连免费，50 连 1 亿、100 连 5 亿。"""
+    costs = {int(d["count"]): int(d["unlockCost"]) for d in CONFIG.chests["drawCounts"]}
+    assert costs == {1: 0, 10: 0, 50: 100_000_000, 100: 500_000_000}
+
+
 def test_rarity_probabilities_sum_to_one() -> None:
     for tier in ("normal", "advanced", "boss"):
         total = sum(CONFIG.rarities[r]["boxChance"][tier] for r in CONFIG.rarity_order)
@@ -271,12 +277,13 @@ def test_rarity_luck_sources_are_consistent() -> None:
     assert list(raid_weights.values()) == sorted(raid_weights.values())
 
     def consumable_max(stat: str) -> float:
-        return sum(
-            float(effect["value"])
-            for item in CONFIG.consumables["items"]
-            for effect in item["effects"]
-            if effect["stat"] == stat
-        )
+        # 药水 / 食物各占一个槽位，可达上限 = 各 kind 的最高档之和（而非所有物品累加）。
+        best: dict[str, float] = {}
+        for item in CONFIG.consumables["items"]:
+            for effect in item["effects"]:
+                if effect["stat"] == stat:
+                    best[item["kind"]] = max(best.get(item["kind"], 0.0), float(effect["value"]))
+        return sum(best.values())
 
     # 抽箱来源
     chest = CONFIG.chests["rarityLuck"]
@@ -314,3 +321,45 @@ def test_rarity_luck_sources_are_consistent() -> None:
     assert set(best) == set(doh_term["slots"])
     gear_max = sum(best.values()) + len(best) * float(doh_term["range"][1]) * ANCIENT_FACTOR
     assert scaling["gearPct"]["ref"] == pytest.approx(gear_max)
+
+
+def test_exp_gain_term_covers_all_accessories() -> None:
+    """「经验获取效率」可出现在全部战斗饰品栏位（项链 / 耳环 / 手镯 / 戒指）。"""
+    accessory_slots = {s["id"] for s in CONFIG.slots if s["category"] == "accessory"}
+    assert accessory_slots == {"necklace", "earring", "bracelet", "ring1", "ring2"}
+    assert set(CONFIG.term_by_id["expGain"]["slots"]) == accessory_slots
+
+
+def test_consumable_tiers_keep_durations() -> None:
+    """高等级药食只放大效果，单个物品的持续时长仍由 kind 决定（秘药 60s / 料理 1800s）。"""
+    kinds = CONFIG.consumables["kinds"]
+    assert int(kinds["potion"]["durationSec"]) == 60
+    assert int(kinds["food"]["durationSec"]) == 1800
+
+    by_stat: dict[tuple[str, str], list[float]] = {}
+    for item in CONFIG.consumables["items"]:
+        for effect in item["effects"]:
+            if effect["stat"] == "fishChancePct":
+                continue
+            by_stat.setdefault((item["kind"], effect["stat"]), []).append(float(effect["value"]))
+    assert by_stat, "药食效果表为空"
+    for key, values in by_stat.items():
+        assert len(values) == 3, f"{key} 应为 I/II/III 三档，实际 {values}"
+        assert values == sorted(values) and values[0] < values[-1], f"{key} 数值未逐档递增：{values}"
+
+
+def test_high_tier_consumables_are_sell_safe() -> None:
+    """高等级药食（II/III）配方：产出出售价不得超过输入材料出售价，杜绝「采集→制造→出售」刷金币。"""
+    for recipe in CONFIG.recipes["recipes"]:
+        output = recipe["output"]
+        if output["kind"] != "consumable" or int(recipe["requiredLevel"]) <= 1:
+            continue
+        produced = int(CONFIG.consumable_by_id[output["itemId"]].get("sell", 0)) * int(
+            output.get("count", 1)
+        )
+        consumed = sum(
+            int((CONFIG.material_by_id.get(e["itemId"]) or {}).get("sell", 0)) * int(e["count"])
+            for e in recipe["inputs"]
+        )
+        assert consumed > 0, recipe["id"]
+        assert produced <= consumed, f"{recipe['id']} 产出 {produced} 超过输入 {consumed}"

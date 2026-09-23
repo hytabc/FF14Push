@@ -52,9 +52,9 @@ async def grant_generated_items(
         if item.rarity in auto_rarities:
             price = sell_price(item, rng)
             auto_gold += price
-            sold.append(
-                {"baseId": item.base_id, "name": item.name, "rarity": item.rarity, "price": price}
-            )
+            # 返回完整物品数据（含 baseId/rarity/attrs），供前端播放抽奖动画与结果页展示；
+            # `autoSold`/`price` 标记为已自动出售及成交价。注意其中的 id 指向已删除行，仅用于展示。
+            sold.append({**item_to_dict(item, sell_price_range(item)), "autoSold": True, "price": price})
             await db.delete(item)
         else:
             added.append(item_to_dict(item, sell_price_range(item)))

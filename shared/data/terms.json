@@ -25,7 +25,7 @@
     { "id": "scavenger", "name": "拾荒者", "type": "buff", "trigger": "常驻", "stat": "eliteChancePct", "range": [3, 12], "slots": ["bracelet", "ring1", "ring2"], "desc": "精英怪出现概率 +{v}%" },
     { "id": "lucky", "name": "幸运", "type": "buff", "trigger": "常驻", "stat": "goldLuckPct", "range": [5, 15], "slots": ["ring1", "ring2", "earring"], "desc": "金币随机浮动下限提升 {v}%" },
     { "id": "rarityLuck", "name": "品阶幸运", "type": "buff", "trigger": "常驻", "stat": "chestRarityPct", "range": [2, 10], "slots": ["mainHand", "head", "body", "hands", "legs", "feet", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "抽箱品阶概率 +{v}%" },
-    { "id": "expGain", "name": "经验获取效率", "type": "buff", "trigger": "常驻", "stat": "expGainPct", "range": [3, 18], "slots": ["necklace", "earring", "bracelet"], "desc": "击败怪物获得的经验 +{v}%" },
+    { "id": "expGain", "name": "经验获取效率", "type": "buff", "trigger": "常驻", "stat": "expGainPct", "range": [3, 18], "slots": ["necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "击败怪物获得的经验 +{v}%" },
 
     { "id": "critMastery", "name": "暴击精通", "type": "buff", "trigger": "常驻", "stat": "critStatPct", "range": [5, 20], "slots": ["mainHand", "head", "body"], "desc": "暴击属性 +{v}%" },
     { "id": "dhMastery", "name": "直击精通", "type": "buff", "trigger": "常驻", "stat": "dhStatPct", "range": [5, 18], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "直击属性 +{v}%" },

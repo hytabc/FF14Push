@@ -20,12 +20,19 @@
     "sources": {
       "clearedRegions": { "weight": 0.3, "ref": 40 },
       "gearPct": { "weight": 0.25, "ref": 137.5 },
-      "consumablePct": { "weight": 0.15, "ref": 0.21 },
+      "consumablePct": { "weight": 0.15, "ref": 0.84 },
       "coopClears": { "weight": 0.15, "ref": 33 },
       "raidClears": { "weight": 0.1, "ref": 10 },
       "egg": { "weight": 0.05, "ref": 0.1 }
     }
   },
+  "$commentDrawCounts": "可用的连抽档位。unlockCost>0 的档位需账号一次性金币解锁；0 表示始终可用。",
+  "drawCounts": [
+    { "count": 1, "unlockCost": 0 },
+    { "count": 10, "unlockCost": 0 },
+    { "count": 50, "unlockCost": 100000000 },
+    { "count": 100, "unlockCost": 500000000 }
+  ],
   "chests": [
     { "id": "weaponBox", "name": "武器箱", "price": 100, "category": "weapon", "tier": "normal", "icon": "weapon" },
     { "id": "armorBox", "name": "装备箱", "price": 80, "category": "armor", "tier": "normal", "icon": "armor" },

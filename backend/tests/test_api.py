@@ -610,6 +610,80 @@ class TestEconomy:
         assert high.status_code == 200, high.text
         assert high.json()["cost"] == int(base * mult40)
 
+    async def test_locked_draw_count_requires_unlock(self, auth_client, session_factory) -> None:
+        """50/100 连抽在解锁前被拒绝。"""
+        await _set_gold(auth_client, session_factory, 10_000_000_000)
+        locked = await auth_client.post(f"{API}/chest/open", json={"chestId": "weaponBox", "count": 50})
+        assert locked.status_code == 400
+        assert "解锁" in locked.json()["detail"]
+
+    async def test_unlock_draw_count_deducts_gold_and_enables_draw(
+        self, auth_client, session_factory
+    ) -> None:
+        cost50 = next(
+            int(d["unlockCost"]) for d in CONFIG.chests["drawCounts"] if int(d["count"]) == 50
+        )
+        await _set_gold(auth_client, session_factory, cost50 + 1_000_000)
+
+        unlocked = await auth_client.post(f"{API}/chest/unlock", json={"count": 50})
+        assert unlocked.status_code == 200, unlocked.text
+        body = unlocked.json()
+        assert 50 in body["unlocked"]
+        assert body["gold"] == 1_000_000
+
+        # 重复解锁直接拒绝
+        again = await auth_client.post(f"{API}/chest/unlock", json={"count": 50})
+        assert again.status_code == 400
+
+        # 解锁后可正常抽取 50 连
+        draw = await auth_client.post(f"{API}/chest/open", json={"chestId": "weaponBox", "count": 50})
+        assert draw.status_code == 200, draw.text
+        got = draw.json()
+        assert len(got["items"]) + len(got["autoSold"]) == 50
+
+        # 状态里持久化解锁档位
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        assert 50 in state["settings"]["chestUnlocks"]
+
+    async def test_draw_count_100_unlock_cost(self, auth_client, session_factory) -> None:
+        cost100 = next(
+            int(d["unlockCost"]) for d in CONFIG.chests["drawCounts"] if int(d["count"]) == 100
+        )
+        assert cost100 == 500_000_000
+        await _set_gold(auth_client, session_factory, cost100)
+        resp = await auth_client.post(f"{API}/chest/unlock", json={"count": 100})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["gold"] == 0
+
+    async def test_unlock_count_without_cost_rejected(self, auth_client, session_factory) -> None:
+        resp = await auth_client.post(f"{API}/chest/unlock", json={"count": 1})
+        assert resp.status_code == 400
+
+    async def test_auto_sold_draw_items_return_full_payload(
+        self, auth_client, session_factory
+    ) -> None:
+        """自动出售的物品也要返回完整数据（供抽奖动画与结果页展示）。"""
+        cost50 = next(
+            int(d["unlockCost"]) for d in CONFIG.chests["drawCounts"] if int(d["count"]) == 50
+        )
+        await _set_gold(auth_client, session_factory, cost50 + 10_000_000)
+        unlocked = await auth_client.post(f"{API}/chest/unlock", json={"count": 50})
+        assert unlocked.status_code == 200, unlocked.text
+        resp = await auth_client.post(f"{API}/settings/auto-sell", json={"enabled": True, "rarities": ["common", "uncommon"]})
+        assert resp.status_code == 200, resp.text
+
+        draw = await auth_client.post(f"{API}/chest/open", json={"chestId": "weaponBox", "count": 50})
+        assert draw.status_code == 200, draw.text
+        got = draw.json()
+        assert len(got["items"]) + len(got["autoSold"]) == 50
+        assert got["autoSold"], "50 连抽应当出现被自动出售的普通/优秀装备"
+        for sold in got["autoSold"]:
+            assert sold["autoSold"] is True
+            assert sold["price"] > 0
+            # 完整物品字段（动画/卡片需要 baseId、rarity、subAttrs 等）
+            for key in ("baseId", "name", "rarity", "category", "subAttrs", "sellPriceMin"):
+                assert key in sold
+
     async def test_drop_rate_rises_with_cleared_regions(self, auth_client, session_factory) -> None:
         before = (await auth_client.get(f"{API}/game/state")).json()
         assert before["clearedRegions"] == 0

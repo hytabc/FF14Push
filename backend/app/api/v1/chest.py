@@ -8,8 +8,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
-from app.models import ChestPity
-from app.schemas.game import ChestOpenRequest
+from app.models import ChestPity, ChestUnlock
+from app.schemas.game import ChestOpenRequest, ChestUnlockRequest
 from app.services.drop_luck import chest_rarity_luck
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
@@ -19,7 +19,9 @@ from app.services.stats import compute_stats
 
 router = APIRouter(prefix="/chest", tags=["chest"])
 
-ALLOWED_COUNTS = {1, 10}
+# 连抽档位及其一次性解锁价（0 表示始终可用）。见 shared/data/chests.json 的 drawCounts。
+DRAW_COUNT_COSTS = {int(d["count"]): int(d.get("unlockCost", 0)) for d in CONFIG.chests["drawCounts"]}
+ALLOWED_COUNTS = set(DRAW_COUNT_COSTS)
 LEVEL_BAND_MULTIPLIER = {
     int(band["level"]): float(band["priceMultiplier"]) for band in CONFIG.chests["levelBands"]
 }
@@ -38,6 +40,34 @@ async def _pity(db: DbSession, user_id: int, chest_id: str) -> ChestPity:
     return row
 
 
+async def _unlocked_counts(db: DbSession, user_id: int) -> set[int]:
+    rows = (
+        await db.execute(select(ChestUnlock).where(ChestUnlock.user_id == user_id))
+    ).scalars().all()
+    return {int(row.draw_count) for row in rows}
+
+
+@router.post("/unlock")
+async def unlock_chest_draw(payload: ChestUnlockRequest, db: DbSession, user: CurrentUser) -> dict:
+    """一次性金币解锁连抽档位（如 50 / 100 连）。账号级，解锁后所有箱子通用。"""
+    cost = DRAW_COUNT_COSTS.get(payload.count)
+    if cost is None or cost <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该连抽档位无需解锁")
+    unlocked = await _unlocked_counts(db, user.id)
+    if payload.count in unlocked:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该连抽档位已解锁")
+    if int(user.gold) < cost:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}"
+        )
+
+    user.gold = int(user.gold) - cost
+    db.add(ChestUnlock(user_id=user.id, draw_count=payload.count))
+    await db.commit()
+    unlocked.add(payload.count)
+    return {"gold": int(user.gold), "count": payload.count, "unlocked": sorted(unlocked)}
+
+
 @router.post("/open")
 async def open_chest(
     payload: ChestOpenRequest,
@@ -50,7 +80,12 @@ async def open_chest(
     if chest is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="箱子不存在")
     if payload.count not in ALLOWED_COUNTS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只支持单抽或十连")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的连抽档位")
+    if DRAW_COUNT_COSTS[payload.count] > 0 and payload.count not in await _unlocked_counts(db, user.id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"需要先解锁 {payload.count} 连抽",
+        )
 
     # 抽箱等级档位：需玩家等级达到档位；省略时按玩家当前等级（等级同步）。
     band = payload.level

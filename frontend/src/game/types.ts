@@ -309,6 +309,12 @@ export interface AutoSoldItem {
   price: number
 }
 
+/** 抽到时即被自动出售的抽奖物品：完整物品数据 + 成交价，用于播放动画与结果页展示。 */
+export interface AutoSoldDrawItem extends Item {
+  autoSold: true
+  price: number
+}
+
 export interface HeroStats {
   level: number
   jobId: string
@@ -612,7 +618,7 @@ export interface GameState {
   codex: CodexProgress
   tutorial: { currentStep: number; completed: boolean; skipped: boolean }
   tavern: { candidate: TavernCandidate | null }
-  settings: { autoSell: { enabled: boolean; rarities: RarityId[] } }
+  settings: { autoSell: { enabled: boolean; rarities: RarityId[] }; chestUnlocks?: number[] }
   dohdol: DohDolState
 }
 

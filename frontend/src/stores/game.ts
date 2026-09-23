@@ -604,6 +604,22 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /** 一次性金币解锁连抽档位（如 50 / 100 连）。账号级，解锁后所有箱子通用。 */
+  async function unlockChestDraw(count: number) {
+    try {
+      const res = await api.unlockChestDraw(count)
+      if (state.value) {
+        state.value.user.gold = res.gold
+        state.value.settings.chestUnlocks = res.unlocked
+      }
+      toast.push(`已解锁 ${count} 连抽`, 'success')
+      return true
+    } catch (e) {
+      pushError(e)
+      return false
+    }
+  }
+
   // ---------- 经济 ----------
 
   async function craft(category: Category, auto = true) {
@@ -740,6 +756,7 @@ export const useGameStore = defineStore('game', () => {
     deleteTag,
     setItemTags,
     openChest,
+    unlockChestDraw,
     craft,
     refine,
     enchant,

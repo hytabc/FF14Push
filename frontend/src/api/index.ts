@@ -123,9 +123,17 @@ export const api = {
         gold: number
         cost: number
         items: Item[]
-        autoSold: Array<{ name: string; rarity: string; price: number }>
+        autoSold: import('@/game/types').AutoSoldDrawItem[]
+        autoGold: number
         pity: { sinceRare: number; sinceEpic: number; sinceLegendary: number }
       }>('/chest/open', { chestId, count, level })
+    ).data
+  },
+
+  /** 一次性金币解锁连抽档位（如 50 / 100 连）。账号级，解锁后所有箱子通用。 */
+  async unlockChestDraw(count: number) {
+    return (
+      await http.post<{ gold: number; count: number; unlocked: number[] }>('/chest/unlock', { count })
     ).data
   },
 

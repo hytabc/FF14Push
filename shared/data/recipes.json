@@ -43,7 +43,7 @@
         },
         "consumablePct": {
           "weight": 0.1,
-          "ref": 21
+          "ref": 84
         },
         "coopClears": {
           "weight": 0.15,
@@ -31091,6 +31091,646 @@
       "output": {
         "kind": "consumable",
         "itemId": "f_gatherYieldPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_expGainPct2",
+      "jobId": "ALC",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "flora17",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_expGainPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_goldGainPct2",
+      "jobId": "ALC",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "ore17",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_goldGainPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_chestLuck2",
+      "jobId": "ALC",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_gemcut",
+          "count": 2
+        },
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "flora17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_chestLuck2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_craftQualityPct2",
+      "jobId": "ALC",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "ore17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_craftQualityPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_craftRarityPct2",
+      "jobId": "ALC",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_gemcut",
+          "count": 2
+        },
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "ore17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_craftRarityPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_fishInsightPct2",
+      "jobId": "ALC",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 3
+        },
+        {
+          "itemId": "flora17",
+          "count": 4
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_fishInsightPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_gatherYieldPct2",
+      "jobId": "ALC",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "flora17",
+          "count": 5
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_gatherYieldPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_expGainPct2",
+      "jobId": "CUL",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "flora17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_expGainPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_goldGainPct2",
+      "jobId": "CUL",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "ore17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_goldGainPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_chestLuck2",
+      "jobId": "CUL",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "flora17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_chestLuck2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_craftQualityPct2",
+      "jobId": "CUL",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "ore17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_craftQualityPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_craftRarityPct2",
+      "jobId": "CUL",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "ore17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_craftRarityPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_fishInsightPct2",
+      "jobId": "CUL",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 3
+        },
+        {
+          "itemId": "flora17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_fishInsightPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_gatherYieldPct2",
+      "jobId": "CUL",
+      "requiredLevel": 40,
+      "craftSeconds": 5.0,
+      "xp": 80,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "flora17",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_gatherYieldPct2",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_expGainPct3",
+      "jobId": "ALC",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "flora32",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_expGainPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_goldGainPct3",
+      "jobId": "ALC",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "ore32",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_goldGainPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_chestLuck3",
+      "jobId": "ALC",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_gemcut",
+          "count": 2
+        },
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "flora32",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_chestLuck3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_craftQualityPct3",
+      "jobId": "ALC",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "h_ink",
+          "count": 2
+        },
+        {
+          "itemId": "ore32",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_craftQualityPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_craftRarityPct3",
+      "jobId": "ALC",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_gemcut",
+          "count": 2
+        },
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "ore32",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_craftRarityPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_fishInsightPct3",
+      "jobId": "ALC",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 3
+        },
+        {
+          "itemId": "flora32",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_fishInsightPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_p_gatherYieldPct3",
+      "jobId": "ALC",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_oil",
+          "count": 2
+        },
+        {
+          "itemId": "flora32",
+          "count": 3
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_gatherYieldPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_expGainPct3",
+      "jobId": "CUL",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "flora32",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_expGainPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_goldGainPct3",
+      "jobId": "CUL",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "ore32",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_goldGainPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_chestLuck3",
+      "jobId": "CUL",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "flora32",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_chestLuck3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_craftQualityPct3",
+      "jobId": "CUL",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "ore32",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_craftQualityPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_craftRarityPct3",
+      "jobId": "CUL",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "ore32",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_craftRarityPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_fishInsightPct3",
+      "jobId": "CUL",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 3
+        },
+        {
+          "itemId": "flora32",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_fishInsightPct3",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_gatherYieldPct3",
+      "jobId": "CUL",
+      "requiredLevel": 80,
+      "craftSeconds": 8.0,
+      "xp": 160,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "flora32",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_gatherYieldPct3",
         "count": 1
       }
     }

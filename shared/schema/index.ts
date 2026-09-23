@@ -673,6 +673,8 @@ export const gameData = {
   chests: chestsJson as unknown as {
     chests: ChestDef[]
     pity: ChestPity[]
+    /** 连抽档位；unlockCost>0 需账号一次性金币解锁。 */
+    drawCounts: Array<{ count: number; unlockCost: number }>
     levelBands: Array<{ level: number; priceMultiplier: number }>
     dropRate: { perClearedRegion: number; maxMultiplier: number }
     /** 抽箱品阶概率的幸运来源：p = Σ weight × min(值/ref, 1)，luck = luckMax × p。 */

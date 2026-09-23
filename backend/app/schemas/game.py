@@ -87,6 +87,11 @@ class ChestOpenRequest(BaseModel):
     level: int | None = None
 
 
+class ChestUnlockRequest(BaseModel):
+    # 要一次性金币解锁的连抽档位（如 50 / 100）。
+    count: int
+
+
 class TagCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=16)
     color: str = Field(min_length=1, max_length=16)
