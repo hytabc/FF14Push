@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import ItemActionDialogs from '@/components/ItemActionDialogs.vue'
 import LootBubbles from '@/components/LootBubbles.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
 import TagDialog from '@/components/TagDialog.vue'
 import ToastStack from '@/components/ToastStack.vue'
 import TutorialOverlay from '@/components/TutorialOverlay.vue'
@@ -120,9 +121,7 @@ async function logout() {
       <TutorialOverlay />
     </main>
 
-    <footer class="border-t border-ink-800 px-3 py-3 text-center text-[11px] text-ink-600">
-      本作不与《最终幻想 XIV》官方关联，仅为同人练习项目。
-    </footer>
+    <SiteFooter />
 
     <ToastStack />
     <LootBubbles />
