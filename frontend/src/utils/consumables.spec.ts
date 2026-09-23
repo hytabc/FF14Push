@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { consumableBonus } from './consumables'
-import { experienceLog } from './battleLog'
+import { activityExpLog, experienceLog } from './battleLog'
 
 describe('消耗品与经验展示', () => {
   it('显示所有效果和时长，并正确换算抽箱幸运比例', () => {
@@ -12,5 +12,28 @@ describe('消耗品与经验展示', () => {
     expect(experienceLog(320, { base: 100, efficiencyBonus: 60, catchUpBonus: 160, totalBonusPct: 220 }))
       .toBe('获得经验 320（+220%；结算基础 100，效率加成 +60，追赶加成 +160）')
     expect(experienceLog(50)).toBe('获得经验 50')
+  })
+  it('生产 / 采集经验展示基础、品阶系数与逐条来源', () => {
+    expect(
+      activityExpLog({ base: 18, rarityMultiplier: 1, bonusPct: 0, amount: 18, sources: [] }),
+    ).toBe('获得经验 18（基础 18）')
+    expect(
+      activityExpLog({
+        base: 24,
+        rarityMultiplier: 2.4,
+        bonusPct: 15,
+        amount: 68,
+        sources: [{ label: '灵感', pct: 15 }],
+      }),
+    ).toBe('获得经验 68（基础 24，品阶 ×2.4，经验加成 +15%：灵感 +15%）')
+    expect(
+      activityExpLog({
+        base: 48,
+        rarityMultiplier: 1,
+        bonusPct: 25,
+        amount: 60,
+        sources: [{ label: '经验获取秘药', pct: 25 }],
+      }),
+    ).toBe('获得经验 60（基础 48，经验加成 +25%：经验获取秘药 +25%）')
   })
 })

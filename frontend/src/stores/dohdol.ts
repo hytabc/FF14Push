@@ -7,12 +7,16 @@ import { api } from '@/api'
 import { ProgressClock } from '@/game/core/progress'
 import type { SequenceStep, StepResult, StepStatus } from '@/game/core/sequence'
 import { SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
-import type { FishCatch } from '@/game/types'
+import type { FishCatch, ActivityLogEntry } from '@/game/types'
+import { activityExpLog } from '@/utils/battleLog'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 
 /** 最长轮询间隔；临近动作完成时提前结算，同时定期获取属性变化后的周期。 */
 const REPORT_MS = 1500
+
+/** 生产 / 采集日志保留的最大条数，超出后裁掉最旧的（与战斗日志同策略）。 */
+const MAX_LOG = 120
 
 const TITLE_NAMES: Record<string, string> = Object.fromEntries(
   data.titles.titles.map((t) => [t.id, t.name]),
@@ -36,6 +40,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const lastProduced = ref<Array<{ baseId: string; name: string; rarity: string }>>([])
   const lastCaught = ref<FishCatch[]>([])
   const insightRemaining = ref(0)
+  /** 生产 / 采集日志：按结算轮次追加「获取数量 + 经验明细」。 */
+  const logEntries = ref<ActivityLogEntry[]>([])
   /** 当前生产会话选中的配方（用于判断材料是否耗尽）。 */
   const recipeId = ref<string | null>(null)
   /** 本次生产的目标件数（null = 不限）与已制造件数。 */
@@ -58,6 +64,14 @@ export const useDohDolStore = defineStore('dohdol', () => {
   let ticker: number | null = null
   let lastTickMs = 0
   let nextActionAt = 0
+  let logSeq = 0
+
+  function pushLog(text: string, tone: ActivityLogEntry['tone']) {
+    logEntries.value.push({ id: ++logSeq, text, tone })
+    if (logEntries.value.length > MAX_LOG) {
+      logEntries.value.splice(0, logEntries.value.length - MAX_LOG)
+    }
+  }
 
   const state = computed(() => game.state?.dohdol ?? null)
   const isRunning = computed(() => mode.value !== 'idle')
@@ -156,6 +170,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
         const [r, rtt] = await timed(() => api.gatherReport(id))
         if (sessionId.value !== id) return
         lastGained.value = r.gained
+        if (r.gained.length) {
+          pushLog(
+            `采集 ${r.actions} 次：${r.gained.map((g) => `${g.name} ×${g.count}`).join('、')}`,
+            'loot',
+          )
+        }
+        if (r.xp > 0 && r.xpBreakdown) pushLog(activityExpLog(r.xpBreakdown), 'exp')
         syncCycle(r.cycle, rtt)
         const step = currentSeqStep.value
         if (step?.kind === 'gather') {
@@ -187,6 +208,18 @@ export const useDohDolStore = defineStore('dohdol', () => {
             toast.push(`制造出 ${item.name}（高品质）`, 'loot')
           }
         }
+        if (r.crafts > 0) {
+          const produced = r.materials.map((m) => `${m.name} ×${m.count}`)
+          if (r.items.length) {
+            const groups = new Map<string, number>()
+            for (const item of r.items) groups.set(item.name, (groups.get(item.name) ?? 0) + 1)
+            const shown = [...groups.entries()].slice(0, 8).map(([name, n]) => `${name} ×${n}`)
+            if (groups.size > 8) shown.push(`等 ${groups.size} 种`)
+            produced.push(...shown)
+          }
+          pushLog(`制造 ${r.crafts} 次：${produced.join('、')}`, 'loot')
+        }
+        if (r.xp > 0 && r.xpBreakdown) pushLog(activityExpLog(r.xpBreakdown), 'exp')
       } else if (mode.value === 'fish') {
         const [r, rtt] = await timed(() => api.fishReport(id))
         if (sessionId.value !== id) return
@@ -218,6 +251,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     mode.value = 'gather'
     recipeId.value = null
     lastGained.value = []
+    logEntries.value = []
     syncCycle(res.cycle, rtt)
     startLoop()
   }
@@ -240,6 +274,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     producedCount.value = 0
     lastGained.value = []
     lastProduced.value = []
+    logEntries.value = []
     syncCycle(res.cycle, rtt)
     startLoop()
   }
@@ -467,6 +502,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     lastProduced,
     lastCaught,
     insightRemaining,
+    logEntries,
     recipeId,
     targetCount,
     producedCount,

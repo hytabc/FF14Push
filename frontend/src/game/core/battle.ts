@@ -39,10 +39,35 @@ export interface KillRecord {
 export interface LogEntry {
   id: number
   text: string
-  tone: 'normal' | 'skill' | 'damage' | 'loot' | 'danger' | 'system' | 'boss'
+  tone:
+    | 'normal'
+    | 'skill'
+    | 'damage'
+    | 'loot'
+    | 'danger'
+    | 'system'
+    | 'boss'
+    /** 暴击 / 直击 / 同时触发：样式不同（见 MainView / RaidView 的 logTone）。 */
+    | 'crit'
+    | 'dh'
+    | 'critDh'
 }
 
-type FloatTone = 'hero' | 'monster' | 'crit' | 'miss'
+type FloatTone = 'hero' | 'monster' | 'crit' | 'dh' | 'critDh' | 'miss'
+
+/** 一次伤害的命中类型色调：暴击 / 直击 / 双触发。 */
+type HitTone = 'crit' | 'dh' | 'critDh'
+
+/** 伤害标记：暴击「!」、直击「!」、同时触发「!!」。 */
+function hitMark(isCrit: boolean, isDirectHit: boolean): string {
+  if (isCrit && isDirectHit) return '!!'
+  return isCrit || isDirectHit ? '!' : ''
+}
+
+function hitTone(isCrit: boolean, isDirectHit: boolean): HitTone {
+  if (isCrit && isDirectHit) return 'critDh'
+  return isCrit ? 'crit' : 'dh'
+}
 
 export interface FloatingText {
   id: number
@@ -538,12 +563,13 @@ export class BattleSimulator {
         this.pushLog(`${skill.name} 未命中`, 'damage')
       } else {
         this.monsterHp -= roll.amount
+        const mark = hitMark(roll.isCrit, roll.isDirectHit)
         this.pushFloat(
-          `${roll.amount}${roll.isCrit ? '!' : ''}`,
+          `${roll.amount}${mark}`,
           'monster',
-          roll.isCrit || roll.isDirectHit ? 'crit' : 'monster',
+          mark ? hitTone(roll.isCrit, roll.isDirectHit) : 'monster',
         )
-        if (roll.isCrit) this.pushLog(`${skill.name} 暴击 ${roll.amount} 伤害`, 'damage')
+        if (mark) this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
         else this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
         this.rollProcs(stats)
       }
@@ -640,8 +666,13 @@ export class BattleSimulator {
           if (roll.missed) {
             this.pushFloat('未命中', 'monster', 'miss')
           } else {
+            const mark = hitMark(roll.isCrit, roll.isDirectHit)
             this.monsterHp -= roll.amount
-            this.pushFloat(`${roll.amount}${roll.isCrit ? '!' : ''}`, 'monster', 'crit')
+            this.pushFloat(
+              `${roll.amount}${mark}`,
+              'monster',
+              mark ? hitTone(roll.isCrit, roll.isDirectHit) : 'monster',
+            )
           }
           this.heroMp = 0
           break

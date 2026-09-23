@@ -196,3 +196,66 @@ describe('采集 / 制作序列', () => {
     expect(store.seqResults[0]).toMatchObject({ done: 3, target: 3, status: 'done' })
   })
 })
+
+describe('生产 / 采集日志', () => {
+  it('采集结算追加产出与经验明细', async () => {
+    mocks.api.gatherStart.mockResolvedValue({ sessionId: 1, cycle: cycle(2) })
+    mocks.api.gatherReport.mockResolvedValue({
+      gained: [{ itemId: 'g_ore', name: '铁矿', count: 2 }],
+      actions: 3,
+      xp: 18,
+      xpBreakdown: { base: 18, rarityMultiplier: 1, bonusPct: 0, amount: 18, sources: [] },
+      cycle: cycle(2),
+    })
+    const store = useDohDolStore()
+    await store.startGather('MIN', 1)
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.logEntries.map((e) => e.text)).toEqual(['采集 3 次：铁矿 ×2', '获得经验 18（基础 18）'])
+    expect(store.logEntries.map((e) => e.tone)).toEqual(['loot', 'exp'])
+    await store.stop()
+  })
+
+  it('生产结算按品阶与来源展示经验', async () => {
+    mocks.api.produceStart.mockResolvedValue({ sessionId: 1, recipeId: 'r1', targetActions: 5, cycle: cycle(2) })
+    mocks.api.produceReport.mockResolvedValue({
+      crafts: 2,
+      recipeId: 'r1',
+      materials: [{ itemId: 'h_plank', name: '木板', count: 2 }],
+      items: [],
+      xp: 62,
+      xpBreakdown: { base: 48, rarityMultiplier: 1, bonusPct: 30, amount: 62, sources: [{ label: '灵感', pct: 30 }] },
+      targetActions: 5,
+      producedTotal: 2,
+      finished: false,
+      cycle: cycle(2),
+    })
+    const store = useDohDolStore()
+    await store.startProduce('CRP', 'r1', 5)
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.logEntries.map((e) => e.text)).toEqual([
+      '制造 2 次：木板 ×2',
+      '获得经验 62（基础 48，经验加成 +30%：灵感 +30%）',
+    ])
+    await store.stop()
+  })
+
+  it('开始新会话时清空上一轮日志', async () => {
+    mocks.api.gatherStart.mockResolvedValue({ sessionId: 1, cycle: cycle(2) })
+    mocks.api.gatherReport.mockResolvedValue({
+      gained: [{ itemId: 'g_ore', name: '铁矿', count: 1 }],
+      actions: 1,
+      xp: 6,
+      xpBreakdown: { base: 6, rarityMultiplier: 1, bonusPct: 0, amount: 6, sources: [] },
+      cycle: cycle(2),
+    })
+    const store = useDohDolStore()
+    await store.startGather('MIN', 1)
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.logEntries.length).toBe(2)
+
+    await store.stop()
+    await store.startGather('MIN', 1)
+    expect(store.logEntries.length).toBe(0)
+    await store.stop()
+  })
+})

@@ -31,6 +31,9 @@ const logTone: Record<string, string> = {
   danger: 'text-rose-400',
   system: 'text-ink-200',
   boss: 'text-fuchsia-300',
+  crit: 'text-orange-300',
+  dh: 'text-cyan-300',
+  critDh: 'text-yellow-200',
 }
 
 const phaseLabel = computed(() => {
@@ -273,9 +276,13 @@ function dodgeInfo() {
                     ? 'text-emerald-300'
                     : f.tone === 'crit'
                       ? 'text-orange-300'
-                      : f.tone === 'miss'
-                        ? 'text-ink-400'
-                        : 'text-rose-300'
+                      : f.tone === 'dh'
+                        ? 'text-cyan-300'
+                        : f.tone === 'critDh'
+                          ? 'text-yellow-200'
+                          : f.tone === 'miss'
+                            ? 'text-ink-400'
+                            : 'text-rose-300'
                 "
               >
                 {{ f.text }}

@@ -204,10 +204,37 @@ export interface ActivityCycle {
   at: number
 }
 
+/** 经验加成的一项来源（专用装备固定加成 / 词条 / 药水食物）。 */
+export interface ActivityExpSource {
+  label: string
+  pct: number
+}
+
+/** 生产 / 采集 / 钓鱼的经验结算明细。恒满足 base × rarityMultiplier × (1 + bonusPct/100) ≈ amount。 */
+export interface ActivityExpBreakdown {
+  /** 未加成的基础经验。 */
+  base: number
+  /** 品阶系数（生产装备才有，其它恒为 1）。 */
+  rarityMultiplier: number
+  /** 百分比加成合计。 */
+  bonusPct: number
+  /** 最终获得经验。 */
+  amount: number
+  sources: ActivityExpSource[]
+}
+
+/** 生产 / 采集日志条目（按结算轮次追加）。 */
+export interface ActivityLogEntry {
+  id: number
+  text: string
+  tone: 'loot' | 'exp' | 'system'
+}
+
 export interface GatherReportResponse {
   gained: Array<{ itemId: string; name: string; count: number }>
   actions: number
   xp: number
+  xpBreakdown: ActivityExpBreakdown
   level: { levelsGained: number; level: number; exp: number }
   cycle: ActivityCycle
 }
@@ -218,6 +245,7 @@ export interface ProduceReportResponse {
   materials: Array<{ itemId: string; name: string; count: number }>
   items: Item[]
   xp: number
+  xpBreakdown: ActivityExpBreakdown
   level: { levelsGained: number; level: number; exp: number }
   /** 本次会话目标制造件数（null = 不限）。 */
   targetActions: number | null
@@ -241,6 +269,7 @@ export interface FishReportResponse {
   gained: Array<{ itemId: string; name: string; count: number }>
   casts: number
   xp: number
+  xpBreakdown: ActivityExpBreakdown
   level: { levelsGained: number; level: number; exp: number }
   insightRemainingSec: number
   newTitles: string[]

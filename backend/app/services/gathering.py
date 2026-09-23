@@ -119,7 +119,13 @@ async def report_gather(
     for material_id, count in gained.items():
         await dohdol_util.stack_add(db, user.id, dohdol_util.STACK_MATERIAL, material_id, count)
 
-    xp = round(actions * int(CONFIG.dohdol_levels["actionXp"]["gather"]) * (1.0 + max(0.0, equip.get("gatherXpPct", 0.0)) / 100.0))
+    # 经验来源：专用装备（固定加成 + 经验词条）与药水 / 食物的经验加成。
+    xp_sources, bonus_pct = dohdol_util.combine_xp_sources(
+        dohdol_util.equipped_bonus_sources(items, "gatherXpPct"),
+        await consumables.effect_sources(db, user.id, "expGainPct"),
+    )
+    base_xp = actions * int(CONFIG.dohdol_levels["actionXp"]["gather"])
+    xp = round(base_xp * (1.0 + bonus_pct / 100.0))
     level_info = dohdol_util.apply_level_exp(progress, xp)
 
     return {
@@ -129,6 +135,7 @@ async def report_gather(
         ],
         "actions": actions,
         "xp": xp,
+        "xpBreakdown": dohdol_util.xp_breakdown(base_xp, 1.0, bonus_pct, xp, xp_sources),
         "level": level_info,
         "cycle": dohdol_util.cycle_info(seconds_per, float(session.credit), now),
     }

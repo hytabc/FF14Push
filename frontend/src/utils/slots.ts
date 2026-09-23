@@ -17,3 +17,13 @@ export function equipmentSlotGroups() {
     { key: 'weapon', title: '武器', slots: pick(['mainHand']), full: true },
   ]
 }
+
+/** 生产 / 采集专用装备栏位分组：生产在左、采集在右。装备页 / 英雄页 / 他人装备弹窗共用。 */
+export function dohdolSlotGroups() {
+  const dohdolSlots = [...data.dohdolEquipment.slots].sort((a, b) => a.order - b.order)
+  const pick = (kind: 'doh' | 'dol') => dohdolSlots.filter((s) => s.category.startsWith(kind))
+  return [
+    { key: 'doh', title: '生产', slots: pick('doh') },
+    { key: 'dol', title: '采集', slots: pick('dol') },
+  ]
+}

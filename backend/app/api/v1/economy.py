@@ -19,6 +19,8 @@ from app.services.valuation import sell_price_range
 router = APIRouter(prefix="/economy", tags=["economy"])
 
 MAX_AUTO_ENCHANT_ATTEMPTS = 100
+# 单次请求最多连续重造 / 附魔的次数（配合逐次递增的重造价，上限用于限制请求规模）
+MAX_REROLL_TIMES = 50
 
 
 _DEDICATED_CATEGORIES = {"doh_tool", "doh_gear", "dol_tool", "dol_gear"}
@@ -123,6 +125,7 @@ async def refine(
 
     mode=random：彻底随机（全部重新洗牌）；mode=basedOnCurrent：基于当前（属性与词条
     都在现有值附近浮动，太古词条数不减少，并有概率把一条普通 Buff 升为太古）。
+    times>1：一次结算多次（重造价格上涨逐次生效），金币不足时提前停止。
     """
     item = (
         await db.execute(select(Item).where(Item.id == payload.itemId, Item.user_id == user.id))
@@ -131,22 +134,33 @@ async def refine(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
     _require_combat_item(item)
 
-    cost = refine_cost(item.rarity, int(item.refine_count), payload.mode)
-    if int(user.gold) < cost:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {cost}")
-
+    times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))
     before = item_to_dict(item, sell_price_range(item))
     rng = random.Random()
-    result = regenerate_attrs(item, rng, payload.mode)
-    item.base_attrs = result["baseAttrs"]
-    item.sub_attrs = result["subAttrs"]
-    item.terms = result["terms"]
-    item.refine_count = int(item.refine_count) + 1
-    user.gold = int(user.gold) - cost
+
+    spent = 0
+    done = 0
+    for _ in range(times):
+        cost = refine_cost(item.rarity, int(item.refine_count), payload.mode)
+        if spent + cost > int(user.gold):
+            break
+        result = regenerate_attrs(item, rng, payload.mode)
+        item.base_attrs = result["baseAttrs"]
+        item.sub_attrs = result["subAttrs"]
+        item.terms = result["terms"]
+        item.refine_count = int(item.refine_count) + 1
+        spent += cost
+        done += 1
+
+    if done == 0:
+        need = refine_cost(item.rarity, int(item.refine_count), payload.mode)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {need}")
+
+    user.gold = int(user.gold) - spent
     await db.commit()
 
     after = item_to_dict(item, sell_price_range(item))
-    return {"gold": int(user.gold), "cost": cost, "before": before, "after": after}
+    return {"gold": int(user.gold), "cost": spent, "times": done, "before": before, "after": after}
 
 
 @router.post("/enchant")
@@ -168,14 +182,29 @@ async def enchant(
     before = item_to_dict(item, sell_price_range(item))
 
     if not payload.autoUntilRare:
+        times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))
         unit_cost = enchant_cost(item.rarity, payload.mode)
-        if int(user.gold) < unit_cost:
+        spent = 0
+        done = 0
+        for _ in range(times):
+            if spent + unit_cost > int(user.gold):
+                break
+            item.terms = roll_terms_for_enchant(item, rng, payload.mode)
+            item.enchant_count = int(item.enchant_count) + 1
+            spent += unit_cost
+            done += 1
+        if done == 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {unit_cost}")
-        item.terms = roll_terms_for_enchant(item, rng, payload.mode)
-        item.enchant_count = int(item.enchant_count) + 1
-        user.gold = int(user.gold) - unit_cost
+        user.gold = int(user.gold) - spent
         await db.commit()
-        return {"gold": int(user.gold), "cost": unit_cost, "attempts": 1, "before": before, "after": item_to_dict(item, sell_price_range(item))}
+        return {
+            "gold": int(user.gold),
+            "cost": spent,
+            "attempts": done,
+            "times": done,
+            "before": before,
+            "after": item_to_dict(item, sell_price_range(item)),
+        }
 
     # 自动附魔至稀有/太古：始终按彻底随机单价逐次结算
     unit_cost = enchant_cost(item.rarity)

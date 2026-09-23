@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import data from '@shared/schema'
 import { consumableBonus } from '@/utils/consumables'
 
+import ActivityLog from '@/components/ActivityLog.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import SequencePanel from '@/components/SequencePanel.vue'
@@ -509,5 +510,7 @@ function addRecipeToSequence(r: RecipeView) {
         </div>
       </div>
     </section>
+
+    <ActivityLog title="生产日志" :entries="dohdol.logEntries" empty="开始制作后显示每次产出与经验。" />
   </div>
 </template>

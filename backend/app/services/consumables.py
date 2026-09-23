@@ -137,6 +137,22 @@ async def exp_gold_mods(db: AsyncSession, user_id: int) -> dict[str, float]:
     }
 
 
+async def exp_bonus(db: AsyncSession, user_id: int) -> float:
+    """生效中的药水 / 食物提供的经验加成（生产 / 采集 / 钓鱼共用）。"""
+    return float((await active_effects(db, user_id)).get("expGainPct", 0.0))
+
+
+async def effect_sources(db: AsyncSession, user_id: int, stat: str) -> list[tuple[str, float]]:
+    """按来源列出生效中的药水 / 食物对某 stat 的贡献（名称, 值），供展示经验加成明细。"""
+    out: list[tuple[str, float]] = []
+    for row in await _rows(db, user_id):
+        name = (dohdol_util.consumable_def(row.item_id) or {}).get("name", row.item_id)
+        for effect in row.effects or []:
+            if effect.get("stat") == stat:
+                out.append((name, float(effect.get("value", 0.0))))
+    return out
+
+
 async def gather_bonus(db: AsyncSession, user_id: int) -> dict[str, float]:
     effects = await active_effects(db, user_id)
     return {"gatherYieldPct": float(effects.get("gatherYieldPct", 0.0))}

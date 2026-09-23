@@ -165,20 +165,21 @@ def float_near_current(
     lo: float,
     hi: float,
     quality: str,
-    spread_pct: float,
+    down_pct: float,
+    up_pct: float,
     cap: float | None = None,
 ) -> float:
-    """在 current 附近的邻域内独立浮动，并夹回该品质的数值带。
+    """在 current 的 [-down_pct, +up_pct] 百分比邻域内独立浮动，并夹回该品质的数值带。
 
-    浮动幅度 = 区间宽度 (hi − lo) × spread_pct，可升可降。
+    浮动幅度按「当前值」的百分比：新值 = current × (1 + U(−down, +up))，可升可降。
     """
     if hi <= lo:
         return current
-    swing = abs(hi - lo) * spread_pct
     band_lo, band_hi = quality_band(lo, hi, quality, cap)
     if band_hi < band_lo:
         band_lo, band_hi = band_hi, band_lo
-    value = current + rng.uniform(-swing, swing)
+    factor = 1.0 + rng.uniform(-abs(down_pct), abs(up_pct))
+    value = current * factor
     return min(max(value, band_lo), band_hi)
 
 
@@ -569,11 +570,12 @@ def regenerate_attrs(
             "terms": roll_terms(base, item.rarity, rng, force_ancient=int(CONFIG.recipes["equipment"]["guaranteedAncientTerms"]) if getattr(item, "high_quality", False) else 0),
         }
 
-    spread = float(CONFIG.economy["refine"]["basedOnCurrentSpreadPct"])
+    spread_down = float(CONFIG.economy["refine"]["basedOnCurrentDownPct"])
+    spread_up = float(CONFIG.economy["refine"]["basedOnCurrentUpPct"])
     base_attrs = []
     for entry in item.base_attrs or []:
         lo, hi = base_attr_range(base, item.rarity, entry["attr"], getattr(item, "high_quality", False))
-        value = float_near_current(rng, float(entry["value"]), lo, hi, "common", spread)
+        value = float_near_current(rng, float(entry["value"]), lo, hi, "common", spread_down, spread_up)
         base_attrs.append({**entry, "value": round(value, 2)})
 
     sub_attrs = []
@@ -581,13 +583,14 @@ def regenerate_attrs(
         lo, hi = sub_attr_range(base, item.rarity, entry["attr"])
         cap = sub_attr_cap(base, item.rarity, entry["attr"])
         quality = entry.get("quality", "common")
-        value = float_near_current(rng, float(entry["value"]), lo, hi, quality, spread, cap)
+        value = float_near_current(rng, float(entry["value"]), lo, hi, quality, spread_down, spread_up, cap)
         sub_attrs.append({**entry, "value": round(value, 2)})
 
     terms = _roll_terms_based_on_current(
         item,
         rng,
-        spread,
+        spread_down,
+        spread_up,
         float(CONFIG.economy["refine"].get("basedOnCurrentAncientUpgradeChance", 0.0)),
     )
     return {"baseAttrs": base_attrs, "subAttrs": sub_attrs, "terms": terms}
@@ -618,24 +621,24 @@ def _ensure_ancient_floor(terms: list[dict[str, Any]], floor: int, rng: random.R
 
 
 def float_terms_based_on_current(
-    item: Any, rng: random.Random, spread: float
+    item: Any, rng: random.Random, down_pct: float, up_pct: float
 ) -> list[dict[str, Any]]:
     """就地浮动词条：保留种类与品质，Debuff 恒为普通，值夹进该品质的数值带。"""
     out: list[dict[str, Any]] = []
     for term in item.terms or []:
         quality = "common" if term.get("type") == "debuff" else term.get("quality", "common")
         lo, hi = term_range(term["id"])
-        value = float_near_current(rng, float(term["value"]), lo, hi, quality, spread)
+        value = float_near_current(rng, float(term["value"]), lo, hi, quality, down_pct, up_pct)
         out.append({**term, "quality": quality, "value": round(value, 2)})
     return out
 
 
 def _roll_terms_based_on_current(
-    item: Any, rng: random.Random, spread: float, upgrade_chance: float
+    item: Any, rng: random.Random, down_pct: float, up_pct: float, upgrade_chance: float
 ) -> list[dict[str, Any]]:
     """「基于当前」词条处理：就地浮动 + 太古保底 + 概率升级普通 Buff 为太古。"""
     floor = _ancient_count(item.terms or [])
-    out = float_terms_based_on_current(item, rng, spread)
+    out = float_terms_based_on_current(item, rng, down_pct, up_pct)
     _ensure_ancient_floor(out, floor, rng)
     if upgrade_chance > 0 and rng.random() < upgrade_chance:
         _upgrade_random_common_buff(out, rng)
@@ -662,6 +665,7 @@ def roll_terms_for_enchant(
     return _roll_terms_based_on_current(
         item,
         rng,
-        float(cfg["basedOnCurrentSpreadPct"]),
+        float(cfg["basedOnCurrentDownPct"]),
+        float(cfg["basedOnCurrentUpPct"]),
         float(cfg.get("basedOnCurrentAncientUpgradeChance", 0.0)),
     )

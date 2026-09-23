@@ -11,7 +11,7 @@ import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { Item, SlotId } from '@/game/types'
 import { rarityBg, rarityClass, rarityName, slotName, baseAttrName, attrRangeLabel } from '@/utils/format'
-import { equipmentSlotGroups } from '@/utils/slots'
+import { dohdolSlotGroups, equipmentSlotGroups } from '@/utils/slots'
 
 const game = useGameStore()
 const toast = useToastStore()
@@ -26,6 +26,8 @@ function dohdolBonusName(attr: string): string {
 }
 
 const dohdolSlots = computed(() => [...data.dohdolEquipment.slots].sort((a, b) => a.order - b.order))
+/** 生产 / 采集专用装备分组：生产在左、采集在右。 */
+const dohdolGroups = computed(() => dohdolSlotGroups())
 const dohdolLoadout = computed(() => game.state?.dohdol?.loadout ?? {})
 const dohdolCandidates = computed<Item[]>(() => {
   if (!dohdolSlot.value) return []
@@ -138,41 +140,46 @@ async function unequipDohdol(slot: string) {
         <h2 class="text-lg font-semibold text-white">生产 / 采集专用装备</h2>
         <span class="text-xs text-ink-400">仅能通过生产制造获取 · 不影响战力</span>
       </div>
-      <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <button
-          v-for="slot in dohdolSlots"
-          :key="slot.id"
-          class="rounded-lg border p-3 text-left transition hover:border-white/40"
-          :class="
-            dohdolLoadout[slot.id]
-              ? [rarityClass(dohdolLoadout[slot.id]!.rarity), rarityBg(dohdolLoadout[slot.id]!.rarity)]
-              : 'border-ink-700 bg-ink-800/60'
-          "
-          @click="dohdolSlot = slot.id"
-        >
-          <div class="flex items-start gap-2">
-            <ItemIcon
-              v-if="dohdolLoadout[slot.id]"
-              :base-id="dohdolLoadout[slot.id]!.baseId"
-              :rarity="dohdolLoadout[slot.id]!.rarity"
-              :size="28"
-            />
-            <div class="min-w-0 flex-1">
-              <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
-              <template v-if="dohdolLoadout[slot.id]">
-                <p class="truncate text-sm font-medium">{{ dohdolLoadout[slot.id]!.name }}</p>
-                <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
-                  <p v-for="entry in dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
-                    {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
-                    <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
-                  </p>
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div v-for="group in dohdolGroups" :key="group.key">
+          <p class="mb-2 text-xs font-medium text-ink-400">{{ group.title }}</p>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <button
+              v-for="slot in group.slots"
+              :key="slot.id"
+              class="rounded-lg border p-3 text-left transition hover:border-white/40"
+              :class="
+                dohdolLoadout[slot.id]
+                  ? [rarityClass(dohdolLoadout[slot.id]!.rarity), rarityBg(dohdolLoadout[slot.id]!.rarity)]
+                  : 'border-ink-700 bg-ink-800/60'
+              "
+              @click="dohdolSlot = slot.id"
+            >
+              <div class="flex items-start gap-2">
+                <ItemIcon
+                  v-if="dohdolLoadout[slot.id]"
+                  :base-id="dohdolLoadout[slot.id]!.baseId"
+                  :rarity="dohdolLoadout[slot.id]!.rarity"
+                  :size="28"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
+                  <template v-if="dohdolLoadout[slot.id]">
+                    <p class="truncate text-sm font-medium">{{ dohdolLoadout[slot.id]!.name }}</p>
+                    <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+                      <p v-for="entry in dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
+                        {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                        <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
+                      </p>
+                    </div>
+                    <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
+                  </template>
+                  <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择</p>
                 </div>
-                <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
-              </template>
-              <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择</p>
-            </div>
+              </div>
+            </button>
           </div>
-        </button>
+        </div>
       </div>
     </section>
 

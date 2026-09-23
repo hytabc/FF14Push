@@ -12,7 +12,7 @@ import TermBadges from '@/components/TermBadges.vue'
 import { useToastStore } from '@/stores/toast'
 import type { PlayerProfile } from '@/game/types'
 import { formatNumber, formatPlaytime, jobName, rarityBg, rarityClass, rarityName, attrRangeLabel } from '@/utils/format'
-import { equipmentSlotGroups } from '@/utils/slots'
+import { dohdolSlotGroups, equipmentSlotGroups } from '@/utils/slots'
 
 const props = defineProps<{ userId: number | null }>()
 const emit = defineEmits<{ close: [] }>()
@@ -25,7 +25,7 @@ const tab = ref<'combat' | 'dohdol'>('combat')
 const groups = computed(() => equipmentSlotGroups())
 const title = computed(() => (profile.value ? `${profile.value.nickname} 的装备` : '查看装备'))
 
-const dohdolSlots = computed(() => [...data.dohdolEquipment.slots].sort((a, b) => a.order - b.order))
+const dohdolGroups = computed(() => dohdolSlotGroups())
 const dohdolBonusNames: Record<string, string> = data.dohdolEquipment.bonusNames
 
 function dohdolBonusName(attr: string): string {
@@ -116,40 +116,45 @@ watch(
       </div>
 
       <!-- 生产 / 采集专用装备 -->
-      <div v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="slot in dohdolSlots"
-          :key="slot.id"
-          class="rounded-lg border p-3"
-          :class="
-            profile.dohdolLoadout[slot.id]
-              ? [rarityClass(profile.dohdolLoadout[slot.id]!.rarity), rarityBg(profile.dohdolLoadout[slot.id]!.rarity)]
-              : 'border-ink-700 bg-ink-800/60'
-          "
-        >
-          <div class="flex items-start gap-2">
-            <ItemIcon
-              v-if="profile.dohdolLoadout[slot.id]"
-              :base-id="profile.dohdolLoadout[slot.id]!.baseId"
-              :rarity="profile.dohdolLoadout[slot.id]!.rarity"
-              :size="28"
-            />
-            <div class="min-w-0 flex-1">
-              <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
-              <template v-if="profile.dohdolLoadout[slot.id]">
-                <p class="truncate text-sm font-medium">{{ profile.dohdolLoadout[slot.id]!.name }}</p>
-                <p class="text-[10px] text-ink-400">
-                  {{ rarityName(profile.dohdolLoadout[slot.id]!.rarity) }} · Lv.{{ profile.dohdolLoadout[slot.id]!.levelReq }}
-                </p>
-                <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
-                  <p v-for="entry in profile.dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
-                    {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
-                    <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
-                  </p>
+      <div v-else class="grid gap-4 lg:grid-cols-2">
+        <div v-for="group in dohdolGroups" :key="group.key">
+          <p class="mb-2 text-xs font-medium text-ink-400">{{ group.title }}</p>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <div
+              v-for="slot in group.slots"
+              :key="slot.id"
+              class="rounded-lg border p-3"
+              :class="
+                profile.dohdolLoadout[slot.id]
+                  ? [rarityClass(profile.dohdolLoadout[slot.id]!.rarity), rarityBg(profile.dohdolLoadout[slot.id]!.rarity)]
+                  : 'border-ink-700 bg-ink-800/60'
+              "
+            >
+              <div class="flex items-start gap-2">
+                <ItemIcon
+                  v-if="profile.dohdolLoadout[slot.id]"
+                  :base-id="profile.dohdolLoadout[slot.id]!.baseId"
+                  :rarity="profile.dohdolLoadout[slot.id]!.rarity"
+                  :size="28"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
+                  <template v-if="profile.dohdolLoadout[slot.id]">
+                    <p class="truncate text-sm font-medium">{{ profile.dohdolLoadout[slot.id]!.name }}</p>
+                    <p class="text-[10px] text-ink-400">
+                      {{ rarityName(profile.dohdolLoadout[slot.id]!.rarity) }} · Lv.{{ profile.dohdolLoadout[slot.id]!.levelReq }}
+                    </p>
+                    <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+                      <p v-for="entry in profile.dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
+                        {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                        <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
+                      </p>
+                    </div>
+                    <TermBadges class="mt-1" :terms="profile.dohdolLoadout[slot.id]!.terms" />
+                  </template>
+                  <p v-else class="mt-1 text-xs text-ink-600">空</p>
                 </div>
-                <TermBadges class="mt-1" :terms="profile.dohdolLoadout[slot.id]!.terms" />
-              </template>
-              <p v-else class="mt-1 text-xs text-ink-600">空</p>
+              </div>
             </div>
           </div>
         </div>

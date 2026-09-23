@@ -29,17 +29,29 @@ const BOARDS = [
   { id: 'fish_count', label: '钓鱼数量榜', hint: '累计钓鱼数量降序' },
   { id: 'doh_exp', label: '生产经验榜', hint: '累计生产经验降序（满级后仍继续累计）' },
   { id: 'dol_exp', label: '采集经验榜', hint: '累计采集经验降序（含钓鱼，满级后仍继续累计）' },
-  { id: 'doh_attr', label: '生产属性榜', hint: '已装备生产专用装备属性总值降序' },
-  { id: 'dol_attr', label: '采集属性榜', hint: '已装备采集专用装备属性总值降序' },
+  { id: 'dohdol_attr', label: '生产 / 采集属性榜', hint: '已装备生产 / 采集专用装备属性总值降序（左：生产，右：采集）' },
   { id: 'coop', label: '远征榜', hint: '同副本按通关时长升序（越小越快）' },
 ]
 
 const DOHDOL_BOARDS = ['doh_exp', 'dol_exp', 'doh_attr', 'dol_attr']
 
+/** 生产 / 采集属性榜：前端把两个实时榜并排成一个对比榜（左生产、右采集）。 */
+const COMPARE_BOARD = 'dohdol_attr'
+const COMPARE_PARTS = [
+  { board: 'doh_attr', label: '生产属性榜' },
+  { board: 'dol_attr', label: '采集属性榜' },
+] as const
+
+interface RankingPane {
+  board: string
+  label: string
+  entries: RankingEntry[]
+  me: { rank: number; value: number } | null
+}
+
 const board = ref('level')
 const page = ref(1)
-const entries = ref<RankingEntry[]>([])
-const me = ref<{ rank: number; value: number } | null>(null)
+const panes = ref<RankingPane[]>([])
 const loading = ref(false)
 const dungeons = ref<{ id: string; name: string; difficulty: string }[]>([])
 const dungeon = ref('')
@@ -49,12 +61,21 @@ const current = computed(() => BOARDS.find((b) => b.id === board.value)!)
 async function load() {
   loading.value = true
   try {
-    const res = await api.ranking(board.value, page.value, board.value === 'coop' ? dungeon.value : undefined)
-    entries.value = res.entries
-    me.value = res.me
-    if (res.dungeons) {
-      dungeons.value = res.dungeons
-      if (!dungeon.value && res.dungeon) dungeon.value = res.dungeon
+    if (board.value === COMPARE_BOARD) {
+      const results = await Promise.all(COMPARE_PARTS.map((part) => api.ranking(part.board, page.value)))
+      panes.value = COMPARE_PARTS.map((part, index) => ({
+        board: part.board,
+        label: part.label,
+        entries: results[index].entries,
+        me: results[index].me,
+      }))
+    } else {
+      const res = await api.ranking(board.value, page.value, board.value === 'coop' ? dungeon.value : undefined)
+      panes.value = [{ board: board.value, label: current.value.label, entries: res.entries, me: res.me }]
+      if (res.dungeons) {
+        dungeons.value = res.dungeons
+        if (!dungeon.value && res.dungeon) dungeon.value = res.dungeon
+      }
     }
   } catch {
     toast.push('排行榜加载失败', 'error')
@@ -76,17 +97,29 @@ async function refreshAll() {
 onMounted(load)
 watch([board, page], load)
 
-function valueText(entry: RankingEntry): string {
-  if (board.value === 'gold') return formatNumber(entry.value)
-  if (board.value === 'stage') return entry.value > 0 ? `第 ${entry.value} 关` : '未通关'
-  if (board.value === 'playtime') return formatPlaytime(entry.value)
-  if (board.value === 'fish_species') return `${entry.value} 种`
-  if (board.value === 'fish_count') return `${formatNumber(entry.value)} 条`
-  if (board.value === 'doh_exp' || board.value === 'dol_exp') return `${formatNumber(entry.value)} 经验`
-  if (board.value === 'doh_attr' || board.value === 'dol_attr') return `${formatNumber(entry.value)} 属性`
-  if (board.value === 'coop') return formatDuration(entry.value)
+function valueText(boardId: string, entry: RankingEntry): string {
+  if (boardId === 'gold') return formatNumber(entry.value)
+  if (boardId === 'stage') return entry.value > 0 ? `第 ${entry.value} 关` : '未通关'
+  if (boardId === 'playtime') return formatPlaytime(entry.value)
+  if (boardId === 'fish_species') return `${entry.value} 种`
+  if (boardId === 'fish_count') return `${formatNumber(entry.value)} 条`
+  if (boardId === 'doh_exp' || boardId === 'dol_exp') return `${formatNumber(entry.value)} 经验`
+  if (boardId === 'doh_attr' || boardId === 'dol_attr') return `${formatNumber(entry.value)} 属性`
+  if (boardId === 'coop') return formatDuration(entry.value)
   return String(entry.value)
 }
+
+/** 我的排名：对比榜会给出两组（生产 / 采集各一条）。 */
+const myRanks = computed(() =>
+  panes.value
+    .filter((pane) => pane.me)
+    .map((pane) => ({
+      board: pane.board,
+      label: pane.label,
+      rank: pane.me!.rank,
+      text: valueText(pane.board, { value: pane.me!.value } as RankingEntry),
+    })),
+)
 
 /** 每行都展示的累计在线时长（所有榜单通用，来自 payload）。 */
 function playtimeText(entry: RankingEntry): string {
@@ -121,8 +154,8 @@ function dohdolLevels(entry: RankingEntry): { doh: number; dol: number } {
   }
 }
 
-function openProfile(entry: RankingEntry) {
-  if (board.value === 'coop') {
+function openProfile(entry: RankingEntry, boardId: string) {
+  if (boardId === 'coop') {
     record.value = entry.payload as unknown as CoopClearPayload
     return
   }
@@ -226,76 +259,86 @@ function pickDungeon(id: string) {
       </div>
     </section>
 
-    <section class="card overflow-x-auto">
-      <table class="w-full text-xs">
-        <thead class="bg-ink-800/80 text-ink-400">
-          <tr>
-            <th class="w-12 px-3 py-2 text-left sm:w-16">排名</th>
-            <th class="px-3 py-2 text-left">玩家昵称</th>
-            <th class="hidden px-3 py-2 text-left sm:table-cell">英雄等级</th>
-            <th class="px-3 py-2 text-right">数值</th>
-            <th class="hidden whitespace-nowrap px-3 py-2 text-right sm:table-cell">游玩时间</th>
-            <th class="hidden w-14 px-3 py-2 text-right sm:table-cell">装备</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="entry in entries"
-            :key="entry.userId"
-            class="cursor-pointer border-t border-ink-800 transition hover:bg-ink-800/60"
-            :title="board === 'coop' ? '查看该次通关阵容与输出' : '查看该玩家当前装备'"
-            @click="openProfile(entry)"
-          >
-            <td class="px-3 py-2 font-mono" :class="entry.rank <= 3 ? 'text-amber-300' : 'text-ink-400'">
-              {{ entry.rank }}
-            </td>
-            <td class="px-3 py-2 text-ink-100">
-              {{ entry.nickname }}<span class="opacity-60">#{{ entry.username }}</span>
-              <span
-                v-for="t in entryTitles(entry)"
-                :key="t"
-                class="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
-              >{{ t }}</span>
-              <!-- 远征榜：行内展示该次通关的阵容 -->
-              <div v-if="board === 'coop' && partyOf(entry).length" class="mt-1 flex flex-wrap gap-1">
+    <section class="grid gap-3" :class="panes.length > 1 ? 'md:grid-cols-2' : ''">
+      <div v-for="pane in panes" :key="pane.board" class="card overflow-x-auto">
+        <p
+          v-if="panes.length > 1"
+          class="border-b border-ink-800 px-3 py-2 text-xs font-medium text-ink-200"
+        >
+          {{ pane.label }}
+        </p>
+        <table class="w-full text-xs">
+          <thead class="bg-ink-800/80 text-ink-400">
+            <tr>
+              <th class="w-12 px-3 py-2 text-left sm:w-16">排名</th>
+              <th class="px-3 py-2 text-left">玩家昵称</th>
+              <th class="hidden px-3 py-2 text-left sm:table-cell">英雄等级</th>
+              <th class="px-3 py-2 text-right">数值</th>
+              <th class="hidden whitespace-nowrap px-3 py-2 text-right sm:table-cell">游玩时间</th>
+              <th class="hidden w-14 px-3 py-2 text-right sm:table-cell">装备</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="entry in pane.entries"
+              :key="entry.userId"
+              class="cursor-pointer border-t border-ink-800 transition hover:bg-ink-800/60"
+              :title="pane.board === 'coop' ? '查看该次通关阵容与输出' : '查看该玩家当前装备'"
+              @click="openProfile(entry, pane.board)"
+            >
+              <td class="px-3 py-2 font-mono" :class="entry.rank <= 3 ? 'text-amber-300' : 'text-ink-400'">
+                {{ entry.rank }}
+              </td>
+              <td class="px-3 py-2 text-ink-100">
+                {{ entry.nickname }}<span class="opacity-60">#{{ entry.username }}</span>
                 <span
-                  v-for="m in partyOf(entry)"
-                  :key="m.slot"
-                  class="inline-flex items-center gap-1 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-300"
-                  :title="`${roles[m.role]} · Lv.${m.level}`"
-                >
-                  <span class="inline-block h-1.5 w-1.5 rounded-full" :class="roleDot(m.role)" />
-                  {{ jobName(m.jobId) }}
-                </span>
-              </div>
-            </td>
-            <td class="hidden px-3 py-2 text-ink-400 sm:table-cell">{{ entry.payload?.level ?? '—' }}</td>
-            <td class="px-3 py-2 text-right">
-              <div class="font-mono text-ink-200">{{ valueText(entry) }}</div>
-              <div v-if="board === 'coop'" class="mt-0.5 text-[10px] text-ink-500">
-                {{ modeLabel(entry) }}<span v-if="hadClone(entry)"> · 含克隆</span>
-              </div>
-              <div v-if="board === 'fish_species'" class="mt-0.5 text-[10px] text-ink-500">
-                普通 {{ fishBreakdown(entry).normal }} ·
-                鱼王 {{ fishBreakdown(entry).king }}/{{ FISH_REGION_TOTAL }} ·
-                鱼皇 {{ fishBreakdown(entry).emperor }}/{{ FISH_REGION_TOTAL }}
-              </div>
-              <div v-if="DOHDOL_BOARDS.includes(board)" class="mt-0.5 text-[10px] text-ink-500">
-                生产 Lv.{{ dohdolLevels(entry).doh }} · 采集 Lv.{{ dohdolLevels(entry).dol }}
-              </div>
-            </td>
-            <td class="hidden whitespace-nowrap px-3 py-2 text-right text-ink-400 sm:table-cell">{{ playtimeText(entry) }}</td>
-            <td class="hidden px-3 py-2 text-right text-ink-400 sm:table-cell">{{ board === 'coop' ? '阵容' : '查看' }}</td>
-          </tr>
-          <tr v-if="!entries.length && !loading">
-            <td colspan="6" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
-          </tr>
-        </tbody>
-      </table>
+                  v-for="t in entryTitles(entry)"
+                  :key="t"
+                  class="ml-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
+                >{{ t }}</span>
+                <!-- 远征榜：行内展示该次通关的阵容 -->
+                <div v-if="pane.board === 'coop' && partyOf(entry).length" class="mt-1 flex flex-wrap gap-1">
+                  <span
+                    v-for="m in partyOf(entry)"
+                    :key="m.slot"
+                    class="inline-flex items-center gap-1 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-300"
+                    :title="`${roles[m.role]} · Lv.${m.level}`"
+                  >
+                    <span class="inline-block h-1.5 w-1.5 rounded-full" :class="roleDot(m.role)" />
+                    {{ jobName(m.jobId) }}
+                  </span>
+                </div>
+              </td>
+              <td class="hidden px-3 py-2 text-ink-400 sm:table-cell">{{ entry.payload?.level ?? '—' }}</td>
+              <td class="px-3 py-2 text-right">
+                <div class="font-mono text-ink-200">{{ valueText(pane.board, entry) }}</div>
+                <div v-if="pane.board === 'coop'" class="mt-0.5 text-[10px] text-ink-500">
+                  {{ modeLabel(entry) }}<span v-if="hadClone(entry)"> · 含克隆</span>
+                </div>
+                <div v-if="pane.board === 'fish_species'" class="mt-0.5 text-[10px] text-ink-500">
+                  普通 {{ fishBreakdown(entry).normal }} ·
+                  鱼王 {{ fishBreakdown(entry).king }}/{{ FISH_REGION_TOTAL }} ·
+                  鱼皇 {{ fishBreakdown(entry).emperor }}/{{ FISH_REGION_TOTAL }}
+                </div>
+                <div v-if="DOHDOL_BOARDS.includes(pane.board)" class="mt-0.5 text-[10px] text-ink-500">
+                  生产 Lv.{{ dohdolLevels(entry).doh }} · 采集 Lv.{{ dohdolLevels(entry).dol }}
+                </div>
+              </td>
+              <td class="hidden whitespace-nowrap px-3 py-2 text-right text-ink-400 sm:table-cell">{{ playtimeText(entry) }}</td>
+              <td class="hidden px-3 py-2 text-right text-ink-400 sm:table-cell">{{ pane.board === 'coop' ? '阵容' : '查看' }}</td>
+            </tr>
+            <tr v-if="!pane.entries.length && !loading">
+              <td colspan="6" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
-    <div v-if="me" class="card p-3 text-xs text-ink-300">
-      我的排名：<b class="font-mono text-amber-300">第 {{ me.rank }} 名</b> · {{ valueText({ value: me.value } as RankingEntry) }}
+    <div v-if="myRanks.length" class="card p-3 text-xs text-ink-300">
+      <p v-for="pane in myRanks" :key="pane.board">
+        我的排名<span v-if="panes.length > 1" class="text-ink-500">（{{ pane.label }}）</span>：<b class="font-mono text-amber-300">第 {{ pane.rank }} 名</b> · {{ pane.text }}
+      </p>
     </div>
 
     <nav class="flex items-center justify-center gap-2 text-xs">
@@ -305,7 +348,7 @@ function pickDungeon(id: string) {
       <span class="text-ink-400">第 {{ page }} 页</span>
       <button
         class="rounded bg-ink-700 px-3 py-1.5 disabled:opacity-40"
-        :disabled="entries.length < 50"
+        :disabled="!panes.some((p) => p.entries.length >= 50)"
         @click="page += 1"
       >
         下一页

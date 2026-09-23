@@ -678,14 +678,20 @@ export const gameData = {
       subAttrFloat: number
       costGrowthPerRefine: number
       basedOnCurrentCostMultiplier: number
-      basedOnCurrentSpreadPct: number
+      /** 「基于当前」浮动的下浮比例（新值 = 当前值 ×(1 − down)）。 */
+      basedOnCurrentDownPct: number
+      /** 「基于当前」浮动的上浮比例（新值 = 当前值 ×(1 + up)）。 */
+      basedOnCurrentUpPct: number
       /** 「基于当前」重造时把一条普通 Buff 升为太古的概率。 */
       basedOnCurrentAncientUpgradeChance: number
     }
     enchant: {
       autoUntilRareExtraCostMultiplier: number
       basedOnCurrentCostMultiplier: number
-      basedOnCurrentSpreadPct: number
+      /** 「基于当前」浮动的下浮比例（新值 = 当前值 ×(1 − down)）。 */
+      basedOnCurrentDownPct: number
+      /** 「基于当前」浮动的上浮比例（新值 = 当前值 ×(1 + up)）。 */
+      basedOnCurrentUpPct: number
       /** 「基于当前」附魔时把一条普通 Buff 升为太古的概率。 */
       basedOnCurrentAncientUpgradeChance: number
     }

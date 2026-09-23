@@ -340,6 +340,90 @@ class TestCraftEconomy:
         )
 
 
+class TestDohdolSellBalance:
+    """采集素材 / 渔获 / 半成品出售价：越高档涨幅越大，但非战斗收入不得反超同档战斗。"""
+
+    BANDS = (1, 9, 17, 23, 29, 35)
+    # 第 1 档是教程区：起始武器约 11 秒/杀，战斗保守下限仅约 1.3 金币/秒，
+    # 本就低于采集产出（改动前既有的例外），故不纳入断言。
+    CHECKED_BANDS = BANDS[1:]
+
+    def _combat_gold_floor_per_sec(self, region_id: int) -> float:
+        """同档战斗金币下限：baseGold × 普通倍率 × (1 − goldFloat) ÷ 保守击杀耗时 8s。"""
+        region = CONFIG.region_by_id[region_id]
+        gold_floor = (
+            float(region["baseGold"])
+            * float(CONFIG.regions["goldMultipliers"]["normal"])
+            * (1.0 - float(CONFIG.regions["goldFloat"]))
+        )
+        return gold_floor / 8.0
+
+    def _gather_gold_per_sec(self, region_id: int) -> float:
+        """该地区采集的金币/秒：按节点权重与数量区间求材料期望产出，再除以单次动作耗时。"""
+        node = CONFIG.gather_node_by[(region_id, "MIN")]
+        total_weight = sum(int(y["weight"]) for y in node["yields"])
+        expected = 0.0
+        for y in node["yields"]:
+            sell = int((CONFIG.material_by_id.get(y["materialId"]) or {}).get("sell", 0))
+            avg_count = (int(y["min"]) + int(y["max"])) / 2.0
+            expected += (int(y["weight"]) / total_weight) * sell * avg_count
+        return expected / float(CONFIG.gather_nodes["baseSecondsPerAction"])
+
+    def _region_mat_sell(self, band: int) -> int:
+        return next(
+            int(m["sell"]) for m in CONFIG.materials["materials"] if m.get("regionId") == band
+        )
+
+    def test_sell_tables_are_progressive(self):
+        """档位内单价一致、跨档严格递增，且自第 2 档起每档涨幅 ≥ 1.5×。"""
+        for band in self.BANDS:
+            node = CONFIG.gather_node_by[(band, "MIN")]
+            sells = {
+                int((CONFIG.material_by_id.get(y["materialId"]) or {}).get("sell", 0))
+                for y in node["yields"]
+                if (CONFIG.material_by_id.get(y["materialId"]) or {}).get("regionId") == band
+            }
+            assert len(sells) == 1, f"档位 {band} 的专属材料单价不一致：{sells}"
+
+        for label, pick in (
+            ("采集素材", self._region_mat_sell),
+            ("普通渔获", lambda b: int(CONFIG.fish_region_by_id[b]["normal"][0]["sell"])),
+            ("鱼王", lambda b: int(CONFIG.fish_region_by_id[b]["king"]["sell"])),
+            ("鱼皇", lambda b: int(CONFIG.fish_region_by_id[b]["emperor"]["sell"])),
+        ):
+            for prev, cur in zip(self.BANDS, self.BANDS[1:]):
+                assert pick(cur) > pick(prev), f"{label} 档位 {cur} 未高于 {prev}：{pick(prev)} → {pick(cur)}"
+                assert pick(cur) >= pick(prev) * 1.5, (
+                    f"{label} 档位 {cur} 涨幅不足：{pick(prev)} → {pick(cur)}"
+                )
+
+    def test_non_combat_income_stays_well_below_combat(self):
+        """采集与钓鱼的金币/秒须低于同档战斗下限的 30%，避免出现「不打怪只采集」的刷钱路线。"""
+        cast_seconds = float(CONFIG.fish["castSeconds"])
+        for band in self.CHECKED_BANDS:
+            cap = self._combat_gold_floor_per_sec(band) * 0.3
+            gather = self._gather_gold_per_sec(band)
+            fish = int(CONFIG.fish_region_by_id[band]["normal"][0]["sell"]) / cast_seconds
+            assert gather < cap, f"档位 {band} 采集 {gather:.1f} 金币/秒，超过战斗下限的 30%（{cap:.1f}）"
+            assert fish < cap, f"档位 {band} 渔获 {fish:.1f} 金币/秒，超过战斗下限的 30%（{cap:.1f}）"
+
+    def test_half_good_conversion_is_bounded(self):
+        """半成品配方：产出卖价不得超过输入卖价的 6 倍，避免「采集 → 加工 → 出售」变成印钞机。"""
+        for recipe in CONFIG.recipes["recipes"]:
+            output = recipe["output"]
+            if output["kind"] != "material":
+                continue
+            produced = int((CONFIG.material_by_id.get(output["itemId"]) or {}).get("sell", 0)) * int(
+                output.get("count", 1)
+            )
+            consumed = sum(
+                int((CONFIG.material_by_id.get(e["itemId"]) or {}).get("sell", 0)) * int(e["count"])
+                for e in recipe["inputs"]
+            )
+            assert consumed > 0, f"{recipe['id']} 输入无出售价值"
+            assert produced <= consumed * 6, f"{recipe['id']} 产出 {produced} 超过输入 {consumed} 的 6 倍"
+
+
 class TestGatherApi:
     @pytest.mark.asyncio
     async def test_gather_flow(self, auth_client, session_factory):
@@ -595,6 +679,164 @@ class TestCraftXp:
         # 有非最低品阶时，经验必须严格高于「件数 × 基础经验」。
         if any(it["rarity"] != CONFIG.rarity_order[0] for it in items):
             assert body["xp"] > body["crafts"] * int(recipe["xp"])
+
+
+class TestEquippedBonusSources:
+    """经验加成来源明细：与 equipped_bonus 同源，且能区分固定加成与词条。"""
+
+    class _FakeItem:
+        def __init__(self, base_id, slot, terms):
+            self.base_id = base_id
+            self.equipped_slot = slot
+            self.terms = terms
+
+    def test_lists_fixed_bonus_and_term_separately(self):
+        items = [
+            self._FakeItem(
+                "dh_dohTool_xp_4",
+                "dohTool",
+                [{"name": "灵感", "stat": "craftXpPct", "value": 12.5}],
+            )
+        ]
+        sources = dict(dohdol_util.equipped_bonus_sources(items, "craftXpPct"))
+        assert sources["高级悟道巧匠主手工具"] == pytest.approx(4.0)
+        assert sources["灵感"] == pytest.approx(12.5)
+        assert sum(sources.values()) == pytest.approx(
+            dohdol_util.equipped_bonus(items)["craftXpPct"]
+        )
+
+    def test_ignores_unequipped_items(self):
+        items = [self._FakeItem("dh_dohTool_xp_4", None, [])]
+        assert dohdol_util.equipped_bonus_sources(items, "craftXpPct") == []
+
+
+class TestXpGearData:
+    """经验专用装备数据守卫：悟道 / 博识变体必须真实携带经验属性。"""
+
+    def test_xp_variants_carry_xp_stat(self):
+        items = CONFIG.dohdol_equipment["items"]
+        doh_xp = [i for i in items if i["variant"] == "xp" and i["kind"] == "doh"]
+        dol_xp = [i for i in items if i["variant"] == "xp" and i["kind"] == "dol"]
+        assert doh_xp and dol_xp, "应存在生产 / 采集经验变体"
+        for item in doh_xp:
+            value = float(item["bonus"].get("craftXpPct", 0.0))
+            assert 0 < value <= 25, f"{item['id']} 制造经验加成异常：{value}"
+        for item in dol_xp:
+            value = float(item["bonus"].get("gatherXpPct", 0.0))
+            assert 0 < value <= 25, f"{item['id']} 采集经验加成异常：{value}"
+
+
+class TestActivityXpBreakdown:
+    """经验结算明细：基础 / 品阶系数 / 加成来源，且与最终经验自洽。"""
+
+    async def _gather_once(self, auth_client, session_factory, backdate: float = 20.0) -> dict:
+        from app.models import ActivitySession
+
+        start = await auth_client.post(
+            "/api/v1/gather/session/start", json={"jobId": "MIN", "regionId": 1}
+        )
+        assert start.status_code == 200, start.text
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, backdate)
+            await db.commit()
+        rep = await auth_client.post("/api/v1/gather/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        return rep.json()
+
+    async def _produce_once(
+        self, auth_client, session_factory, recipe_id: str, gives: dict[str, int], backdate: float = 20.0
+    ) -> dict:
+        from app.models import ActivitySession
+
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            for item_id, count in gives.items():
+                db.add(StackItem(user_id=user_id, kind="material", item_id=item_id, count=count))
+            await db.commit()
+        start = await auth_client.post(
+            "/api/v1/produce/session/start",
+            json={"jobId": CONFIG.recipe_by_id[recipe_id]["jobId"], "recipeId": recipe_id},
+        )
+        assert start.status_code == 200, start.text
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, backdate)
+            await db.commit()
+        rep = await auth_client.post("/api/v1/produce/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        return rep.json()
+
+    @pytest.mark.asyncio
+    async def test_gather_breakdown_is_consistent(self, auth_client, session_factory):
+        body = await self._gather_once(auth_client, session_factory)
+        b = body["xpBreakdown"]
+        assert b["base"] == body["actions"] * int(CONFIG.dohdol_levels["actionXp"]["gather"])
+        assert b["rarityMultiplier"] == 1.0
+        assert b["amount"] == body["xp"]
+        assert b["sources"] == []
+        assert round(b["base"] * (1 + b["bonusPct"] / 100)) == pytest.approx(b["amount"], abs=1)
+
+    @pytest.mark.asyncio
+    async def test_gather_consumable_exp_bonus_is_itemized(self, auth_client, session_factory):
+        base = await self._gather_once(auth_client, session_factory)
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            db.add(StackItem(user_id=user_id, kind="potion", item_id="p_expGainPct", count=1))
+            await db.commit()
+        used = await auth_client.post("/api/v1/consumable/use", json={"itemId": "p_expGainPct"})
+        assert used.status_code == 200, used.text
+
+        boosted = await self._gather_once(auth_client, session_factory)
+        assert boosted["actions"] == base["actions"], "同一窗口下动作数应一致，才能比较经验"
+        assert boosted["xp"] > base["xp"], "经验药水应提升采集经验"
+        assert boosted["xpBreakdown"]["bonusPct"] == pytest.approx(25.0)
+        sources = {s["label"]: s["pct"] for s in boosted["xpBreakdown"]["sources"]}
+        assert sources["经验获取秘药"] == pytest.approx(25.0)
+
+    @pytest.mark.asyncio
+    async def test_equipped_gather_xp_gear_is_itemized(self, auth_client, session_factory):
+        from app.models import User
+        from app.services.grants import insert_items
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            user = (await db.execute(select(User).where(User.id == me["id"]))).scalar_one()
+            generated = generate_crafted_item("dh_dolTool_xp_4", random.Random(5))
+            created = await insert_items(db, user, [generated], source="craft")
+            await db.commit()
+        equip = await auth_client.post(
+            "/api/v1/dohdol/equip", json={"itemId": created[0]["id"], "slot": "dolTool"}
+        )
+        assert equip.status_code == 200, equip.text
+
+        body = await self._gather_once(auth_client, session_factory)
+        sources = {s["label"]: s["pct"] for s in body["xpBreakdown"]["sources"]}
+        assert sources["高级博识大地主手工具"] == pytest.approx(4.0)
+        assert body["xpBreakdown"]["bonusPct"] >= 4.0
+
+    @pytest.mark.asyncio
+    async def test_material_craft_breakdown_is_consistent(self, auth_client, session_factory):
+        recipe = CONFIG.recipe_by_id["r_h_plank"]
+        body = await self._produce_once(auth_client, session_factory, "r_h_plank", {"g_wood": 9})
+        b = body["xpBreakdown"]
+        assert b["rarityMultiplier"] == 1.0
+        assert b["base"] == body["crafts"] * int(recipe["xp"])
+        assert b["amount"] == body["xp"]
+
+    @pytest.mark.asyncio
+    async def test_equipment_craft_reports_rarity_multiplier(self, auth_client, session_factory):
+        recipe = CONFIG.recipe_by_id["r_dh_dohTool_0"]
+        gives = {e["itemId"]: int(e["count"]) * 3 for e in recipe["inputs"]}
+        body = await self._produce_once(auth_client, session_factory, "r_dh_dohTool_0", gives)
+        b = body["xpBreakdown"]
+        # 装备按实际抽到的品阶加权：最低品阶系数为 1，故平均值 >= 1。
+        assert b["rarityMultiplier"] >= 1.0
+        assert b["amount"] == body["xp"]
+        expected = round(b["base"] * b["rarityMultiplier"] * (1 + b["bonusPct"] / 100))
+        assert expected == pytest.approx(b["amount"], abs=1)
 
 
 class TestFishApi:

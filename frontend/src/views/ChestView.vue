@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
+import ChestReel from '@/components/ChestReel.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
@@ -19,6 +20,18 @@ const LEVEL_BANDS = data.chests.levelBands
 const busy = ref<string | null>(null)
 const revealItems = ref<Item[]>([])
 const showReveal = ref(false)
+const phase = ref<'spinning' | 'result'>('result')
+const spinKey = ref(0)
+const lastDraw = ref<{ chestId: string; count: number } | null>(null)
+
+/** 开箱转盘节奏（毫秒）：与 ChestReel 保持一致。 */
+const REEL_DURATION = 2600
+const REEL_STAGGER = 120
+
+const reducedMotion =
+  typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+let revealTimer = 0
 
 const heroLevel = computed(() => game.hero?.level ?? 1)
 /** 已解锁的等级档位（玩家等级达到即可选）。 */
@@ -29,6 +42,13 @@ const bandDef = computed(() => LEVEL_BANDS.find((b) => b.level === band.value) ?
 const luck = computed(() => Math.max(0, (game.state?.dropRateMultiplier ?? 1) - 1))
 
 const PITY = data.chests.pity
+
+/** 上一次抽的箱子定义（「继续抽奖」复用其价格/档位）。 */
+const lastChest = computed(
+  () => chests.find((c) => c.id === lastDraw.value?.chestId) ?? null,
+)
+
+const modalTitle = computed(() => (phase.value === 'spinning' ? '开箱中…' : '抽取结果'))
 
 function pityOf(chestId: string) {
   return game.state?.pity[chestId] ?? { sinceRare: 0, sinceEpic: 0, sinceLegendary: 0 }
@@ -70,18 +90,43 @@ onMounted(async () => {
   band.value = unlockedBands.value[unlockedBands.value.length - 1]?.level ?? LEVEL_BANDS[0].level
 })
 
+onBeforeUnmount(() => window.clearTimeout(revealTimer))
+
 function isUnlocked(level: number): boolean {
   return heroLevel.value >= level
+}
+
+function canContinueDraw(): boolean {
+  if (busy.value || !lastChest.value || !lastDraw.value) return false
+  return canAfford.value(unitPrice(lastChest.value), lastDraw.value.count)
+}
+
+function closeReveal() {
+  window.clearTimeout(revealTimer)
+  showReveal.value = false
+  phase.value = 'result'
 }
 
 async function draw(chestId: string, count: number) {
   if (busy.value) return
   busy.value = chestId
+  window.clearTimeout(revealTimer)
   try {
     const res = await game.openChest(chestId, count, band.value)
     if (!res) return
     revealItems.value = res.items
+    lastDraw.value = { chestId, count }
+    spinKey.value += 1
     showReveal.value = true
+    if (reducedMotion || res.items.length === 0) {
+      phase.value = 'result'
+    } else {
+      phase.value = 'spinning'
+      const total = (res.items.length - 1) * REEL_STAGGER + REEL_DURATION + 250
+      revealTimer = window.setTimeout(() => {
+        phase.value = 'result'
+      }, total)
+    }
     if (res.autoSold.length) {
       toast.push(`自动出售 ${res.autoSold.length} 件装备`, 'info')
     }
@@ -219,47 +264,90 @@ function bestRarity(): string {
       </article>
     </section>
 
-    <Modal :open="showReveal" title="抽取结果" max-width="max-w-3xl" @close="showReveal = false">
-      <div class="mb-3 flex items-center gap-2 text-xs">
-        <span class="text-ink-400">最高品阶：</span>
-        <span class="font-semibold" :class="rarityClass(bestRarity() as never)">
-          {{ rarityName(bestRarity() as never) }}
-        </span>
-        <span class="ml-auto text-ink-400">共 {{ revealItems.length }} 件</span>
+    <Modal :open="showReveal" :title="modalTitle" max-width="max-w-4xl" @close="closeReveal()">
+      <!-- 开箱转盘：单抽 1 个，十连 10 个并行 -->
+      <div v-if="phase === 'spinning'" class="space-y-3">
+        <div v-if="revealItems.length === 1" class="mx-auto w-full max-w-xl">
+          <ChestReel
+            :key="spinKey"
+            :item="revealItems[0]"
+            :category="revealItems[0].category"
+            :tier="lastChest?.tier ?? 'normal'"
+            :duration="REEL_DURATION"
+          />
+        </div>
+        <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <ChestReel
+            v-for="(item, index) in revealItems"
+            :key="`${spinKey}-${index}`"
+            :item="item"
+            :category="item.category"
+            :tier="lastChest?.tier ?? 'normal'"
+            :duration="REEL_DURATION"
+            :delay="index * REEL_STAGGER"
+            :slot-width="48"
+            compact
+          />
+        </div>
       </div>
 
-      <div class="grid max-h-[55vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          v-for="(item, index) in revealItems"
-          :key="item.id"
-          class="animate-rise rounded-lg border p-3"
-          :class="[rarityClass(item.rarity), rarityBg(item.rarity)]"
-          :style="{ animationDelay: `${Math.min(index * 45, 400)}ms` }"
-        >
-          <div class="flex items-center gap-2">
-            <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="36" />
-            <div class="min-w-0">
-              <p class="truncate text-xs font-medium">{{ item.name }}</p>
-              <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>
+      <!-- 详细结果 -->
+      <div v-else class="space-y-3">
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-ink-400">最高品阶：</span>
+          <span class="font-semibold" :class="rarityClass(bestRarity() as never)">
+            {{ rarityName(bestRarity() as never) }}
+          </span>
+          <span class="ml-auto text-ink-400">共 {{ revealItems.length }} 件</span>
+        </div>
+
+        <div class="grid max-h-[55vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            v-for="(item, index) in revealItems"
+            :key="item.id"
+            class="animate-rise rounded-lg border p-3"
+            :class="[rarityClass(item.rarity), rarityBg(item.rarity)]"
+            :style="{ animationDelay: `${Math.min(index * 45, 400)}ms` }"
+          >
+            <div class="flex items-center gap-2">
+              <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="36" />
+              <div class="min-w-0">
+                <p class="truncate text-xs font-medium">{{ item.name }}</p>
+                <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>
+              </div>
             </div>
+            <p v-for="entry in item.subAttrs" :key="entry.attr" class="text-[10px] text-ink-300">
+              {{ attrName(entry.attr) }} +{{ entry.value.toFixed(2) }}{{ attrSuffix(entry.attr) }}
+            </p>
           </div>
-          <p v-for="entry in item.subAttrs" :key="entry.attr" class="text-[10px] text-ink-300">
-            {{ attrName(entry.attr) }} +{{ entry.value.toFixed(2) }}{{ attrSuffix(entry.attr) }}
-          </p>
         </div>
       </div>
 
       <template #footer>
-        <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="showReveal = false">
-          关闭
-        </button>
-        <RouterLink
-          to="/inventory"
-          class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950 hover:bg-amber-400"
-          @click="showReveal = false"
-        >
-          去背包查看
-        </RouterLink>
+        <template v-if="phase === 'spinning'">
+          <span class="mr-auto self-center text-xs text-ink-400">开箱中，请稍候…</span>
+        </template>
+        <template v-else>
+          <button
+            v-if="lastDraw"
+            class="mr-auto rounded-md border border-amber-500/60 px-3 py-2 text-sm text-amber-200 hover:bg-amber-500/15 disabled:opacity-50"
+            :disabled="!canContinueDraw()"
+            :title="canContinueDraw() ? '' : '金币不足'"
+            @click="lastChest && draw(lastDraw.chestId, lastDraw.count)"
+          >
+            继续抽奖 · {{ lastChest ? formatNumber(unitPrice(lastChest) * lastDraw.count) : '' }}
+          </button>
+          <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="closeReveal()">
+            关闭
+          </button>
+          <RouterLink
+            to="/inventory"
+            class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950 hover:bg-amber-400"
+            @click="closeReveal()"
+          >
+            去背包查看
+          </RouterLink>
+        </template>
       </template>
     </Modal>
   </div>

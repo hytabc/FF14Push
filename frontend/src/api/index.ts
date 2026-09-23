@@ -142,20 +142,26 @@ export const api = {
     ).data
   },
 
-  async refine(itemId: number, mode: RerollMode = 'random') {
-    return (await http.post<{ gold: number; cost: number; before: Item; after: Item }>('/economy/refine', { itemId, mode })).data
+  async refine(itemId: number, mode: RerollMode = 'random', times = 1) {
+    return (
+      await http.post<{ gold: number; cost: number; times: number; before: Item; after: Item }>(
+        '/economy/refine',
+        { itemId, mode, times },
+      )
+    ).data
   },
 
-  async enchant(itemId: number, autoUntilRare = false, maxAttempts = 100, mode: RerollMode = 'random') {
+  async enchant(itemId: number, autoUntilRare = false, maxAttempts = 100, mode: RerollMode = 'random', times = 1) {
     return (
       await http.post<{
         gold: number
         cost: number
         attempts: number
+        times?: number
         hit?: boolean
         before: Item
         after: Item
-      }>('/economy/enchant', { itemId, autoUntilRare, maxAttempts, mode })
+      }>('/economy/enchant', { itemId, autoUntilRare, maxAttempts, mode, times })
     ).data
   },
 

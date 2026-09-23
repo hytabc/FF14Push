@@ -51,6 +51,9 @@ const logTone: Record<string, string> = {
   danger: 'text-rose-400',
   system: 'text-ink-200',
   boss: 'text-fuchsia-300',
+  crit: 'text-orange-300',
+  dh: 'text-cyan-300',
+  critDh: 'text-yellow-200',
 }
 
 async function load() {

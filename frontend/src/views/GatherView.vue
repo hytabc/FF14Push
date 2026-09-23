@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import data from '@shared/schema'
 import type { GatherNodeDef } from '@shared/schema'
 
+import ActivityLog from '@/components/ActivityLog.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import SequencePanel from '@/components/SequencePanel.vue'
@@ -398,5 +399,7 @@ async function toggle() {
         </div>
       </div>
     </section>
+
+    <ActivityLog title="采集日志" :entries="dohdol.logEntries" empty="开始采集后显示每次产出与经验。" />
   </div>
 </template>

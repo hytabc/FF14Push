@@ -132,6 +132,58 @@ def equipped_bonus(items: Iterable[Any]) -> dict[str, float]:
     return out
 
 
+def equipped_bonus_sources(items: Iterable[Any], stat: str) -> list[tuple[str, float]]:
+    """按来源列出专用装备对某属性的贡献（固定加成按装备名、词条按词条名，同名合并）。
+
+    与 `equipped_bonus` 同源，各项之和等于 `equipped_bonus(items).get(stat)`，
+    用于向玩家展示「具体经验加成来源」。
+    """
+    out: dict[str, float] = {}
+    for item in items:
+        if getattr(item, "equipped_slot", None) is None:
+            continue
+        base = CONFIG.dohdol_item_by_id.get(item.base_id)
+        if base is None:
+            continue
+        value = float(base["bonus"].get(stat, 0.0))
+        if value:
+            out[base["name"]] = out.get(base["name"], 0.0) + value
+        for term in item.terms or []:
+            if term.get("stat") != stat:
+                continue
+            label = term.get("name") or stat
+            out[label] = out.get(label, 0.0) + float(term.get("value", 0.0))
+    return [(label, round(value, 2)) for label, value in out.items() if value]
+
+
+# ------------------------------------------------------------------ 经验明细
+def combine_xp_sources(*groups: Iterable[tuple[str, float]]) -> tuple[list[tuple[str, float]], float]:
+    """合并多组来源，返回 (非零来源列表, 百分比加成合计)；合计下限为 0。"""
+    merged: list[tuple[str, float]] = []
+    for group in groups:
+        for label, value in group:
+            if value:
+                merged.append((label, float(value)))
+    return merged, max(0.0, sum(value for _, value in merged))
+
+
+def xp_breakdown(
+    base: float,
+    rarity_multiplier: float,
+    bonus_pct: float,
+    amount: int,
+    sources: Iterable[tuple[str, float]],
+) -> dict[str, Any]:
+    """经验结算明细（供前端展示基础 / 品阶系数 / 各来源加成）。恒满足 base × 系数 × (1+加成) ≈ amount。"""
+    return {
+        "base": int(base),
+        "rarityMultiplier": round(float(rarity_multiplier), 3),
+        "bonusPct": round(float(bonus_pct), 2),
+        "amount": int(amount),
+        "sources": [{"label": label, "pct": round(float(value), 2)} for label, value in sources],
+    }
+
+
 # ------------------------------------------------------------------ 会话
 async def end_active_sessions(db: AsyncSession, user_id: int, keep_id: int | None = None) -> None:
     """结束该账号所有进行中的活动会话（四活动互斥）。"""

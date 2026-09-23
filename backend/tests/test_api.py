@@ -928,6 +928,82 @@ class TestEconomy:
         assert resp.status_code == 200, resp.text
         assert resp.json()["cost"] == int(base * mult)
 
+    async def test_refine_times_charges_cumulative_and_counts(self, auth_client, session_factory) -> None:
+        """一次请求连做多次重造：按逐次递增价累计，次数一次加满。"""
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        await _set_gold(auth_client, session_factory, 50_000_000)
+
+        base = CONFIG_REFINE_COST[item["rarity"]]
+        growth = float(CONFIG.economy["refine"]["costGrowthPerRefine"])
+        expected = sum(int(base * (1.0 + growth * index)) for index in range(10))
+
+        resp = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"], "times": 10})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["times"] == 10
+        assert body["cost"] == expected
+        assert body["after"]["refineCount"] == 10
+        assert body["gold"] == 50_000_000 - expected
+
+    async def test_refine_times_stops_when_gold_runs_out(self, auth_client, session_factory) -> None:
+        """金币只够两次时连做 10 次：提前停在 2 次，不超支、不报错。"""
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+
+        from app.services.economy import refine_cost
+
+        afford = refine_cost(item["rarity"], 0) + refine_cost(item["rarity"], 1)
+        await _set_gold(auth_client, session_factory, afford)
+
+        resp = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"], "times": 10})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["times"] == 2
+        assert body["cost"] == afford
+        assert body["gold"] == 0
+        assert body["after"]["refineCount"] == 2
+
+    async def test_refine_times_rejects_when_unaffordable(self, auth_client, session_factory) -> None:
+        """连一次都付不起时仍返回 400。"""
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        await _set_gold(auth_client, session_factory, 0)
+
+        resp = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"], "times": 5})
+        assert resp.status_code == 400
+        assert "金币不足" in resp.json()["detail"]
+
+    async def test_enchant_times_charges_flat_unit_price(self, auth_client, session_factory) -> None:
+        """附魔连做多次：单价 × 次数，次数一次加满；基于当前同样支持连做。"""
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        await _set_gold(auth_client, session_factory, 50_000_000)
+        unit = CONFIG_ENCHANT_COST[item["rarity"]]
+
+        resp = await auth_client.post(f"{API}/economy/enchant", json={"itemId": item["id"], "times": 5})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["times"] == 5
+        assert body["attempts"] == 5
+        assert body["cost"] == unit * 5
+        assert body["after"]["enchantCount"] == 5
+
+        based = await auth_client.post(
+            f"{API}/economy/enchant",
+            json={"itemId": item["id"], "mode": "basedOnCurrent", "times": 3},
+        )
+        assert based.status_code == 200, based.text
+        assert based.json()["times"] == 3
+        assert based.json()["after"]["enchantCount"] == 8
+
+    async def test_times_above_cap_is_rejected(self, auth_client, session_factory) -> None:
+        opened = await _open_one(auth_client, session_factory)
+        item = opened["items"][0]
+        await _set_gold(auth_client, session_factory, 50_000_000)
+        resp = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"], "times": 51})
+        assert resp.status_code == 422
+
 
 class TestItemTags:
     """装备颜色标签：自建命名标签、贴到装备、按标签筛选（筛选在前端，这里验证数据往返）。"""

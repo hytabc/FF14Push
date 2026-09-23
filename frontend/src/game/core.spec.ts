@@ -1021,3 +1021,49 @@ describe('技能治疗日志', () => {
     expect(sim.log.some(e => e.text === '再生（持续治疗） 恢复 10 生命值')).toBe(true)
   })
 })
+
+describe('暴击 / 直击标记样式', () => {
+  // 持久木桩：始终有目标，且不会被打死。
+  const dummy: MonsterStats = {
+    id: 'dummy', regionId: 0, name: '木桩', templateId: 'dummy', kind: 'boss',
+    hp: 1e12, attack: 0, defense: 0, attackInterval: 999, level: 100, resistancePct: 0,
+  }
+
+  function lastHit(critRatePct: number, dhRatePct: number) {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1000, critRatePct, critDamagePct: 200, dhRatePct }),
+      raid: { bosses: [dummy], enrage: null },
+    })
+    sim.start()
+    ;(sim as any).cast(ADVENTURER_SKILL)
+    return { float: sim.floating.at(-1)!, log: sim.log.at(-1)! }
+  }
+
+  it('暴击「!」/ 直击「!」/ 同时触发「!!」，并写入对应色调', () => {
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    // rand=0：命中判定先行（不 miss），再按 0 < 触发率 决定直击 / 暴击。
+    const cases = [
+      { critRatePct: 0, dhRatePct: 100, mark: '!', tone: 'dh' },
+      { critRatePct: 100, dhRatePct: 0, mark: '!', tone: 'crit' },
+      { critRatePct: 100, dhRatePct: 100, mark: '!!', tone: 'critDh' },
+    ]
+    for (const c of cases) {
+      const { float, log } = lastHit(c.critRatePct, c.dhRatePct)
+      expect(float.text.endsWith(c.mark)).toBe(true)
+      expect(float.tone).toBe(c.tone)
+      expect(log.text.endsWith('伤害' + c.mark)).toBe(true)
+      expect(log.tone).toBe(c.tone)
+    }
+    spy.mockRestore()
+  })
+
+  it('未触发时不带标记，沿用普通伤害色调', () => {
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    const { float, log } = lastHit(0, 0)
+    spy.mockRestore()
+    expect(float.text).toMatch(/^\d+$/)
+    expect(float.tone).toBe('monster')
+    expect(log.text.endsWith('伤害')).toBe(true)
+    expect(log.tone).toBe('damage')
+  })
+})

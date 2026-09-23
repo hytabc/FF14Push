@@ -27,8 +27,14 @@ regions = json.loads((DATA / "regions.json").read_text(encoding="utf-8"))["regio
 BASE_ITEMS = json.loads((DATA / "base-items.json").read_text(encoding="utf-8"))
 
 # 地区档位 → 出售单价（金币）。材料/鱼不随地区等级变强，仅种类不同，价格按档位递增。
-BAND_SELL = {1: 6, 9: 10, 17: 14, 23: 20, 29: 28, 35: 38}
-FISH_SELL = {1: 8, 9: 14, 17: 22, 23: 32, 29: 45, 35: 60}
+# 定价规则：越高档涨幅越大（第 2 档起每档翻倍），让非战斗收入稳定在「同档战斗收入的一成上下」
+# 且绝不反超战斗——既保住收集动机，又不让它变成不打怪也能刷钱的路线。
+# 回归保护：backend/tests/test_dohdol.py:TestDohdolSellBalance。
+BAND_SELL = {1: 6, 9: 16, 17: 32, 23: 64, 29: 128, 35: 256}          # 采集素材（地区专属）
+FISH_SELL = {1: 8, 9: 20, 17: 40, 23: 80, 29: 160, 35: 320}          # 普通渔获
+KING_SELL = {1: 160, 9: 400, 17: 800, 23: 1600, 29: 3200, 35: 6400}  # 鱼王（20 × 普通渔获）
+EMPEROR_SELL = {1: 640, 9: 1600, 17: 3200, 23: 6400, 29: 12800, 35: 25600}  # 鱼皇（80 × 普通渔获）
+HALF_SELL = 50                                                       # 半成品（统一固定，不随档位变化）
 
 
 def _band(rid: int, table: dict[int, int]) -> int:
@@ -45,6 +51,14 @@ def mat_sell(rid: int) -> int:
 
 def fish_sell(rid: int) -> int:
     return _band(rid, FISH_SELL)
+
+
+def king_sell(rid: int) -> int:
+    return _band(rid, KING_SELL)
+
+
+def emperor_sell(rid: int) -> int:
+    return _band(rid, EMPEROR_SELL)
 
 # ---------------------------------------------------------------- 材料
 materials = []
@@ -89,10 +103,10 @@ HALVES = [
     ("h_ink", "浓缩墨水", "ALC"), ("h_oil", "精油", "ALC"), ("h_flour", "面粉", "CUL"),
 ]
 for hid, name, job in HALVES:
-    materials.append({"id": hid, "name": name, "kind": "half", "jobId": job, "tier": 2, "sell": 25})
+    materials.append({"id": hid, "name": name, "kind": "half", "jobId": job, "tier": 2, "sell": HALF_SELL})
 
 dump("materials.json", {
-    "$comment": "采集材料与半成品。材料不随地区等级递增，仅按种类区分：每个地区有专属的矿物与植物各一件（regionId 标注，彼此不重复），另有少量通用材料。sell 为出售单价（金币），材料/鱼获可卖给系统换金币。",
+    "$comment": "采集材料与半成品。材料不随地区等级递增，仅按种类区分：每个地区有专属的矿物与植物各一件（regionId 标注，彼此不重复），另有少量通用材料。sell 为出售单价（金币），材料/鱼获可卖给系统换金币。地区专属材料按 BAND_SELL 档位表递增（越高档涨幅越大，低阶几乎不变），通用材料恒为 3 作为半成品原料，半成品恒为 HALF_SELL。",
     "materials": materials,
 })
 
@@ -256,9 +270,15 @@ for kind in ("doh", "dol"):
             for v in VARIANTS_BY_KIND[kind]:
                 if v["minTier"] > t["index"]:
                     continue
+                # 变体 bias 既能缩放栏位已有的属性，也能引入该栏位没有的属性
+                # （如「悟道」的 craftXpPct、「迅捷」的 craftSpeedPct）：缺省基准系数 1.0。
+                slot_bonus = SLOT_BONUS[(kind, suffix)]
+                stats = list(slot_bonus) + [s for s in v["bias"] if s not in slot_bonus]
                 bonus = {
-                    stat: round(coef * float(t["power"]) * float(v["bias"].get(stat, 1.0)), 1)
-                    for stat, coef in SLOT_BONUS[(kind, suffix)].items()
+                    stat: round(
+                        slot_bonus.get(stat, 1.0) * float(t["power"]) * float(v["bias"].get(stat, 1.0)), 1
+                    )
+                    for stat in stats
                 }
                 vid = v["id"]
                 dohdol_items.append({
@@ -355,18 +375,18 @@ for index, r in enumerate(regions):
             "id": f"k{rid}", "name": FISH_KING_NAMES[index],
             "prereqFishIds": [f"f{rid}_1", f"f{rid}_2"],
             "insightSeconds": [30, 45], "chance": 0.014,
-            "sizeMin": 160, "sizeMax": 240, "exp": 40 + rid, "sell": 150 + rid * 4,
+            "sizeMin": 160, "sizeMax": 240, "exp": 40 + rid, "sell": king_sell(rid),
         },
         "emperor": {
             "id": f"e{rid}", "name": FISH_EMPEROR_NAMES[index],
             "prereqFishIds": [f"f{rid}_1", f"f{rid}_2", f"f{rid}_3", f"f{rid}_4"],
             "insightSeconds": [45, 60], "chance": 0.004,
-            "sizeMin": 240, "sizeMax": 360, "exp": 120 + rid * 2, "sell": 600 + rid * 15,
+            "sizeMin": 240, "sizeMax": 360, "exp": 120 + rid * 2, "sell": emperor_sell(rid),
         },
     })
 
 dump("fish.json", {
-        "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。sell 为出售单价（金币）。",
+        "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。sell 为出售单价（金币），按 FISH_SELL / KING_SELL / EMPEROR_SELL 档位表递增（越高档涨幅越大，低阶几乎不变），鱼王/鱼皇分别约为同档普通鱼的 20× / 80×。",
     "castSeconds": 3.0,
     "insightBuffName": "捕鱼人之识",
     "regions": fish_regions,

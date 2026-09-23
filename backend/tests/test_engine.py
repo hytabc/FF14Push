@@ -959,6 +959,28 @@ class TestBasedOnCurrentReroll:
             item.base_attrs, item.sub_attrs = result["baseAttrs"], result["subAttrs"]
         assert len(seen) > 1, "基于当前应逐次浮动，而非固定不变"
 
+    def test_based_on_current_float_scales_with_current_value(self) -> None:
+        """基于当前：单步幅度按「当前值」的百分比（默认 −5% ~ +10%）。"""
+        base = CONFIG.base_item_by_id[BASE_ID]
+        lo, hi = base_attr_range(base, "rare", "attack")
+        mid = (lo + hi) / 2  # 区间中点，保证 ±10% 不会触碰夹取边界
+        down = float(CONFIG.economy["refine"]["basedOnCurrentDownPct"])
+        up = float(CONFIG.economy["refine"]["basedOnCurrentUpPct"])
+        assert down == pytest.approx(0.05)
+        assert up == pytest.approx(0.10)
+        rng = random.Random(11)
+        item = FakeItem(
+            category="weapon",
+            base_id=BASE_ID,
+            rarity="rare",
+            base_attrs=[{"attr": "attack", "value": mid}],
+            sub_attrs=[],
+        )
+        for _ in range(50):
+            result = regenerate_attrs(item, rng, "basedOnCurrent")
+            value = result["baseAttrs"][0]["value"]
+            assert mid * (1 - down) - 0.01 <= value <= mid * (1 + up) + 0.01
+
     def test_refine_preserves_quality_band(self) -> None:
         base = CONFIG.base_item_by_id[BASE_ID]
         cap = sub_attr_cap(base, "legendary", "crit")

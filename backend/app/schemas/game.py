@@ -111,6 +111,8 @@ class RefineRequest(BaseModel):
     itemId: int
     # random=彻底随机（现价，全部重新洗牌）；basedOnCurrent=基于当前（更贵，每条在当前值附近小幅浮动，可升可降）
     mode: Literal["random", "basedOnCurrent"] = "random"
+    # 连续重造次数：一次请求结算多次（金币不足时提前停止）
+    times: int = Field(default=1, ge=1, le=50)
 
 
 class EnchantRequest(BaseModel):
@@ -118,6 +120,8 @@ class EnchantRequest(BaseModel):
     autoUntilRare: bool = False
     maxAttempts: int = 200
     mode: Literal["random", "basedOnCurrent"] = "random"
+    # 连续附魔次数：一次请求结算多次（金币不足时提前停止）
+    times: int = Field(default=1, ge=1, le=50)
 
 
 class RegionEnterRequest(BaseModel):
