@@ -13,9 +13,6 @@ from app.services.codex import unlock_equipment, unlock_terms
 from app.services.serialization import item_from_generated, item_to_dict
 from app.services.valuation import sell_price, sell_price_range
 
-# 战斗装备大类；生产/采集专用装备（doh_*/dol_*）不进装备图鉴。
-_COMBAT_CATEGORIES = {"weapon", "armor", "accessory"}
-
 
 async def _auto_sell_config(db: AsyncSession, user_id: int) -> AutoSellSetting | None:
     return (
@@ -29,9 +26,8 @@ async def _persist(db: AsyncSession, user: User, generated_item: dict[str, Any],
     await db.flush()
     # 词条图鉴同时收录战斗与生产/采集词条，故两类装备都要解锁词条。
     await unlock_terms(db, user.id, item.terms or [])
-    # 生产/采集专用装备不属于战斗装备图鉴（底材不在 base-items 内），跳过底材解锁。
-    if item.category in _COMBAT_CATEGORIES:
-        await unlock_equipment(db, user.id, item)
+    # 装备图鉴同时收录战斗装备与生产/采集专用装备（专用装备底材见 dohdol-equipment）。
+    await unlock_equipment(db, user.id, item)
     return item
 
 

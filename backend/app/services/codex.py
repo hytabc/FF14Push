@@ -101,7 +101,11 @@ async def unlock_material(db: AsyncSession, user_id: int, item_id: str, count: i
 
 
 def equipment_codex_entries() -> list[dict[str, Any]]:
-    """全部装备底材的理论信息（用于图鉴展示，未解锁显示剪影）。"""
+    """全部装备底材的理论信息（用于图鉴展示，未解锁显示剪影）。
+
+    同时收录战斗装备（base-items）与生产/采集专用装备（dohdol-equipment），
+    用 jobGroup 区分（combat / doh / dol），供前端分组筛选。
+    """
     out: list[dict[str, Any]] = []
     for base in CONFIG.base_items:
         category = base.category
@@ -124,6 +128,29 @@ def equipment_codex_entries() -> list[dict[str, Any]]:
                 "baseAttrs": base.base_attrs,
                 "subAttrPool": base.sub_attr_pool,
                 "sources": sources,
+                "jobGroup": "combat",
+            }
+        )
+
+    tiers = CONFIG.base_item_tiers
+    for item in CONFIG.dohdol_equipment.get("items", []):
+        tier_index = item["tierIndex"]
+        tier_name = tiers[tier_index]["name"] if 0 <= tier_index < len(tiers) else ""
+        out.append(
+            {
+                "baseId": item["id"],
+                "name": item["name"],
+                "category": item["category"],
+                "slot": item["slot"],
+                "equipSlots": [item["slot"]],
+                "jobId": None,
+                "weaponType": None,
+                "levelReq": item["levelReq"],
+                "tierName": tier_name,
+                "baseAttrs": [{"attr": attr, "base": value} for attr, value in item["bonus"].items()],
+                "subAttrPool": [],
+                "sources": ["craft"],
+                "jobGroup": "doh" if item["kind"] == "doh" else "dol",
             }
         )
     return out
@@ -273,7 +300,7 @@ async def codex_progress(db: AsyncSession, user_id: int) -> dict[str, Any]:
         )
     ).scalar_one()
     return {
-        "equipment": {"unlocked": int(equip_count), "total": len(CONFIG.base_items)},
+        "equipment": {"unlocked": int(equip_count), "total": len(equipment_codex_entries())},
         "monster": {"unlocked": int(monster_count), "total": len(monster_codex_entries())},
         "term": {"unlocked": int(term_count), "total": len(term_codex_entries()) * 3},
         "material": {"unlocked": int(material_count), "total": len(material_codex_entries())},

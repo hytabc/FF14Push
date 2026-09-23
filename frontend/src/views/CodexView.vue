@@ -5,8 +5,18 @@ import { api } from '@/api'
 import data from '@shared/schema'
 import ItemIcon from '@/components/ItemIcon.vue'
 import { useToastStore } from '@/stores/toast'
-import type { CodexProgress, RarityId } from '@/game/types'
+import type { CodexProgress, JobRole, RarityId, TermQuality } from '@/game/types'
 import { RARITY_ORDER, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termQualityClass, termQualityName } from '@/utils/format'
+import {
+  EQUIP_GROUP_LABEL,
+  ROLE_LABELS,
+  TERM_BY_ID,
+  WEAPON_TYPE_LABELS,
+  equipGroup as groupOfCategory,
+  possibleTermIds,
+  roleOfBaseId,
+  type EquipGroup,
+} from '@/utils/itemFilters'
 import { fishKindRarity } from '@/utils/icons'
 
 type Entry = Record<string, any>
@@ -20,43 +30,152 @@ const loading = ref(false)
 const keyword = ref('')
 const onlyUnlocked = ref(false)
 
-/** 装备图鉴专属筛选：种类 / 部位 / 等级范围。 */
+/** 装备图鉴专属筛选：分组 / 种类 / 部位 / 武器种类 / 战斗职能 / 等级范围 / 副词条 / 词条。 */
+const equipGroup = ref<'all' | EquipGroup>('all')
 const equipCategory = ref('all')
 const equipSlot = ref('all')
+const equipWeaponType = ref('all')
+const equipRole = ref<'all' | JobRole>('all')
 const equipLevelMin = ref<number | ''>('')
 const equipLevelMax = ref<number | ''>('')
+const equipSubAttrs = ref<Set<string>>(new Set())
+const equipTerms = ref<Set<string>>(new Set())
+const showEquipAdvanced = ref(false)
+
+/** 词条图鉴专属筛选：来源 / 类型 / 已解锁品质。 */
+const termSource = ref<'all' | 'combat' | 'production'>('all')
+const termType = ref<'all' | 'buff' | 'debuff'>('all')
+const termQualities = ref<Set<TermQuality>>(new Set())
 
 const EQUIP_CATEGORY_ORDER = ['weapon', 'armor', 'accessory'] as const
+const DEDICATED_CATEGORY_ORDER = ['doh_tool', 'doh_gear', 'dol_tool', 'dol_gear'] as const
+const ROLE_ORDER: JobRole[] = ['tank', 'healer', 'melee', 'physicalRanged', 'magicalRanged']
+
+/** 装备图鉴条目按「分组」预筛，供各选项列表与筛选共用。 */
+const groupEntries = computed(() =>
+  equipGroup.value === 'all'
+    ? entries.value
+    : entries.value.filter((e) => groupOfCategory(e.category) === equipGroup.value),
+)
+
+const equipGroupOptions = computed(() => {
+  const present = new Set(entries.value.map((e) => groupOfCategory(e.category)))
+  return [
+    { id: 'all', label: '全部' },
+    ...(['combat', 'doh', 'dol'] as EquipGroup[])
+      .filter((g) => present.has(g))
+      .map((g) => ({ id: g as string, label: EQUIP_GROUP_LABEL[g] })),
+  ]
+})
 
 const equipCategoryOptions = computed(() => {
-  const present = new Set(entries.value.map((e) => String(e.category)))
+  const present = new Set(groupEntries.value.map((e) => String(e.category)))
+  const order = [...EQUIP_CATEGORY_ORDER, ...DEDICATED_CATEGORY_ORDER]
   return [
     { id: 'all', label: '全部种类' },
-    ...EQUIP_CATEGORY_ORDER.filter((c) => present.has(c)).map((c) => ({ id: c as string, label: categoryName(c) })),
+    ...order.filter((c) => present.has(c)).map((c) => ({ id: c as string, label: categoryName(c) })),
   ]
 })
 
 const equipSlotOptions = computed(() => {
-  const present = new Set(entries.value.map((e) => String(e.equipSlots?.[0] ?? e.slot)))
+  const present = new Set(
+    groupEntries.value
+      .filter((e) => equipCategory.value === 'all' || e.category === equipCategory.value)
+      .map((e) => String(e.equipSlots?.[0] ?? e.slot)),
+  )
+  const slotDefs = [...data.slots, ...data.dohdolEquipment.slots]
   return [
     { id: 'all', label: '全部部位' },
-    ...data.slots.filter((s) => present.has(s.id)).map((s) => ({ id: s.id as string, label: s.name })),
+    ...slotDefs.filter((s) => present.has(s.id)).map((s) => ({ id: s.id as string, label: s.name })),
   ]
+})
+
+const equipWeaponTypeOptions = computed(() => {
+  const present = new Set(
+    groupEntries.value.map((e) => e.weaponType).filter((w: unknown): w is string => typeof w === 'string'),
+  )
+  return [
+    { id: 'all', label: '全部武器' },
+    ...data.weaponFamilies
+      .filter((w) => present.has(w.weaponType))
+      .map((w) => ({ id: w.weaponType, label: WEAPON_TYPE_LABELS[w.weaponType] ?? w.suffix })),
+  ]
+})
+
+const equipRoleOptions = computed(() => [
+  { id: 'all', label: '全部职能' },
+  ...ROLE_ORDER.map((r) => ({ id: r as string, label: ROLE_LABELS[r] ?? r })),
+])
+
+/** 分组范围内实际可能出现的副属性（subAttrPool 并集）。 */
+const equipSubAttrOptions = computed(() => {
+  const ids = new Set<string>()
+  for (const e of groupEntries.value) for (const a of e.subAttrPool ?? []) ids.add(a)
+  return [...ids].sort().map((id) => ({ id, label: attrName(id) }))
+})
+
+/** 分组范围内各部位「可能出现」的词条并集。 */
+const equipTermOptions = computed(() => {
+  const ids = new Set<string>()
+  for (const e of groupEntries.value) {
+    const slot = String(e.equipSlots?.[0] ?? e.slot)
+    for (const id of possibleTermIds(slot, groupOfCategory(e.category))) ids.add(id)
+  }
+  return [...ids].sort().map((id) => ({ id, label: TERM_BY_ID[id]?.name ?? id }))
 })
 
 const hasEquipFilters = computed(
   () =>
+    equipGroup.value !== 'all' ||
     equipCategory.value !== 'all' ||
     equipSlot.value !== 'all' ||
+    equipWeaponType.value !== 'all' ||
+    equipRole.value !== 'all' ||
     equipLevelMin.value !== '' ||
-    equipLevelMax.value !== '',
+    equipLevelMax.value !== '' ||
+    equipSubAttrs.value.size > 0 ||
+    equipTerms.value.size > 0,
 )
 
 function resetEquipFilters() {
+  equipGroup.value = 'all'
   equipCategory.value = 'all'
   equipSlot.value = 'all'
+  equipWeaponType.value = 'all'
+  equipRole.value = 'all'
   equipLevelMin.value = ''
   equipLevelMax.value = ''
+  equipSubAttrs.value = new Set()
+  equipTerms.value = new Set()
+}
+
+const hasTermFilters = computed(
+  () => termSource.value !== 'all' || termType.value !== 'all' || termQualities.value.size > 0,
+)
+
+function resetTermFilters() {
+  termSource.value = 'all'
+  termType.value = 'all'
+  termQualities.value = new Set()
+}
+
+function toggleSet(set: Set<string>, id: string): Set<string> {
+  const next = new Set(set)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  return next
+}
+
+function toggleSubAttr(id: string) {
+  equipSubAttrs.value = toggleSet(equipSubAttrs.value, id)
+}
+
+function toggleEquipTerm(id: string) {
+  equipTerms.value = toggleSet(equipTerms.value, id)
+}
+
+function toggleTermQuality(q: TermQuality) {
+  termQualities.value = toggleSet(termQualities.value, q) as Set<TermQuality>
 }
 
 const TABS = [
@@ -101,7 +220,21 @@ async function load() {
 onMounted(load)
 watch(category, () => {
   resetEquipFilters()
+  resetTermFilters()
+  showEquipAdvanced.value = false
   void load()
+})
+
+// 切换分组时，清掉不再适用的子筛选（种类/部位/武器种类/职能）。
+watch(equipGroup, () => {
+  equipCategory.value = 'all'
+  equipSlot.value = 'all'
+  equipWeaponType.value = 'all'
+  equipRole.value = 'all'
+})
+
+watch(equipCategory, () => {
+  equipSlot.value = 'all'
 })
 
 const filtered = computed(() => {
@@ -113,9 +246,32 @@ const filtered = computed(() => {
     const min = typeof equipLevelMin.value === 'number' ? equipLevelMin.value : null
     const max = typeof equipLevelMax.value === 'number' ? equipLevelMax.value : null
     list = list
+      .filter((e) => equipGroup.value === 'all' || groupOfCategory(e.category) === equipGroup.value)
       .filter((e) => equipCategory.value === 'all' || e.category === equipCategory.value)
       .filter((e) => equipSlot.value === 'all' || (e.equipSlots?.[0] ?? e.slot) === equipSlot.value)
+      .filter((e) => equipWeaponType.value === 'all' || e.weaponType === equipWeaponType.value)
+      .filter((e) => equipRole.value === 'all' || roleOfBaseId(e.baseId) === equipRole.value)
+      .filter(
+        (e) =>
+          !equipSubAttrs.value.size ||
+          (e.subAttrPool ?? []).some((a: string) => equipSubAttrs.value.has(a)),
+      )
+      .filter(
+        (e) =>
+          !equipTerms.value.size ||
+          possibleTermIds(String(e.equipSlots?.[0] ?? e.slot), groupOfCategory(e.category)).some((id) =>
+            equipTerms.value.has(id),
+          ),
+      )
       .filter((e) => (min === null || e.levelReq >= min) && (max === null || e.levelReq <= max))
+  }
+  if (category.value === 'term') {
+    if (termSource.value !== 'all') list = list.filter((e) => e.source === termSource.value)
+    if (termType.value !== 'all') list = list.filter((e) => e.type === termType.value)
+    if (termQualities.value.size) {
+      const picked = [...termQualities.value]
+      list = list.filter((e) => picked.some((q) => e.qualities?.[q]?.unlocked))
+    }
   }
   return list
 })
@@ -174,41 +330,125 @@ function entryRarity(entry: Entry): RarityId {
         </button>
       </div>
 
-      <div v-if="category === 'equipment'" class="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <select v-model="equipCategory" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
-          <option v-for="opt in equipCategoryOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+      <div v-if="category === 'equipment'" class="mt-3 space-y-2 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <select v-model="equipGroup" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+            <option v-for="opt in equipGroupOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <select v-model="equipCategory" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+            <option v-for="opt in equipCategoryOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <select v-model="equipSlot" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+            <option v-for="opt in equipSlotOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <select
+            v-if="equipWeaponTypeOptions.length > 1"
+            v-model="equipWeaponType"
+            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          >
+            <option v-for="opt in equipWeaponTypeOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <select
+            v-if="equipGroup !== 'doh' && equipGroup !== 'dol'"
+            v-model="equipRole"
+            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          >
+            <option v-for="opt in equipRoleOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <label class="flex items-center gap-1 text-ink-400">
+            等级
+            <input
+              v-model.number="equipLevelMin"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="最低"
+              class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+            />
+            <span class="text-ink-600">-</span>
+            <input
+              v-model.number="equipLevelMax"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="最高"
+              class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+            />
+          </label>
+          <button
+            v-if="equipSubAttrOptions.length || equipTermOptions.length"
+            class="rounded bg-ink-800 px-2.5 py-1.5 text-ink-300 transition hover:bg-ink-700"
+            @click="showEquipAdvanced = !showEquipAdvanced"
+          >
+            {{ showEquipAdvanced ? '收起词条筛选' : '词条 / 副词条' }}
+          </button>
+          <button
+            v-if="hasEquipFilters"
+            class="rounded bg-ink-800 px-2.5 py-1.5 text-ink-300 transition hover:bg-ink-700"
+            @click="resetEquipFilters"
+          >
+            重置
+          </button>
+          <span class="ml-auto text-ink-500">共 {{ filtered.length }} 件</span>
+        </div>
+
+        <div v-if="showEquipAdvanced" class="space-y-2 border-t border-ink-700 pt-2">
+          <div v-if="equipSubAttrOptions.length" class="flex flex-wrap items-center gap-1.5">
+            <span class="shrink-0 text-ink-400">副词条（可能出现）：</span>
+            <button
+              v-for="opt in equipSubAttrOptions"
+              :key="opt.id"
+              class="rounded-full border px-2.5 py-1 transition"
+              :class="equipSubAttrs.has(opt.id) ? 'border-amber-400 bg-amber-500/20 text-amber-200' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
+              @click="toggleSubAttr(opt.id)"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+          <div v-if="equipTermOptions.length" class="flex flex-wrap items-center gap-1.5">
+            <span class="shrink-0 text-ink-400">词条（可能出现）：</span>
+            <button
+              v-for="opt in equipTermOptions"
+              :key="opt.id"
+              class="rounded-full border px-2.5 py-1 transition"
+              :class="equipTerms.has(opt.id) ? 'border-amber-400 bg-amber-500/20 text-amber-200' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
+              @click="toggleEquipTerm(opt.id)"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="category === 'term'" class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <select v-model="termSource" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+          <option value="all">全部来源</option>
+          <option value="combat">战斗装备</option>
+          <option value="production">生产采集装备</option>
         </select>
-        <select v-model="equipSlot" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
-          <option v-for="opt in equipSlotOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+        <select v-model="termType" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+          <option value="all">全部类型</option>
+          <option value="buff">Buff</option>
+          <option value="debuff">Debuff</option>
         </select>
-        <label class="flex items-center gap-1 text-ink-400">
-          等级
-          <input
-            v-model.number="equipLevelMin"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="最低"
-            class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
-          />
-          <span class="text-ink-600">-</span>
-          <input
-            v-model.number="equipLevelMax"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="最高"
-            class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
-          />
-        </label>
+        <span class="shrink-0 text-ink-400">已解锁品质：</span>
         <button
-          v-if="hasEquipFilters"
+          v-for="q in (['common', 'rare', 'ancient'] as const)"
+          :key="q"
+          class="rounded-full border px-2.5 py-1 transition"
+          :class="termQualities.has(q) ? 'border-amber-400 bg-amber-500/20 text-amber-200' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
+          @click="toggleTermQuality(q)"
+        >
+          {{ termQualityName(q) }}
+        </button>
+        <button
+          v-if="hasTermFilters"
           class="rounded bg-ink-800 px-2.5 py-1.5 text-ink-300 transition hover:bg-ink-700"
-          @click="resetEquipFilters"
+          @click="resetTermFilters"
         >
           重置
         </button>
-        <span class="ml-auto text-ink-500">共 {{ filtered.length }} 件</span>
+        <span class="ml-auto text-ink-500">共 {{ filtered.length }} 条</span>
       </div>
     </section>
 
@@ -228,14 +468,17 @@ function entryRarity(entry: Entry): RarityId {
               :base-id="entry.baseId"
               :rarity="entryRarity(entry)"
               :size="32"
-              variant="lite"
+              :variant="entry.jobGroup === 'combat' ? 'lite' : 'plain'"
               :silhouette="!entry.unlocked"
             />
             <div class="min-w-0">
               <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
                 {{ entry.unlocked ? entry.name : '未解锁' }}
               </p>
-              <p class="text-[10px] text-ink-400">
+              <p class="flex flex-wrap items-center gap-1 text-[10px] text-ink-400">
+                <span class="rounded bg-ink-700/60 px-1 py-0.5 text-ink-300">
+                  {{ EQUIP_GROUP_LABEL[groupOfCategory(entry.category)] }}
+                </span>
                 {{ categoryName(entry.category) }} · {{ slotName(entry.equipSlots?.[0] ?? entry.slot) }} · Lv.{{ entry.levelReq }}
               </p>
             </div>
@@ -255,13 +498,16 @@ function entryRarity(entry: Entry): RarityId {
 
         <ul class="mt-2 space-y-0.5 text-[10px] text-ink-400">
           <li v-for="attr in entry.baseAttrs" :key="attr.attr">
-            {{ baseAttrName(attr.attr) }} {{ Math.floor(attr.base * 0.8) }} ~ {{ Math.ceil(attr.base * 1.2) }}
-            <span class="text-ink-600">（基准 {{ Math.round(attr.base) }}，±20%）</span>
+            <template v-if="entry.jobGroup === 'combat'">
+              {{ baseAttrName(attr.attr) }} {{ Math.floor(attr.base * 0.8) }} ~ {{ Math.ceil(attr.base * 1.2) }}
+              <span class="text-ink-600">（基准 {{ Math.round(attr.base) }}，±20%）</span>
+            </template>
+            <template v-else>{{ baseAttrName(attr.attr) }} +{{ attr.base }}</template>
           </li>
         </ul>
 
-        <p class="mt-2 text-[10px] text-ink-500">
-          副属性池：{{ entry.subAttrPool?.map((a: string) => attrName(a)).join('、') }}
+        <p v-if="entry.subAttrPool?.length" class="mt-2 text-[10px] text-ink-500">
+          副属性池：{{ entry.subAttrPool.map((a: string) => attrName(a)).join('、') }}
         </p>
 
         <p v-if="!entry.unlocked" class="mt-2 text-[10px] text-amber-300">

@@ -423,7 +423,7 @@ class TestProduceApi:
                 )
             await db.commit()
 
-        # 专用装备不进战斗装备图鉴
+        # 专用装备进入装备图鉴（生产分组，底材见 dohdol-equipment）
         before = (await auth_client.get("/api/v1/game/state")).json()["codex"]["equipment"]["unlocked"]
 
         resp = await auth_client.post(
@@ -444,9 +444,15 @@ class TestProduceApi:
         items = rep.json()["items"]
         assert items, "应产出专用装备"
         assert items[0]["highQuality"] is True
+        base_id = items[0]["baseId"]
 
         after = (await auth_client.get("/api/v1/game/state")).json()["codex"]["equipment"]["unlocked"]
-        assert after == before
+        assert after == before + 1
+
+        codex = (await auth_client.get("/api/v1/codex?category=equipment")).json()
+        entry = next(e for e in codex["entries"] if e["baseId"] == base_id)
+        assert entry["unlocked"] is True
+        assert entry["jobGroup"] == "doh"
 
     @pytest.mark.asyncio
     async def test_recipe_level_gate(self, auth_client):

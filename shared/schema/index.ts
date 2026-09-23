@@ -613,6 +613,7 @@ export const gameData = {
   jobById: Object.fromEntries(jobsData.jobs.map((j) => [j.id, j])) as Record<string, JobDef>,
   baseItems,
   baseItemById: Object.fromEntries(baseItems.map((b) => [b.id, b])) as Record<string, BaseItem>,
+  weaponFamilies: baseItemsDataRaw.weaponFamilies,
   baseItemTiers: baseItemsDataRaw.tiers,
   baseAttrFloat: baseItemsDataRaw.baseAttrFloat,
   subAttrFloat: baseItemsDataRaw.subAttrFloat,

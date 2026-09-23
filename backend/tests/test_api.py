@@ -1834,11 +1834,22 @@ class TestCodexAndRanking:
     async def test_equipment_codex_closed_until_obtain(self, auth_client) -> None:
         resp = await auth_client.get(f"{API}/codex?category=equipment")
         body = resp.json()
-        assert body["progress"]["equipment"]["total"] == len(CONFIG.base_items)
+        assert body["progress"]["equipment"]["total"] == len(CONFIG.base_items) + len(
+            CONFIG.dohdol_equipment["items"]
+        )
         # 开局只有起始武器已解锁，其余（含更高品阶）保持剪影
         unlocked = [e for e in body["entries"] if e["unlocked"]]
         assert [e["baseId"] for e in unlocked] == [STARTER_BASE_ID]
         assert unlocked[0]["unlockedRarities"] == ["common"]
+
+    async def test_equipment_codex_groups_cover_combat_and_dohdol(self, auth_client) -> None:
+        body = (await auth_client.get(f"{API}/codex?category=equipment")).json()
+        groups = {e["jobGroup"] for e in body["entries"]}
+        assert {"combat", "doh", "dol"} <= groups
+        # 专用装备条目不能带战斗专属字段
+        dedicated = [e for e in body["entries"] if e["jobGroup"] in {"doh", "dol"}]
+        assert dedicated
+        assert all(e["weaponType"] is None and e["jobId"] is None for e in dedicated)
 
     async def test_term_codex_tracks_three_qualities(self, auth_client) -> None:
         body = (await auth_client.get(f"{API}/codex?category=term")).json()

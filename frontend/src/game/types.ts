@@ -2,6 +2,7 @@
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
+export type JobRole = 'tank' | 'healer' | 'melee' | 'physicalRanged' | 'magicalRanged'
 export type SlotId =
   | 'mainHand' | 'head' | 'body' | 'hands' | 'legs' | 'feet'
   | 'necklace' | 'earring' | 'bracelet' | 'ring1' | 'ring2'
