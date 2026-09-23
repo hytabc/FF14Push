@@ -1,13 +1,50 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Item } from '@/game/types'
 import {
   ROLE_LABELS,
   TERM_BY_ID,
   WEAPON_TYPE_LABELS,
+  applyItemFilters,
+  createItemFilters,
   equipGroup,
+  filterOptionSets,
+  hasActiveFilters,
   possibleTermIds,
   roleOfBaseId,
 } from '@/utils/itemFilters'
+
+const ITEM_DEFAULTS: Record<string, unknown> = {
+  id: 0,
+  baseId: 'w_lance_4',
+  name: '测试装备',
+  category: 'weapon',
+  slot: 'mainHand',
+  equipSlots: ['mainHand'],
+  rarity: 'common',
+  levelReq: 1,
+  score: 0,
+  baseAttrs: [],
+  subAttrs: [],
+  terms: [],
+  equippedSlot: null,
+  refineCount: 0,
+  enchantCount: 0,
+  refineCost: 0,
+  enchantCost: 0,
+  refineCostBasedOnCurrent: 0,
+  enchantCostBasedOnCurrent: 0,
+  source: 'chest',
+  weaponType: null,
+  jobId: null,
+  tagIds: [],
+  sellPriceMin: 0,
+  sellPriceMax: 0,
+}
+
+function makeItem(partial: Record<string, unknown> = {}): Item {
+  return { ...ITEM_DEFAULTS, ...partial } as unknown as Item
+}
 
 describe('equipGroup', () => {
   it('战斗大类归 combat', () => {
@@ -78,5 +115,109 @@ describe('映射表完整性', () => {
     expect(Object.values(ROLE_LABELS).every((name) => name.length > 0)).toBe(true)
     expect(Object.keys(WEAPON_TYPE_LABELS).length).toBeGreaterThan(0)
     expect(TERM_BY_ID['strBoost']?.name).toBe('力量增幅')
+  })
+})
+
+describe('hasActiveFilters / createItemFilters', () => {
+  it('初始状态无激活筛选，改动后激活', () => {
+    const f = createItemFilters()
+    expect(hasActiveFilters(f)).toBe(false)
+    f.rarity = 'rare'
+    expect(hasActiveFilters(f)).toBe(true)
+    f.rarity = 'all'
+    f.subAttrs.add('crit')
+    expect(hasActiveFilters(f)).toBe(true)
+  })
+})
+
+describe('filterOptionSets', () => {
+  it('只列出候选池里实际存在的值并给出中文名', () => {
+    const pool = [
+      makeItem({ id: 1, category: 'weapon', weaponType: 'lance' }),
+      makeItem({ id: 2, category: 'armor', slot: 'body', equipSlots: ['body'] }),
+    ]
+    const sets = filterOptionSets(pool)
+    expect(sets.categories.map((o) => o.id).sort()).toEqual(['armor', 'weapon'])
+    expect(sets.weaponTypes.map((o) => o.id)).toEqual(['lance'])
+    expect(sets.slots.map((o) => o.id).sort()).toEqual(['body', 'mainHand'])
+  })
+})
+
+describe('applyItemFilters', () => {
+  const items: Item[] = [
+    makeItem({
+      id: 1,
+      baseId: 'w_lance_4',
+      name: '长枪',
+      rarity: 'rare',
+      levelReq: 80,
+      score: 100,
+      weaponType: 'lance',
+      subAttrs: [{ attr: 'crit', value: 10, type: 'flat', quality: 'common' }],
+      terms: [{ id: 'strBoost', name: '力量增幅', type: 'buff', stat: 'attackPct', trigger: '常驻', value: 5, quality: 'ancient', desc: '' }],
+    }),
+    makeItem({
+      id: 2,
+      baseId: 'c_ring_4',
+      name: '戒指',
+      category: 'accessory',
+      slot: 'ring',
+      equipSlots: ['ring1', 'ring2'],
+      rarity: 'epic',
+      levelReq: 40,
+      score: 50,
+      subAttrs: [{ attr: 'dh', value: 5, type: 'flat', quality: 'rare' }],
+    }),
+  ]
+
+  function state(patch: Partial<ReturnType<typeof createItemFilters>> = {}) {
+    return { ...createItemFilters(), ...patch }
+  }
+
+  it('按品阶筛选', () => {
+    expect(applyItemFilters(items, state({ rarity: 'epic' }), 'power').map((i) => i.id)).toEqual([2])
+  })
+
+  it('按种类 / 部位筛选', () => {
+    expect(applyItemFilters(items, state({ category: 'accessory' }), 'power').map((i) => i.id)).toEqual([2])
+    // 戒指底材 slot=ring，equipSlots[0]=ring1
+    expect(applyItemFilters(items, state({ slot: 'ring1' }), 'power').map((i) => i.id)).toEqual([2])
+  })
+
+  it('按武器种类与战斗职能筛选', () => {
+    expect(applyItemFilters(items, state({ weaponType: 'lance' }), 'power').map((i) => i.id)).toEqual([1])
+    expect(applyItemFilters(items, state({ role: 'melee' }), 'power').map((i) => i.id)).toEqual([1])
+    expect(applyItemFilters(items, state({ role: 'tank' }), 'power')).toEqual([])
+  })
+
+  it('按等级区间筛选', () => {
+    expect(applyItemFilters(items, state({ levelMin: 60 }), 'power').map((i) => i.id)).toEqual([1])
+    expect(applyItemFilters(items, state({ levelMax: 50 }), 'power').map((i) => i.id)).toEqual([2])
+  })
+
+  it('按副词条 / 词条 / 品质筛选', () => {
+    expect(applyItemFilters(items, state({ subAttrs: new Set(['crit']) }), 'power').map((i) => i.id)).toEqual([1])
+    expect(applyItemFilters(items, state({ terms: new Set(['strBoost']) }), 'power').map((i) => i.id)).toEqual([1])
+    // 太古只命中带太古词条的第 1 件
+    expect(applyItemFilters(items, state({ quality: new Set(['ancient']) }), 'power').map((i) => i.id)).toEqual([1])
+    // 稀有命中第 2 件的副属性
+    expect(applyItemFilters(items, state({ quality: new Set(['rare']) }), 'power').map((i) => i.id)).toEqual([2])
+  })
+
+  it('按专用加成筛选', () => {
+    const dedicated = makeItem({
+      id: 3,
+      category: 'doh_tool',
+      slot: 'dohTool',
+      equipSlots: ['dohTool'],
+      baseAttrs: [{ attr: 'craftQualityPct', value: 4 }],
+    })
+    expect(applyItemFilters([...items, dedicated], state({ bonus: new Set(['craftQualityPct']) }), 'power').map((i) => i.id)).toEqual([3])
+  })
+
+  it('排序：战力降序 / 名称升序', () => {
+    expect(applyItemFilters(items, state(), 'power').map((i) => i.id)).toEqual([1, 2])
+    const byName = [...items].sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN')).map((i) => i.id)
+    expect(applyItemFilters(items, state(), 'name').map((i) => i.id)).toEqual(byName)
   })
 })

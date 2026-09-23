@@ -5,7 +5,7 @@ import data from '@shared/schema'
 import { api } from '@/api'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
-import Modal from '@/components/Modal.vue'
+import ItemPickerModal from '@/components/ItemPickerModal.vue'
 import TermBadges from '@/components/TermBadges.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -46,11 +46,6 @@ const candidates = computed<Item[]>(() => {
   return game.items
     .filter((item) => item.equipSlots.includes(pickerSlot.value as SlotId))
     .sort((a, b) => b.score - a.score || b.levelReq - a.levelReq || a.name.localeCompare(b.name))
-})
-
-const slotCategory = computed(() => {
-  if (!pickerSlot.value) return ''
-  return data.slots.find((s) => s.id === pickerSlot.value)?.category ?? ''
 })
 
 onMounted(async () => {
@@ -196,82 +191,26 @@ async function unequipDohdol(slot: string) {
       </div>
     </section>
 
-    <Modal
+    <ItemPickerModal
       :open="!!pickerSlot"
       :title="`选择装备 · ${pickerSlot ? slotName(pickerSlot) : ''}`"
-      max-width="max-w-3xl"
+      :candidates="candidates"
+      :equipped="pickerSlot ? (loadout[pickerSlot] ?? null) : null"
+      slot-scoped
       @close="pickerSlot = null"
-    >
-      <p class="mb-3 text-xs text-ink-400">
-        仅显示可放入该栏位的装备（无等级限制），已按战力从高到低排序。
-      </p>
-      <div class="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
-        <button
-          v-if="loadout[pickerSlot!]"
-          class="w-full rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-left text-xs text-rose-200"
-          @click="unequip(pickerSlot!)"
-        >
-          卸下当前装备（{{ loadout[pickerSlot!]!.name }}）
-        </button>
+      @equip="pickerSlot && equip($event, pickerSlot)"
+      @unequip="pickerSlot && unequip(pickerSlot)"
+    />
 
-        <ItemCard
-          v-for="item in candidates"
-          :key="item.id"
-          :item="item"
-          :show-actions="false"
-          :equipped="item.equippedSlot === pickerSlot"
-          @select="equip(item, pickerSlot!)"
-        />
-        <p v-if="!candidates.length" class="py-6 text-center text-xs text-ink-600">
-          背包中没有可用于「{{ slotCategory }}」栏位的装备，去抽箱页面获取吧。
-        </p>
-      </div>
-    </Modal>
-
-    <Modal
+    <ItemPickerModal
       :open="!!dohdolSlot"
       :title="`选择专用装备 · ${dohdolSlot ? (dohdolSlots.find((s) => s.id === dohdolSlot)?.name ?? dohdolSlot) : ''}`"
-      max-width="max-w-3xl"
+      :candidates="dohdolCandidates"
+      :equipped="dohdolSlot ? (dohdolLoadout[dohdolSlot] ?? null) : null"
+      slot-scoped
       @close="dohdolSlot = null"
-    >
-      <p class="mb-3 text-xs text-ink-400">仅显示可放入该栏位的生产/采集专用装备（由生产制造获得）。</p>
-      <div class="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
-        <button
-          v-if="dohdolSlot && dohdolLoadout[dohdolSlot]"
-          class="w-full rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-left text-xs text-rose-200"
-          @click="unequipDohdol(dohdolSlot!)"
-        >
-          卸下当前装备（{{ dohdolLoadout[dohdolSlot]!.name }}）
-        </button>
-
-        <div
-          v-for="item in dohdolCandidates"
-          :key="item.id"
-          class="cursor-pointer rounded-lg border border-ink-700 bg-ink-900/50 p-3 hover:border-white/40"
-          @click="equipDohdol(item)"
-        >
-          <div class="flex items-center gap-3">
-            <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="32" />
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium" :class="rarityClass(item.rarity)">
-                {{ item.name }}
-                <span v-if="item.highQuality" class="rounded bg-amber-500/20 px-1 py-0.5 text-[10px] text-amber-200">高品质</span>
-              </p>
-              <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>
-              <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
-                <p v-for="entry in item.baseAttrs" :key="entry.attr">
-                  {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
-                  <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
-                </p>
-              </div>
-              <TermBadges class="mt-1" :terms="item.terms" />
-            </div>
-          </div>
-        </div>
-        <p v-if="!dohdolCandidates.length" class="py-6 text-center text-xs text-ink-600">
-          背包中没有该栏位的专用装备，去生产页面制造吧。
-        </p>
-      </div>
-    </Modal>
+      @equip="equipDohdol"
+      @unequip="dohdolSlot && unequipDohdol(dohdolSlot)"
+    />
   </div>
 </template>

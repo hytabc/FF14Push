@@ -1,15 +1,36 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import data from '@shared/schema'
 import InfoTip from '@/components/InfoTip.vue'
+import ItemCard from '@/components/ItemCard.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
+import TermBadges from '@/components/TermBadges.vue'
 import { eggSkillSet } from '@/game/core/egg'
 import { dodgeExplain, heroRateExplain, threeAttrExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
-import { attrName, formatPercent, jobName, rarityClass, rarityName, skillEffectLabel } from '@/utils/format'
+import { attrName, attrRangeLabel, formatPercent, jobName, rarityBg, rarityClass, rarityName, skillEffectLabel } from '@/utils/format'
+import { equipmentSlotGroups } from '@/utils/slots'
 
 const game = useGameStore()
+const router = useRouter()
 const showAllJobs = ref(false)
+
+const loadoutTab = ref<'combat' | 'dohdol'>('combat')
+const loadout = computed(() => game.loadout)
+const dohdolLoadout = computed(() => game.state?.dohdol?.loadout ?? {})
+const slotGroups = computed(() => equipmentSlotGroups())
+const dohdolSlots = computed(() => [...data.dohdolEquipment.slots].sort((a, b) => a.order - b.order))
+const DOHDOL_BONUS_NAMES: Record<string, string> = data.dohdolEquipment.bonusNames
+
+function dohdolBonusName(attr: string): string {
+  return DOHDOL_BONUS_NAMES[attr] ?? attr
+}
+
+function goEquipment() {
+  router.push('/equipment')
+}
 
 const hero = computed(() => game.hero)
 const stats = computed(() => hero.value?.stats ?? null)
@@ -195,6 +216,96 @@ function hasteInfo() {
           </dl>
         </div>
       </div>
+    </section>
+
+    <section class="card p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-white">当前装备</h3>
+        <button class="rounded bg-ink-700 px-2.5 py-1.5 text-xs hover:bg-ink-600" @click="goEquipment">
+          前往装备页更换
+        </button>
+      </div>
+
+      <div class="mt-3 flex gap-1 rounded-lg bg-ink-800 p-1 text-xs">
+        <button
+          class="flex-1 rounded-md py-1.5 transition"
+          :class="loadoutTab === 'combat' ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
+          @click="loadoutTab = 'combat'"
+        >
+          战斗装备
+        </button>
+        <button
+          class="flex-1 rounded-md py-1.5 transition"
+          :class="loadoutTab === 'dohdol' ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
+          @click="loadoutTab = 'dohdol'"
+        >
+          生产采集装备
+        </button>
+      </div>
+
+      <div v-if="loadoutTab === 'combat'" class="mt-3 space-y-3">
+        <div v-for="group in slotGroups" :key="group.key">
+          <p class="mb-2 text-xs font-medium text-ink-400">{{ group.title }}</p>
+          <div class="grid gap-2" :class="group.full ? '' : 'sm:grid-cols-2'">
+            <template v-for="slot in group.slots" :key="slot.id">
+              <ItemCard
+                v-if="loadout[slot.id]"
+                :item="loadout[slot.id]!"
+                :show-actions="false"
+                @select="goEquipment"
+              />
+              <button
+                v-else
+                class="rounded-lg border border-dashed border-ink-700 px-3 py-2 text-left text-[11px] text-ink-600 transition hover:border-white/40"
+                @click="goEquipment"
+              >
+                {{ slot.name }}：空 — 前往装备页
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <button
+          v-for="slot in dohdolSlots"
+          :key="slot.id"
+          class="rounded-lg border p-3 text-left transition hover:border-white/40"
+          :class="
+            dohdolLoadout[slot.id]
+              ? [rarityClass(dohdolLoadout[slot.id]!.rarity), rarityBg(dohdolLoadout[slot.id]!.rarity)]
+              : 'border-ink-700 bg-ink-800/60'
+          "
+          @click="goEquipment"
+        >
+          <div class="flex items-start gap-2">
+            <ItemIcon
+              v-if="dohdolLoadout[slot.id]"
+              :base-id="dohdolLoadout[slot.id]!.baseId"
+              :rarity="dohdolLoadout[slot.id]!.rarity"
+              :size="28"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-[11px] text-ink-400">{{ slot.name }}</p>
+              <template v-if="dohdolLoadout[slot.id]">
+                <p class="truncate text-sm font-medium">{{ dohdolLoadout[slot.id]!.name }}</p>
+                <div class="mt-1 space-y-0.5 text-[10px] text-ink-300">
+                  <p v-for="entry in dohdolLoadout[slot.id]!.baseAttrs" :key="entry.attr">
+                    {{ dohdolBonusName(entry.attr) }} +{{ entry.value }}
+                    <span class="font-mono text-ink-500">{{ attrRangeLabel(entry.min, entry.max, 1) }}</span>
+                  </p>
+                </div>
+                <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
+              </template>
+              <p v-else class="mt-1 text-xs text-ink-600">空</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <p class="mt-3 text-[11px] text-ink-500">
+        仅展示当前已装备的栏位（只读）；点击任一栏位或右上角按钮前往装备页更换。
+      </p>
     </section>
 
     <section class="card p-4">
