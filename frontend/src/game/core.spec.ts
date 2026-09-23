@@ -1067,3 +1067,38 @@ describe('暴击 / 直击标记样式', () => {
     expect(log.tone).toBe('damage')
   })
 })
+
+describe('Lv80+ 地区强化与战斗日志', () => {
+  it('Lv80 以上地区的怪物血量/攻击/防御整体 ×5', () => {
+    const before = monsterStats(getRegion(28), 'normal') // Lv79：不触发
+    const after = monsterStats(getRegion(29), 'normal') // Lv80：触发 ×5
+    expect(after.hp).toBeGreaterThan(before.hp * 4)
+    expect(after.attack).toBeGreaterThan(before.attack * 4)
+    expect(after.defense).toBeGreaterThan(before.defense * 4)
+  })
+
+  it('怪物对英雄造成的伤害写入战斗日志', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1, maxHp: 1e6, hpRegen: 0 }),
+      regionId: 1,
+      killsRequired: 8,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    for (let i = 0; i < 400 && !sim.log.some((e) => /造成 \d+ 点伤害/.test(e.text)); i += 1) sim.tick(0.1)
+    const entry = sim.log.find((e) => /^「.+」造成 \d+ 点伤害$/.test(e.text))
+    expect(entry).toBeDefined()
+    expect(entry!.tone).toBe('danger')
+  })
+
+  it('伤害浮动数字约 1 秒后自动移除', () => {
+    const sim = new BattleSimulator({ stats: makeStats(), regionId: 1 })
+    sim.pushFloating('-100', 'hero', 'monster')
+    expect(sim.floating).toHaveLength(1)
+    sim.tick(0.5)
+    expect(sim.floating).toHaveLength(1)
+    sim.tick(0.6)
+    expect(sim.floating).toHaveLength(0)
+  })
+})

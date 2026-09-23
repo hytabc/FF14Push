@@ -35,16 +35,25 @@ def _ref_hp(level: float) -> float:
     return float(REF["heroHp"]["base"]) + float(REF["heroHp"]["perLevel"]) * (level - 1)
 
 
-def region_scale(level: float) -> tuple[float, float]:
-    """Lv60 以上地区怪物的额外血量/伤害放大（线性：Lv60×1 → Lv100×3 血、×2.5 攻）。
+def region_scale(level: float) -> tuple[float, float, float]:
+    """Lv60 以上地区怪物的额外放大：Lv60→100 线性提升血量/攻击（满级 ×3 血、×2.5 攻）；
+    Lv80 起血量/攻击/防御再整体 ×endgameMultiplier（默认 5）。
 
     只作用于地区小怪与关底 BOSS；基准曲线 `monster_base_stats` 不变，避免连带强化高难副本。
     """
     cfg = CONFIG.monsters.get("regionHighLevelScale")
     if not cfg:
-        return 1.0, 1.0
+        return 1.0, 1.0, 1.0
     over = max(0.0, level - float(cfg["fromLevel"]))
-    return 1.0 + float(cfg["hpPerLevel"]) * over, 1.0 + float(cfg["attackPerLevel"]) * over
+    hp = 1.0 + float(cfg["hpPerLevel"]) * over
+    atk = 1.0 + float(cfg["attackPerLevel"]) * over
+    defense = 1.0
+    if level >= float(cfg["endgameFromLevel"]):
+        mult = float(cfg["endgameMultiplier"])
+        hp *= mult
+        atk *= mult
+        defense *= mult
+    return hp, atk, defense
 
 
 def monster_base_stats(level: float) -> dict[str, float]:
@@ -74,7 +83,7 @@ def monster_stats(region_id: int, template_id: str) -> dict[str, Any]:
     template = TEMPLATE_BY_ID[template_id]
     level = region_level(region)
     base = monster_base_stats(level)
-    hp_scale, atk_scale = region_scale(level)
+    hp_scale, atk_scale, def_scale = region_scale(level)
     m = template["multipliers"]
     return {
         "id": f"{template_id}",
@@ -84,7 +93,7 @@ def monster_stats(region_id: int, template_id: str) -> dict[str, Any]:
         "kind": "elite" if template_id == "elite" else "normal",
         "hp": round(base["hp"] * float(m["hp"]) * hp_scale, 1),
         "attack": round(base["attack"] * float(m["attack"]) * atk_scale, 1),
-        "defense": round(base["defense"] * float(m["defense"]), 1),
+        "defense": round(base["defense"] * float(m["defense"]) * def_scale, 1),
         "attackInterval": round(MONSTER_INTERVAL / float(m["attackSpeed"]), 2),
         "level": round(region_level(region), 1),
     }
@@ -99,7 +108,7 @@ def boss_stats(region_id: int) -> dict[str, Any]:
     region = CONFIG.region_by_id[region_id]
     level = region_level(region)
     base = monster_base_stats(level)
-    hp_scale, atk_scale = region_scale(level)
+    hp_scale, atk_scale, def_scale = region_scale(level)
     hp_mult = _mid(CONFIG.bosses["hpMultiplierRange"])
     atk_mult = _mid(CONFIG.bosses["attackMultiplierRange"])
     def_mult = _mid(CONFIG.bosses["defenseMultiplierRange"])
@@ -112,7 +121,7 @@ def boss_stats(region_id: int) -> dict[str, Any]:
         "kind": BOSS_KIND,
         "hp": round(base["hp"] * hp_mult * hp_scale, 1),
         "attack": round(base["attack"] * atk_mult * atk_scale, 1),
-        "defense": round(base["defense"] * def_mult, 1),
+        "defense": round(base["defense"] * def_mult * def_scale, 1),
         "attackInterval": float(CONFIG.bosses["attackInterval"]),
         "level": round(region_level(region), 1),
         "skills": boss_type["skills"],

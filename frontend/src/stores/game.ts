@@ -234,7 +234,6 @@ export const useGameStore = defineStore('game', () => {
 
       if (sim.value && running.value) {
         sim.value.tick(dt)
-        sim.value.clearFloating()
         logVersion.value += 1
 
         if (raid.value) {

@@ -272,7 +272,7 @@ function dodgeInfo() {
           <div class="absolute inset-0 flex items-end justify-center gap-6 pb-2">
             <transition-group name="float">
               <span
-                v-for="f in sim?.floating ?? []"
+                v-for="f in game.floating"
                 :key="f.id"
                 class="animate-float font-mono text-sm font-bold"
                 :class="

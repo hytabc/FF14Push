@@ -30,12 +30,17 @@ function refHp(level: number): number {
   return REF.heroHp.base + REF.heroHp.perLevel * (level - 1)
 }
 
-/** Lv60 以上地区怪物的额外血量/伤害放大（线性：Lv60×1 → Lv100×3 血、×2.5 攻）。 */
-function regionScale(level: number): { hp: number; atk: number } {
+/**
+ * Lv60 以上地区怪物的额外放大：Lv60→100 线性提升血量/攻击（满级 ×3 血、×2.5 攻）；
+ * Lv80 起血量/攻击/防御再整体 ×endgameMultiplier。
+ */
+function regionScale(level: number): { hp: number; atk: number; def: number } {
   const over = Math.max(0, level - HIGH_LEVEL_SCALE.fromLevel)
+  const late = level >= HIGH_LEVEL_SCALE.endgameFromLevel ? HIGH_LEVEL_SCALE.endgameMultiplier : 1
   return {
-    hp: 1 + HIGH_LEVEL_SCALE.hpPerLevel * over,
-    atk: 1 + HIGH_LEVEL_SCALE.attackPerLevel * over,
+    hp: (1 + HIGH_LEVEL_SCALE.hpPerLevel * over) * late,
+    atk: (1 + HIGH_LEVEL_SCALE.attackPerLevel * over) * late,
+    def: late,
   }
 }
 
@@ -106,7 +111,7 @@ export function monsterStats(region: RegionDef, templateId: string): MonsterStat
     kind: templateId === 'elite' ? 'elite' : 'normal',
     hp: round(base.hp * m.hp * scale.hp),
     attack: round(base.attack * m.attack * scale.atk),
-    defense: round(base.defense * m.defense),
+    defense: round(base.defense * m.defense * scale.def),
     attackInterval: round(MONSTER_INTERVAL / m.attackSpeed, 2),
     level: regionLevel(region),
   }
@@ -127,7 +132,7 @@ export function bossStats(region: RegionDef): MonsterStats {
     kind: 'boss',
     hp: round(base.hp * mid(data.bosses.hpMultiplierRange as [number, number]) * scale.hp),
     attack: round(base.attack * mid(data.bosses.attackMultiplierRange as [number, number]) * scale.atk),
-    defense: round(base.defense * mid(data.bosses.defenseMultiplierRange as [number, number])),
+    defense: round(base.defense * mid(data.bosses.defenseMultiplierRange as [number, number]) * scale.def),
     attackInterval: data.bosses.attackInterval,
     level: regionLevel(region),
     skills: (bossType?.skills ?? []) as unknown as BossSkill[],

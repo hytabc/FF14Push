@@ -74,6 +74,8 @@ export interface FloatingText {
   text: string
   tone: FloatTone
   side: 'hero' | 'monster'
+  /** 剩余存活秒数，≤0 时移除。 */
+  remaining: number
 }
 
 type Phase = 'idle' | 'mob' | 'boss' | 'dead' | 'cleared'
@@ -101,6 +103,8 @@ interface EnemyState {
 
 const MAX_LOG = 160
 const MAX_FLOAT = 12
+/** 伤害浮动数字的存活时长（秒）：到期自动移除，UI 侧播放淡出。 */
+const FLOAT_LIFE = 1
 
 let uid = 0
 const nextId = () => ++uid
@@ -346,6 +350,7 @@ export class BattleSimulator {
 
   /** 推进 dt 秒。 */
   tick(dt: number): void {
+    this.tickFloating(dt)
     if (this.phase === 'idle' || this.phase === 'cleared') return
 
     this.gcd = Math.max(0, this.gcd - dt)
@@ -772,6 +777,7 @@ export class BattleSimulator {
     } else {
       this.heroHp -= damage
       this.pushFloat(`-${damage}`, 'hero', 'monster')
+      this.logIncomingDamage(this.monster!.name, damage)
     }
 
     // 吸血
@@ -918,6 +924,7 @@ export class BattleSimulator {
     if (damage > 0) {
       this.heroHp -= damage
       this.pushFloat(`-${damage}`, 'hero', 'monster')
+      this.logIncomingDamage(enemy.stats.name, damage, skill.name)
     }
     if (stats.lifestealPct > 0) {
       this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * this.healMultiplier))
@@ -943,6 +950,7 @@ export class BattleSimulator {
         this.heroHp -= damage
         if (this.heroHp <= 0) this.mechanismFailures.push(dot.source)
         this.pushFloat(`-${damage}`, 'hero', 'monster')
+        this.logIncomingDamage(enemy?.stats.name ?? '持续伤害', damage, '持续伤害')
       }
     }
     this.heroDots = this.heroDots.filter((d) => d.remaining > 0)
@@ -1138,8 +1146,23 @@ export class BattleSimulator {
   }
 
   private pushFloat(text: string, side: 'hero' | 'monster', tone: FloatTone): void {
-    this.floating.push({ id: nextId(), text, tone, side })
+    this.floating.push({ id: nextId(), text, tone, side, remaining: FLOAT_LIFE })
     if (this.floating.length > MAX_FLOAT) this.floating.splice(0, this.floating.length - MAX_FLOAT)
+  }
+
+  /** 伤害浮动数字按存活时间衰减，过期的移除（供 UI 播放淡出）。 */
+  private tickFloating(dt: number): void {
+    if (this.floating.length === 0) return
+    for (const f of this.floating) f.remaining -= dt
+    this.floating = this.floating.filter((f) => f.remaining > 0)
+  }
+
+  /** 日志：怪物对英雄造成的伤害。 */
+  private logIncomingDamage(source: string, damage: number, skill?: string): void {
+    this.pushLog(
+      skill ? `「${source}」的 ${skill} 造成 ${damage} 点伤害` : `「${source}」造成 ${damage} 点伤害`,
+      'danger',
+    )
   }
 
   recordReward(text: string): void {
@@ -1149,10 +1172,6 @@ export class BattleSimulator {
   private pushLog(text: string, tone: LogEntry['tone']): void {
     this.log.push({ id: nextId(), text, tone })
     if (this.log.length > MAX_LOG) this.log.splice(0, this.log.length - MAX_LOG)
-  }
-
-  clearFloating(): void {
-    this.floating = []
   }
 
   get isMagicalJob(): boolean {

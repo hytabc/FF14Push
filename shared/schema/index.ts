@@ -619,7 +619,14 @@ export const gameData = {
   subAttrFloat: baseItemsDataRaw.subAttrFloat,
   monsters: monstersJson as unknown as {
     reference: Record<string, unknown>
-    regionHighLevelScale: { fromLevel: number; hpPerLevel: number; attackPerLevel: number }
+    regionHighLevelScale: {
+      fromLevel: number
+      hpPerLevel: number
+      attackPerLevel: number
+      /** Lv80 起血量 / 攻击 / 防御整体放大倍数。 */
+      endgameFromLevel: number
+      endgameMultiplier: number
+    }
     monsterAttackInterval: number
     templates: MonsterTemplate[]
     eliteBaseChance: number
