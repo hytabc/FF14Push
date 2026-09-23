@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
 import InfoTip from '@/components/InfoTip.vue'
+import JobFigure from '@/components/JobFigure.vue'
+import JobIcon from '@/components/JobIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { dodgeExplain, threeAttrExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
@@ -187,7 +189,8 @@ function dodgeInfo() {
             {{ hero?.name }}
             <span class="ml-1 text-xs text-ink-400">Lv.{{ hero?.level }}</span>
           </h3>
-          <span class="rounded bg-ink-800 px-2 py-0.5 text-[11px] text-sky-300">
+          <span class="flex items-center gap-1.5 rounded bg-ink-800 px-2 py-0.5 text-[11px] text-sky-300">
+            <JobIcon :job-id="hero?.jobId" :size="20" />
             {{ jobName(hero?.jobId ?? 'adventurer') }}
           </span>
         </header>
@@ -264,7 +267,8 @@ function dodgeInfo() {
           <div class="h-full rounded-full bg-rose-500 transition-all" :style="{ width: `${sim?.monsterHpPct ?? 0}%` }" />
         </div>
 
-        <div class="relative mt-4 h-24 overflow-hidden rounded-lg border border-ink-700 bg-ink-900/60">
+        <div class="relative mt-4 h-28 overflow-hidden rounded-lg border border-ink-700 bg-ink-900/60">
+          <JobFigure :job-id="hero?.jobId" :size="40" class="absolute bottom-1 left-2" />
           <div class="absolute inset-0 flex items-end justify-center gap-6 pb-2">
             <transition-group name="float">
               <span

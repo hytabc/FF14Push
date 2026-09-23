@@ -12,6 +12,7 @@
     "preview": "npm run preview -w frontend",
     "test": "npm run test -w frontend",
     "typecheck": "npm run typecheck -w frontend",
-    "gen:icons": "node scripts/gen-icons.mjs"
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "fetch:jobs": "node scripts/fetch-job-assets.mjs"
   }
 }

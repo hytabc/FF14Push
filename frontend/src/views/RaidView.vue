@@ -4,6 +4,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
 import InfoTip from '@/components/InfoTip.vue'
+import JobFigure from '@/components/JobFigure.vue'
+import JobIcon from '@/components/JobIcon.vue'
 import Modal from '@/components/Modal.vue'
 import RaidChestPicker from '@/components/RaidChestPicker.vue'
 import { raidSkillExplain } from '@/game/explanations'
@@ -306,9 +308,13 @@ function rewardExhausted(raid: RaidListEntry): boolean {
 
       <div class="grid gap-4 lg:grid-cols-2">
         <section class="card p-4">
-          <h3 class="text-sm font-semibold text-white">
-            {{ game.hero?.name }} <span class="ml-1 text-xs text-ink-400">Lv.{{ game.hero?.level }}</span>
-          </h3>
+          <div class="flex items-start justify-between gap-3">
+            <h3 class="flex items-center gap-1.5 text-sm font-semibold text-white">
+              <JobIcon :job-id="game.hero?.jobId" :size="20" />
+              {{ game.hero?.name }} <span class="text-xs text-ink-400">Lv.{{ game.hero?.level }}</span>
+            </h3>
+            <JobFigure :job-id="game.hero?.jobId" :size="40" />
+          </div>
           <div class="mt-3 space-y-2">
             <div>
               <div class="mb-1 flex justify-between text-[11px] text-ink-400">

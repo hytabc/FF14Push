@@ -6,6 +6,8 @@ import data from '@shared/schema'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import JobFigure from '@/components/JobFigure.vue'
+import JobIcon from '@/components/JobIcon.vue'
 import TermBadges from '@/components/TermBadges.vue'
 import { eggSkillSet } from '@/game/core/egg'
 import { dodgeExplain, heroRateExplain, threeAttrExplain } from '@/game/explanations'
@@ -114,9 +116,10 @@ function hasteInfo() {
     <section data-tutorial="hero" class="card p-4">
       <div class="flex flex-wrap items-start gap-4">
         <div class="flex-1">
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <h2 class="text-lg font-semibold text-white">{{ hero.name }}</h2>
-            <span class="rounded bg-ink-800 px-2 py-0.5 text-[11px] text-sky-300">
+            <span class="flex items-center gap-1.5 rounded bg-ink-800 px-2 py-0.5 text-[11px] text-sky-300">
+              <JobIcon :job-id="hero.jobId" :size="20" />
               {{ jobName(hero.jobId) }}
             </span>
             <span class="rounded bg-ink-800 px-2 py-0.5 text-[11px]" :class="rarityClass(hero.talent)">
@@ -128,6 +131,7 @@ function hasteInfo() {
             <span v-if="hero.eggId" class="rounded bg-fuchsia-500/20 px-2 py-0.5 text-[11px] text-fuchsia-300">
               🎁 彩蛋
             </span>
+            <JobFigure :job-id="hero.jobId" :size="44" class="ml-auto" />
           </div>
 
           <div class="mt-3">
