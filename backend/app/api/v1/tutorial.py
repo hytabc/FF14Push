@@ -8,8 +8,7 @@ from sqlalchemy import select
 from app.core.deps import CurrentUser, DbSession
 from app.models import TutorialProgress
 from app.schemas.game import TutorialRequest
-from app.services.drop_luck import rarity_luck, user_drop_rate
-from app.services import consumables
+from app.services.drop_luck import chest_rarity_luck
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
@@ -83,7 +82,7 @@ async def complete(db: DbSession, user: CurrentUser) -> dict:
     reward = CONFIG.tutorial["completionReward"]
     user.gold = int(user.gold) + int(reward["gold"])
 
-    luck = rarity_luck(await user_drop_rate(db, user.id)) + await consumables.chest_luck(db, user.id)
+    luck, _ = await chest_rarity_luck(db, user.id)
     generated = []
     for entry in reward["chests"]:
         chest = chest_by_id(entry["chestId"])

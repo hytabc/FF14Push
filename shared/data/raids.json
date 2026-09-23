@@ -11,6 +11,8 @@
     "bossSkillIntervalSeconds": 6,
     "dailyRewardClears": 3
   },
+  "$commentDifficultyWeights": "高难通关数计入抽箱与生产的品阶概率来源：仅计「首通」（每个副本是否通关一次，重复刷不再叠加），按难度加权求和（绝* 高于极*）。ref = 全部副本权重之和。",
+  "difficultyWeights": { "normal": 1, "hard": 3 },
   "bossSkillPool": [
     { "id": "annihilation", "name": "湮灭", "effect": "nuke", "potency": 400, "desc": "造成 400% 攻击力的高威力伤害" },
     { "id": "rendingSlash", "name": "裂空斩", "effect": "nuke", "potency": 300, "desc": "造成 300% 攻击力的物理伤害" },

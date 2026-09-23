@@ -14,6 +14,18 @@
     "perClearedRegion": 0.0125,
     "maxMultiplier": 1.5
   },
+  "$commentRarityLuck": "抽箱品阶概率的「幸运进度」来源。p = Σ weight × min(值 / ref, 1)（权重合计 = 1），仅当全部来源拉满时 p = 1；最终 luck = luckMax × p，喂给 loot.rarity_weights 的 base[i]×(1+luck×i)。各 ref 为对应来源的真实最大值（含太古），因此「上限」只有全来源满才能达到。",
+  "rarityLuck": {
+    "luckMax": 1.0,
+    "sources": {
+      "clearedRegions": { "weight": 0.3, "ref": 40 },
+      "gearPct": { "weight": 0.25, "ref": 137.5 },
+      "consumablePct": { "weight": 0.15, "ref": 0.21 },
+      "coopClears": { "weight": 0.15, "ref": 33 },
+      "raidClears": { "weight": 0.1, "ref": 10 },
+      "egg": { "weight": 0.05, "ref": 0.1 }
+    }
+  },
   "chests": [
     { "id": "weaponBox", "name": "武器箱", "price": 100, "category": "weapon", "tier": "normal", "icon": "weapon" },
     { "id": "armorBox", "name": "装备箱", "price": 80, "category": "armor", "tier": "normal", "icon": "armor" },

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ActivitySession, DohDolProgress, Hero, Item, User
-from app.services import consumables, dohdol_util, drop_luck
+from app.services import consumables, dohdol_util, drop_luck, luck_sources
 from app.services.game_config import CONFIG
 from app.services.grants import insert_items
 from app.services.item_factory import (
@@ -122,11 +122,19 @@ async def report_produce(
         "craftQualityPct", 0.0
     ) / 100.0
 
-    # 制造品阶概率随进度提升：英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运。
+    # 制造品阶概率随进度提升：英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运 /
+    # 制造品阶概率药食 / 远征·高难通关（难度加权首通）。
     hero_level = await db.scalar(select(Hero.level).where(Hero.id == user.active_hero_id))
-    cleared_regions = await drop_luck.cleared_region_count(db, user.id)
     rarity_luck, _ = craft_rarity_luck(
-        int(hero_level or 0), cleared_regions, int(progress.level), equip.get("craftRarityPct", 0.0)
+        {
+            "heroLevel": int(hero_level or 0),
+            "clearedRegions": await drop_luck.cleared_region_count(db, user.id),
+            "prodLevel": int(progress.level),
+            "gearPct": equip.get("craftRarityPct", 0.0),
+            "consumablePct": await consumables.craft_rarity_bonus(db, user.id),
+            "coopClears": await luck_sources.coop_clear_score(db, user.id),
+            "raidClears": await luck_sources.raid_clear_score(db, user.id),
+        }
     )
 
     target = int(session.target_actions) if session.target_actions is not None else None

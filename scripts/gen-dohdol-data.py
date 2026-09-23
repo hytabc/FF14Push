@@ -396,11 +396,13 @@ dump("fish.json", {
 POTION_EFFECTS = [
     ("expGainPct", 25, "经验获取"), ("goldGainPct", 25, "金币获取"),
     ("chestLuck", 0.15, "抽箱品阶概率"), ("craftQualityPct", 10, "制造品质概率"),
+    ("craftRarityPct", 15, "制造品阶概率"),
     ("fishInsightPct", 50, "捕鱼人之识时长"), ("gatherYieldPct", 30, "采集产量"),
 ]
 FOOD_EFFECTS = [
     ("expGainPct", 10, "经验获取"), ("goldGainPct", 10, "金币获取"),
     ("chestLuck", 0.06, "抽箱品阶概率"), ("craftQualityPct", 4, "制造品质概率"),
+    ("craftRarityPct", 6, "制造品阶概率"),
     ("fishInsightPct", 20, "捕鱼人之识时长"), ("gatherYieldPct", 12, "采集产量"),
 ]
 consumables = []
@@ -429,7 +431,8 @@ dump("consumables.json", {
     },
     "effectNames": {
         "expGainPct": "经验获取", "goldGainPct": "金币获取", "chestLuck": "抽箱品阶概率",
-        "craftQualityPct": "制造品质概率", "fishInsightPct": "捕鱼人之识时长",
+        "craftQualityPct": "制造品质概率", "craftRarityPct": "制造品阶概率",
+        "fishInsightPct": "捕鱼人之识时长",
         "fishChancePct": "鱼王/鱼皇概率", "gatherYieldPct": "采集产量",
     },
     "items": consumables,
@@ -578,9 +581,11 @@ for t in (t for t in BASE_ITEMS["tiers"] if t["index"] in (6, 7, 8)):
 CONSUMABLE_INPUTS = {
     "p_expGainPct": [("h_ink", 2), ("g_herb", 3)], "p_goldGainPct": [("h_ink", 2), ("g_gem", 2)],
     "p_chestLuck": [("h_gemcut", 2), ("h_ink", 2)], "p_craftQualityPct": [("h_oil", 2), ("h_ink", 2)],
+    "p_craftRarityPct": [("h_gemcut", 2), ("h_oil", 2)],
     "p_fishInsightPct": [("h_oil", 3), ("g_herb", 3)], "p_gatherYieldPct": [("h_oil", 2), ("g_fiber", 3)],
     "f_expGainPct": [("h_flour", 2), ("g_herb", 2)], "f_goldGainPct": [("h_flour", 2), ("g_gem", 1)],
     "f_chestLuck": [("h_flour", 2), ("h_gemcut", 1)], "f_craftQualityPct": [("h_flour", 2), ("h_oil", 1)],
+    "f_craftRarityPct": [("h_flour", 2), ("h_gemcut", 1)],
     "f_fishInsightPct": [("h_flour", 3), ("g_herb", 2)], "f_gatherYieldPct": [("h_flour", 2), ("g_fiber", 2)],
 }
 for c in consumables:
@@ -590,7 +595,7 @@ for c in consumables:
 
 dump("recipes.json", {
     "$comment": "生产配方。按生产等级解锁；inputs 引用材料/半成品/鱼，output 可为材料/半成品/装备/消耗品。",
-    "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（四项来源满值 → 神话 20%）。",
+    "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（全部来源满值 → 神话 20%）。",
     "equipment": {
         "highQualityMultiplier": 1.15,
         "guaranteedAncientTerms": 1,
@@ -601,14 +606,17 @@ dump("recipes.json", {
         "rarityWeights": {
             "common": 0.30, "uncommon": 0.30, "rare": 0.22, "epic": 0.12, "legendary": 0.05, "mythic": 0.01,
         },
-        "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)；分布 = 基准 ×(1−t) + 目标 × t。四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备 craftRarityPct 合计）全部拉满 → t=1 → 神话 = mythicCap（20%，硬上限）。",
+        "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)（权重合计 = 1，仅全部来源拉满时 t=1）；分布 = 基准 ×(1−t) + 目标 × t。来源：英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运(craftRarityPct) / 制造品阶概率药食(craftRarityPct) / 远征通关(难度加权首通) / 高难通关(难度加权首通)。各 ref 为对应来源的真实最大值（含太古词条），因此「上限」只有全来源满才能达到 → 神话 = mythicCap（20%，硬上限）。",
         "rarityScaling": {
             "mythicCap": 0.2,
             "sources": {
-                "heroLevel": {"weight": 0.25, "ref": 100},
-                "clearedRegions": {"weight": 0.25, "ref": 40},
-                "prodLevel": {"weight": 0.25, "ref": 100},
-                "gearPct": {"weight": 0.25, "ref": 60},
+                "heroLevel": {"weight": 0.15, "ref": 100},
+                "clearedRegions": {"weight": 0.10, "ref": 40},
+                "prodLevel": {"weight": 0.15, "ref": 100},
+                "gearPct": {"weight": 0.25, "ref": 186.1},
+                "consumablePct": {"weight": 0.10, "ref": 21},
+                "coopClears": {"weight": 0.15, "ref": 33},
+                "raidClears": {"weight": 0.10, "ref": 10},
             },
             "targetWeights": {
                 "common": 0.02, "uncommon": 0.03, "rare": 0.14, "epic": 0.29, "legendary": 0.32, "mythic": 0.20,

@@ -1,5 +1,5 @@
 {
-  "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。sell 为出售单价（金币）。",
+  "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。sell 为出售单价（金币），按 FISH_SELL / KING_SELL / EMPEROR_SELL 档位表递增（越高档涨幅越大，低阶几乎不变），鱼王/鱼皇分别约为同档普通鱼的 20× / 80×。",
   "castSeconds": 3.0,
   "insightBuffName": "捕鱼人之识",
   "regions": [
@@ -59,7 +59,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 41,
-        "sell": 154
+        "sell": 160
       },
       "emperor": {
         "id": "e1",
@@ -78,7 +78,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 122,
-        "sell": 615
+        "sell": 640
       }
     },
     {
@@ -137,7 +137,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 42,
-        "sell": 158
+        "sell": 160
       },
       "emperor": {
         "id": "e2",
@@ -156,7 +156,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 124,
-        "sell": 630
+        "sell": 640
       }
     },
     {
@@ -215,7 +215,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 43,
-        "sell": 162
+        "sell": 160
       },
       "emperor": {
         "id": "e3",
@@ -234,7 +234,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 126,
-        "sell": 645
+        "sell": 640
       }
     },
     {
@@ -293,7 +293,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 44,
-        "sell": 166
+        "sell": 160
       },
       "emperor": {
         "id": "e4",
@@ -312,7 +312,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 128,
-        "sell": 660
+        "sell": 640
       }
     },
     {
@@ -371,7 +371,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 45,
-        "sell": 170
+        "sell": 160
       },
       "emperor": {
         "id": "e5",
@@ -390,7 +390,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 130,
-        "sell": 675
+        "sell": 640
       }
     },
     {
@@ -449,7 +449,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 46,
-        "sell": 174
+        "sell": 160
       },
       "emperor": {
         "id": "e6",
@@ -468,7 +468,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 132,
-        "sell": 690
+        "sell": 640
       }
     },
     {
@@ -527,7 +527,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 47,
-        "sell": 178
+        "sell": 160
       },
       "emperor": {
         "id": "e7",
@@ -546,7 +546,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 134,
-        "sell": 705
+        "sell": 640
       }
     },
     {
@@ -605,7 +605,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 48,
-        "sell": 182
+        "sell": 160
       },
       "emperor": {
         "id": "e8",
@@ -624,7 +624,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 136,
-        "sell": 720
+        "sell": 640
       }
     },
     {
@@ -638,7 +638,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f9_2",
@@ -647,7 +647,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f9_3",
@@ -656,7 +656,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f9_4",
@@ -665,7 +665,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -683,7 +683,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 49,
-        "sell": 186
+        "sell": 400
       },
       "emperor": {
         "id": "e9",
@@ -702,7 +702,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 138,
-        "sell": 735
+        "sell": 1600
       }
     },
     {
@@ -716,7 +716,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f10_2",
@@ -725,7 +725,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f10_3",
@@ -734,7 +734,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f10_4",
@@ -743,7 +743,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -761,7 +761,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 50,
-        "sell": 190
+        "sell": 400
       },
       "emperor": {
         "id": "e10",
@@ -780,7 +780,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 140,
-        "sell": 750
+        "sell": 1600
       }
     },
     {
@@ -794,7 +794,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f11_2",
@@ -803,7 +803,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f11_3",
@@ -812,7 +812,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f11_4",
@@ -821,7 +821,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 6,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -839,7 +839,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 51,
-        "sell": 194
+        "sell": 400
       },
       "emperor": {
         "id": "e11",
@@ -858,7 +858,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 142,
-        "sell": 765
+        "sell": 1600
       }
     },
     {
@@ -872,7 +872,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f12_2",
@@ -881,7 +881,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f12_3",
@@ -890,7 +890,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f12_4",
@@ -899,7 +899,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -917,7 +917,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 52,
-        "sell": 198
+        "sell": 400
       },
       "emperor": {
         "id": "e12",
@@ -936,7 +936,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 144,
-        "sell": 780
+        "sell": 1600
       }
     },
     {
@@ -950,7 +950,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f13_2",
@@ -959,7 +959,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f13_3",
@@ -968,7 +968,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f13_4",
@@ -977,7 +977,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -995,7 +995,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 53,
-        "sell": 202
+        "sell": 400
       },
       "emperor": {
         "id": "e13",
@@ -1014,7 +1014,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 146,
-        "sell": 795
+        "sell": 1600
       }
     },
     {
@@ -1028,7 +1028,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f14_2",
@@ -1037,7 +1037,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f14_3",
@@ -1046,7 +1046,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f14_4",
@@ -1055,7 +1055,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -1073,7 +1073,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 54,
-        "sell": 206
+        "sell": 400
       },
       "emperor": {
         "id": "e14",
@@ -1092,7 +1092,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 148,
-        "sell": 810
+        "sell": 1600
       }
     },
     {
@@ -1106,7 +1106,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f15_2",
@@ -1115,7 +1115,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f15_3",
@@ -1124,7 +1124,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f15_4",
@@ -1133,7 +1133,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -1151,7 +1151,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 55,
-        "sell": 210
+        "sell": 400
       },
       "emperor": {
         "id": "e15",
@@ -1170,7 +1170,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 150,
-        "sell": 825
+        "sell": 1600
       }
     },
     {
@@ -1184,7 +1184,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f16_2",
@@ -1193,7 +1193,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f16_3",
@@ -1202,7 +1202,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 14
+          "sell": 20
         },
         {
           "id": "f16_4",
@@ -1211,7 +1211,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 14
+          "sell": 20
         }
       ],
       "king": {
@@ -1229,7 +1229,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 56,
-        "sell": 214
+        "sell": 400
       },
       "emperor": {
         "id": "e16",
@@ -1248,7 +1248,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 152,
-        "sell": 840
+        "sell": 1600
       }
     },
     {
@@ -1262,7 +1262,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f17_2",
@@ -1271,7 +1271,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f17_3",
@@ -1280,7 +1280,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f17_4",
@@ -1289,7 +1289,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         }
       ],
       "king": {
@@ -1307,7 +1307,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 57,
-        "sell": 218
+        "sell": 800
       },
       "emperor": {
         "id": "e17",
@@ -1326,7 +1326,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 154,
-        "sell": 855
+        "sell": 3200
       }
     },
     {
@@ -1340,7 +1340,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f18_2",
@@ -1349,7 +1349,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f18_3",
@@ -1358,7 +1358,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f18_4",
@@ -1367,7 +1367,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         }
       ],
       "king": {
@@ -1385,7 +1385,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 58,
-        "sell": 222
+        "sell": 800
       },
       "emperor": {
         "id": "e18",
@@ -1404,7 +1404,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 156,
-        "sell": 870
+        "sell": 3200
       }
     },
     {
@@ -1418,7 +1418,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f19_2",
@@ -1427,7 +1427,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f19_3",
@@ -1436,7 +1436,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f19_4",
@@ -1445,7 +1445,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 22
+          "sell": 40
         }
       ],
       "king": {
@@ -1463,7 +1463,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 59,
-        "sell": 226
+        "sell": 800
       },
       "emperor": {
         "id": "e19",
@@ -1482,7 +1482,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 158,
-        "sell": 885
+        "sell": 3200
       }
     },
     {
@@ -1496,7 +1496,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f20_2",
@@ -1505,7 +1505,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f20_3",
@@ -1514,7 +1514,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f20_4",
@@ -1523,7 +1523,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         }
       ],
       "king": {
@@ -1541,7 +1541,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 60,
-        "sell": 230
+        "sell": 800
       },
       "emperor": {
         "id": "e20",
@@ -1560,7 +1560,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 160,
-        "sell": 900
+        "sell": 3200
       }
     },
     {
@@ -1574,7 +1574,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f21_2",
@@ -1583,7 +1583,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f21_3",
@@ -1592,7 +1592,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f21_4",
@@ -1601,7 +1601,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         }
       ],
       "king": {
@@ -1619,7 +1619,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 61,
-        "sell": 234
+        "sell": 800
       },
       "emperor": {
         "id": "e21",
@@ -1638,7 +1638,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 162,
-        "sell": 915
+        "sell": 3200
       }
     },
     {
@@ -1652,7 +1652,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f22_2",
@@ -1661,7 +1661,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f22_3",
@@ -1670,7 +1670,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         },
         {
           "id": "f22_4",
@@ -1679,7 +1679,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 22
+          "sell": 40
         }
       ],
       "king": {
@@ -1697,7 +1697,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 62,
-        "sell": 238
+        "sell": 800
       },
       "emperor": {
         "id": "e22",
@@ -1716,7 +1716,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 164,
-        "sell": 930
+        "sell": 3200
       }
     },
     {
@@ -1730,7 +1730,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f23_2",
@@ -1739,7 +1739,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f23_3",
@@ -1748,7 +1748,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f23_4",
@@ -1757,7 +1757,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 32
+          "sell": 80
         }
       ],
       "king": {
@@ -1775,7 +1775,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 63,
-        "sell": 242
+        "sell": 1600
       },
       "emperor": {
         "id": "e23",
@@ -1794,7 +1794,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 166,
-        "sell": 945
+        "sell": 6400
       }
     },
     {
@@ -1808,7 +1808,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f24_2",
@@ -1817,7 +1817,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f24_3",
@@ -1826,7 +1826,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f24_4",
@@ -1835,7 +1835,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         }
       ],
       "king": {
@@ -1853,7 +1853,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 64,
-        "sell": 246
+        "sell": 1600
       },
       "emperor": {
         "id": "e24",
@@ -1872,7 +1872,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 168,
-        "sell": 960
+        "sell": 6400
       }
     },
     {
@@ -1886,7 +1886,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f25_2",
@@ -1895,7 +1895,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f25_3",
@@ -1904,7 +1904,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f25_4",
@@ -1913,7 +1913,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         }
       ],
       "king": {
@@ -1931,7 +1931,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 65,
-        "sell": 250
+        "sell": 1600
       },
       "emperor": {
         "id": "e25",
@@ -1950,7 +1950,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 170,
-        "sell": 975
+        "sell": 6400
       }
     },
     {
@@ -1964,7 +1964,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f26_2",
@@ -1973,7 +1973,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f26_3",
@@ -1982,7 +1982,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f26_4",
@@ -1991,7 +1991,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         }
       ],
       "king": {
@@ -2009,7 +2009,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 66,
-        "sell": 254
+        "sell": 1600
       },
       "emperor": {
         "id": "e26",
@@ -2028,7 +2028,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 172,
-        "sell": 990
+        "sell": 6400
       }
     },
     {
@@ -2042,7 +2042,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f27_2",
@@ -2051,7 +2051,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f27_3",
@@ -2060,7 +2060,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f27_4",
@@ -2069,7 +2069,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 32
+          "sell": 80
         }
       ],
       "king": {
@@ -2087,7 +2087,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 67,
-        "sell": 258
+        "sell": 1600
       },
       "emperor": {
         "id": "e27",
@@ -2106,7 +2106,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 174,
-        "sell": 1005
+        "sell": 6400
       }
     },
     {
@@ -2120,7 +2120,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f28_2",
@@ -2129,7 +2129,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f28_3",
@@ -2138,7 +2138,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 32
+          "sell": 80
         },
         {
           "id": "f28_4",
@@ -2147,7 +2147,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 32
+          "sell": 80
         }
       ],
       "king": {
@@ -2165,7 +2165,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 68,
-        "sell": 262
+        "sell": 1600
       },
       "emperor": {
         "id": "e28",
@@ -2184,7 +2184,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 176,
-        "sell": 1020
+        "sell": 6400
       }
     },
     {
@@ -2198,7 +2198,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f29_2",
@@ -2207,7 +2207,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f29_3",
@@ -2216,7 +2216,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f29_4",
@@ -2225,7 +2225,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         }
       ],
       "king": {
@@ -2243,7 +2243,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 69,
-        "sell": 266
+        "sell": 3200
       },
       "emperor": {
         "id": "e29",
@@ -2262,7 +2262,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 178,
-        "sell": 1035
+        "sell": 12800
       }
     },
     {
@@ -2276,7 +2276,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f30_2",
@@ -2285,7 +2285,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f30_3",
@@ -2294,7 +2294,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f30_4",
@@ -2303,7 +2303,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         }
       ],
       "king": {
@@ -2321,7 +2321,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 70,
-        "sell": 270
+        "sell": 3200
       },
       "emperor": {
         "id": "e30",
@@ -2340,7 +2340,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 180,
-        "sell": 1050
+        "sell": 12800
       }
     },
     {
@@ -2354,7 +2354,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f31_2",
@@ -2363,7 +2363,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f31_3",
@@ -2372,7 +2372,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f31_4",
@@ -2381,7 +2381,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 45
+          "sell": 160
         }
       ],
       "king": {
@@ -2399,7 +2399,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 71,
-        "sell": 274
+        "sell": 3200
       },
       "emperor": {
         "id": "e31",
@@ -2418,7 +2418,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 182,
-        "sell": 1065
+        "sell": 12800
       }
     },
     {
@@ -2432,7 +2432,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f32_2",
@@ -2441,7 +2441,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f32_3",
@@ -2450,7 +2450,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f32_4",
@@ -2459,7 +2459,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         }
       ],
       "king": {
@@ -2477,7 +2477,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 72,
-        "sell": 278
+        "sell": 3200
       },
       "emperor": {
         "id": "e32",
@@ -2496,7 +2496,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 184,
-        "sell": 1080
+        "sell": 12800
       }
     },
     {
@@ -2510,7 +2510,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f33_2",
@@ -2519,7 +2519,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f33_3",
@@ -2528,7 +2528,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f33_4",
@@ -2537,7 +2537,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         }
       ],
       "king": {
@@ -2555,7 +2555,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 73,
-        "sell": 282
+        "sell": 3200
       },
       "emperor": {
         "id": "e33",
@@ -2574,7 +2574,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 186,
-        "sell": 1095
+        "sell": 12800
       }
     },
     {
@@ -2588,7 +2588,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f34_2",
@@ -2597,7 +2597,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f34_3",
@@ -2606,7 +2606,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         },
         {
           "id": "f34_4",
@@ -2615,7 +2615,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 45
+          "sell": 160
         }
       ],
       "king": {
@@ -2633,7 +2633,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 74,
-        "sell": 286
+        "sell": 3200
       },
       "emperor": {
         "id": "e34",
@@ -2652,7 +2652,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 188,
-        "sell": 1110
+        "sell": 12800
       }
     },
     {
@@ -2666,7 +2666,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f35_2",
@@ -2675,7 +2675,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f35_3",
@@ -2684,7 +2684,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f35_4",
@@ -2693,7 +2693,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 60
+          "sell": 320
         }
       ],
       "king": {
@@ -2711,7 +2711,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 75,
-        "sell": 290
+        "sell": 6400
       },
       "emperor": {
         "id": "e35",
@@ -2730,7 +2730,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 190,
-        "sell": 1125
+        "sell": 25600
       }
     },
     {
@@ -2744,7 +2744,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f36_2",
@@ -2753,7 +2753,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f36_3",
@@ -2762,7 +2762,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f36_4",
@@ -2771,7 +2771,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         }
       ],
       "king": {
@@ -2789,7 +2789,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 76,
-        "sell": 294
+        "sell": 6400
       },
       "emperor": {
         "id": "e36",
@@ -2808,7 +2808,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 192,
-        "sell": 1140
+        "sell": 25600
       }
     },
     {
@@ -2822,7 +2822,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f37_2",
@@ -2831,7 +2831,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f37_3",
@@ -2840,7 +2840,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f37_4",
@@ -2849,7 +2849,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         }
       ],
       "king": {
@@ -2867,7 +2867,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 77,
-        "sell": 298
+        "sell": 6400
       },
       "emperor": {
         "id": "e37",
@@ -2886,7 +2886,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 194,
-        "sell": 1155
+        "sell": 25600
       }
     },
     {
@@ -2900,7 +2900,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f38_2",
@@ -2909,7 +2909,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f38_3",
@@ -2918,7 +2918,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f38_4",
@@ -2927,7 +2927,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         }
       ],
       "king": {
@@ -2945,7 +2945,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 78,
-        "sell": 302
+        "sell": 6400
       },
       "emperor": {
         "id": "e38",
@@ -2964,7 +2964,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 196,
-        "sell": 1170
+        "sell": 25600
       }
     },
     {
@@ -2978,7 +2978,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f39_2",
@@ -2987,7 +2987,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f39_3",
@@ -2996,7 +2996,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f39_4",
@@ -3005,7 +3005,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 60
+          "sell": 320
         }
       ],
       "king": {
@@ -3023,7 +3023,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 79,
-        "sell": 306
+        "sell": 6400
       },
       "emperor": {
         "id": "e39",
@@ -3042,7 +3042,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 198,
-        "sell": 1185
+        "sell": 25600
       }
     },
     {
@@ -3056,7 +3056,7 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 14,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f40_2",
@@ -3065,7 +3065,7 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 14,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f40_3",
@@ -3074,7 +3074,7 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 14,
-          "sell": 60
+          "sell": 320
         },
         {
           "id": "f40_4",
@@ -3083,7 +3083,7 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 14,
-          "sell": 60
+          "sell": 320
         }
       ],
       "king": {
@@ -3101,7 +3101,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 80,
-        "sell": 310
+        "sell": 6400
       },
       "emperor": {
         "id": "e40",
@@ -3120,7 +3120,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 200,
-        "sell": 1200
+        "sell": 25600
       }
     }
   ]

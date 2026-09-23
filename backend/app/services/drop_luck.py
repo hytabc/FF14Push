@@ -1,19 +1,39 @@
-"""通关进度 → 品阶爆率倍率。
+"""抽箱品阶概率的「幸运来源」与归一化。
 
 只提升装备「品阶」的抽取概率（宝箱 / BOSS / 副本宝箱），不影响金币与经验，
 从而在给予进度奖励的同时保证无法刷取金币。
+
+来源与生产品阶概率共用同一套归一化（见 `luck_sources.luck_progress`）：
+p = Σ weight × min(值 / ref, 1)，luck = luckMax × p。各 ref 为对应来源的真实最大值
+（含太古词条），因此「上限」只有所有来源（通关地区 / 装备品阶幸运 / 料理秘药 /
+远征通关 / 高难通关 / 彩蛋）全满才能达到。
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RegionProgress
+from app.services import consumables
 from app.services.egg_heroes import luck_bonus
-from app.services.loot import drop_rate_multiplier
+from app.services.game_config import CONFIG
+from app.services.luck_sources import (
+    coop_clear_score,
+    luck_progress,
+    raid_clear_score,
+)
+from app.services.stats import aggregate_equipment, hero_items
+
+
+def chest_rarity_sources() -> dict[str, Any]:
+    return dict((CONFIG.chests.get("rarityLuck") or {}).get("sources") or {})
+
+
+def chest_luck_max() -> float:
+    return float((CONFIG.chests.get("rarityLuck") or {}).get("luckMax", 1.0))
 
 
 async def cleared_region_count(db: AsyncSession, user_id: int) -> int:
@@ -25,15 +45,33 @@ async def cleared_region_count(db: AsyncSession, user_id: int) -> int:
     return int(total or 0)
 
 
-async def user_drop_rate(db: AsyncSession, user_id: int) -> float:
-    return drop_rate_multiplier(await cleared_region_count(db, user_id))
-
-
-def rarity_luck(multiplier: float) -> float:
-    """爆率倍率 → 品阶抽取的 luck 系数。"""
-    return max(0.0, float(multiplier) - 1.0)
-
-
 def egg_luck(hero: Any) -> float:
     """彩蛋英雄被动的装备品阶幸运加成（如「种田JPG」的幸运）。"""
     return luck_bonus(getattr(hero, "egg_id", None))
+
+
+async def chest_rarity_luck(
+    db: AsyncSession,
+    user_id: int,
+    hero: Any = None,
+    items: Sequence[Any] | None = None,
+) -> tuple[float, list[dict[str, Any]]]:
+    """抽箱品阶概率的 luck 系数与来源明细（与生产同源的归一化）。
+
+    省略 hero / items 时装备品阶幸运与彩蛋来源记 0（如新手指引结算无英雄上下文）。
+    """
+    gear_mods = (
+        aggregate_equipment(hero_items(items, getattr(hero, "id", None))).term_mods
+        if items is not None
+        else {}
+    )
+    values = {
+        "clearedRegions": float(await cleared_region_count(db, user_id)),
+        "gearPct": float(gear_mods.get("chestRarityPct", 0.0)),
+        "consumablePct": await consumables.chest_luck(db, user_id),
+        "coopClears": await coop_clear_score(db, user_id),
+        "raidClears": await raid_clear_score(db, user_id),
+        "egg": egg_luck(hero),
+    }
+    progress, factors = luck_progress(chest_rarity_sources(), values)
+    return chest_luck_max() * progress, factors

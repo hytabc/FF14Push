@@ -656,6 +656,8 @@ export const gameData = {
       /** 默认每日奖励通关次数（副本可各自覆盖）。 */
       dailyRewardClears: number
     }
+    /** 高难通关数计入品阶概率时的难度权重（仅首通、难度越高权重越高）。 */
+    difficultyWeights: Record<string, number>
     /** 副本 BOSS 共享技能池：附加到每个副本 BOSS 上。 */
     bossSkillPool: unknown[]
     raids: RaidDef[]
@@ -665,6 +667,11 @@ export const gameData = {
     pity: ChestPity[]
     levelBands: Array<{ level: number; priceMultiplier: number }>
     dropRate: { perClearedRegion: number; maxMultiplier: number }
+    /** 抽箱品阶概率的幸运来源：p = Σ weight × min(值/ref, 1)，luck = luckMax × p。 */
+    rarityLuck: {
+      luckMax: number
+      sources: Record<string, { weight: number; ref: number }>
+    }
   },
   crafting: craftingJson as unknown as {
     requiredCount: number

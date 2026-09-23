@@ -21,6 +21,7 @@ from app.models import (
 )
 from app.services.codex import codex_progress
 from app.services.dohdol_state import build_dohdol_state
+from app.services.drop_luck import chest_luck_max, chest_rarity_luck
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
 from app.services.loot import drop_rate_multiplier
@@ -80,6 +81,7 @@ async def build_game_state(
         for row in progress_rows
     }
     cleared_count = sum(1 for row in progress_rows if row.cleared)
+    chest_luck, chest_luck_sources = await chest_rarity_luck(db, user.id, hero, items)
 
     pity_rows = (await db.execute(select(ChestPity).where(ChestPity.user_id == user.id))).scalars().all()
     pity = {
@@ -140,6 +142,11 @@ async def build_game_state(
         "currentRegion": region_detail,
         "clearedRegions": cleared_count,
         "dropRateMultiplier": drop_rate_multiplier(cleared_count),
+        "chestRarityLuck": {
+            "luck": round(chest_luck, 6),
+            "luckMax": chest_luck_max(),
+            "sources": chest_luck_sources,
+        },
         "pity": pity,
         "skillStats": skill_stats,
         "codex": await codex_progress(db, user.id),

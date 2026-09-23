@@ -19,7 +19,7 @@ from app.schemas.game import (
     RaidStartRequest,
     RaidStopRequest,
 )
-from app.services.drop_luck import egg_luck, rarity_luck, user_drop_rate
+from app.services.drop_luck import chest_rarity_luck
 from app.services import consumables
 from app.services.egg_heroes import exp_bonus_pct
 from app.services.grants import grant_generated_items
@@ -292,11 +292,7 @@ async def report_session(
             generated = []
             if chest is not None:
                 rng = random.Random()
-                luck = (
-                    rarity_luck(await user_drop_rate(db, user.id))
-                    + await consumables.chest_luck(db, user.id)
-                    + egg_luck(hero)
-                )
+                luck, _ = await chest_rarity_luck(db, user.id, hero, items)
                 for _ in range(box_count):
                     item, _ = generate_item(
                         chest["category"], hero.level, box_tier=chest["tier"], rng=rng, luck=luck
@@ -362,11 +358,7 @@ async def claim_chest(
 
     raid = raid_by_id(sessions[0].raid_id)
     box_tier = str((raid or {}).get("reward", {}).get("boxTier", "boss"))
-    luck = (
-        rarity_luck(await user_drop_rate(db, user.id))
-        + await consumables.chest_luck(db, user.id)
-        + egg_luck(hero)
-    )
+    luck, _ = await chest_rarity_luck(db, user.id, hero, items)
     rng = random.Random()
     generated = [
         generate_item_for_slot(hero.level, payload.slot, box_tier=box_tier, rng=rng, luck=luck)

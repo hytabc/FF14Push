@@ -16,6 +16,8 @@
     "healingMultiplier": 0.4,
     "controlSeconds": 1.5
   },
+  "$commentDifficultyWeights": "远征/高难通关数计入抽箱与生产的品阶概率来源：仅计「首通」（每个副本是否通关一次，重复刷不再叠加），按难度加权求和（难度越高权重越高）。ref = 全部副本权重之和，即「全通 = 该项拉满」。",
+  "difficultyWeights": { "normal": 1, "extreme": 2, "savage": 3, "ultimate": 5 },
   "dungeons": [
     {
       "id": "normal_1",

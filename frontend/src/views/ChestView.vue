@@ -38,8 +38,9 @@ const heroLevel = computed(() => game.hero?.level ?? 1)
 const unlockedBands = computed(() => LEVEL_BANDS.filter((b) => b.level <= heroLevel.value))
 const band = ref<number>(LEVEL_BANDS[0].level)
 const bandDef = computed(() => LEVEL_BANDS.find((b) => b.level === band.value) ?? LEVEL_BANDS[0])
-/** 品阶爆率加成（随通关进度提升，仅影响装备品阶）。 */
-const luck = computed(() => Math.max(0, (game.state?.dropRateMultiplier ?? 1) - 1))
+/** 抽箱品阶幸运（服务端结算的全部来源：通关地区 / 装备品阶幸运 / 料理秘药 / 远征·高难通关 / 彩蛋）。 */
+const chestLuck = computed(() => game.state?.chestRarityLuck ?? null)
+const luck = computed(() => chestLuck.value?.luck ?? 0)
 
 const PITY = data.chests.pity
 
@@ -75,9 +76,7 @@ function odds(chest: { tier: string }) {
 
 const canAfford = computed(() => (price: number, count: number) => game.gold >= price * count)
 
-const luckExplain = computed(() =>
-  chestLuckExplain(game.state?.dropRateMultiplier ?? 1, game.state?.clearedRegions ?? 0),
-)
+const luckExplain = computed(() => chestLuckExplain(chestLuck.value))
 const pityExplanation = pityExplain()
 
 function rarityExplain(chest: { tier: string }) {
@@ -154,8 +153,9 @@ function bestRarity(): string {
       </div>
       <p class="mt-1 text-xs text-ink-400">
         金币仅通过打怪掉落获得。每开启 10 / 50 / 200 个同类型箱子，必出稀有 / 史诗 / 传说及以上品质。
-        已通关 {{ game.state?.clearedRegions ?? 0 }} 个地区 → 品阶爆率
-        <b class="text-emerald-300">×{{ (game.state?.dropRateMultiplier ?? 1).toFixed(2) }}</b>（仅提升装备品阶，不影响金币）。
+        品阶幸运
+        <b class="text-emerald-300">{{ luck.toFixed(3) }} / {{ (chestLuck?.luckMax ?? 1).toFixed(2) }}</b>
+        （通关地区 / 装备品阶幸运 / 料理秘药 / 远征·高难通关，仅提升装备品阶，不影响金币）。
         <InfoTip :title="luckExplain.title">
           <p v-for="(line, i) in luckExplain.lines" :key="i">{{ line }}</p>
         </InfoTip>

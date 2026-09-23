@@ -174,6 +174,13 @@ export interface CraftOdds {
   sources: CraftOddsSource[]
 }
 
+/** 抽箱品阶概率的幸运来源与上限（服务端结算，前端只展示）。 */
+export interface ChestRarityLuck {
+  luck: number
+  luckMax: number
+  sources: CraftOddsSource[]
+}
+
 export interface DohDolState {
   progress: Record<string, DohDolProgressView>
   materials: MaterialStackItem[]
@@ -594,6 +601,8 @@ export interface GameState {
   clearedRegions: number
   /** 品阶爆率倍率（随通关进度提升，仅影响装备品阶）。 */
   dropRateMultiplier: number
+  /** 抽箱品阶概率的幸运来源与上限（服务端结算）。 */
+  chestRarityLuck?: ChestRarityLuck
   pity: Record<string, PityEntry>
   skillStats: Record<string, number>
   codex: CodexProgress

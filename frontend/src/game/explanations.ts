@@ -1,7 +1,7 @@
 import data from '@shared/schema'
 import type { GatherNodeDef } from '@shared/schema'
 
-import type { CraftOdds, RarityId } from '@/game/types'
+import type { ChestRarityLuck, CraftOdds, CraftOddsSource, RarityId } from '@/game/types'
 
 /**
  * 「概率 / 数值如何计算」的说明文案。
@@ -43,25 +43,35 @@ export function chestRarityExplain(tier: string, luck: number): Explain {
     title: '品阶概率如何计算',
     lines: [
       `基础概率：${order.map((r, i) => `${data.rarities.byId[r].name} ${pctSmart(base[i])}`).join(' / ')}`,
-      `爆率加成 ${luck.toFixed(3)}：权重 = 基础概率 × (1 + 爆率加成 × 品阶序号)，普通=0 … 神话=5。`,
+      `幸运系数 ${luck.toFixed(3)}（上限 ${data.chests.rarityLuck.luckMax}）：权重 = 基础概率 × (1 + 幸运 × 品阶序号)，普通=0 … 神话=5。`,
       `归一化后即上表概率：${order.map((r, i) => `${data.rarities.byId[r].name} ${pctSmart(weights[i] / total)}`).join(' / ')}`,
-      '依据：服务端 loot.rarity_weights()，配置 shared/data/rarities.json 的 boxChance。',
+      '依据：服务端 loot.rarity_weights()，配置 shared/data/rarities.json 的 boxChance 与 chests.json 的 rarityLuck。',
     ],
   }
 }
 
-/** 品阶爆率倍率。真源：后端 services/loot.py::drop_rate_multiplier + chests.json.dropRate */
-export function chestLuckExplain(multiplier: number, clearedRegions: number): Explain {
-  const cfg = data.chests.dropRate
-  return {
-    title: '品阶爆率倍率如何计算',
-    lines: [
-      `倍率 = min(上限 ${cfg.maxMultiplier}, 1 + 每地区加成 ${cfg.perClearedRegion} × 已通关地区数)`,
-      `= min(${cfg.maxMultiplier}, 1 + ${cfg.perClearedRegion} × ${clearedRegions}) = ${multiplier.toFixed(3)}`,
-      '仅提升箱子的装备品阶抽取概率，不影响金币与经验（金币按地区封顶，无法刷取）。',
-      '依据：服务端 loot.drop_rate_multiplier()，配置 shared/data/chests.json 的 dropRate。',
-    ],
+/** 抽箱品阶「幸运」来源与上限。真源：后端 services/drop_luck.py::chest_rarity_luck + luck_sources.luck_progress + chests.json.rarityLuck */
+export function chestLuckExplain(info?: ChestRarityLuck | null): Explain {
+  const cfg = data.chests.rarityLuck
+  const lines = [
+    '幸运进度 p = Σ 权重 × min(当前值 / 参考值, 1)；权重合计 = 1，只有全部来源拉满时 p = 1。',
+    `luck 系数 = 上限 ${cfg.luckMax} × p；各来源参考值为其真实最大值（含太古词条），故「上限」只有全来源满才能达到。`,
+  ]
+  if (info) {
+    const max = info.luckMax || 1
+    lines.push(`当前 p = ${((info.luck / max) * 100).toFixed(1)}% → luck = ${info.luck.toFixed(3)}`)
+    lines.push(...sourceLines(info.sources, CHEST_SOURCE_LABELS))
+  } else {
+    lines.push(
+      ...Object.entries(cfg.sources).map(
+        ([key, spec]) =>
+          `${CHEST_SOURCE_LABELS[key] ?? key}：权重 ${(spec.weight * 100).toFixed(0)}%，参考值 ${spec.ref}`,
+      ),
+    )
   }
+  lines.push('仅提升箱子的装备品阶抽取概率，不影响金币与经验（金币按地区封顶，无法刷取）。')
+  lines.push('依据：服务端 drop_luck.chest_rarity_luck() / luck_sources.luck_progress()，配置 shared/data/chests.json 的 rarityLuck。')
+  return { title: '品阶幸运如何计算', lines }
 }
 
 /** 保底规则。真源：后端 services/loot.py::draw_rarity + chests.json.pity */
@@ -253,11 +263,34 @@ export function fishChanceExplain(region: {
   }
 }
 
+/** 抽箱幸运来源 id → 中文名（chests.json.rarityLuck.sources）。 */
+const CHEST_SOURCE_LABELS: Record<string, string> = {
+  clearedRegions: '通关地区数',
+  gearPct: '装备品阶幸运(%)',
+  consumablePct: '抽箱品阶概率料理 / 秘药',
+  coopClears: '远征通关（难度加权·首通）',
+  raidClears: '高难通关（难度加权·首通）',
+  egg: '彩蛋英雄被动',
+}
+
+/** 制造品阶来源 id → 中文名（recipes.json.rarityScaling.sources）。 */
 const CRAFT_SOURCE_LABELS: Record<string, string> = {
   heroLevel: '英雄等级',
   clearedRegions: '通关地区数',
   prodLevel: '生产等级',
   gearPct: '专用装备品阶幸运(%)',
+  consumablePct: '制造品阶概率料理 / 秘药',
+  coopClears: '远征通关（难度加权·首通）',
+  raidClears: '高难通关（难度加权·首通）',
+}
+
+/** 来源明细行：当前值 / 参考值 / 达标 / 权重。 */
+function sourceLines(sources: CraftOddsSource[], labels: Record<string, string>): string[] {
+  const fmtValue = (v: number) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))
+  return sources.map(
+    (s) =>
+      `${labels[s.key] ?? s.key}：${fmtValue(s.value)} / ${fmtValue(s.ref)}（达标 ${(s.norm * 100).toFixed(0)}%，权重 ${(s.weight * 100).toFixed(0)}%）`,
+  )
 }
 
 /**
@@ -270,7 +303,6 @@ export function craftRarityExplain(craft?: CraftOdds | null): Explain {
   const target = scaling.targetWeights as Record<string, number>
   const order = data.rarities.order as RarityId[]
   const nameOf = (r: RarityId) => data.rarities.byId[r].name
-  const fmtValue = (v: number) => (Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1))
 
   if (!craft) {
     return {
@@ -279,7 +311,7 @@ export function craftRarityExplain(craft?: CraftOdds | null): Explain {
         `制造装备的品阶概率随进度提升，基准分布：${order
           .map((r) => `${nameOf(r)} ${pctSmart(base[r] ?? 0)}`)
           .join(' / ')}`,
-        `四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运）全部拉满时，神话概率 = ${pct(scaling.mythicCap, 0)}（硬上限）。`,
+        `幸运进度 t = Σ 权重 × min(当前值 / 参考值, 1)；权重合计 = 1，只有全部来源拉满时 t = 1 → 神话概率 = ${pct(scaling.mythicCap, 0)}（硬上限）。`,
         '依据：服务端 item_factory.craft_rarity_luck() / craft_rarity_distribution()，配置 shared/data/recipes.json 的 rarityScaling。',
       ],
     }
@@ -287,11 +319,8 @@ export function craftRarityExplain(craft?: CraftOdds | null): Explain {
 
   const lines = [
     `幸运进度 t = Σ 权重 × min(当前值 / 参考值, 1) = ${(craft.luck * 100).toFixed(1)}%`,
-    ...craft.sources.map(
-      (s) =>
-        `${CRAFT_SOURCE_LABELS[s.key] ?? s.key}：${fmtValue(s.value)} / ${fmtValue(s.ref)}（达标 ${(s.norm * 100).toFixed(0)}%，权重 ${(s.weight * 100).toFixed(0)}%）`,
-    ),
-    `分布 = 基准 ×(1 − t) + 目标 × t；四项全满（t=1）时目标分布：${order
+    ...sourceLines(craft.sources, CRAFT_SOURCE_LABELS),
+    `分布 = 基准 ×(1 − t) + 目标 × t；全部来源满（t=1）时目标分布：${order
       .map((r) => `${nameOf(r)} ${pctSmart(target[r] ?? 0)}`)
       .join(' / ')}`,
     `当前各品阶概率：${order.map((r) => `${nameOf(r)} ${pctSmart(craft.odds[r] ?? 0)}`).join(' / ')}`,

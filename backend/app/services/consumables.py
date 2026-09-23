@@ -128,6 +128,11 @@ async def craft_quality_bonus(db: AsyncSession, user_id: int) -> float:
     return float((await active_effects(db, user_id)).get("craftQualityPct", 0.0)) / 100.0
 
 
+async def craft_rarity_bonus(db: AsyncSession, user_id: int) -> float:
+    """制造品阶概率药食 → 生产品阶权重的 craftRarityPct 来源（与专用装备同单位）。"""
+    return float((await active_effects(db, user_id)).get("craftRarityPct", 0.0))
+
+
 async def exp_gold_mods(db: AsyncSession, user_id: int) -> dict[str, float]:
     """经验/金币加成，供战斗结算叠加到 term_mods。"""
     effects = await active_effects(db, user_id)

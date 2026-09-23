@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User, DohDolProgress, FishRecord, Hero, Item, StackItem, UserTitle
-from app.services import consumables, dohdol_util, drop_luck
+from app.services import consumables, dohdol_util, drop_luck, luck_sources
 from app.services.game_config import CONFIG
 from app.services.item_factory import (
     craft_rarity_distribution,
@@ -123,16 +123,21 @@ async def build_dohdol_state(
         items = (await db.execute(select(Item).where(Item.user_id == user_id))).scalars().all()
     equip_bonus = dohdol_util.equipped_bonus(items)
 
-    # 制造品阶概率（随进度提升）：与 report_produce 用同一套公式，保证展示与实际结算一致。
+    # 制造品阶概率（随进度提升）：与 report_produce 用同一套来源，保证展示与实际结算一致。
     if hero_level is None:
         hero_level = await db.scalar(select(Hero.level).join(User, User.active_hero_id == Hero.id).where(User.id == user_id))
     if cleared_regions is None:
         cleared_regions = await drop_luck.cleared_region_count(db, user_id)
     luck, factors = craft_rarity_luck(
-        int(hero_level or 0),
-        int(cleared_regions or 0),
-        int(progress["doh"]["level"]),
-        float(equip_bonus.get("craftRarityPct", 0.0)),
+        {
+            "heroLevel": int(hero_level or 0),
+            "clearedRegions": int(cleared_regions or 0),
+            "prodLevel": int(progress["doh"]["level"]),
+            "gearPct": float(equip_bonus.get("craftRarityPct", 0.0)),
+            "consumablePct": await consumables.craft_rarity_bonus(db, user_id),
+            "coopClears": await luck_sources.coop_clear_score(db, user_id),
+            "raidClears": await luck_sources.raid_clear_score(db, user_id),
+        }
     )
     dedicated_loadout: dict[str, dict[str, Any]] = {}
     for item in items:

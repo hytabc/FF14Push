@@ -15,6 +15,7 @@
     "goldGainPct": "金币获取",
     "chestLuck": "抽箱品阶概率",
     "craftQualityPct": "制造品质概率",
+    "craftRarityPct": "制造品阶概率",
     "fishInsightPct": "捕鱼人之识时长",
     "fishChancePct": "鱼王/鱼皇概率",
     "gatherYieldPct": "采集产量"
@@ -70,6 +71,19 @@
         }
       ],
       "desc": "60 秒内制造品质概率提升。",
+      "sell": 120
+    },
+    {
+      "id": "p_craftRarityPct",
+      "name": "制造品阶概率秘药",
+      "kind": "potion",
+      "effects": [
+        {
+          "stat": "craftRarityPct",
+          "value": 15
+        }
+      ],
+      "desc": "60 秒内制造品阶概率提升。",
       "sell": 120
     },
     {
@@ -152,6 +166,19 @@
         }
       ],
       "desc": "1800 秒内制造品质概率小幅提升，可与药水共存。",
+      "sell": 50
+    },
+    {
+      "id": "f_craftRarityPct",
+      "name": "制造品阶概率料理",
+      "kind": "food",
+      "effects": [
+        {
+          "stat": "craftRarityPct",
+          "value": 6
+        }
+      ],
+      "desc": "1800 秒内制造品阶概率小幅提升，可与药水共存。",
       "sell": 50
     },
     {

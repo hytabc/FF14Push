@@ -21,8 +21,26 @@ from app.services.item_factory import (
 from app.services.valuation import sell_price
 
 
-def _luck(hero: int = 0, cleared: int = 0, prod: int = 0, gear: float = 0.0) -> float:
-    return craft_rarity_luck(hero, cleared, prod, gear)[0]
+def _luck(
+    hero: int = 0,
+    cleared: int = 0,
+    prod: int = 0,
+    gear: float = 0.0,
+    consumable: float = 0.0,
+    coop: float = 0.0,
+    raid: float = 0.0,
+) -> float:
+    return craft_rarity_luck(
+        {
+            "heroLevel": hero,
+            "clearedRegions": cleared,
+            "prodLevel": prod,
+            "gearPct": gear,
+            "consumablePct": consumable,
+            "coopClears": coop,
+            "raidClears": raid,
+        }
+    )[0]
 
 
 def _backdate(session, seconds: float) -> None:
@@ -188,7 +206,7 @@ class TestCraftedItem:
 
 
 class TestCraftRarityScaling:
-    """制造品阶概率抽奖化：单调提升、神话硬上限 20%、四项全满 = 20%。"""
+    """制造品阶概率抽奖化：单调提升、神话硬上限 20%、全部来源满 = 20%。"""
 
     def _scaling(self):
         return CONFIG.recipes["equipment"]["rarityScaling"]
@@ -200,15 +218,21 @@ class TestCraftRarityScaling:
             assert abs(dist[rarity] - base[rarity]) < 1e-9, rarity
 
     def test_full_progress_reaches_mythic_cap(self):
+        """所有来源全部取满（含新来源）才 t=1 → 神话 = 硬上限。"""
         refs = self._scaling()["sources"]
-        luck = _luck(
-            int(refs["heroLevel"]["ref"]),
-            int(refs["clearedRegions"]["ref"]),
-            int(refs["prodLevel"]["ref"]),
-            float(refs["gearPct"]["ref"]),
-        )
+        values = {key: float(spec["ref"]) for key, spec in refs.items()}
+        luck = craft_rarity_luck(values)[0]
         assert luck == pytest.approx(1.0)
         assert craft_rarity_distribution(luck)["mythic"] == pytest.approx(0.2)
+
+    def test_single_source_cannot_reach_cap(self):
+        """权重合计 = 1 且每项 < 1，故任一来源单独拉满都不足以到顶。"""
+        refs = self._scaling()["sources"]
+        assert sum(float(spec["weight"]) for spec in refs.values()) == pytest.approx(1.0)
+        for key, spec in refs.items():
+            luck = craft_rarity_luck({key: float(spec["ref"])})[0]
+            assert luck < 1.0, key
+            assert craft_rarity_distribution(luck)["mythic"] < 0.2, key
 
     def test_mythic_never_exceeds_cap(self):
         cap = float(self._scaling()["mythicCap"])
@@ -221,20 +245,25 @@ class TestCraftRarityScaling:
     def test_each_source_increases_mythic_and_lowers_common(self):
         refs = self._scaling()["sources"]
         base = craft_rarity_distribution(_luck())
-        cases = {
-            "heroLevel": _luck(hero=int(refs["heroLevel"]["ref"])),
-            "clearedRegions": _luck(cleared=int(refs["clearedRegions"]["ref"])),
-            "prodLevel": _luck(prod=int(refs["prodLevel"]["ref"])),
-            "gearPct": _luck(gear=float(refs["gearPct"]["ref"])),
-        }
-        for key, luck in cases.items():
+        for key, spec in refs.items():
+            luck = craft_rarity_luck({key: float(spec["ref"])})[0]
             dist = craft_rarity_distribution(luck)
             assert dist["mythic"] > base["mythic"], key
             assert dist["common"] < base["common"], key
 
     def test_luck_factors_expose_normalized_inputs(self):
         refs = self._scaling()["sources"]
-        _, factors = craft_rarity_luck(50, 20, 25, 30.0)
+        _, factors = craft_rarity_luck(
+            {
+                "heroLevel": 50,
+                "clearedRegions": 20,
+                "prodLevel": 25,
+                "gearPct": 30.0,
+                "consumablePct": 10.0,
+                "coopClears": 12.0,
+                "raidClears": 4.0,
+            }
+        )
         assert {f["key"] for f in factors} == set(refs)
         for factor in factors:
             assert 0.0 <= factor["norm"] <= 1.0
@@ -1148,15 +1177,34 @@ class TestDohDolState:
             key = r["output"]["itemId"] or r["output"]["baseId"]
             assert r["output"]["name"] != key, r["id"]
 
-        # 制造品阶概率块：四项来源 + 归一分布 + 神话硬上限
+        # 制造品阶概率块：全部来源 + 归一分布 + 神话硬上限
         craft = dohdol["craft"]
-        assert len(craft["sources"]) == 4
+        assert len(craft["sources"]) == 7
         assert {s["key"] for s in craft["sources"]} == {
-            "heroLevel", "clearedRegions", "prodLevel", "gearPct"
+            "heroLevel",
+            "clearedRegions",
+            "prodLevel",
+            "gearPct",
+            "consumablePct",
+            "coopClears",
+            "raidClears",
         }
         assert abs(sum(craft["odds"].values()) - 1.0) < 1e-6
         assert craft["odds"]["mythic"] <= craft["mythicCap"] + 1e-9
         assert craft["mythicCap"] == 0.2
+
+        # 抽箱品阶幸运块：与生产同源的六项来源 + 上限
+        chest = resp.json()["chestRarityLuck"]
+        assert chest["luckMax"] > 0
+        assert 0 <= chest["luck"] <= chest["luckMax"]
+        assert {s["key"] for s in chest["sources"]} == {
+            "clearedRegions",
+            "gearPct",
+            "consumablePct",
+            "coopClears",
+            "raidClears",
+            "egg",
+        }
 
 
 class TestMaterialAndFishCodex:

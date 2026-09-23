@@ -33,6 +33,7 @@ from app.services.loot import (
     rarity_weights,
     roll_rarity,
 )
+from app.services.drop_luck import chest_luck_max
 from app.services.combat_model import theoretical_dps
 from app.services.egg_heroes import exp_bonus_pct, skills_for
 from app.services.recruiting import (
@@ -1156,8 +1157,8 @@ class TestDropRate:
         assert sum(boosted[top:]) > sum(base[top:])
 
     def test_chest_cannot_be_farmed_for_gold_at_max_luck(self) -> None:
-        """即使满爆率，买箱出售的期望收益也低于箱子价格（无法刷金币）。"""
-        max_luck = drop_rate_multiplier(10_000) - 1.0
+        """即使满幸运（所有来源全满的上限），买箱出售的期望收益也低于箱子价格（无法刷金币）。"""
+        max_luck = chest_luck_max()
         cheapest_band = min(CONFIG.chests["levelBands"], key=lambda b: float(b["priceMultiplier"]))
         for chest in CONFIG.chests["chests"]:
             unit = int(chest["price"] * float(cheapest_band["priceMultiplier"]))

@@ -410,29 +410,17 @@ def craft_xp_rarity_multiplier(rarity: str) -> float:
     return float(table.get(rarity, 1.0))
 
 
-def craft_rarity_luck(
-    hero_level: int, cleared_regions: int, prod_level: int, gear_pct: float
-) -> tuple[float, list[dict[str, Any]]]:
+def craft_rarity_luck(values: dict[str, float]) -> tuple[float, list[dict[str, Any]]]:
     """制造品阶「幸运进度」t 与各来源明细。
 
-    t = Σ weight × clamp(值 / ref, 0, 1)；四项来源全部取满 → t = 1。
+    t = Σ weight × clamp(值 / ref, 0, 1)（权重合计 = 1）；各 ref 为对应来源的真实
+    最大值（含太古词条），因此所有来源全部取满 → t = 1。来源由 `rarityScaling.sources`
+    定义（英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运 / 制造品阶概率药食 /
+    远征通关 / 高难通关）。
     """
-    values = {
-        "heroLevel": max(0.0, float(hero_level)),
-        "clearedRegions": max(0.0, float(cleared_regions)),
-        "prodLevel": max(0.0, float(prod_level)),
-        "gearPct": max(0.0, float(gear_pct)),
-    }
-    factors: list[dict[str, Any]] = []
-    total = 0.0
-    for key, spec in craft_rarity_scaling().get("sources", {}).items():
-        weight = float(spec.get("weight", 0.0))
-        ref = float(spec.get("ref", 1.0)) or 1.0
-        value = values.get(key, 0.0)
-        norm = min(1.0, value / ref)
-        total += weight * norm
-        factors.append({"key": key, "value": value, "ref": ref, "norm": norm, "weight": weight})
-    return min(1.0, max(0.0, total)), factors
+    from app.services.luck_sources import luck_progress
+
+    return luck_progress(craft_rarity_scaling().get("sources") or {}, values)
 
 
 def craft_rarity_distribution(luck: float = 0.0) -> dict[str, float]:

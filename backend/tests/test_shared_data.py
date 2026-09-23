@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.services.game_config import CONFIG
 
 
@@ -252,3 +254,63 @@ def test_dohdol_bonus_names_cover_item_bonuses() -> None:
     for item in CONFIG.dohdol_equipment["items"]:
         for stat in item["bonus"]:
             assert stat in names, f"{item['id']}/{stat}"
+
+
+def test_rarity_luck_sources_are_consistent() -> None:
+    """抽箱 / 生产两套品阶概率来源：权重合计 = 1、ref 为真实最大值（含太古）、难度表覆盖全难度。"""
+    from app.services.item_factory import ANCIENT_FACTOR
+    from app.services.luck_sources import coop_clear_ref, raid_clear_ref
+    from app.services.multiplayer_config import DUNGEONS, MULTIPLAYER
+
+    # 难度权重表：覆盖全部难度，且难度越高权重越高
+    coop_weights = MULTIPLAYER["difficultyWeights"]
+    raid_weights = CONFIG.raids["difficultyWeights"]
+    assert {d["difficulty"] for d in DUNGEONS.values()} <= set(coop_weights)
+    assert {r["difficulty"] for r in CONFIG.raids["raids"]} <= set(raid_weights)
+    assert list(coop_weights.values()) == sorted(coop_weights.values())
+    assert list(raid_weights.values()) == sorted(raid_weights.values())
+
+    def consumable_max(stat: str) -> float:
+        return sum(
+            float(effect["value"])
+            for item in CONFIG.consumables["items"]
+            for effect in item["effects"]
+            if effect["stat"] == stat
+        )
+
+    # 抽箱来源
+    chest = CONFIG.chests["rarityLuck"]
+    chest_sources = chest["sources"]
+    assert float(chest["luckMax"]) > 0
+    assert sum(float(s["weight"]) for s in chest_sources.values()) == pytest.approx(1.0)
+    assert chest_sources["coopClears"]["ref"] == pytest.approx(coop_clear_ref())
+    assert chest_sources["raidClears"]["ref"] == pytest.approx(raid_clear_ref())
+    assert chest_sources["consumablePct"]["ref"] == pytest.approx(consumable_max("chestLuck"))
+    # 装备品阶幸运上限 = 全部战斗栏位 × 太古值
+    chest_term = next(t for t in CONFIG.terms["terms"] if t["stat"] == "chestRarityPct")
+    assert len(chest_term["slots"]) == len(CONFIG.slots)
+    assert chest_sources["gearPct"]["ref"] == pytest.approx(
+        len(chest_term["slots"]) * float(chest_term["range"][1]) * ANCIENT_FACTOR
+    )
+
+    # 生产来源
+    scaling = CONFIG.recipes["equipment"]["rarityScaling"]["sources"]
+    assert sum(float(s["weight"]) for s in scaling.values()) == pytest.approx(1.0)
+    assert scaling["coopClears"]["ref"] == pytest.approx(coop_clear_ref())
+    assert scaling["raidClears"]["ref"] == pytest.approx(raid_clear_ref())
+    assert scaling["consumablePct"]["ref"] == pytest.approx(consumable_max("craftRarityPct"))
+    # 专用装备品阶幸运上限 = 各 doh 栏位最佳固定加成 + 每栏位一条太古词条
+    doh_term = next(
+        t
+        for t in CONFIG.dohdol_equipment["terms"]
+        if t["stat"] == "craftRarityPct" and t["type"] == "buff"
+    )
+    best: dict[str, float] = {}
+    for item in CONFIG.dohdol_equipment["items"]:
+        if item["slot"] not in doh_term["slots"]:
+            continue
+        bonus = float(item["bonus"].get("craftRarityPct", 0.0))
+        best[item["slot"]] = max(best.get(item["slot"], 0.0), bonus)
+    assert set(best) == set(doh_term["slots"])
+    gear_max = sum(best.values()) + len(best) * float(doh_term["range"][1]) * ANCIENT_FACTOR
+    assert scaling["gearPct"]["ref"] == pytest.approx(gear_max)

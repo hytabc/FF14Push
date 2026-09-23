@@ -1,6 +1,6 @@
 {
   "$comment": "生产配方。按生产等级解锁；inputs 引用材料/半成品/鱼，output 可为材料/半成品/装备/消耗品。",
-  "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（四项来源满值 → 神话 20%）。",
+  "$commentEquipment": "制造装备恒为「高品质」：属性区间整体上移，且必带太古词条；品阶按 rarityScaling 动态抽取（全部来源满值 → 神话 20%）。",
   "equipment": {
     "highQualityMultiplier": 1.15,
     "guaranteedAncientTerms": 1,
@@ -21,25 +21,37 @@
       "legendary": 0.05,
       "mythic": 0.01
     },
-    "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)；分布 = 基准 ×(1−t) + 目标 × t。四项来源（英雄等级 / 通关地区数 / 生产等级 / 专用装备 craftRarityPct 合计）全部拉满 → t=1 → 神话 = mythicCap（20%，硬上限）。",
+    "$commentRarityScaling": "制造品阶概率随进度提升：t = Σ weight × clamp(值 / ref, 0, 1)（权重合计 = 1，仅全部来源拉满时 t=1）；分布 = 基准 ×(1−t) + 目标 × t。来源：英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运(craftRarityPct) / 制造品阶概率药食(craftRarityPct) / 远征通关(难度加权首通) / 高难通关(难度加权首通)。各 ref 为对应来源的真实最大值（含太古词条），因此「上限」只有全来源满才能达到 → 神话 = mythicCap（20%，硬上限）。",
     "rarityScaling": {
       "mythicCap": 0.2,
       "sources": {
         "heroLevel": {
-          "weight": 0.25,
+          "weight": 0.15,
           "ref": 100
         },
         "clearedRegions": {
-          "weight": 0.25,
+          "weight": 0.1,
           "ref": 40
         },
         "prodLevel": {
-          "weight": 0.25,
+          "weight": 0.15,
           "ref": 100
         },
         "gearPct": {
           "weight": 0.25,
-          "ref": 60
+          "ref": 186.1
+        },
+        "consumablePct": {
+          "weight": 0.1,
+          "ref": 21
+        },
+        "coopClears": {
+          "weight": 0.15,
+          "ref": 33
+        },
+        "raidClears": {
+          "weight": 0.1,
+          "ref": 10
         }
       },
       "targetWeights": {
@@ -30863,6 +30875,28 @@
       }
     },
     {
+      "id": "r_p_craftRarityPct",
+      "jobId": "ALC",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 40,
+      "inputs": [
+        {
+          "itemId": "h_gemcut",
+          "count": 2
+        },
+        {
+          "itemId": "h_oil",
+          "count": 2
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "p_craftRarityPct",
+        "count": 1
+      }
+    },
+    {
       "id": "r_p_fishInsightPct",
       "jobId": "ALC",
       "requiredLevel": 1,
@@ -30991,6 +31025,28 @@
       "output": {
         "kind": "consumable",
         "itemId": "f_craftQualityPct",
+        "count": 1
+      }
+    },
+    {
+      "id": "r_f_craftRarityPct",
+      "jobId": "CUL",
+      "requiredLevel": 1,
+      "craftSeconds": 2.5,
+      "xp": 40,
+      "inputs": [
+        {
+          "itemId": "h_flour",
+          "count": 2
+        },
+        {
+          "itemId": "h_gemcut",
+          "count": 1
+        }
+      ],
+      "output": {
+        "kind": "consumable",
+        "itemId": "f_craftRarityPct",
         "count": 1
       }
     },
