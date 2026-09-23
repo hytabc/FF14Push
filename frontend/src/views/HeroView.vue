@@ -89,7 +89,7 @@ function hasteInfo() {
 
 <template>
   <div v-if="hero" class="space-y-4">
-    <section class="card p-4">
+    <section data-tutorial="hero" class="card p-4">
       <div class="flex flex-wrap items-start gap-4">
         <div class="flex-1">
           <div class="flex items-center gap-2">

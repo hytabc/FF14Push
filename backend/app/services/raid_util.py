@@ -5,9 +5,8 @@ from __future__ import annotations
 import math
 from typing import Any, Iterable
 
-from app.services.combat_model import theoretical_dps
 from app.services.game_config import CONFIG
-from app.services.regions_util import monster_base_stats
+from app.services.regions_util import level_penalty_for_level, monster_base_stats
 from app.services.stats import HeroStats
 from app.services.valuation import hero_power
 
@@ -15,7 +14,6 @@ SLOT_COUNT = len(CONFIG.slots)
 BOSS_TYPE_BY_ID = {t["id"]: t for t in CONFIG.bosses["types"]}
 RARITY_RANK = {r: i for i, r in enumerate(CONFIG.rarity_order)}
 RARITY_NAME = {r: CONFIG.rarities[r]["name"] for r in CONFIG.rarity_order}
-REF = CONFIG.monsters["reference"]
 BALANCE = CONFIG.raids.get("balance", {})
 
 
@@ -27,37 +25,33 @@ def all_raids() -> list[dict[str, Any]]:
     return sorted(CONFIG.raids["raids"], key=lambda r: int(r["order"]))
 
 
-def anchor_dps(hero_level: float) -> float:
-    """等级锚定的参考输出：怪物基准血量 ÷ targetKillSeconds。"""
-    return monster_base_stats(hero_level)["hp"] / float(REF["targetKillSeconds"])
+def challenge_level(raid: dict[str, Any], hero_level: int) -> int:
+    """副本的目标等级：BOSS 数值固定按此等级锚定，缺省回退进入等级 / 英雄等级。"""
+    return int(raid.get("challengeLevel") or raid.get("requiredLevel") or hero_level)
 
 
-def ref_dps(hero_level: int, difficulty: str) -> float:
-    """该难度「刚好够门槛的装备」在此等级的参考输出。"""
-    multipliers = BALANCE.get("refDpsMultiplier", {})
-    multiplier = float(multipliers.get(difficulty, 1.0))
-    return max(1.0, anchor_dps(hero_level) * multiplier)
+def daily_reward_clears(raid: dict[str, Any]) -> int:
+    """每个账号每天可获得奖励的通关次数（首通计入），副本可覆盖全局默认值。"""
+    value = raid.get("dailyRewardClears") or BALANCE.get("dailyRewardClears", 3) or 3
+    return max(1, int(value))
 
 
-def power_scale(stats: HeroStats, hero_level: int, difficulty: str) -> float:
-    """BOSS 血量缩放系数 = (玩家输出 ÷ 本等级参考输出) ^ powerScaleExponent（下限 1）。
+def raid_penalty(raid: dict[str, Any], hero_level: int, stats: HeroStats) -> dict[str, float]:
+    """副本结算与模拟用的惩罚。
 
-    只放大、不缩小：刚好够门槛的装备比值≈1（维持基准难度），
-    装备越超模 BOSS 越强，避免「等级锚定 + 装备碾压」的漏洞。
+    由两部分取各项较大值合成：
+      - 等级压制：英雄低于 `challengeLevel` 时，命中/输出下降、承伤提升、防御衰减（`level_penalty_for_level`）。
+      - 战力软惩罚：普通副本低于推荐战力时削弱治疗/资源/机制间隔并降低奖励效率（`soft_penalty`）。
+    绝* 未达标时战力软惩罚为 0（进入已被硬门槛拦截）。
     """
-    exponent = float(BALANCE.get("powerScaleExponent", 0.0))
-    if exponent <= 0 or stats is None:
-        return 1.0
-    ratio = theoretical_dps(stats, 0.0, None) / ref_dps(hero_level, difficulty)
-    return max(1.0, ratio) ** exponent
+    from app.services.balance import BALANCE as RULES, soft_penalty
 
-
-def attack_scale(stats: HeroStats, hero_level: int, difficulty: str) -> float:
-    exponent = float(BALANCE.get("attackScaleExponent", 0.0))
-    if exponent <= 0 or stats is None:
-        return 1.0
-    ratio = theoretical_dps(stats, 0.0, None) / ref_dps(hero_level, difficulty)
-    return max(1.0, ratio) ** exponent
+    normal = raid.get("difficulty", "normal") == "normal"
+    rule = RULES["raids"][raid["id"]]
+    merged = dict(soft_penalty(hero_power(stats), rule["power"] if normal else 0))
+    for key, value in level_penalty_for_level(hero_level, challenge_level(raid, hero_level)).items():
+        merged[key] = max(float(merged.get(key, 0.0)), float(value))
+    return merged
 
 
 def top_rarity_required(raid: dict[str, Any]) -> int:
@@ -72,15 +66,14 @@ def ancient_term_count(item: Any, minimum: int = 1) -> bool:
 def boss_stats_for_raid(
     raid: dict[str, Any], hero_level: int, stats: HeroStats | None = None
 ) -> list[dict[str, Any]]:
-    """按英雄等级锚定 BOSS 属性，再乘副本倍率与「战力缩放」。
+    """按副本「目标等级」固定锚定 BOSS 属性，再乘副本倍率。
 
-    怪物属性与玩家等级一致；装备超出本等级参考水平时 BOSS 同步变强（见 power_scale）。
+    BOSS 数值**只取决于副本配置**：不随玩家等级或战力变化（`stats` 仅保留形参、不再参与计算）。
+    英雄等级低于目标等级时由 `raid_penalty` 施加等级压制，而不是给 BOSS 加血。
     每个 BOSS 都附带共享技能池（`bossSkillPool`），由客户端按共享 CD + 随机数释放。
     """
-    base = monster_base_stats(hero_level)
-    difficulty = str(raid.get("difficulty", "normal"))
-    hp_scale = power_scale(stats, hero_level, difficulty)
-    atk_scale = attack_scale(stats, hero_level, difficulty)
+    anchor = challenge_level(raid, hero_level)
+    base = monster_base_stats(anchor)
     pool = list(CONFIG.raids.get("bossSkillPool", []) or [])
     skill_interval = float(BALANCE.get("bossSkillIntervalSeconds", 6.0))
     out: list[dict[str, Any]] = []
@@ -101,11 +94,11 @@ def boss_stats_for_raid(
                 "name": boss["name"],
                 "templateId": boss["id"],
                 "kind": "boss",
-                "hp": round(base["hp"] * float(boss["hpMultiplier"]) * hp_scale, 1),
-                "attack": round(base["attack"] * float(boss["attackMultiplier"]) * atk_scale, 1),
+                "hp": round(base["hp"] * float(boss["hpMultiplier"]), 1),
+                "attack": round(base["attack"] * float(boss["attackMultiplier"]), 1),
                 "defense": round(base["defense"] * float(boss["defenseMultiplier"]), 1),
                 "attackInterval": float(boss["attackInterval"]),
-                "level": hero_level,
+                "level": anchor,
                 "resistancePct": float(boss["resistancePct"]),
                 "bossType": boss.get("type"),
                 "skillInterval": skill_interval,

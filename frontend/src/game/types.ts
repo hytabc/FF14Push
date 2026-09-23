@@ -406,6 +406,8 @@ export interface RaidListEntry {
   difficulty: 'normal' | 'hard'
   name: string
   requiredLevel: number
+  /** 目标等级：BOSS 数值固定按此等级锚定，低于它会被等级压制。 */
+  challengeLevel: number
   requiredPower: number
   requiresAllSlots: boolean
   minEquipRarity: RarityId
@@ -415,6 +417,10 @@ export interface RaidListEntry {
   bossNames: string[]
   dualBoss: boolean
   reward: RaidReward
+  /** 每个账号每天可获得奖励的通关次数（首通计入）。 */
+  dailyRewardClears: number
+  /** 当日已获得奖励的通关次数。 */
+  rewardedToday: number
   eligible: boolean
   blockedReason: string | null
   cleared: boolean
@@ -436,10 +442,15 @@ export interface RaidSessionStart {
 export interface RaidReportResponse {
   cleared: boolean
   firstClear: boolean
+  /** 当日奖励次数已用尽：本次通关不产出金币/经验/宝箱（仅记录通关与用时）。 */
+  rewardLimited?: boolean
+  /** 当日剩余奖励通关次数。 */
+  remainingToday?: number
   gold: number
   goldGained: number
   /** 本次通关获得的经验（首通用 firstExp，重刷用 repeatExp）。 */
   expGained: number
+  expCalculation?: ExpCalculation
   /** 高难宝箱：通关后待开启的数量与可自选装备种类。 */
   pendingChest?: { count: number; slots: string[] } | null
   items: Item[]
@@ -576,6 +587,7 @@ export interface BattleReportResponse {
   gold: number
   goldGained: number
   expGained: number
+  expCalculation?: ExpCalculation
   level: { levelsGained: number; exp: number; level: number }
   killCount: number
   killsRequired: number
@@ -585,6 +597,7 @@ export interface BattleReportResponse {
   boss: {
     gold: number
     exp: number
+    expCalculation?: ExpCalculation
     level: { levelsGained: number; exp: number; level: number }
     firstClear: boolean
     nextRegionId: number | null
@@ -621,4 +634,13 @@ export interface RankingEntry {
   username: string
   value: number
   payload: Record<string, unknown>
+}
+
+
+/** Server settlement basis already includes monster/reward multipliers and penalties. */
+export interface ExpCalculation {
+  base: number
+  efficiencyBonus: number
+  catchUpBonus: number
+  totalBonusPct: number
 }

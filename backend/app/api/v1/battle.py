@@ -30,12 +30,12 @@ from app.services.codex import unlock_monster
 from app.services.combat_model import effective_penalty, boss_stats, max_kills_in_seconds, resolve_job_skills
 from app.services import consumables
 from app.services.drop_luck import egg_luck, rarity_luck, user_drop_rate
-from app.services.egg_heroes import charge_grants
+from app.services.egg_heroes import charge_grants, exp_bonus_pct
 from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import boss_box_for_region, chest_by_id
-from app.services.progression import apply_exp, combat_exp
+from app.services.progression import apply_exp, combat_exp, exp_calculation
 from app.services.playtime import add_play_ms
 from app.services.regions_util import apply_exp_bonus, kills_required, roll_gold, spawn_interval
 from app.services.stats import compute_stats
@@ -199,6 +199,10 @@ async def report(
     merged_mods = dict(stats.term_mods)
     for key, value in potion_mods.items():
         merged_mods[key] = merged_mods.get(key, 0.0) + float(value)
+    # 彩蛋被动「豆芽精」：经验获取倍率提升（与小怪/BOSS 结算同源）
+    egg_exp = exp_bonus_pct(stats.egg_id)
+    if egg_exp:
+        merged_mods["expGainPct"] = merged_mods.get("expGainPct", 0.0) + egg_exp
 
     # 金币与经验（服务端重新结算）
     reward_multiplier = effective_penalty(stats,payload.regionId)["rewardMultiplier"]
@@ -207,6 +211,7 @@ async def report(
     result.total_exp = int(result.total_exp * reward_multiplier)
     user.gold = int(user.gold) + result.total_gold
     gained_exp = apply_exp_bonus(result.total_exp, merged_mods)  # 经验获取效率 Buff
+    after_bonus_exp = gained_exp
     gained_exp = await combat_exp(db, hero, gained_exp)
     level_info = apply_exp(hero, gained_exp)
 
@@ -254,6 +259,7 @@ async def report(
         "gold": int(user.gold),
         "goldGained": result.total_gold,
         "expGained": gained_exp,
+        "expCalculation": exp_calculation(result.total_exp, after_bonus_exp, gained_exp),
         "level": level_info,
         "killCount": int(hero.region_kill_count),
         "killsRequired": required,
@@ -286,7 +292,9 @@ async def _settle_boss(
     region = CONFIG.region_by_id[payload.regionId]
     gold_potion = float((term_mods or {}).get("goldGainPct", 0.0)) / 100.0
     boss_gold = int(roll_gold(payload.regionId, "boss", 0.0, rng) * effective_penalty(compute_stats(hero,items),payload.regionId)["rewardMultiplier"] * (1.0 + gold_potion))
-    boss_exp = apply_exp_bonus(max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"]))), term_mods or {})
+    base_boss_exp = max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"])))
+    boss_exp = apply_exp_bonus(base_boss_exp, term_mods or {})
+    after_bonus_exp = boss_exp
 
     user.gold = int(user.gold) + boss_gold
     boss_exp = await combat_exp(db, hero, boss_exp)
@@ -325,6 +333,7 @@ async def _settle_boss(
     return {
         "gold": boss_gold,
         "exp": boss_exp,
+        "expCalculation": exp_calculation(base_boss_exp, after_bonus_exp, boss_exp),
         "level": level_info,
         "firstClear": first_clear,
         "nextRegionId": payload.regionId + 1 if payload.regionId + 1 in CONFIG.region_by_id else None,

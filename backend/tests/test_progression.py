@@ -82,3 +82,11 @@ async def test_account_scoped_bonus_and_state(auth_client, session_factory):
     state = (await auth_client.get('/api/v1/game/state')).json()
     assert state['catchUpExpBonusPct'] == 0
     assert state['expToNext'] == exp_to_next(60)
+
+
+@pytest.mark.parametrize("base,after,gained,pct", [(100,160,320,220),(100,160,175,75),(100,100,100,0),(0,0,0,0)])
+def test_exp_calculation_matches_actual_settlement(base, after, gained, pct):
+    from app.services.progression import exp_calculation
+    detail = exp_calculation(base, after, gained)
+    assert detail["base"] + detail["efficiencyBonus"] + detail["catchUpBonus"] == gained
+    assert detail["totalBonusPct"] == pct

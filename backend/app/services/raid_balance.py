@@ -1,15 +1,14 @@
 """Server-side clear checks and immutable attempt telemetry."""
 from datetime import datetime, timedelta, timezone
-from app.services.balance import BALANCE, soft_penalty, equipment_quality
-from app.services.valuation import hero_power
+from app.services.balance import BALANCE, equipment_quality
 from app.services.combat_model import theoretical_dps
-from app.services.raid_util import boss_stats_for_raid, eligibility
+from app.services.raid_util import boss_stats_for_raid, eligibility, raid_penalty
 
 
 def snapshot(raid, level, stats, items):
     rule=BALANCE['raids'][raid['id']]
     normal=raid.get('difficulty','normal')=='normal'
-    penalty=soft_penalty(hero_power(stats),rule['power'] if normal else 0)
+    penalty=raid_penalty(raid,level,stats)
     bosses=boss_stats_for_raid(raid,level,stats)
     seconds=sum(b['hp']/max(1,theoretical_dps(stats,b['defense'],penalty)*(1-b['resistancePct']/100)) for b in bosses)
     incoming=sum(max(b['attack']*.1,b['attack']-min(stats.phys_def,stats.magic_def))/b['attackInterval'] for b in bosses)

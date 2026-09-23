@@ -86,6 +86,7 @@ const eliteBasePct = computed(() => (data.monsters.eliteBaseChance * 100).toFixe
         <button
           v-for="region in regions.filter((r) => r.chapter === chapter.id)"
           :key="region.id"
+          :data-tutorial="region.id === currentId ? 'region' : undefined"
           class="card p-3 text-left transition disabled:cursor-not-allowed"
           :class="[
             region.id === currentId ? 'ring-2 ring-amber-400' : '',

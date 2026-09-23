@@ -21,14 +21,17 @@ from app.schemas.game import (
 )
 from app.services.drop_luck import egg_luck, rarity_luck, user_drop_rate
 from app.services import consumables
+from app.services.egg_heroes import exp_bonus_pct
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item, generate_item_for_slot
 from app.services.loot import chest_by_id
 from app.services.playtime import MAX_RAID_PLAY_MS, add_play_ms
-from app.services.progression import apply_exp, combat_exp
+from app.services.progression import apply_exp, combat_exp, exp_calculation
 from app.services.raid_util import (
     all_raids,
     boss_stats_for_raid,
+    challenge_level,
+    daily_reward_clears,
     eligibility,
     raid_by_id,
     top_rarity_required,
@@ -64,7 +67,9 @@ def _as_utc(value: datetime) -> datetime:
 async def _progress(db: DbSession, user_id: int, raid_id: str) -> RaidProgress | None:
     return (
         await db.execute(
-            select(RaidProgress).where(RaidProgress.user_id == user_id, RaidProgress.raid_id == raid_id)
+            select(RaidProgress)
+            .where(RaidProgress.user_id == user_id, RaidProgress.raid_id == raid_id)
+            .with_for_update()
         )
     ).scalar_one_or_none()
 
@@ -85,10 +90,17 @@ async def _end_active_sessions(db: DbSession, user_id: int) -> None:
 async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems) -> dict:
     stats = compute_stats(hero, items)
     power = hero_power(stats)
+    today = datetime.now(timezone.utc).date()
     rows = (
         await db.execute(select(RaidProgress).where(RaidProgress.user_id == user.id))
     ).scalars().all()
     progress = {row.raid_id: row for row in rows}
+
+    def rewarded_today(row: RaidProgress | None) -> int:
+        """当日已获得奖励的通关次数（跨天未重置的旧计数按 0 计）。"""
+        if row is None or row.reward_day != today:
+            return 0
+        return int(row.rewarded_today or 0)
 
     entries = []
     for raid in all_raids():
@@ -102,6 +114,7 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
                 "difficulty": raid.get("difficulty", "normal"),
                 "name": raid["name"],
                 "requiredLevel": raid["requiredLevel"],
+                "challengeLevel": challenge_level(raid, hero.level),
                 "requiredPower": RULES["raids"][raid["id"]]["power"],
                 "requiresAllSlots": raid["requiresAllSlots"],
                 "minEquipRarity": raid.get("minEquipRarity", "common"),
@@ -111,6 +124,8 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
                 "bossNames": [b["name"] for b in raid["bosses"]],
                 "dualBoss": len(raid["bosses"]) > 1,
                 "reward": raid["reward"],
+                "dailyRewardClears": daily_reward_clears(raid),
+                "rewardedToday": rewarded_today(row),
                 "eligible": ok,
                 "blockedReason": reason,
                 "cleared": bool(row.cleared) if row else False,
@@ -222,43 +237,73 @@ async def report_session(
 
     first_clear = not bool(row.cleared)
     reward = raid["reward"]
-    gold = int(reward["firstGold"]) if first_clear else int(reward["repeatGold"])
-    reward_multiplier = min(session.balance_snapshot["penalty"]["rewardMultiplier"],current["penalty"]["rewardMultiplier"])
-    gold = int(gold * reward_multiplier)
-    user.gold = int(user.gold) + gold
 
-    # 通关经验：首通用 firstExp，重刷用 repeatExp（高难副本的 repeatExp 更高）
-    raw_exp = int(reward["firstExp"]) if first_clear else int(reward.get("repeatExp", 0))
-    raw_exp = int(raw_exp * reward_multiplier)
-    exp_gained = apply_exp_bonus(raw_exp, stats.term_mods) if raw_exp > 0 else 0
-    exp_gained = await combat_exp(db, hero, exp_gained)
-    level_info = apply_exp(hero, exp_gained)
+    # 每日奖励次数：首通计入当天配额；超出后仍记录通关与最快用时，但不再产出奖励（防刷）。
+    today = now.date()
+    if row.reward_day != today:
+        row.reward_day = today
+        row.rewarded_today = 0
+    daily_limit = daily_reward_clears(raid)
+    reward_allowed = first_clear or int(row.rewarded_today or 0) < daily_limit
 
+    gold = 0
+    raw_exp = 0
+    after_bonus_exp = 0
+    exp_gained = 0
+    level_info = None
     grant = EMPTY_GRANT
     pending_chest = 0
-    box_amount = int(reward["boxCount"]) * reward_multiplier
-    box_count = int(box_amount) + int(random.random() < box_amount % 1)
-    if bool(reward.get("slotChoice")):
-        # 高难宝箱：每次通关都掉落，由玩家自选装备种类后在结算界面开启
-        session.pending_chest = int(session.pending_chest or 0) + box_count
-        pending_chest = int(session.pending_chest)
-    elif first_clear:
-        chest = chest_by_id(str(reward["chestId"]))
-        generated = []
-        if chest is not None:
-            rng = random.Random()
-            luck = (
-                rarity_luck(await user_drop_rate(db, user.id))
-                + await consumables.chest_luck(db, user.id)
-                + egg_luck(hero)
-            )
-            for _ in range(box_count):
-                item, _ = generate_item(
-                    chest["category"], hero.level, box_tier=chest["tier"], rng=rng, luck=luck
+    if reward_allowed:
+        row.rewarded_today = int(row.rewarded_today or 0) + 1
+
+        # 经验/金币加成：与地区结算同源（装备词条 + 药水/食物 + 彩蛋被动）。
+        potion_mods = await consumables.exp_gold_mods(db, user.id)
+        merged_mods = dict(stats.term_mods)
+        for key, value in potion_mods.items():
+            merged_mods[key] = merged_mods.get(key, 0.0) + float(value)
+        egg_exp = exp_bonus_pct(stats.egg_id)
+        if egg_exp:
+            merged_mods["expGainPct"] = merged_mods.get("expGainPct", 0.0) + egg_exp
+
+        reward_multiplier = min(
+            session.balance_snapshot["penalty"]["rewardMultiplier"],
+            current["penalty"]["rewardMultiplier"],
+        )
+        gold = int(reward["firstGold"]) if first_clear else int(reward["repeatGold"])
+        gold = int(gold * reward_multiplier * (1.0 + potion_mods.get("goldGainPct", 0.0) / 100.0))
+        user.gold = int(user.gold) + gold
+
+        # 通关经验：首通用 firstExp，重刷用 repeatExp（高难副本的 repeatExp 更高）
+        raw_exp = int(reward["firstExp"]) if first_clear else int(reward.get("repeatExp", 0))
+        raw_exp = int(raw_exp * reward_multiplier)
+        exp_gained = apply_exp_bonus(raw_exp, merged_mods) if raw_exp > 0 else 0
+        after_bonus_exp = exp_gained
+        exp_gained = await combat_exp(db, hero, exp_gained)
+        level_info = apply_exp(hero, exp_gained)
+
+        box_amount = int(reward["boxCount"]) * reward_multiplier
+        box_count = int(box_amount) + int(random.random() < box_amount % 1)
+        if bool(reward.get("slotChoice")):
+            # 高难宝箱：每次通关都掉落，由玩家自选装备种类后在结算界面开启
+            session.pending_chest = int(session.pending_chest or 0) + box_count
+            pending_chest = int(session.pending_chest)
+        elif first_clear:
+            chest = chest_by_id(str(reward["chestId"]))
+            generated = []
+            if chest is not None:
+                rng = random.Random()
+                luck = (
+                    rarity_luck(await user_drop_rate(db, user.id))
+                    + await consumables.chest_luck(db, user.id)
+                    + egg_luck(hero)
                 )
-                generated.append(item)
-        if generated:
-            grant = await grant_generated_items(db, user, generated, source=f"raid:{raid['id']}")
+                for _ in range(box_count):
+                    item, _ = generate_item(
+                        chest["category"], hero.level, box_tier=chest["tier"], rng=rng, luck=luck
+                    )
+                    generated.append(item)
+            if generated:
+                grant = await grant_generated_items(db, user, generated, source=f"raid:{raid['id']}")
 
     row.cleared = True
     row.cleared_at = row.cleared_at or now
@@ -268,19 +313,27 @@ async def report_session(
     session.outcome = dict(session.outcome, firstClear=first_clear)
     await db.commit()
 
+    remaining_today = max(0, daily_limit - int(row.rewarded_today or 0))
     return {
         "cleared": True,
         "firstClear": first_clear,
+        "rewardLimited": not reward_allowed,
+        "remainingToday": remaining_today,
         "gold": int(user.gold),
         "goldGained": gold,
         "expGained": exp_gained,
+        "expCalculation": exp_calculation(raw_exp, after_bonus_exp, exp_gained),
         "level": level_info,
         "items": grant["items"],
         "autoSold": grant["autoSold"],
         "autoGold": grant["autoGold"],
         "fightMs": fight_ms,
         "pendingChest": {"count": pending_chest, "slots": CHEST_SLOTS} if pending_chest else None,
-        "message": "首次通关！" if first_clear else "再次通关",
+        "message": (
+            f"今日奖励次数已用尽（{daily_limit}/{daily_limit}），仍可挑战但不再产出奖励"
+            if not reward_allowed
+            else "首次通关！" if first_clear else "再次通关"
+        ),
     }
 
 

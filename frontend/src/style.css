@@ -130,3 +130,46 @@ body {
     animation: none;
   }
 }
+
+/* The guide never installs an input-blocking backdrop. Game dialogs remain above it. */
+html {
+  scroll-padding-top: calc(var(--app-header-height, 100px) + 16px);
+  scroll-padding-bottom: calc(var(--tutorial-panel-height, 0px) + 24px);
+}
+.tutorial-layout:has(.tutorial-rail) {
+  padding-bottom: calc(var(--tutorial-panel-height, 0px) + 24px);
+}
+.tutorial-panel {
+  position: fixed;
+  z-index: 50;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 42dvh;
+  overflow-y: auto;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  overflow-wrap: anywhere;
+}
+.tutorial-highlight {
+  outline: 2px solid #fbbf24;
+  outline-offset: 4px;
+}
+@media (min-width: 1280px) {
+  html { scroll-padding-bottom: 24px; }
+  .tutorial-layout:has(.tutorial-rail) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+    gap: 24px;
+    max-width: 1440px;
+    padding-bottom: 16px;
+  }
+  .tutorial-rail {
+    position: sticky;
+    top: calc(var(--app-header-height, 100px) + 16px);
+  }
+  .tutorial-panel {
+    position: static;
+    max-height: calc(100dvh - var(--app-header-height, 100px) - 32px);
+  }
+}

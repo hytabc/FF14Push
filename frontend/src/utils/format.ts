@@ -206,6 +206,9 @@ const SKILL_EFFECT_LABELS: Record<string, (pct: number, seconds: number) => stri
   immunity: (pct) => `免疫下 ${Math.round(pct / 100)} 次伤害`,
   doublePowerCharges: (pct) => `接下来 ${Math.round(pct / 100)} 次技能威力翻倍`,
   doubleRewardCharges: (pct) => `接下来 ${Math.round(pct / 100)} 个怪物经验/金币翻倍`,
+  mpCostHalveCharges: (pct) => `接下来 ${Math.round(pct / 100)} 次技能魔力消耗减半`,
+  cdResetAll: () => '恢复全部技能冷却时间',
+  healingBuff: (pct, seconds) => `治疗量 +${pct}%${durationSuffix(seconds)}`,
 }
 
 /** 技能效果 → 中文说明；未知类型不暴露原始英文枚举。 */

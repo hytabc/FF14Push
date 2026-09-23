@@ -52,6 +52,15 @@ def luck_bonus(egg_id: str | None) -> float:
     return float(passive.get("value", 0.0) or 0.0)
 
 
+def exp_bonus_pct(egg_id: str | None) -> float:
+    """彩蛋被动的经验获取加成（百分比），如「豆芽精」+25%。"""
+    egg = egg_def(egg_id)
+    passive = egg.get("passive") if egg else None
+    if not passive or passive.get("type") != "expGainBonus":
+        return 0.0
+    return float(passive.get("value", 0.0) or 0.0) * 100.0
+
+
 def charge_grants(egg_id: str | None, job_id: str) -> dict[str, int]:
     """该彩蛋英雄充能类技能：技能 id -> 每次释放叠加的计数。"""
     result: dict[str, int] = {}

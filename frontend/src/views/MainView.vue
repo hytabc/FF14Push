@@ -106,7 +106,7 @@ function dodgeInfo() {
 
 <template>
   <div class="space-y-4">
-    <section class="card p-4">
+    <section data-tutorial="battle" class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <div>
           <p class="text-xs text-ink-400">当前地区</p>
@@ -118,7 +118,7 @@ function dodgeInfo() {
           </h2>
         </div>
 
-        <div class="ml-auto flex items-center gap-2">
+        <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
           <span class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-200">{{ phaseLabel }}</span>
           <button
             class="rounded-md border px-3 py-1.5 text-xs transition"

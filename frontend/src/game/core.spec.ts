@@ -2,6 +2,7 @@ import data from '@shared/schema'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BattleSimulator } from '@/game/core/battle'
+import { eggSkillSet } from '@/game/core/egg'
 import { attackSpeedFactor, estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
 import { bossStats, getRegion, goldRange, levelPenalty, monsterStats } from '@/game/core/regions'
 import type { HeroStats, MonsterStats } from '@/game/types'
@@ -903,6 +904,71 @@ describe('彩蛋英雄技能', () => {
       spy.mockRestore()
     }
   })
+
+  it('俍十四为任意职业提供经验被动且不追加技能', () => {
+    const egg = data.eggHeroes.byId['liangshisi']
+    expect(egg.jobId).toBeNull()
+    expect(egg.passive).toEqual({ type: 'expGainBonus', value: 0.25 })
+    expect(eggSkillSet('liangshisi', 'WAR')).toBeNull()
+    expect(eggSkillSet('liangshisi', 'BLM')).toBeNull()
+  })
+
+  it('「水群」使接下来 5 次技能魔力消耗减半并逐次消耗', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'PLD', maxMp: 5000, attack: 1000 }),
+      raid: { bosses: [attacker], enrage: null },
+      eggId: 'qingfeng',
+    })
+    sim.start()
+    forceCast(sim, 'eggWaterGroup')
+    expect(sim.halfMpCharges).toBe(5)
+
+    const skill = sim.skills.find((s) => s.mpCost > 0)!
+    const scale =
+      skill.damageType === 'magical'
+        ? data.heroes.mp.magicalSkillCostScale
+        : data.heroes.mp.physicalSkillCostScale
+    const raw = Math.floor(skill.mpCost * scale)
+    const before = sim.heroMp
+    forceCast(sim, skill.id)
+    expect(before - sim.heroMp).toBe(Math.floor(raw / 2))
+    expect(sim.halfMpCharges).toBe(4)
+  })
+
+  it('「苍天之龙骑士」恢复其他技能冷却但不重置自身', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'DRG', attack: 1000 }),
+      raid: { bosses: [attacker], enrage: null },
+      eggId: 'meiruoyu',
+    })
+    sim.start()
+    const other = sim.skills.find((s) => s.id !== 'eggAzureDragoon')!
+    sim.cooldowns[other.id] = 30
+    forceCast(sim, 'eggAzureDragoon')
+    expect(sim.cooldowns[other.id]).toBe(0)
+    expect(sim.cooldowns['eggAzureDragoon']).toBeGreaterThan(0)
+  })
+
+  it('「术道恒久」使自身治疗量提高 100%（10s）', () => {
+    const healSkill = data.jobById['SGE'].skills.find((s) =>
+      s.effects.some((e) => e.type === 'heal'),
+    )!
+    const healAmount = (eggId: string | null): number => {
+      const sim = new BattleSimulator({
+        stats: makeStats({ jobId: 'SGE', maxHp: 100000, hpRegen: 0 }),
+        raid: { bosses: [attacker], enrage: null },
+        eggId,
+      })
+      sim.start()
+      if (eggId) forceCast(sim, 'eggEternalWay')
+      sim.heroHp = 1000
+      forceCast(sim, healSkill.id)
+      return sim.heroHp - 1000
+    }
+    const plain = healAmount(null)
+    expect(plain).toBeGreaterThan(0)
+    expect(healAmount('aolongbaiban')).toBeCloseTo(plain * 2, 5)
+  })
 })
 
 describe('装备触发效果（proc）', () => {
@@ -931,5 +997,27 @@ describe('装备触发效果（proc）', () => {
     const text = sim.log.map((l) => l.text).join(' | ')
     expect(text).not.toContain('灼烧')
     expect(text).not.toContain('疾风')
+  })
+})
+
+describe('技能治疗日志', () => {
+  it('直接治疗记录实际恢复和溢出，满血不虚报恢复量', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ maxHp: 1000 }), regionId: 1 })
+    const engine = sim as any
+    sim.heroHp = 980
+    engine.applyEffects({ name: '测试治疗', effects: [{ type: 'heal', value: .1 }] })
+    expect(sim.heroHp).toBe(1000)
+    expect(sim.log.at(-1)?.text).toBe('测试治疗 恢复 20 生命值（溢出 80）')
+    engine.applyEffects({ name: '测试治疗', effects: [{ type: 'heal', value: .1 }] })
+    expect(sim.log.at(-1)?.text).toBe('测试治疗 恢复 0 生命值（溢出 100）')
+  })
+  it('持续治疗逐跳记录技能名称和有效治疗量', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ maxHp: 1000, hpRegen: 0 }), regionId: 1 })
+    sim.start()
+    sim.heroHp = 100
+    const engine = sim as any
+    engine.applyEffects({ name: '再生', effects: [{ type: 'healOverTime', value: .01, duration: 5 }] })
+    sim.tick(1)
+    expect(sim.log.some(e => e.text === '再生（持续治疗） 恢复 10 生命值')).toBe(true)
   })
 })
