@@ -714,7 +714,7 @@ export interface FriendsData {
 }
 
 // ------------------------------------------------------------- 聊天室
-/** 大厅消息（普通发言或管理员公告）。聊天室不保留记录，仅返回滚动窗口内的消息。 */
+/** 大厅消息（普通发言或管理员公告）。普通发言不保留记录，仅返回滚动窗口内的消息；公告长期保留并置顶。 */
 export interface ChatMessage {
   id: number
   kind: 'normal' | 'announcement'
@@ -722,6 +722,7 @@ export interface ChatMessage {
   createdAt: string
   userId: number
   nickname: string
+  /** 登录账号；管理员为空字符串（不回显管理员账号）。 */
   username: string
   isAdmin: boolean
 }

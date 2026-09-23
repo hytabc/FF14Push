@@ -105,6 +105,8 @@ const MAX_LOG = 160
 const MAX_FLOAT = 12
 /** 伤害浮动数字的存活时长（秒）：到期自动移除，UI 侧播放淡出。 */
 const FLOAT_LIFE = 1
+/** 单次命中对地区关底 BOSS 的伤害上限（占其最大生命 %），见 `bosses.json:maxHitDamagePct`。 */
+const BOSS_MAX_HIT_PCT = Number(data.bosses.maxHitDamagePct ?? 100)
 
 let uid = 0
 const nextId = () => ++uid
@@ -661,15 +663,16 @@ export class BattleSimulator {
       this.pushLog(`${skill.name} 未命中`, 'damage')
       return
     }
-    this.monsterHp -= roll.amount
+    const amount = this.capBossHit(roll.amount)
+    this.monsterHp -= amount
     const mark = hitMark(roll.isCrit, roll.isDirectHit)
     this.pushFloat(
-      `${roll.amount}${mark}`,
+      `${amount}${mark}`,
       'monster',
       mark ? hitTone(roll.isCrit, roll.isDirectHit) : 'monster',
     )
-    if (mark) this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
-    else this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+    if (mark) this.pushLog(`${skill.name} 造成 ${amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
+    else this.pushLog(`${skill.name} 造成 ${amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
     this.rollProcs(stats)
   }
 
@@ -813,9 +816,10 @@ export class BattleSimulator {
             this.pushFloat('未命中', 'monster', 'miss')
           } else {
             const mark = hitMark(roll.isCrit, roll.isDirectHit)
-            this.monsterHp -= roll.amount
+            const amount = this.capBossHit(roll.amount)
+            this.monsterHp -= amount
             this.pushFloat(
-              `${roll.amount}${mark}`,
+              `${amount}${mark}`,
               'monster',
               mark ? hitTone(roll.isCrit, roll.isDirectHit) : 'monster',
             )
@@ -862,6 +866,18 @@ export class BattleSimulator {
     }
     if (this.heroHp > stats.maxHp) this.heroHp = stats.maxHp
     if (this.monster && this.monsterHp <= 0) this.killMonster()
+  }
+
+  /**
+   * 单次命中对地区关底 BOSS 的伤害上限（占其最大生命 %，见 `bosses.json:maxHitDamagePct`）：
+   * 防止开局技能全就绪时的爆发 / 暴击大招单次秒杀 BOSS。高难副本与联机不走此上限。
+   */
+  private capBossHit(amount: number): number {
+    if (this.isRaid) return amount
+    const enemy = this.current
+    if (!enemy || enemy.stats.kind !== 'boss') return amount
+    const cap = Math.max(1, Math.floor(enemy.maxHp * (BOSS_MAX_HIT_PCT / 100)))
+    return Math.min(amount, cap)
   }
 
   /** 越级时英雄防御的剩余比例（0-1）。等级达标时为 1。 */

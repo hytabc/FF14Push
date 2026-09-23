@@ -134,7 +134,7 @@ describe('伤害与技能', () => {
   })
 
   it('普攻兜底技能存在', () => {
-    expect(ADVENTURER_SKILL.potency).toBe(100)
+    expect(ADVENTURER_SKILL.potency).toBe(data.combat.basicAttackPotency)
   })
 
   it('击杀耗时在可玩区间', () => {
@@ -780,7 +780,7 @@ describe('蓝量经济（持续战斗不退化为「普攻循环」）', () => {
   })
 })
 
-describe('地区击杀手感（普攻与技能独立出手：小怪 ~4 下 / 精英 ~6 下 / BOSS ~16 下）', () => {
+describe('地区击杀手感（普攻与技能独立出手：小怪 ~4 下 / 精英 ~7 下 / BOSS ~13 下）', () => {
   beforeEach(() => {
     // 0.1：不触发精英判定（< 0.08 才出精英）、必中、不暴击、随机浮动固定；同时普通怪模板取到 normal。
     vi.spyOn(Math, 'random').mockReturnValue(0.1)
@@ -815,28 +815,34 @@ describe('地区击杀手感（普攻与技能独立出手：小怪 ~4 下 / 精
     })
   }
 
-  /** 模拟整轮刷怪，按怪物种类收集「击杀所需命中次数」。 */
+  /**
+   * 模拟整轮刷怪，按怪物种类收集「击杀所需命中次数」。
+   * 直接统计 pushFloat 调用，避免浮动数字上限（MAX_FLOAT=12）导致高爆发时事件被丢弃、计数偏小。
+   */
   function collectHits(killsRequired: number, stats: HeroStats): Record<string, number[]> {
+    const spy = vi.spyOn(
+      BattleSimulator.prototype as unknown as { pushFloat: (...a: unknown[]) => void },
+      'pushFloat',
+    )
     const sim = new BattleSimulator({ stats, regionId: 19, killsRequired, spawnInterval: 1, killCount: 0 })
     sim.start()
     const byKind: Record<string, number[]> = { normal: [], elite: [], boss: [] }
-    const seen = new Set<number>()
     let hits = 0
     let prev: MonsterStats | null = null
     for (let i = 0; i < 20000 && sim.phase !== 'cleared'; i += 1) {
+      const before = spy.mock.calls.length
       sim.tick(0.05)
-      for (const float of sim.floating) {
-        if (seen.has(float.id)) continue
-        seen.add(float.id)
-        if (float.side === 'monster' && /^\d/.test(float.text)) hits += 1
-      }
       const current = sim.monster
       if (current !== prev) {
         if (prev) byKind[prev.kind].push(hits)
         prev = current
         hits = 0
       }
+      hits += spy.mock.calls
+        .slice(before)
+        .filter((c) => c[1] === 'monster' && /^\d/.test(String(c[0]))).length
     }
+    spy.mockRestore()
     return byKind
   }
 
@@ -852,18 +858,32 @@ describe('地区击杀手感（普攻与技能独立出手：小怪 ~4 下 / 精
     expect(avg(hits)).toBeLessThanOrEqual(5.5)
   })
 
-  it('精英怪平均约 6 下', () => {
+  it('精英怪平均约 7 下', () => {
     const hits = collectHits(KILLS_REQUIRED, expectedHero({ termMods: { eliteChancePct: 100 } })).elite
     expect(hits.length).toBeGreaterThanOrEqual(KILLS_REQUIRED)
     expect(avg(hits)).toBeGreaterThanOrEqual(4.5)
     expect(avg(hits)).toBeLessThanOrEqual(8)
   })
 
-  it('关底 BOSS 约 16 下', () => {
+  it('关底 BOSS 约 13 下', () => {
     const hits = collectHits(KILLS_REQUIRED, expectedHero()).boss
     expect(hits).toHaveLength(1)
-    expect(hits[0]).toBeGreaterThanOrEqual(10)
+    expect(hits[0]).toBeGreaterThanOrEqual(8)
     expect(hits[0]).toBeLessThanOrEqual(22)
+  })
+
+  it('单次命中对关底 BOSS 的伤害不超过其最大生命 20%（避免爆发 / 暴击秒杀）', () => {
+    const region = getRegion(19)!
+    const boss = bossStats(region)
+    // 攻击力远高于 BOSS 生命，单次普攻也必然触顶，因而无需依赖 RNG 取最大值。
+    const sim = new BattleSimulator({ stats: expectedHero({ attack: 1e9 }), regionId: 19 })
+    ;(sim as unknown as { setMonster(m: MonsterStats): void }).setMonster(boss)
+    const before = sim.monsterHp
+    ;(sim as unknown as { tickBasicAttack(): void }).tickBasicAttack()
+    const dealt = before - sim.monsterHp
+    expect(dealt).toBeGreaterThan(0)
+    expect(dealt).toBeLessThanOrEqual(Math.floor(boss.hp * 0.2))
+    expect(sim.monsterHp).toBeGreaterThan(0) // 不会被单次命中秒杀
   })
 })
 

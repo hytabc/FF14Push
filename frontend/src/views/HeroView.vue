@@ -42,7 +42,7 @@ const skills = computed(() => {
   const jobId = hero.value?.jobId ?? 'adventurer'
   const base =
     jobId === 'adventurer'
-      ? [{ id: 'basicAttack', name: '普攻', cd: data.combat.basicAttackCd as number, potency: 100, mpCost: 0, effects: [], damageType: 'physical', target: 'single', priority: 3 }]
+      ? [{ id: 'basicAttack', name: '普攻', cd: data.combat.basicAttackCd as number, potency: data.combat.basicAttackPotency as number, mpCost: 0, effects: [], damageType: 'physical', target: 'single', priority: 3 }]
       : (data.jobById[jobId]?.skills ?? [])
   const egg = eggSkillSet(hero.value?.eggId, jobId)
   if (!egg) return base

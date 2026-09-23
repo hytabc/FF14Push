@@ -638,6 +638,8 @@ export const gameData = {
     attackMultiplierRange: [number, number]
     defenseMultiplierRange: [number, number]
     attackInterval: number
+    /** 单次命中对关底 BOSS 的伤害上限（占其最大生命 %），见 `bosses.json:maxHitDamagePct`。 */
+    maxHitDamagePct: number
     reward: { goldMultiplierRange: [number, number]; xpMultiplierRange: [number, number]; boxCount: number }
     types: BossTypeDef[]
   },

@@ -19,8 +19,12 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 @router.get("/messages")
 async def messages(db: DbSession, user: CurrentUser) -> dict:
-    """大厅最近消息（滚动窗口内），供首屏加载与 WS 断线回退。"""
-    return {"messages": await chat.recent_messages(db), "serverTime": utcnow().isoformat()}
+    """大厅最近消息（滚动窗口内）与置顶公告，供首屏加载与 WS 断线回退。"""
+    return {
+        "messages": await chat.recent_messages(db),
+        "announcements": await chat.announcements(db),
+        "serverTime": utcnow().isoformat(),
+    }
 
 
 @router.post("/messages")
@@ -58,11 +62,15 @@ async def stream(ws: WebSocket) -> None:
 
     await ws.accept()
     try:
-        # 首帧回放滚动窗口内的历史，随后按游标增量推送（与 coop 的快照 / 更新同构）。
+        # 首帧回放滚动窗口内的历史与置顶公告，随后按游标增量推送（与 coop 的快照 / 更新同构）。
         async with SessionLocal() as db:
             history = await chat.recent_messages(db)
+            pinned = await chat.announcements(db)
         last_id = history[-1]["id"] if history else 0
-        await ws.send_json({"type": "history", "messages": history})
+        last_ann_id = max((a["id"] for a in pinned), default=0)
+        await ws.send_json(
+            {"type": "history", "messages": history, "announcements": pinned}
+        )
 
         while True:
             async with SessionLocal() as db:
@@ -71,9 +79,15 @@ async def stream(ws: WebSocket) -> None:
                     await ws.close(code=4403)
                     return
                 fresh = await chat.new_messages(db, last_id)
-                if fresh:
-                    last_id = fresh[-1]["id"]
-                    await ws.send_json({"type": "update", "messages": fresh})
+                fresh_ann = await chat.new_announcements(db, last_ann_id)
+            if fresh:
+                last_id = fresh[-1]["id"]
+            if fresh_ann:
+                last_ann_id = fresh_ann[-1]["id"]
+            if fresh or fresh_ann:
+                await ws.send_json(
+                    {"type": "update", "messages": fresh, "announcements": fresh_ann}
+                )
             await asyncio.sleep(chat.POLL_SECONDS)
     except (WebSocketDisconnect, RuntimeError):
         return

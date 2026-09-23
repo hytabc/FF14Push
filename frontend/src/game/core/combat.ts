@@ -23,12 +23,15 @@ export interface SkillLike {
   effects: Array<Record<string, unknown>>
 }
 
+/** 普攻威力（% 攻击力）：刻意低于技能威力，见 `combat.json:basicAttackPotency`。 */
+export const BASIC_ATTACK_POTENCY = data.combat.basicAttackPotency as number
+
 export const ADVENTURER_SKILL: SkillLike = {
   id: 'basicAttack',
   name: '普攻',
   cd: data.combat.basicAttackCd as number,
   mpCost: 0,
-  potency: 100,
+  potency: BASIC_ATTACK_POTENCY,
   damageType: 'physical',
   target: 'single',
   priority: 3,
@@ -179,7 +182,7 @@ export function estimateDps(
   const attackRate = castRate * doubleCast + basicRate
   const gross =
     powerAttack(stats) * (potencyPerSec / 100) * damageMult * mult +
-    stats.attack * basicRate * damageMult * mult
+    stats.attack * (BASIC_ATTACK_POTENCY / 100) * basicRate * damageMult * mult
   let dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * attackRate))
   dps += procDpsBonus(stats, dps, attackRate)
   if (!penalty) return dps

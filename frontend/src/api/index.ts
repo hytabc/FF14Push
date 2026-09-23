@@ -313,8 +313,11 @@ export const api = {
 
   // ---------------------------------------------------------------- 聊天室
   async chatMessages() {
-    return (await http.get<{ messages: ChatMessage[]; serverTime: string }>('/chat/messages'))
-      .data
+    return (
+      await http.get<{ messages: ChatMessage[]; announcements: ChatMessage[]; serverTime: string }>(
+        '/chat/messages',
+      )
+    ).data
   },
 
   async chatSend(text: string) {

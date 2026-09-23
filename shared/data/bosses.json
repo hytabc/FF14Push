@@ -5,6 +5,8 @@
   "attackMultiplierRange": [1.2, 1.8],
   "defenseMultiplierRange": [1.5, 2.5],
   "attackInterval": 2.5,
+  "$commentBurstCap": "单次命中对关底 BOSS 的伤害上限（占其最大生命的百分比）：避免开局技能全就绪时的爆发 / 暴击大招单次打掉大半生命甚至直接秒杀 BOSS。只作用于地区关底 BOSS，不影响高难副本与联机（客户端做上限即比服务端理论模型更保守，不会导致上报被拒）。",
+  "maxHitDamagePct": 20,
   "$commentReward": "击败奖励。来源：PRD 地区 4.4",
   "reward": {
     "goldMultiplierRange": [10, 20],

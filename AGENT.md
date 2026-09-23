@@ -10,7 +10,7 @@
 - 联机 DLC 已有实现：最多 8 名独立英雄、异步 PvP、个人/离线/在线合作、12 个团队副本；前端入口为「名册」「远征」「竞技场」。不要将设计文档中的全部内容直接当成待开发任务。
 - 远征通关记录与「远征榜」已实现：`coop_worker` 在通关瞬间把时长与全席位分角色战斗信息写入 `coop_records`（每个真实参战账号一行）；排行榜页「远征榜」按副本实时聚合（不走 5 分钟缓存），展示最快通关时长与阵容。
 - 好友系统已实现：账号有唯一「好友码」（`users.friend_code`，注册 / 迁移生成），凭码申请 + 对方同意后成为好友；好友列表展示在线状态（`users.last_seen_at` + 前端心跳，45s 内视为在线）。好友间可金币转账，手续费 `economy.json:transfer.feePct`（默认 10%）从转账额扣除后销毁，另有单笔上下限与每日累计上限（见 `services/friends.py`）。
-- 聊天室已实现：单一公开大厅，登录后可看可发，实名展示 `昵称#登录账号`（同排行榜）。仅文本（单条 ≤200 字），**不保留聊天记录**——服务端只保留最近 10 分钟消息（`services/chat.py:RETENTION_SECONDS`），窗口外历史永不返回、发言时清理过期行；发言限频 20 条/60 秒（`guard_rate`）。实时推送为 WebSocket `/api/v1/chat/ws`（短时效一次性 ticket 鉴权，`services/chat.issue_ticket/consume_ticket`），广播沿用 `api/v1/coop.py` 的「各连接按游标轮询 DB」模式，天然多 worker 安全。管理员可在聊天室发公告（`POST /chat/announce`，高亮、不受发言限频）。表：`chat_messages`、`chat_tickets`（迁移 `o1a2b3c4d5e7`）。
+- 聊天室已实现：单一公开大厅，登录后可看可发，实名展示 `昵称#登录账号`（同排行榜；**管理员只显示「管理员」+ 徽章，`services/chat.serialize` 不回显也不下发其登录账号**）。仅文本（单条 ≤200 字），**不保留聊天记录**——服务端只保留最近 10 分钟消息（`services/chat.py:RETENTION_SECONDS`），窗口外历史永不返回、发言时清理过期行；发言限频 20 条/60 秒（`guard_rate`）。实时推送为 WebSocket `/api/v1/chat/ws`（短时效一次性 ticket 鉴权，`services/chat.issue_ticket/consume_ticket`），广播沿用 `api/v1/coop.py` 的「各连接按游标轮询 DB」模式，天然多 worker 安全。管理员可在聊天室发公告（`POST /chat/announce`，高亮、不受发言限频）。**公告是「不保留记录」的例外**：长期保留、置顶于聊天室顶部，不参与滚动窗口的读取与清理（`services/chat.announcements/new_announcements`，按 id 倒序最新在前）。表：`chat_messages`、`chat_tickets`（迁移 `o1a2b3c4d5e7`）。
 - 界面及项目文档主要使用中文，新增内容保持已有命名和文案风格。
 
 ## 阅读顺序与事实来源
@@ -57,6 +57,8 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 - 装备归属账号，英雄穿戴状态与账号背包需要保持一致；切换、解雇及多英雄操作应检查 `roster.py`、相关模型与事务逻辑，避免装备或资产重复。
 - 好友金币转账同为服务端权威：`services/friends.py` 按 id 升序双行锁两方账号，校验好友关系 / 余额 / 单笔上下限 / 每日累计额度后再结算，手续费按 `floor(amount × feePct)` 销毁（净额不为 0 增长来源），流水写入 `coin_transfers`。
 - 怪物、精英不直接掉落装备；主要通过抽箱获取，另有 BOSS 宝箱奖励。
+- 普攻（`ADVENTURER_SKILL`，零耗蓝兜底）威力由 `combat.json:basicAttackPotency` 指定（当前 50%，低于技能威力），前后端同源：前端 `combat.ts`、后端 `combat_model.BASIC_ATTACK_POTENCY`。改这个值会同时改变整体 DPS，进而影响怪物按「命中次数」的标定与 `core.spec.ts` 的击杀手感测试。
+- 地区关底 BOSS 有单次命中伤害上限 `bosses.json:maxHitDamagePct`（当前 20% 最大生命），在 `battle.ts:capBossHit` 结算，用于防止开局爆发 / 暴击大招秒杀 BOSS；仅地区 BOSS 生效（高难与联机不走此上限），且客户端做上限比服务端理论模型更保守，不影响上报校验。
 - 数值优先修改共享 JSON，避免前后端各自硬编码。`combat.json`、`monsters.json`、`balance.json`、`multiplayer.json` 分别承载相关战斗、怪物、战力与联机配置。
 - 抽箱品阶概率与生产品阶概率共用一套「幸运来源」归一化（`services/luck_sources.py`）：`p = Σ weight × min(值 / ref, 1)`，权重合计 = 1，各 `ref` 为该来源的真实最大值（含太古词条），因此只有全部来源满才达到上限。来源主体在 `chests.json:rarityLuck` 与 `recipes.json:equipment.rarityScaling`，远征 / 高难的难度权重在 `multiplayer.json:difficultyWeights` 与 `raids.json:difficultyWeights`（仅计首通）。新增来源时同步更新前端文案与 `tests/test_shared_data.py` 中「ref = 配置推导值」的断言。
 - 战力不等同于装备出售估值。普通副本允许低战力挑战，高难与地区解锁有服务端资格条件；已移除机制试炼，不应重新依赖它。

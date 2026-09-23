@@ -157,6 +157,42 @@ class TestAnnounce:
         )
         assert resp.status_code == 403
 
+    async def test_announcement_persists_and_is_pinned(self, client, session_factory) -> None:
+        token = await self._admin_token(client, session_factory)
+        announced = await client.post(
+            f"{API}/chat/announce", json={"text": "长期公告：置顶展示"}, headers=_auth(token)
+        )
+        assert announced.status_code == 200, announced.text
+        ann_id = announced.json()["message"]["id"]
+
+        # 把公告时间推到滚动窗口之外：普通发言会被隐藏，公告仍然保留
+        async with session_factory() as db:
+            row = await db.get(ChatMessage, ann_id)
+            row.created_at = utcnow() - timedelta(seconds=chat.RETENTION_SECONDS + 100)
+            await db.commit()
+
+        listing = (await client.get(f"{API}/chat/messages", headers=_auth(token))).json()
+        assert listing["messages"] == []
+        assert [a["id"] for a in listing["announcements"]] == [ann_id]
+        assert listing["announcements"][0]["kind"] == "announcement"
+
+        # 触发一次发言清理，窗口外的普通发言被删，公告不应被删除
+        await client.post(f"{API}/chat/messages", json={"text": "普通发言"}, headers=_auth(token))
+        async with session_factory() as db:
+            kinds = (await db.execute(select(ChatMessage.kind))).scalars().all()
+        assert kinds.count("announcement") == 1
+
+    async def test_announcements_are_newest_first(self, client, session_factory) -> None:
+        token = await self._admin_token(client, session_factory)
+        first = (
+            await client.post(f"{API}/chat/announce", json={"text": "第一条"}, headers=_auth(token))
+        ).json()["message"]["id"]
+        second = (
+            await client.post(f"{API}/chat/announce", json={"text": "第二条"}, headers=_auth(token))
+        ).json()["message"]["id"]
+        listing = (await client.get(f"{API}/chat/messages", headers=_auth(token))).json()
+        assert [a["id"] for a in listing["announcements"]] == [second, first]
+
     async def test_admin_announce_is_exempt_from_chat_rate_limit(self, client, session_factory) -> None:
         token = await self._admin_token(client, session_factory)
         for i in range(20):
@@ -164,6 +200,9 @@ class TestAnnounce:
                 f"{API}/chat/messages", json={"text": f"管理员 {i}"}, headers=_auth(token)
             )
             assert resp.status_code == 200, resp.text
+            if i == 0:
+                # 管理员的普通发言同样不回显登录账号
+                assert resp.json()["message"]["username"] == ""
         assert (
             await client.post(f"{API}/chat/messages", json={"text": "超限"}, headers=_auth(token))
         ).status_code == 429
@@ -174,3 +213,5 @@ class TestAnnounce:
         assert announced.status_code == 200, announced.text
         msg = announced.json()["message"]
         assert msg["kind"] == "announcement" and msg["isAdmin"] is True
+        assert msg["nickname"] == "管理员"
+        assert msg["username"] == ""  # 不回显管理员登录账号

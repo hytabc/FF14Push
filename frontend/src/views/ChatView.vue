@@ -16,6 +16,7 @@ const MAX_KEEP = 200
 const RECONNECT_MS = 5000
 
 const messages = ref<ChatMessage[]>([])
+const announcements = ref<ChatMessage[]>([])
 const text = ref('')
 const announceText = ref('')
 const loading = ref(false)
@@ -35,11 +36,21 @@ function timeOf(iso: string): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-/** 按 id 去重追加（自己发送的消息与 WS 推送可能重复）。 */
+/** 按 id 去重追加普通发言（自己发送的消息与 WS 推送可能重复）；公告走置顶列表。 */
 function pushMessage(msg: ChatMessage) {
+  if (msg.kind === 'announcement') {
+    pushAnnouncement(msg)
+    return
+  }
   if (messages.value.some((m) => m.id === msg.id)) return
   messages.value.push(msg)
   if (messages.value.length > MAX_KEEP) messages.value = messages.value.slice(-MAX_KEEP)
+}
+
+/** 公告置顶：按 id 去重、最新在前，长期保留（不参与滚动窗口）。 */
+function pushAnnouncement(msg: ChatMessage) {
+  if (announcements.value.some((m) => m.id === msg.id)) return
+  announcements.value.unshift(msg)
 }
 
 function onScroll() {
@@ -58,7 +69,9 @@ async function scrollToBottom() {
 async function load() {
   loading.value = true
   try {
-    messages.value = (await api.chatMessages()).messages.slice(-MAX_KEEP)
+    const data = await api.chatMessages()
+    messages.value = data.messages.slice(-MAX_KEEP)
+    announcements.value = data.announcements
     pinned.value = true
     await scrollToBottom()
   } catch (e) {
@@ -83,13 +96,19 @@ async function connect() {
       connected.value = true
     }
     socket.onmessage = (event) => {
-      const msg = JSON.parse(event.data) as { type: string; messages: ChatMessage[] }
+      const msg = JSON.parse(event.data) as {
+        type: string
+        messages?: ChatMessage[]
+        announcements?: ChatMessage[]
+      }
       if (msg.type === 'history') {
-        messages.value = msg.messages.slice(-MAX_KEEP)
+        messages.value = (msg.messages ?? []).slice(-MAX_KEEP)
+        announcements.value = msg.announcements ?? []
         pinned.value = true
         void scrollToBottom()
       } else if (msg.type === 'update') {
-        for (const item of msg.messages) pushMessage(item)
+        for (const item of msg.messages ?? []) pushMessage(item)
+        for (const item of msg.announcements ?? []) pushAnnouncement(item)
         void scrollToBottom()
       }
     }
@@ -131,7 +150,7 @@ async function announce() {
   try {
     const res = await api.chatAnnounce(body)
     announceText.value = ''
-    pushMessage(res.message)
+    pushAnnouncement(res.message)
     pinned.value = true
     toast.push('公告已发布', 'success')
     await scrollToBottom()
@@ -173,6 +192,33 @@ onUnmounted(() => {
       </p>
     </section>
 
+    <!-- 置顶公告（长期保留，不参与滚动窗口，始终显示在最顶部） -->
+    <section
+      v-if="announcements.length"
+      class="card border-amber-500/50 bg-amber-500/5 p-4"
+    >
+      <div class="flex items-center gap-2">
+        <span class="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-ink-950">
+          公告
+        </span>
+        <h2 class="text-sm font-semibold text-amber-200">管理员公告</h2>
+      </div>
+      <ul class="mt-2 max-h-48 space-y-2 overflow-y-auto">
+        <li
+          v-for="msg in announcements"
+          :key="msg.id"
+          class="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+        >
+          <div class="flex flex-wrap items-baseline gap-1.5 text-xs">
+            <span class="font-semibold text-amber-200">{{ msg.nickname }}</span>
+            <span class="rounded bg-amber-500/20 px-1 text-[10px] text-amber-200">管理员</span>
+            <time class="ml-auto text-[10px] text-ink-600">{{ timeOf(msg.createdAt) }}</time>
+          </div>
+          <p class="mt-0.5 break-words whitespace-pre-wrap text-sm text-amber-50">{{ msg.text }}</p>
+        </li>
+      </ul>
+    </section>
+
     <!-- 管理员公告 -->
     <section v-if="auth.isAdmin" class="card p-4">
       <h3 class="text-sm font-semibold text-white">发布公告</h3>
@@ -201,44 +247,19 @@ onUnmounted(() => {
         <p v-else-if="!messages.length" class="text-xs text-ink-500">
           还没有人发言，来说点什么吧。
         </p>
-        <div
-          v-for="msg in messages"
-          :key="msg.id"
-          :class="
-            msg.kind === 'announcement'
-              ? 'rounded-lg border border-amber-500/60 bg-amber-500/10 px-3 py-2'
-              : 'px-1 py-1'
-          "
-        >
+        <div v-for="msg in messages" :key="msg.id" class="px-1 py-1">
           <div class="flex flex-wrap items-baseline gap-1.5 text-xs">
-            <span
-              :class="
-                msg.kind === 'announcement'
-                  ? 'font-semibold text-amber-200'
-                  : 'font-medium text-ink-100'
-              "
-            >
-              {{ msg.nickname }}
-            </span>
-            <span class="text-ink-500">#{{ msg.username }}</span>
+            <span class="font-medium text-ink-100">{{ msg.nickname }}</span>
+            <span v-if="!msg.isAdmin" class="text-ink-500">#{{ msg.username }}</span>
             <span
               v-if="msg.isAdmin"
               class="rounded bg-amber-500/20 px-1 text-[10px] text-amber-200"
             >
               管理员
             </span>
-            <span
-              v-if="msg.kind === 'announcement'"
-              class="rounded bg-amber-500 px-1 text-[10px] font-medium text-ink-950"
-            >
-              公告
-            </span>
             <time class="ml-auto text-[10px] text-ink-600">{{ timeOf(msg.createdAt) }}</time>
           </div>
-          <p
-            class="mt-0.5 break-words whitespace-pre-wrap text-sm"
-            :class="msg.kind === 'announcement' ? 'text-amber-50' : 'text-ink-200'"
-          >
+          <p class="mt-0.5 break-words whitespace-pre-wrap text-sm text-ink-200">
             {{ msg.text }}
           </p>
         </div>
