@@ -33,3 +33,11 @@ export function eggLuckBonus(eggId: string | null | undefined): number {
   if (egg.passive.type !== 'chestLuckBonus') return 0
   return egg.passive.value
 }
+
+/** 彩蛋被动「战斗爽」：对战普通怪物时，威力恰为 100% 的技能威力加成（1 = 翻倍）。 */
+export function eggNormalMobPotency100Bonus(eggId: string | null | undefined): number {
+  const egg = eggDef(eggId)
+  if (!egg?.passive) return 0
+  if (egg.passive.type !== 'normalMobPotency100Bonus') return 0
+  return Math.max(0, egg.passive.value)
+}

@@ -524,6 +524,40 @@ class TestProduceApi:
             assert plank.count == 3
 
     @pytest.mark.asyncio
+    async def test_egg_passive_produces_extra_item(self, auth_client, session_factory, monkeypatch):
+        """彩蛋被动「生产专家」：命中时每次多产出一件（此处固定命中以便断言），经验不额外增加。"""
+        from app.services import production
+
+        monkeypatch.setattr(production, "craft_extra_chance", lambda _egg_id: 1.0)
+
+        async with session_factory() as db:
+            user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id
+            db.add(StackItem(user_id=user_id, kind="material", item_id="g_wood", count=9))
+            await db.commit()
+
+        start = await auth_client.post(
+            "/api/v1/produce/session/start", json={"jobId": "CRP", "recipeId": "r_h_plank"}
+        )
+        assert start.status_code == 200, start.text
+        assert start.json()["targetActions"] == 3
+        session_id = start.json()["sessionId"]
+
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 20)
+            await db.commit()
+
+        rep = await auth_client.post("/api/v1/produce/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        body = rep.json()
+        assert body["crafts"] == 3
+        assert body["materials"][0]["itemId"] == "h_plank"
+        assert body["materials"][0]["count"] == 6, "每次命中应多产出一件"
+        assert body["xp"] == 3 * int(CONFIG.recipe_by_id["r_h_plank"]["xp"]), "额外产出不额外计经验"
+
+    @pytest.mark.asyncio
     async def test_produce_equipment_high_quality(self, auth_client, session_factory):
         async with session_factory() as db:
             user_id = (await db.execute(select(DohDolProgress))).scalars().first().user_id

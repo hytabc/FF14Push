@@ -8,9 +8,9 @@ from app.services.game_config import CONFIG
 
 
 def test_draw_counts_unlock_costs() -> None:
-    """连抽档位与一次性解锁价：单抽/十连免费，50 连 1 亿、100 连 5 亿。"""
+    """连抽档位与一次性解锁价：单抽/十连免费，50 连 500 万、100 连 2000 万。"""
     costs = {int(d["count"]): int(d["unlockCost"]) for d in CONFIG.chests["drawCounts"]}
-    assert costs == {1: 0, 10: 0, 50: 100_000_000, 100: 500_000_000}
+    assert costs == {1: 0, 10: 0, 50: 5_000_000, 100: 20_000_000}
 
 
 def test_rarity_probabilities_sum_to_one() -> None:

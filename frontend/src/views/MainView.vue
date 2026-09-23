@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
+import data from '@shared/schema'
+
 import ItemIcon from '@/components/ItemIcon.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import JobFigure from '@/components/JobFigure.vue'
@@ -69,6 +71,17 @@ const skillStates = computed<Record<string, { remaining: number; pct: number }>>
     out[state.id] = { remaining: Math.round(state.remaining * 10) / 10, pct: state.pct }
   }
   return out
+})
+
+/** 阵亡复活倒计时：剩余秒数与进度（由 0.1s 节拍驱动刷新）。 */
+const reviveDelay = data.heroes.reviveDelaySeconds
+const reviveTimer = computed(() => {
+  void game.uiTick
+  const remaining = Math.max(0, sim.value?.deathTimer ?? 0)
+  return {
+    remaining: Math.round(remaining * 10) / 10,
+    pct: reviveDelay > 0 ? Math.min(100, ((reviveDelay - remaining) / reviveDelay) * 100) : 100,
+  }
 })
 
 onMounted(async () => {
@@ -208,6 +221,21 @@ function dodgeInfo() {
         </dl>
 
         <div class="mt-3 space-y-2">
+          <div
+            v-if="sim?.phase === 'dead'"
+            class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2"
+          >
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="font-medium text-rose-200">英雄已阵亡</span>
+              <span class="font-mono text-rose-200">{{ reviveTimer.remaining.toFixed(1) }}s 后复活</span>
+            </div>
+            <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink-900">
+              <div
+                class="h-full rounded-full bg-rose-400 transition-[width] duration-100 ease-linear"
+                :style="{ width: `${reviveTimer.pct}%` }"
+              />
+            </div>
+          </div>
           <div>
             <div class="mb-1 flex justify-between text-[11px] text-ink-400">
               <span>生命</span>

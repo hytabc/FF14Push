@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.damage import hit_chance
-from app.services.egg_heroes import dps_uplift, skills_for
+from app.services.egg_heroes import dps_uplift, normal_mob_potency100_bonus, skills_for
 from app.services.game_config import CONFIG
 from app.services.regions_util import (
     boss_stats,
@@ -73,15 +73,20 @@ def theoretical_dps(
     stats: HeroStats,
     target_defense: float = 0.0,
     penalty: dict[str, float] | None = None,
+    mob_kind: str = "normal",
 ) -> float:
     """按「CD 就绪即释放、受 GCD 约束」估算每秒伤害上限。
 
     penalty 为 `level_penalty()` 的结果：越级时命中与输出同步下降。
+    mob_kind 用于彩蛋被动「战斗爽」：仅对战普通怪物（normal）时，威力恰为 100% 的技能
+    威力翻倍；精英 / BOSS 不受影响。
     """
     skills = resolve_job_skills(stats)
     skill_mult = skill_damage_multiplier(stats, stats.job_id)
     mult = damage_multiplier(stats)
     power = stats.power_attack
+
+    potency_bonus = normal_mob_potency100_bonus(stats.egg_id) if mob_kind == "normal" else 0.0
 
     potency_per_sec = 0.0
     cast_rate = 0.0
@@ -89,6 +94,8 @@ def theoretical_dps(
     for skill in skills:
         cd = max(0.5, skill_cooldown(stats, float(skill["cd"]))) * (penalty or {}).get("cooldownMultiplier",1)
         potency = float(skill.get("potency", 0))
+        if potency_bonus > 0 and potency == 100:
+            potency *= 1.0 + potency_bonus
         cast_rate += 1.0 / cd
         potency_per_sec += potency / cd
         max_potency = max(max_potency, potency)
@@ -129,7 +136,7 @@ def theoretical_kill_seconds(
     penalty: dict[str, float] | None = None,
 ) -> float:
     monster = monster_stats(region_id, template_id)
-    dps = theoretical_dps(stats, float(monster["defense"]), penalty)
+    dps = theoretical_dps(stats, float(monster["defense"]), penalty, mob_kind=template_id)
     return max(0.05, float(monster["hp"]) / dps)
 
 
@@ -137,7 +144,7 @@ def theoretical_boss_seconds(
     stats: HeroStats, region_id: int, penalty: dict[str, float] | None = None
 ) -> float:
     boss = boss_stats(region_id)
-    dps = theoretical_dps(stats, float(boss["defense"]), penalty)
+    dps = theoretical_dps(stats, float(boss["defense"]), penalty, mob_kind="boss")
     return max(0.05, float(boss["hp"]) / dps)
 
 

@@ -649,7 +649,7 @@ class TestEconomy:
         cost100 = next(
             int(d["unlockCost"]) for d in CONFIG.chests["drawCounts"] if int(d["count"]) == 100
         )
-        assert cost100 == 500_000_000
+        assert cost100 == 20_000_000
         await _set_gold(auth_client, session_factory, cost100)
         resp = await auth_client.post(f"{API}/chest/unlock", json={"count": 100})
         assert resp.status_code == 200, resp.text

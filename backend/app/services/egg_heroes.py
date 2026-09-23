@@ -61,6 +61,24 @@ def exp_bonus_pct(egg_id: str | None) -> float:
     return float(passive.get("value", 0.0) or 0.0) * 100.0
 
 
+def normal_mob_potency100_bonus(egg_id: str | None) -> float:
+    """彩蛋被动「战斗爽」：对战普通怪物时，威力恰为 100% 的技能威力加成（1 = 翻倍）。"""
+    egg = egg_def(egg_id)
+    passive = egg.get("passive") if egg else None
+    if not passive or passive.get("type") != "normalMobPotency100Bonus":
+        return 0.0
+    return max(0.0, float(passive.get("value", 0.0) or 0.0))
+
+
+def craft_extra_chance(egg_id: str | None) -> float:
+    """彩蛋被动「生产专家」：生产物品时额外多产出一件的概率（0-1）。"""
+    egg = egg_def(egg_id)
+    passive = egg.get("passive") if egg else None
+    if not passive or passive.get("type") != "craftExtraChance":
+        return 0.0
+    return min(1.0, max(0.0, float(passive.get("value", 0.0) or 0.0)))
+
+
 def charge_grants(egg_id: str | None, job_id: str) -> dict[str, int]:
     """该彩蛋英雄充能类技能：技能 id -> 每次释放叠加的计数。"""
     result: dict[str, int] = {}

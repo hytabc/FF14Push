@@ -30,8 +30,8 @@
   "drawCounts": [
     { "count": 1, "unlockCost": 0 },
     { "count": 10, "unlockCost": 0 },
-    { "count": 50, "unlockCost": 100000000 },
-    { "count": 100, "unlockCost": 500000000 }
+    { "count": 50, "unlockCost": 5000000 },
+    { "count": 100, "unlockCost": 20000000 }
   ],
   "chests": [
     { "id": "weaponBox", "name": "武器箱", "price": 100, "category": "weapon", "tier": "normal", "icon": "weapon" },

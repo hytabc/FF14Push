@@ -969,6 +969,96 @@ describe('彩蛋英雄技能', () => {
     expect(plain).toBeGreaterThan(0)
     expect(healAmount('aolongbaiban')).toBeCloseTo(plain * 2, 5)
   })
+
+  it('新增彩蛋：牙子 / 罗洁愛尔 / 明岚 配置正确', () => {
+    expect(data.eggHeroes.byId['yazi']).toMatchObject({
+      jobId: 'MCH',
+      attrBias: 'dex',
+      talent: 'legendary',
+      passive: { type: 'normalMobPotency100Bonus', value: 1 },
+    })
+    expect(data.eggHeroes.byId['luojieaier']).toMatchObject({
+      jobId: null,
+      attrBias: 'int',
+      talent: 'legendary',
+      passive: { type: 'craftExtraChance', value: 0.25 },
+    })
+    expect(data.eggHeroes.byId['minglan']).toMatchObject({
+      jobId: 'VPR',
+      attrBias: 'dex',
+      talent: 'legendary',
+    })
+    expect(eggSkillSet('yazi', 'MCH')).toBeNull()
+    expect(eggSkillSet('luojieaier', 'WAR')).toBeNull()
+    expect(eggSkillSet('minglan', 'VPR')?.skills.map((s) => s.id)).toEqual(['eggSleep'])
+    expect(eggSkillSet('minglan', 'MCH')).toBeNull()
+  })
+
+  it('「战斗爽」使威力 100% 的技能对战普通怪物时威力翻倍，对 BOSS 无效', () => {
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    try {
+      const stats = makeStats({
+        jobId: 'MCH',
+        attack: 1000,
+        critRatePct: 0,
+        dhRatePct: 0,
+        detBonusPct: 0,
+        termMods: {},
+      })
+      const dummy = (kind: MonsterStats['kind']): MonsterStats => ({
+        id: 'dummy',
+        regionId: 0,
+        name: '木桩',
+        templateId: 'normal',
+        kind,
+        hp: 1e12,
+        attack: 0,
+        defense: 0,
+        attackInterval: 1,
+        level: 100,
+        resistancePct: 0,
+      })
+      const hit = (eggId: string | null, kind: MonsterStats['kind']): number => {
+        const sim = new BattleSimulator({ stats, regionId: 1, eggId })
+        ;(sim as unknown as { setMonster(m: MonsterStats): void }).setMonster(dummy(kind))
+        const before = sim.monsterHp
+        forceCast(sim, 'splitShot')
+        return before - sim.monsterHp
+      }
+      const plain = hit(null, 'normal')
+      const doubled = hit('yazi', 'normal')
+      expect(plain).toBeGreaterThan(0)
+      expect(Math.abs(doubled - plain * 2)).toBeLessThanOrEqual(1)
+      expect(hit('yazi', 'boss')).toBe(hit(null, 'boss'))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('「睡觉」停止攻击 10s 并恢复满血满蓝，期间不释放技能', () => {
+    const stats = makeStats({ jobId: 'VPR', maxHp: 100000, maxMp: 500, attack: 1e6 })
+    const sim = new BattleSimulator({
+      stats,
+      raid: { bosses: [attacker], enrage: null },
+      eggId: 'minglan',
+    })
+    expect(sim.skills.map((s) => s.id)).toContain('eggSleep')
+    sim.start()
+    sim.heroHp = 1000
+    sim.heroMp = 0
+    forceCast(sim, 'eggSleep')
+    expect(sim.heroHp).toBe(100000)
+    expect(sim.heroMp).toBe(500)
+    expect(sim.sleepTimer).toBe(10)
+    expect(sim.cooldowns['eggSleep']).toBeGreaterThan(0)
+
+    const totalCasts = () => Object.values(sim.pendingSkillCasts).reduce((a, b) => a + b, 0)
+    const before = totalCasts()
+    sim.tick(9)
+    expect(totalCasts()).toBe(before)
+    sim.tick(2)
+    expect(totalCasts()).toBeGreaterThan(before)
+  })
 })
 
 describe('装备触发效果（proc）', () => {

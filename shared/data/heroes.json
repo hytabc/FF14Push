@@ -158,7 +158,7 @@
     "basicAttackRestorePct": 0.03
   },
   "$commentDeath": "复活等待与 BOSS 出现延迟。来源：PRD 地区 3.2 / 4.1",
-  "reviveDelaySeconds": 3,
+  "reviveDelaySeconds": 10,
   "bossSpawnDelaySeconds": 3,
   "$commentInitialHero": "初始英雄：三维平均、资质普通、均衡型。来源：PRD 招募 2.2。starterWeapon 为开局自动装备的起始武器（铁制长剑 → 骑士），否则重锚定后裸英雄会在新手阶段被卡死。",
   "initialHero": {

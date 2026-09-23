@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ActivitySession, DohDolProgress, Hero, Item, User
 from app.services import consumables, dohdol_util, drop_luck, luck_sources
+from app.services.egg_heroes import craft_extra_chance
 from app.services.game_config import CONFIG
 from app.services.grants import insert_items
 from app.services.item_factory import (
@@ -124,10 +125,15 @@ async def report_produce(
 
     # 制造品阶概率随进度提升：英雄等级 / 通关地区数 / 生产等级 / 专用装备品阶幸运 /
     # 制造品阶概率药食 / 远征·高难通关（难度加权首通）。
-    hero_level = await db.scalar(select(Hero.level).where(Hero.id == user.active_hero_id))
+    hero_row = (
+        await db.execute(select(Hero.level, Hero.egg_id).where(Hero.id == user.active_hero_id))
+    ).first()
+    hero_level = int(hero_row[0]) if hero_row else 0
+    # 彩蛋被动「生产专家」：生产物品时有概率额外多产出一件。
+    craft_extra = craft_extra_chance(hero_row[1] if hero_row else None)
     rarity_luck, _ = craft_rarity_luck(
         {
-            "heroLevel": int(hero_level or 0),
+            "heroLevel": hero_level,
             "clearedRegions": await drop_luck.cleared_region_count(db, user.id),
             "prodLevel": int(progress.level),
             "gearPct": equip.get("craftRarityPct", 0.0),
@@ -164,27 +170,36 @@ async def report_produce(
     equipment_out: list[dict[str, Any]] = []
     output = recipe["output"]
     # 经验按每件实际产出累计：装备按其抽到的品阶加权，材料 / 半成品 / 消耗品恒为 1.0。
+    # 彩蛋「生产专家」的额外产出只多给一件物品，不额外计入经验。
     xp_units = 0.0
     for _ in range(crafts):
         for entry in recipe["inputs"]:
             await dohdol_util.stack_consume(
                 db, user.id, dohdol_util.STACK_MATERIAL, entry["itemId"], int(entry["count"])
             )
+        # 彩蛋被动「生产专家」：命中则本次多产出一件（对全部产出类型生效）。
+        extra = 2 if craft_extra > 0 and rng.random() < craft_extra else 1
         if output["kind"] == "equipment":
             crafted = generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
             xp_units += craft_xp_rarity_multiplier(crafted["rarity"])
             equipment_out.append(crafted)
+            if extra > 1:
+                equipment_out.append(
+                    generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
+                )
         elif output["kind"] == "consumable":
             spec = dohdol_util.consumable_def(output["itemId"])
             kind = spec["kind"] if spec else "potion"
-            await dohdol_util.stack_add(db, user.id, kind, output["itemId"], int(output.get("count", 1)))
-            material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + int(output.get("count", 1))
+            count = int(output.get("count", 1)) * extra
+            await dohdol_util.stack_add(db, user.id, kind, output["itemId"], count)
+            material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
             xp_units += 1.0
         else:
+            count = int(output.get("count", 1)) * extra
             await dohdol_util.stack_add(
-                db, user.id, dohdol_util.STACK_MATERIAL, output["itemId"], int(output.get("count", 1))
+                db, user.id, dohdol_util.STACK_MATERIAL, output["itemId"], count
             )
-            material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + int(output.get("count", 1))
+            material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
             xp_units += 1.0
 
     if equipment_out:

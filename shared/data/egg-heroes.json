@@ -1,7 +1,7 @@
 {
   "$comment": "彩蛋英雄：共用 eggChance 出现概率，独立于 talentWeights / ancient 抽取，不影响原英雄池概率。命中后再从 heroes 中随机取一位。",
-  "$commentSkill": "技能字段与 jobs.json 的 SkillDef 一致。replaceSkills=true 时该职业只拥有这些技能；false 时在职业技能之外追加。新增 effect：skillDamageBuff（技能威力 +value，持续 duration 秒）、immunity（免疫下 value 次伤害）、doublePowerCharges（接下来 value 次技能威力翻倍）、doubleRewardCharges（接下来 value 个怪物经验/金币翻倍）、mpCostHalveCharges（接下来 value 次技能释放的魔力消耗减半）、cdResetAll（立即恢复全部技能冷却时间）、healingBuff（自身治疗量 +value，持续 duration 秒）。",
-  "$commentPassive": "passive 为常驻被动：chestLuckBonus 表示装备品阶高品质概率 +value（luck 系数）；expGainBonus 表示获取经验倍率 +value（如 0.25 = +25%）。",
+  "$commentSkill": "技能字段与 jobs.json 的 SkillDef 一致。replaceSkills=true 时该职业只拥有这些技能；false 时在职业技能之外追加。新增 effect：skillDamageBuff（技能威力 +value，持续 duration 秒）、immunity（免疫下 value 次伤害）、doublePowerCharges（接下来 value 次技能威力翻倍）、doubleRewardCharges（接下来 value 个怪物经验/金币翻倍）、mpCostHalveCharges（接下来 value 次技能释放的魔力消耗减半）、cdResetAll（立即恢复全部技能冷却时间）、healingBuff（自身治疗量 +value，持续 duration 秒）、sleep（停止攻击 value 秒，期间不释放任何技能）。",
+  "$commentPassive": "passive 为常驻被动：chestLuckBonus 表示装备品阶高品质概率 +value（luck 系数）；expGainBonus 表示获取经验倍率 +value（如 0.25 = +25%）；normalMobPotency100Bonus 表示对战普通怪物时威力恰为 100% 的技能威力 +value（1 = 翻倍，对精英/BOSS 不生效）；craftExtraChance 表示生产物品时有 value 概率额外多产出一件（0.25 = 25%）。",
   "eggChance": 0.005,
   "heroes": [
     {
@@ -120,6 +120,40 @@
       "desc": "使用贤者时追加「术道恒久」：开启后提高自身 100% 治疗量，持续 10s（CD 120s）",
       "skills": [
         { "id": "eggEternalWay", "name": "术道恒久", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "healingBuff", "value": 1, "duration": 10 }] }
+      ]
+    },
+    {
+      "id": "yazi",
+      "name": "牙子",
+      "talent": "legendary",
+      "attrBias": "dex",
+      "jobId": "MCH",
+      "replaceSkills": false,
+      "desc": "被动「战斗爽」：使用机工士对战普通怪物时，威力为 100% 的技能威力翻倍",
+      "skills": [],
+      "passive": { "type": "normalMobPotency100Bonus", "value": 1 }
+    },
+    {
+      "id": "luojieaier",
+      "name": "罗洁愛尔",
+      "talent": "legendary",
+      "attrBias": "int",
+      "jobId": null,
+      "replaceSkills": false,
+      "desc": "被动「生产专家」：生产物品时有 25% 概率额外多产出一件（任意职业）",
+      "skills": [],
+      "passive": { "type": "craftExtraChance", "value": 0.25 }
+    },
+    {
+      "id": "minglan",
+      "name": "明岚",
+      "talent": "legendary",
+      "attrBias": "dex",
+      "jobId": "VPR",
+      "replaceSkills": false,
+      "desc": "使用蝰蛇剑士时追加「睡觉」：开启后停止攻击 10s 并恢复全部生命值与魔力（CD 120s）",
+      "skills": [
+        { "id": "eggSleep", "name": "睡觉", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "physical", "target": "self", "priority": 1, "effects": [{ "type": "sleep", "value": 10 }, { "type": "fullHeal" }, { "type": "mpRestore", "value": 1 }] }
       ]
     }
   ]

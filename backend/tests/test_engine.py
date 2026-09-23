@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from dataclasses import replace
 
 import pytest
 
@@ -35,7 +36,12 @@ from app.services.loot import (
 )
 from app.services.drop_luck import chest_luck_max
 from app.services.combat_model import theoretical_dps
-from app.services.egg_heroes import exp_bonus_pct, skills_for
+from app.services.egg_heroes import (
+    craft_extra_chance,
+    exp_bonus_pct,
+    normal_mob_potency100_bonus,
+    skills_for,
+)
 from app.services.recruiting import (
     ancient_pity_count,
     generate_candidate,
@@ -895,6 +901,9 @@ class TestEggHeroAdditions:
             "qingfeng": ("PLD", "str"),
             "meiruoyu": ("DRG", "str"),
             "aolongbaiban": ("SGE", "int"),
+            "yazi": ("MCH", "dex"),
+            "luojieaier": (None, "int"),
+            "minglan": ("VPR", "dex"),
         }
         for hero_id, (job_id, bias) in expected.items():
             hero = by_id[hero_id]
@@ -908,6 +917,39 @@ class TestEggHeroAdditions:
             assert skills_for(hero_id, job_id) is not None
             assert skills_for(hero_id, "adventurer") is None
         assert skills_for("liangshisi", "WAR") is None
+
+    def test_normal_mob_potency100_bonus(self) -> None:
+        assert normal_mob_potency100_bonus("yazi") == pytest.approx(1.0)
+        assert normal_mob_potency100_bonus("liangshisi") == 0.0
+        assert normal_mob_potency100_bonus(None) == 0.0
+
+    def test_craft_extra_chance(self) -> None:
+        assert craft_extra_chance("luojieaier") == pytest.approx(0.25)
+        assert craft_extra_chance("yazi") == 0.0
+        assert craft_extra_chance(None) == 0.0
+
+    def test_minglan_skill_bound_to_viper(self) -> None:
+        result = skills_for("minglan", "VPR")
+        assert result is not None
+        skills, replace_skills = result
+        assert [s["id"] for s in skills] == ["eggSleep"]
+        assert replace_skills is False
+        assert skills_for("minglan", "MCH") is None
+
+    def test_yazi_doubles_100_potency_only_vs_normal_mobs(self) -> None:
+        """「战斗爽」只在对普通怪物时把威力 100% 的技能翻倍，精英 / BOSS 不受影响。"""
+        bare = compute_stats(FakeHero(level=50), [])
+        mch = replace(bare, job_id="MCH")
+        yazi = replace(mch, egg_id="yazi")
+
+        normal_plain = theoretical_dps(mch, 0.0, None, mob_kind="normal")
+        normal_doubled = theoretical_dps(yazi, 0.0, None, mob_kind="normal")
+        assert normal_doubled > normal_plain
+
+        for kind in ("elite", "boss"):
+            assert theoretical_dps(yazi, 0.0, None, mob_kind=kind) == pytest.approx(
+                theoretical_dps(mch, 0.0, None, mob_kind=kind)
+            )
 
 
 class TestReportDoubleCharges:

@@ -19,7 +19,7 @@ import {
   skillDamageMultiplier,
   type SkillLike,
 } from './combat'
-import { eggSkillSet } from './egg'
+import { eggNormalMobPotency100Bonus, eggSkillSet } from './egg'
 import {
   bossStats,
   eliteChance,
@@ -134,6 +134,8 @@ export class BattleSimulator {
   floating: FloatingText[] = []
   cooldowns: Record<string, number> = {}
   gcd = 0
+  /** 彩蛋技能「睡觉」剩余停止攻击时间（秒）：>0 时不释放任何技能。 */
+  sleepTimer = 0
   spawnTimer = 0
   bossTimer = 0
   deathTimer = 0
@@ -153,6 +155,8 @@ export class BattleSimulator {
 
   private baseStats: HeroStats
   private readonly eggId: string | null
+  /** 彩蛋被动「战斗爽」：对战普通怪物时，威力恰为 100% 的技能威力加成（0 表示无）。 */
+  private readonly normalMobPotency100Bonus: number
   private buffs: ActiveBuff[] = []
   private dots: Array<{ remaining: number; potency: number; tick: number }> = []
   /** BOSS 施加给英雄的持续伤害（高难副本）。 */
@@ -174,6 +178,7 @@ export class BattleSimulator {
   }) {
     this.baseStats = options.stats
     this.eggId = options.eggId ?? null
+    this.normalMobPotency100Bonus = eggNormalMobPotency100Bonus(this.eggId)
     this.isRaid = options.raid !== undefined
     this.raidEnrage = options.raid?.enrage ?? null
     this.killsRequired = options.killsRequired ?? 0
@@ -354,6 +359,7 @@ export class BattleSimulator {
     if (this.phase === 'idle' || this.phase === 'cleared') return
 
     this.gcd = Math.max(0, this.gcd - dt)
+    this.sleepTimer = Math.max(0, this.sleepTimer - dt)
     for (const key of Object.keys(this.cooldowns)) {
       this.cooldowns[key] = Math.max(0, this.cooldowns[key] - dt)
     }
@@ -493,7 +499,7 @@ export class BattleSimulator {
   }
 
   private castIfReady(): void {
-    if (this.gcd > 0) return
+    if (this.gcd > 0 || this.sleepTimer > 0) return
     const ready = this.skills.filter((skill) => (this.cooldowns[skill.id] ?? 0) <= 0)
     if (ready.length === 0) return
 
@@ -553,6 +559,14 @@ export class BattleSimulator {
         mult *= 2
         this.doublePowerCharges -= 1
         this.pushLog(`${skill.name} 触发「割草」，威力翻倍`, 'skill')
+      }
+      // 彩蛋被动「战斗爽」：对战普通怪物时，威力恰为 100% 的技能威力翻倍。
+      if (
+        this.normalMobPotency100Bonus > 0 &&
+        skill.potency === 100 &&
+        this.monster.kind === 'normal'
+      ) {
+        mult *= 1 + this.normalMobPotency100Bonus
       }
       const roll = rollDamage(
         stats,
@@ -707,6 +721,10 @@ export class BattleSimulator {
         case 'healingBuff':
           this.buffs.push({ stat: 'healingBuff', value, remaining: duration, name: skill.name })
           this.pushLog(`治疗量 +${Math.round(value * 100)}%${duration > 0 ? `（${duration}s）` : ''}`, 'skill')
+          break
+        case 'sleep':
+          this.sleepTimer = Math.max(this.sleepTimer, value)
+          this.pushLog(`进入睡眠，停止攻击 ${value}s`, 'skill')
           break
         default:
           if (duration > 0 && (type.endsWith('Buff') || type === 'damageReduction')) {
