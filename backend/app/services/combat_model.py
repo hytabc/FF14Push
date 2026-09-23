@@ -20,7 +20,14 @@ from app.services.stats import HeroStats, skill_cooldown, skill_damage_multiplie
 
 GCD = float(CONFIG.combat["gcdSeconds"])
 BASIC_ATTACK_CD = float(CONFIG.combat["basicAttackCd"])
+BASIC_ATTACK_POTENCY = 100.0
+MAX_ATTACK_SPEED_FACTOR = 2.0
 ADVENTURER_SKILL = {"id": "attack", "name": "普攻", "cd": BASIC_ATTACK_CD, "potency": 100, "damageType": "physical"}
+
+
+def attack_speed_factor(stats: HeroStats) -> float:
+    """攻速系数 = 1 + 攻击速度% / 100，上限 2.0（与前端 combat.ts:attackSpeedFactor 一致）。"""
+    return min(MAX_ATTACK_SPEED_FACTOR, 1.0 + max(0.0, stats.attack_speed_pct) / 100.0)
 
 
 def resolve_job_skills(stats: HeroStats) -> list[dict[str, Any]]:
@@ -45,19 +52,22 @@ def proc_dps_bonus(stats: HeroStats, base_dps: float, attack_rate: float) -> flo
     """装备触发效果（proc）的期望每秒收益。
 
     与前端 `battle.ts` 的实际结算口径对应：
-      - 灼烧：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
+      - 灼烧 / 中毒：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
       - 疾风：命中概率获得限时攻速，等价于按攻速加成比例提升输出。
     """
     cfg = CONFIG.combat.get("proc") or {}
     power = stats.power_attack
     extra = 0.0
 
-    burn = cfg.get("burn")
-    if burn:
-        chance = max(0.0, stats.term_mods.get("burnProcPct", 0.0)) / 100.0
+    # 灼烧 / 中毒：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
+    for key, stat_key in (("burn", "burnProcPct"), ("poison", "poisonProcPct")):
+        dot = cfg.get(key)
+        if not dot:
+            continue
+        chance = max(0.0, stats.term_mods.get(stat_key, 0.0)) / 100.0
         if chance > 0:
-            uptime = min(1.0, chance * attack_rate * float(burn["durationSec"]))
-            extra += uptime * power * float(burn["potencyPct"]) / 100.0
+            uptime = min(1.0, chance * attack_rate * float(dot["durationSec"]))
+            extra += uptime * power * float(dot["potencyPct"]) / 100.0
 
     haste = cfg.get("haste")
     if haste:
@@ -100,16 +110,27 @@ def theoretical_dps(
         potency_per_sec += potency / cd
         max_potency = max(max_potency, potency)
 
-    # 受 GCD 约束。攻速只在客户端模拟里缩短 GCD 与普攻间隔；本模型只计技能循环、
-    # 本就不含普攻输出，因此不随攻速放大 DPS，以保持与既有战力标定一致。
+    # 技能受 GCD 约束。攻速只在客户端模拟里缩短 GCD；技能循环不随攻速放大。
     gcd_cap = 1.0 / GCD
     if cast_rate > gcd_cap:
         potency_per_sec = potency_per_sec * (gcd_cap / cast_rate)
         cast_rate = gcd_cap
     potency_per_sec = min(potency_per_sec, gcd_cap * max_potency)
 
-    attack_rate = max(cast_rate, 1.0 / BASIC_ATTACK_CD)
+    # 装备「双重施法」：概率额外释放一次，第二次不占 GCD，故在 GCD 夹取之后放大技能输出与出手频率。
+    double_cast = 1.0 + max(0.0, stats.term_mods.get("doubleCastPct", 0.0)) / 100.0
+    potency_per_sec *= double_cast
+
+    # 普攻与技能完全独立：按自身冷却出手（受攻速缩短），不占用 GCD、也不受技能可用性影响。
+    # 普攻为物理伤害，取「攻击力」而非 power_attack（法系职业普攻同样吃攻击力）。
+    basic_cd = max(0.2, skill_cooldown(stats, BASIC_ATTACK_CD) / attack_speed_factor(stats))
+    basic_rate = 1.0 / basic_cd
+    # 彩蛋「战斗爽」对威力 100% 的普攻同样生效。
+    basic_potency_bonus = 1.0 + potency_bonus
+
+    attack_rate = cast_rate * double_cast + basic_rate
     gross = power * (potency_per_sec / 100.0) * mult * skill_mult
+    gross += stats.attack * (BASIC_ATTACK_POTENCY / 100.0) * basic_potency_bonus * basic_rate * mult * skill_mult
     mitigated = max(gross * 0.10, gross - target_defense * attack_rate)
     # 彩蛋技能增伤按平均覆盖计入，避免合法的高输出上报被击杀额度误判
     dps = max(1.0, mitigated) * dps_uplift(stats.egg_id)

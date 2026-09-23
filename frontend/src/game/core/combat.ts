@@ -150,12 +150,14 @@ export function estimateDps(
   let castRate = 0
   let maxPotency = 0
   for (const skill of skills) {
+    // 普攻单独建模（与技能完全独立），避免冒险者职业重复计入。
+    if (skill.id === ADVENTURER_SKILL.id) continue
     const cd = Math.max(0.5, skillCooldown(stats, skill.cd))
     castRate += 1 / cd
     potencyPerSec += skill.potency / cd
     maxPotency = Math.max(maxPotency, skill.potency)
   }
-  // 与后端 combat_model 一致：模型只计技能循环，不随攻速放大 DPS（攻速在 battle.ts 中生效）
+  // 与后端 combat_model 一致：模型只计技能循环，不随攻速放大技能 DPS（攻速在 battle.ts 中缩短 GCD）
   const gcdCap = 1 / gcd
   if (castRate > gcdCap) {
     potencyPerSec *= gcdCap / castRate
@@ -163,8 +165,21 @@ export function estimateDps(
   }
   potencyPerSec = Math.min(potencyPerSec, gcdCap * maxPotency)
 
-  const attackRate = Math.max(castRate, 1 / (data.combat.basicAttackCd as number))
-  const gross = powerAttack(stats) * (potencyPerSec / 100) * damageMult * mult
+  // 装备「双重施法」：概率额外释放一次，第二次不占 GCD，故在 GCD 夹取之后放大技能输出与出手频率。
+  const doubleCast = 1 + Math.max(0, stats.termMods.doubleCastPct ?? 0) / 100
+  potencyPerSec *= doubleCast
+
+  // 普攻与技能完全独立：按自身冷却出手（受攻速缩短），不占用 GCD / 不受技能可用性影响。
+  const basicCd = Math.max(
+    0.2,
+    skillCooldown(stats, data.combat.basicAttackCd as number) / attackSpeedFactor(stats),
+  )
+  const basicRate = 1 / basicCd
+
+  const attackRate = castRate * doubleCast + basicRate
+  const gross =
+    powerAttack(stats) * (potencyPerSec / 100) * damageMult * mult +
+    stats.attack * basicRate * damageMult * mult
   let dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * attackRate))
   dps += procDpsBonus(stats, dps, attackRate)
   if (!penalty) return dps
@@ -180,17 +195,20 @@ export function estimateDps(
 export function procDpsBonus(stats: HeroStats, baseDps: number, attackRate: number): number {
   const proc = (data.combat.proc ?? {}) as {
     burn?: { potencyPct: number; durationSec: number; tickSec: number }
+    poison?: { potencyPct: number; durationSec: number; tickSec: number }
     haste?: { attackSpeedPct: number; durationSec: number }
   }
   const power = powerAttack(stats)
   let extra = 0
-  const burn = proc.burn
-  if (burn) {
-    const chance = Math.max(0, stats.termMods.burnProcPct ?? 0) / 100
-    if (chance > 0) {
-      const uptime = Math.min(1, chance * attackRate * burn.durationSec)
-      extra += uptime * power * (burn.potencyPct / 100)
-    }
+  // 灼烧 / 中毒：命中概率触发，每秒造成 攻击力 × potencyPct%（不吃增伤，与 battle.ts:tickDots 一致）。
+  const dotProcs: Array<[typeof proc.burn, number]> = [
+    [proc.burn, Math.max(0, stats.termMods.burnProcPct ?? 0)],
+    [proc.poison, Math.max(0, stats.termMods.poisonProcPct ?? 0)],
+  ]
+  for (const [dot, chancePct] of dotProcs) {
+    if (!dot || chancePct <= 0) continue
+    const uptime = Math.min(1, (chancePct / 100) * attackRate * dot.durationSec)
+    extra += uptime * power * (dot.potencyPct / 100)
   }
   const haste = proc.haste
   if (haste) {

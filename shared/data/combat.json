@@ -67,10 +67,15 @@
   "$commentSkill": "技能释放规则。来源：PRD 2.6.1",
   "gcdSeconds": 1.5,
   "basicAttackCd": 3,
-  "$commentProc": "装备触发效果（proc）：触发概率由词条值承载（burnProcPct / hasteProcPct），效果量在此定义。前端 battle.ts 实际结算，后端 theoretical_dps 计入期望值以免合法上报被击杀额度拒绝。攻击速度按 (1 + attackSpeedPct/100) 提升普攻频率并缩短 GCD，sks 副属性/迅捷词条/疾风触发均据此生效。",
+  "$commentProc": "装备触发效果（proc）：触发概率由词条值承载（burnProcPct / hasteProcPct / poisonProcPct / witherProcPct / blindProcPct / hpRegenProcPct / mpRegenProcPct），效果量在此定义。前端 battle.ts 实际结算，后端 theoretical_dps 计入期望值（burn / poison / haste / doubleCast）以免合法上报被击杀额度拒绝；wither（减攻）/ blind（降命中）/ 恢复类只影响生存与资源，不进入 DPS 模型。攻击速度按 (1 + attackSpeedPct/100) 提升普攻频率并缩短 GCD，sks 副属性/迅捷词条/疾风触发均据此生效。",
   "proc": {
     "burn": { "potencyPct": 40, "durationSec": 6, "tickSec": 1 },
-    "haste": { "attackSpeedPct": 15, "durationSec": 8 }
+    "haste": { "attackSpeedPct": 15, "durationSec": 8 },
+    "poison": { "potencyPct": 30, "durationSec": 6, "tickSec": 1 },
+    "wither": { "attackDownPct": 20, "durationSec": 8 },
+    "blind": { "hitDownPct": 25, "durationSec": 8 },
+    "hpRegenBuff": { "maxHpPctPerSec": 0.02, "durationSec": 6 },
+    "mpRegenBuff": { "maxMpPctPerSec": 0.03, "durationSec": 6 }
   },
   "$commentDetBase": "PRD 3.1：Lv.100 时信念公式使用基准 390，而暴击/直击为 420，故此处对信念基准做偏移。",
   "detBaseAdjust": -30,

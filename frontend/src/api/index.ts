@@ -2,6 +2,8 @@ import type {
   BattleReportResponse,
   BattleSessionStart,
   CraftPlan,
+  FriendTransferResult,
+  FriendsData,
   GameState,
   Item,
   ItemTag,
@@ -39,6 +41,7 @@ export const api = {
         gold: number
         hasHero: boolean
         isAdmin: boolean
+        friendCode: string
       }>('/auth/me')
     ).data
   },
@@ -274,6 +277,39 @@ export const api = {
     return (await http.get<PlayerProfile>(`/ranking/players/${userId}`)).data
   },
 
+  // ---------------------------------------------------------------- 好友系统
+  async friends() {
+    return (await http.get<FriendsData>('/friends')).data
+  },
+
+  async friendHeartbeat() {
+    return (
+      await http.get<{ serverTime: string; heartbeatSeconds: number; onlineSeconds: number }>(
+        '/friends/heartbeat',
+      )
+    ).data
+  },
+
+  async friendRequest(code: string) {
+    return (await http.post<{ status: string; message: string }>('/friends/request', { code })).data
+  },
+
+  async friendAccept(userId: number) {
+    return (await http.post<{ status: string; message: string }>('/friends/accept', { userId })).data
+  },
+
+  async friendReject(userId: number) {
+    return (await http.post<{ status: string; message: string }>('/friends/reject', { userId })).data
+  },
+
+  async friendRemove(userId: number) {
+    return (await http.post<{ status: string; message: string }>('/friends/remove', { userId })).data
+  },
+
+  async friendTransfer(userId: number, amount: number) {
+    return (await http.post<FriendTransferResult>('/friends/transfer', { userId, amount })).data
+  },
+
   async tutorial() {
     return (await http.get<TutorialState>('/tutorial')).data
   },
@@ -466,5 +502,67 @@ export const api = {
         name: string
       }>('/dohdol/sell', { kind, itemId, count })
     ).data
+  },
+
+  // ---------------------------------------------------------------- 市场交易板
+  async marketListings(params: {
+    kind?: string
+    rarity?: string
+    category?: string
+    q?: string
+    sort?: string
+    page?: number
+    pageSize?: number
+  } = {}) {
+    return (
+      await http.get<{
+        listings: import('@/game/types').MarketListing[]
+        total: number
+        page: number
+        pageSize: number
+        feePct: number
+        listingDays: number
+        maxActiveListings: number
+      }>('/market/listings', { params })
+    ).data
+  },
+
+  async marketMine() {
+    return (
+      await http.get<{
+        active: import('@/game/types').MarketListing[]
+        closed: import('@/game/types').MarketListing[]
+        activeCount: number
+        maxActiveListings: number
+        feePct: number
+      }>('/market/mine')
+    ).data
+  },
+
+  /** 上架：装备（type=equipment）与堆叠物（type=stack）可混合提交。 */
+  async marketList(entries: import('@/game/types').MarketListEntry[]) {
+    return (
+      await http.post<{
+        gold: number
+        listings: import('@/game/types').MarketListing[]
+        activeCount: number
+      }>('/market/list', { entries })
+    ).data
+  },
+
+  async marketBuy(listingId: number) {
+    return (
+      await http.post<{
+        gold: number
+        total: number
+        fee: number
+        sellerGold: number
+        item: Item | null
+      }>('/market/buy', { listingId })
+    ).data
+  },
+
+  async marketCancel(listingId: number) {
+    return (await http.post<{ gold: number; message: string }>('/market/cancel', { listingId })).data
   },
 }

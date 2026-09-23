@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.main import app
 from app.models import RaidSession, BattleSession, Hero, Item, ItemTag, RegionProgress, TavernState, User
 from app.services.admin import ensure_admin_user
+from app.services.economy import enchant_cost, refine_cost
 from app.services.game_config import CONFIG
 from app.services.ranking import refresh_all_rankings
 from app.services.recruiting import recruit_cost
@@ -21,11 +22,6 @@ API = "/api/v1"
 # 开局赠送并装备的起始武器（见 auth._bootstrap_new_user）
 STARTER_BASE_ID = str(CONFIG.heroes["initialHero"]["starterWeapon"])
 
-CONFIG_REFINE_COST = {r: int(CONFIG.rarities[r]["refineCost"]) for r in CONFIG.rarity_order}
-CONFIG_ENCHANT_COST = {r: int(CONFIG.rarities[r]["enchantCost"]) for r in CONFIG.rarity_order}
-
-# 重造 / 附魔单次消耗上限（需求：控制在 5 万以内）
-MAX_REFINE_OR_ENCHANT_COST = 50_000
 
 
 async def _gold(client) -> int:
@@ -928,17 +924,18 @@ class TestEconomy:
         item = opened["items"][0]
         await _set_gold(auth_client, session_factory, 10_000_000)
 
-        base = CONFIG_REFINE_COST[item["rarity"]]
-        growth = float(CONFIG.economy["refine"]["costGrowthPerRefine"])
+        rarity, level = item["rarity"], item["levelReq"]
+        first_cost = refine_cost(rarity, 0, "random", level)
+        second_cost = refine_cost(rarity, 1, "random", level)
 
         first = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"]})
         assert first.status_code == 200, first.text
-        assert first.json()["cost"] == base
-        assert first.json()["after"]["refineCost"] == base + int(base * growth)
+        assert first.json()["cost"] == first_cost
+        assert first.json()["after"]["refineCost"] == second_cost
 
         second = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"]})
         assert second.status_code == 200, second.text
-        assert second.json()["cost"] == base + int(base * growth)
+        assert second.json()["cost"] == second_cost
         assert second.json()["cost"] > first.json()["cost"]
 
     async def test_refine_rerolls_attrs_and_terms(self, auth_client, session_factory) -> None:
@@ -950,7 +947,7 @@ class TestEconomy:
         resp = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"]})
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert body["cost"] == CONFIG_REFINE_COST[item["rarity"]]
+        assert body["cost"] == refine_cost(item["rarity"], 0, "random", item["levelReq"])
         assert body["after"]["rarity"] == item["rarity"]
         assert body["after"]["refineCount"] == 1
         # 词条会被重掷（数量/种类/数值），但仍是合法词条结构
@@ -968,7 +965,7 @@ class TestEconomy:
         )
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert body["cost"] == CONFIG_ENCHANT_COST[item["rarity"]]
+        assert body["cost"] == enchant_cost(item["rarity"], "random", item["levelReq"])
         assert body["after"]["enchantCount"] == 1
         assert 0 <= len(body["after"]["terms"]) <= 4
 
@@ -995,8 +992,7 @@ class TestEconomy:
         item = opened["items"][0]
         await _set_gold(auth_client, session_factory, 50_000_000)
 
-        base = CONFIG_REFINE_COST[item["rarity"]]
-        mult = float(CONFIG.economy["refine"]["basedOnCurrentCostMultiplier"])
+        expected = refine_cost(item["rarity"], 0, "basedOnCurrent", item["levelReq"])
 
         for index in range(5):
             resp = await auth_client.post(
@@ -1005,7 +1001,7 @@ class TestEconomy:
             assert resp.status_code == 200, resp.text
             body = resp.json()
             if index == 0:
-                assert body["cost"] == int(base * mult)
+                assert body["cost"] == expected
             after = body["after"]
             # 种类不变；普通品质数值仍落在其可达区间内
             assert [a["attr"] for a in after["baseAttrs"]] == [a["attr"] for a in item["baseAttrs"]]
@@ -1020,13 +1016,12 @@ class TestEconomy:
         item = opened["items"][0]
         await _set_gold(auth_client, session_factory, 50_000_000)
 
-        base = CONFIG_ENCHANT_COST[item["rarity"]]
-        mult = float(CONFIG.economy["enchant"]["basedOnCurrentCostMultiplier"])
+        expected = enchant_cost(item["rarity"], "basedOnCurrent", item["levelReq"])
         resp = await auth_client.post(
             f"{API}/economy/enchant", json={"itemId": item["id"], "mode": "basedOnCurrent"}
         )
         assert resp.status_code == 200, resp.text
-        assert resp.json()["cost"] == int(base * mult)
+        assert resp.json()["cost"] == expected
 
     async def test_refine_times_charges_cumulative_and_counts(self, auth_client, session_factory) -> None:
         """一次请求连做多次重造：按逐次递增价累计，次数一次加满。"""
@@ -1034,9 +1029,9 @@ class TestEconomy:
         item = opened["items"][0]
         await _set_gold(auth_client, session_factory, 50_000_000)
 
-        base = CONFIG_REFINE_COST[item["rarity"]]
-        growth = float(CONFIG.economy["refine"]["costGrowthPerRefine"])
-        expected = sum(int(base * (1.0 + growth * index)) for index in range(10))
+        expected = sum(
+            refine_cost(item["rarity"], index, "random", item["levelReq"]) for index in range(10)
+        )
 
         resp = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"], "times": 10})
         assert resp.status_code == 200, resp.text
@@ -1051,9 +1046,10 @@ class TestEconomy:
         opened = await _open_one(auth_client, session_factory)
         item = opened["items"][0]
 
-        from app.services.economy import refine_cost
-
-        afford = refine_cost(item["rarity"], 0) + refine_cost(item["rarity"], 1)
+        level = item["levelReq"]
+        afford = refine_cost(item["rarity"], 0, "random", level) + refine_cost(
+            item["rarity"], 1, "random", level
+        )
         await _set_gold(auth_client, session_factory, afford)
 
         resp = await auth_client.post(f"{API}/economy/refine", json={"itemId": item["id"], "times": 10})
@@ -1079,7 +1075,7 @@ class TestEconomy:
         opened = await _open_one(auth_client, session_factory)
         item = opened["items"][0]
         await _set_gold(auth_client, session_factory, 50_000_000)
-        unit = CONFIG_ENCHANT_COST[item["rarity"]]
+        unit = enchant_cost(item["rarity"], "random", item["levelReq"])
 
         resp = await auth_client.post(f"{API}/economy/enchant", json={"itemId": item["id"], "times": 5})
         assert resp.status_code == 200, resp.text

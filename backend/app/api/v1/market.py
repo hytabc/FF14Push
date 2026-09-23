@@ -1,0 +1,235 @@
+"""市场交易板接口：浏览 / 我的寄售 / 上架 / 购买 / 下架。"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, Query, Request, status
+from sqlalchemy import func, select
+
+from app.core.deps import CurrentUser, DbSession, client_ip, guard_rate
+from app.models import Item, MarketListing, User
+from app.models.base import utcnow
+from app.models.market import STATUS_ACTIVE, STATUS_CANCELLED, STATUS_EXPIRED, STATUS_SOLD
+from app.schemas.game import MarketBuyRequest, MarketCancelRequest, MarketListRequest
+from app.services import dohdol_util, market
+
+router = APIRouter(prefix="/market", tags=["market"])
+
+_SORTS = {
+    "price_asc": (MarketListing.unit_price.asc(), MarketListing.id.asc()),
+    "price_desc": (MarketListing.unit_price.desc(), MarketListing.id.asc()),
+    "time_desc": (MarketListing.created_at.desc(), MarketListing.id.desc()),
+}
+
+
+def _active_conditions() -> list:
+    return [
+        MarketListing.status == STATUS_ACTIVE,
+        MarketListing.expires_at > utcnow(),
+        User.banned.is_(False),
+    ]
+
+
+@router.get("/listings")
+async def listings(
+    db: DbSession,
+    user: CurrentUser,
+    kind: str = Query("all"),
+    rarity: str | None = Query(None),
+    category: str | None = Query(None),
+    q: str | None = Query(None, max_length=32),
+    sort: str = Query("time_desc"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=50),
+) -> dict:
+    await market.expire_listings(db)
+
+    conditions = _active_conditions() + [MarketListing.seller_id != user.id]
+    if kind and kind != "all":
+        if kind == "consumable":
+            conditions.append(MarketListing.kind.in_(("potion", "food")))
+        else:
+            conditions.append(MarketListing.kind == kind)
+    if rarity:
+        conditions.append(MarketListing.rarity == rarity)
+    if category:
+        conditions.append(MarketListing.category == category)
+    if q:
+        conditions.append(MarketListing.name.ilike(f"%{q}%"))
+
+    total = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(MarketListing)
+                .join(User, User.id == MarketListing.seller_id)
+                .where(*conditions)
+            )
+        ).scalar_one()
+    )
+
+    order = _SORTS.get(sort, _SORTS["time_desc"])
+    rows = (
+        await db.execute(
+            select(MarketListing, User.nickname)
+            .join(User, User.id == MarketListing.seller_id)
+            .where(*conditions)
+            .order_by(*order)
+            .offset((page - 1) * pageSize)
+            .limit(pageSize)
+        )
+    ).all()
+
+    return {
+        "listings": [market.listing_to_dict(row, nickname) for row, nickname in rows],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+        "feePct": market.fee_pct(),
+        "listingDays": market.listing_days(),
+        "maxActiveListings": market.max_active_listings(),
+    }
+
+
+@router.get("/mine")
+async def mine(db: DbSession, user: CurrentUser) -> dict:
+    await market.expire_listings(db)
+
+    active = (
+        await db.execute(
+            select(MarketListing)
+            .where(
+                MarketListing.seller_id == user.id,
+                MarketListing.status == STATUS_ACTIVE,
+                MarketListing.expires_at > utcnow(),
+            )
+            .order_by(MarketListing.created_at.desc(), MarketListing.id.desc())
+        )
+    ).scalars().all()
+
+    closed = (
+        await db.execute(
+            select(MarketListing)
+            .where(
+                MarketListing.seller_id == user.id,
+                MarketListing.status.in_((STATUS_SOLD, STATUS_CANCELLED, STATUS_EXPIRED)),
+            )
+            .order_by(MarketListing.closed_at.desc(), MarketListing.id.desc())
+            .limit(50)
+        )
+    ).scalars().all()
+
+    return {
+        "active": [market.listing_to_dict(row, user.nickname) for row in active],
+        "closed": [market.listing_to_dict(row, user.nickname) for row in closed],
+        "activeCount": len(active),
+        "maxActiveListings": market.max_active_listings(),
+        "feePct": market.fee_pct(),
+    }
+
+
+@router.post("/list")
+async def create_listings(
+    payload: MarketListRequest, request: Request, db: DbSession, user: CurrentUser
+) -> dict:
+    await guard_rate(db, "market_list", str(user.id), 30, 60, "上架过于频繁，请稍后再试")
+
+    lo, hi = market.min_price(), market.max_price()
+    for entry in payload.entries:
+        if not (lo <= entry.unitPrice <= hi):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"单价需在 {lo} ~ {hi} 之间",
+            )
+
+    active = await market.count_active(db, user.id)
+    if active + len(payload.entries) > market.max_active_listings():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"在售寄售单已达上限（{market.max_active_listings()}）",
+        )
+
+    ip = client_ip(request)
+    created: list[MarketListing] = []
+    for entry in payload.entries:
+        if entry.type == "equipment":
+            if entry.itemId is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="缺少装备 id")
+            item = (
+                await db.execute(
+                    select(Item).where(Item.id == entry.itemId, Item.user_id == user.id)
+                )
+            ).scalar_one_or_none()
+            if item is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
+            if item.equipped_slot:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="已装备的装备需先卸下"
+                )
+            created.append(await market.list_equipment(db, user, item, entry.unitPrice, ip))
+        else:
+            if not entry.stackKind or not entry.stackItemId:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="缺少堆叠物品信息"
+                )
+            expected = dohdol_util.sellable_kind(entry.stackItemId)
+            if expected != entry.stackKind:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="物品类型不匹配"
+                )
+            if entry.count > market.max_stack_quantity():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"单次上架数量不得超过 {market.max_stack_quantity()}",
+                )
+            row = await market.list_stack(
+                db, user, entry.stackKind, entry.stackItemId, entry.count, entry.unitPrice, ip
+            )
+            if row is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="数量不足")
+            created.append(row)
+
+    await db.commit()
+    return {
+        "gold": int(user.gold),
+        "listings": [market.listing_to_dict(row, user.nickname) for row in created],
+        "activeCount": await market.count_active(db, user.id),
+    }
+
+
+@router.post("/buy")
+async def buy(
+    payload: MarketBuyRequest, request: Request, db: DbSession, user: CurrentUser
+) -> dict:
+    await guard_rate(db, "market_buy", str(user.id), 60, 60, "购买过于频繁，请稍后再试")
+
+    row = (
+        await db.execute(
+            select(MarketListing).where(MarketListing.id == payload.listingId).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="寄售单不存在")
+    if row.status != STATUS_ACTIVE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该寄售单已售出或已下架")
+    if market.is_expired(row):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该寄售单已过期")
+
+    return await market.buy_listing(db, user, row, client_ip(request))
+
+
+@router.post("/cancel")
+async def cancel(
+    payload: MarketCancelRequest, db: DbSession, user: CurrentUser
+) -> dict:
+    row = (
+        await db.execute(
+            select(MarketListing).where(MarketListing.id == payload.listingId).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="寄售单不存在")
+    if row.status != STATUS_ACTIVE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该寄售单已结束")
+
+    await market.cancel_listing(db, user, row)
+    return {"gold": int(user.gold), "message": "已下架"}

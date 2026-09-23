@@ -11,6 +11,8 @@ from app.models.dohdol import (
     UserTitle,
 )
 from app.models.equipment import ChestPity, ChestUnlock, Item, ItemTag
+from app.models.friends import STATUS_ACCEPTED, STATUS_PENDING, CoinTransfer, Friendship
+from app.models.market import MarketListing
 from app.models.progress import (
     AutoSellSetting,
     CodexEquipment,
@@ -35,6 +37,9 @@ __all__ = [
     "HeroSkillStat",
     "Item",
     "ItemTag",
+    "MarketListing",
+    "Friendship",
+    "CoinTransfer",
     "ChestPity",
     "ChestUnlock",
     "RegionProgress",

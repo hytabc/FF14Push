@@ -71,6 +71,22 @@ onMounted(async () => {
   await loadRedeem()
 })
 
+function copyFriendCode() {
+  const code = auth.friendCode
+  if (!code) {
+    toast.push('好友码尚未生成，请稍后重试', 'error')
+    return
+  }
+  if (!navigator.clipboard) {
+    toast.push(`好友码：${code}`, 'info')
+    return
+  }
+  void navigator.clipboard.writeText(code).then(
+    () => toast.push('好友码已复制', 'success'),
+    () => toast.push(`复制失败，请手动复制：${code}`, 'error'),
+  )
+}
+
 async function loadRedeem() {
   try {
     const res = await api.redeemState()
@@ -159,6 +175,13 @@ async function replayFromSettings() {
     <section id="profile" class="card scroll-mt-40 p-4">
       <h3 class="text-sm font-semibold text-white">个人信息</h3>
       <p class="mt-2 text-xs text-ink-400">账号：{{ auth.username }}</p>
+      <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-400">
+        <span>好友码</span>
+        <code class="rounded bg-ink-800 px-2 py-1 font-mono tracking-widest text-amber-200">
+          {{ auth.friendCode || '——' }}
+        </code>
+        <button class="text-sky-300 underline" @click="copyFriendCode">复制</button>
+      </div>
       <form class="mt-3 grid gap-2 sm:max-w-md" @submit.prevent="submitChangeNickname">
         <label for="profile-nickname" class="text-xs text-ink-200">昵称（1–32 个字符）</label>
         <input

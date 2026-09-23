@@ -141,7 +141,7 @@ async def refine(
     spent = 0
     done = 0
     for _ in range(times):
-        cost = refine_cost(item.rarity, int(item.refine_count), payload.mode)
+        cost = refine_cost(item.rarity, int(item.refine_count), payload.mode, item.level_req)
         if spent + cost > int(user.gold):
             break
         result = regenerate_attrs(item, rng, payload.mode)
@@ -153,7 +153,7 @@ async def refine(
         done += 1
 
     if done == 0:
-        need = refine_cost(item.rarity, int(item.refine_count), payload.mode)
+        need = refine_cost(item.rarity, int(item.refine_count), payload.mode, item.level_req)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {need}")
 
     user.gold = int(user.gold) - spent
@@ -183,7 +183,7 @@ async def enchant(
 
     if not payload.autoUntilRare:
         times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))
-        unit_cost = enchant_cost(item.rarity, payload.mode)
+        unit_cost = enchant_cost(item.rarity, payload.mode, item.level_req)
         spent = 0
         done = 0
         for _ in range(times):
@@ -207,7 +207,7 @@ async def enchant(
         }
 
     # 自动附魔至稀有/太古：始终按彻底随机单价逐次结算
-    unit_cost = enchant_cost(item.rarity)
+    unit_cost = enchant_cost(item.rarity, "random", item.level_req)
     max_attempts = max(1, min(MAX_AUTO_ENCHANT_ATTEMPTS, int(payload.maxAttempts)))
     affordable = int(user.gold) // unit_cost
     if affordable < 1:

@@ -22,6 +22,7 @@ from app.models import (
 from app.schemas.game import ChangeNicknameRequest, ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
 from app.services.admin import admin_username, is_admin
 from app.services.codex import unlock_equipment, unlock_terms
+from app.services.friends import ensure_friend_code, generate_friend_code
 from app.services.game_config import CONFIG
 from app.services.item_factory import generate_item
 from app.services.recruiting import generate_candidates, initial_hero
@@ -128,6 +129,7 @@ async def register(payload: RegisterRequest, db: DbSession, request: Request) ->
         password_hash=hash_password(payload.password),
         nickname=nickname or payload.username,
         gold=0,
+        friend_code=await generate_friend_code(db),
     )
     db.add(user)
     await db.flush()
@@ -192,6 +194,8 @@ async def change_nickname(payload: ChangeNicknameRequest, db: DbSession, user: C
 @router.get("/me")
 async def me(user: CurrentUser, db: DbSession) -> dict:
     hero = (await db.execute(select(Hero).where(Hero.user_id == user.id, Hero.id == user.active_hero_id))).scalar_one_or_none()
+    friend_code = await ensure_friend_code(db, user)
+    await db.commit()
     return {
         "id": user.id,
         "username": user.username,
@@ -199,4 +203,5 @@ async def me(user: CurrentUser, db: DbSession) -> dict:
         "gold": int(user.gold),
         "hasHero": hero is not None,
         "isAdmin": is_admin(user),
+        "friendCode": friend_code,
     }

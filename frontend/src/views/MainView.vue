@@ -73,14 +73,15 @@ const skillStates = computed<Record<string, { remaining: number; pct: number }>>
   return out
 })
 
-/** 阵亡复活倒计时：剩余秒数与进度（由 0.1s 节拍驱动刷新）。 */
+/** 阵亡复活倒计时：剩余秒数与进度（由 0.1s 节拍驱动刷新）。总时长随「归魂 / 沉魂」词条变化。 */
 const reviveDelay = data.heroes.reviveDelaySeconds
 const reviveTimer = computed(() => {
   void game.uiTick
   const remaining = Math.max(0, sim.value?.deathTimer ?? 0)
+  const total = sim.value?.reviveTotal || reviveDelay
   return {
     remaining: Math.round(remaining * 10) / 10,
-    pct: reviveDelay > 0 ? Math.min(100, ((reviveDelay - remaining) / reviveDelay) * 100) : 100,
+    pct: total > 0 ? Math.min(100, ((total - remaining) / total) * 100) : 100,
   }
 })
 

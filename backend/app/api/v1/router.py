@@ -10,8 +10,10 @@ from app.api.v1 import (
     codex,
     dohdol,
     economy,
+    friends,
     game,
     inventory,
+    market,
     raid,
     ranking,
     redeem,
@@ -27,6 +29,8 @@ api_router.include_router(auth.router)
 api_router.include_router(game.router)
 api_router.include_router(battle.router)
 api_router.include_router(inventory.router)
+api_router.include_router(friends.router)
+api_router.include_router(market.router)
 api_router.include_router(chest.router)
 api_router.include_router(economy.router)
 api_router.include_router(region.router)

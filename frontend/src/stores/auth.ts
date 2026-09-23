@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
   const nickname = ref<string>('')
   const username = ref<string>('')
+  const friendCode = ref<string>('')
   const isAdmin = ref(false)
   // 封号：置位后前端只渲染空白页，不显示任何文案（防止被封用户反推）。
   const banned = ref(false)
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     nickname.value = ''
     username.value = ''
+    friendCode.value = ''
     isAdmin.value = false
     localStorage.removeItem(TOKEN_KEY)
   }
@@ -40,6 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
       const me = await api.me()
       nickname.value = me.nickname
       username.value = me.username
+      friendCode.value = me.friendCode
       isAdmin.value = Boolean(me.isAdmin)
       banned.value = false
       return me
@@ -88,6 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     nickname.value = ''
     username.value = ''
+    friendCode.value = ''
     isAdmin.value = false
     localStorage.removeItem(TOKEN_KEY)
   }
@@ -96,6 +100,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     nickname,
     username,
+    friendCode,
     isAdmin,
     banned,
     loading,

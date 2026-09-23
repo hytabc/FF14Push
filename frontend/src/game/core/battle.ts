@@ -134,11 +134,15 @@ export class BattleSimulator {
   floating: FloatingText[] = []
   cooldowns: Record<string, number> = {}
   gcd = 0
-  /** 彩蛋技能「睡觉」剩余停止攻击时间（秒）：>0 时不释放任何技能。 */
+  /** 彩蛋技能「睡觉」剩余停止攻击时间（秒）：>0 时不释放任何技能与普攻。 */
   sleepTimer = 0
+  /** 普攻独立冷却计时（秒）：与技能 GCD / CD 完全独立，仅受攻速影响。 */
+  basicAttackTimer = 0
   spawnTimer = 0
   bossTimer = 0
   deathTimer = 0
+  /** 本次阵亡的复活等待总时长（秒）：随「归魂 / 沉魂」词条变化，供 UI 计算进度条。 */
+  reviveTotal = 0
   bossFightMs = 0
   deathCount = 0
 
@@ -159,6 +163,8 @@ export class BattleSimulator {
   private readonly normalMobPotency100Bonus: number
   private buffs: ActiveBuff[] = []
   private dots: Array<{ remaining: number; potency: number; tick: number }> = []
+  /** 装备命中触发的敌方减益（凋零=减攻 / 失明=降命中），随目标切换清空。 */
+  private enemyDebuffs: Array<{ stat: 'attackDown' | 'hitDown'; value: number; remaining: number; name: string }> = []
   /** BOSS 施加给英雄的持续伤害（高难副本）。 */
   private heroDots: Array<{ remaining: number; potencyPerSec: number; tick: number; source: string }> = []
   private regenTimer = 0
@@ -260,6 +266,17 @@ export class BattleSimulator {
     return 1 + buff
   }
 
+  /** 装备「凋零」对当前目标的减攻比例（0-0.8）。 */
+  private get enemyAttackDown(): number {
+    return Math.min(0.8, this.enemyDebuffs.reduce((sum, b) => (b.stat === 'attackDown' ? sum + b.value : sum), 0))
+  }
+
+  /** 怪物出手的失手率（%）：英雄闪避 + 装备「失明」加成，上限 75。 */
+  private get monsterMissChance(): number {
+    const blind = this.enemyDebuffs.reduce((sum, b) => (b.stat === 'hitDown' ? sum + b.value : sum), 0) * 100
+    return Math.min(75, this.stats.dodgePct + blind)
+  }
+
   /** 副本战斗面板用：所有 BOSS 的血量快照。 */
   bossEntries(): RaidBossEntry[] {
     return this.enemies.map((enemy, index) => ({
@@ -279,6 +296,7 @@ export class BattleSimulator {
     if (!this.isRaid || index < 0 || index >= this.enemies.length || index === this.targetIndex) return
     this.targetIndex = index
     this.dots = []
+    this.enemyDebuffs = []
     this.pushLog(`切换目标 →「${this.enemies[index].stats.name}」`, 'system')
   }
 
@@ -342,8 +360,17 @@ export class BattleSimulator {
     const stats = this.stats
     const cooldownMultiplier = this.penalty.cooldownMultiplier ?? 1
     return this.skills.map((skill) => {
-      const total = Math.max(0.01, skillCooldown(stats, skill.cd) * cooldownMultiplier)
-      const remaining = Math.max(0, this.cooldowns[skill.id] ?? 0)
+      // 普攻由独立计时器驱动（不占用技能 CD），CD 显示取自该计时器。
+      const total = Math.max(
+        0.01,
+        skill.id === ADVENTURER_SKILL.id
+          ? this.basicAttackCooldown()
+          : skillCooldown(stats, skill.cd) * cooldownMultiplier,
+      )
+      const remaining = Math.max(
+        0,
+        skill.id === ADVENTURER_SKILL.id ? this.basicAttackTimer : this.cooldowns[skill.id] ?? 0,
+      )
       return {
         id: skill.id,
         remaining,
@@ -360,10 +387,12 @@ export class BattleSimulator {
 
     this.gcd = Math.max(0, this.gcd - dt)
     this.sleepTimer = Math.max(0, this.sleepTimer - dt)
+    this.basicAttackTimer = Math.max(0, this.basicAttackTimer - dt)
     for (const key of Object.keys(this.cooldowns)) {
       this.cooldowns[key] = Math.max(0, this.cooldowns[key] - dt)
     }
     this.buffs = this.buffs.filter((b) => (b.remaining -= dt) > 0)
+    this.enemyDebuffs = this.enemyDebuffs.filter((b) => (b.remaining -= dt) > 0)
 
     // 回复
     this.regenTimer += dt
@@ -375,7 +404,16 @@ export class BattleSimulator {
       for (const buff of this.buffs.filter((b) => b.stat === 'healOverTime')) {
         this.restoreHealth(stats.maxHp * buff.value * ticks * this.healMultiplier, buff.name + '（持续治疗）')
       }
+      for (const buff of this.buffs.filter((b) => b.stat === 'hpRegenBuff')) {
+        this.restoreHealth(stats.maxHp * buff.value * ticks * this.healMultiplier, buff.name + '（持续回复）')
+      }
       this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks * (this.penalty.resourceMultiplier ?? 1))
+      for (const buff of this.buffs.filter((b) => b.stat === 'mpRegenBuff')) {
+        this.heroMp = Math.min(
+          stats.maxMp,
+          this.heroMp + stats.maxMp * buff.value * ticks * (this.penalty.resourceMultiplier ?? 1),
+        )
+      }
     }
 
     if (this.phase === 'dead') {
@@ -403,6 +441,7 @@ export class BattleSimulator {
     if (this.phase === 'boss') this.bossFightMs += dt * 1000
 
     this.castIfReady()
+    this.tickBasicAttack()
     this.tickMonster(dt)
     this.tickBossSkills(dt)
   }
@@ -467,6 +506,7 @@ export class BattleSimulator {
     this.enemies = [this.makeEnemy(monster)]
     this.targetIndex = 0
     this.dots = []
+    this.enemyDebuffs = []
     this.heroDots = []
   }
 
@@ -474,6 +514,7 @@ export class BattleSimulator {
   private removeCurrentEnemy(): void {
     this.enemies.splice(this.targetIndex, 1)
     this.dots = []
+    this.enemyDebuffs = []
     this.heroDots = []
     if (this.targetIndex >= this.enemies.length) this.targetIndex = Math.max(0, this.enemies.length - 1)
   }
@@ -500,16 +541,36 @@ export class BattleSimulator {
 
   private castIfReady(): void {
     if (this.gcd > 0 || this.sleepTimer > 0) return
-    const ready = this.skills.filter((skill) => (this.cooldowns[skill.id] ?? 0) <= 0)
-    if (ready.length === 0) return
-
-    // 蓝量不足的技能无法施放：若没有任何负担得起的技能，回退到零耗蓝普攻
-    const castable = ready.filter((skill) => this.mpCost(skill) <= this.heroMp)
-    if (castable.length === 0) {
-      if ((this.cooldowns[ADVENTURER_SKILL.id] ?? 0) <= 0) this.cast(ADVENTURER_SKILL)
-      return
-    }
+    // 普攻与技能完全独立（自身计时器驱动，见 tickBasicAttack），此处只挑技能。
+    // 技能需「CD 就绪 且 蓝量充足」（PRD 2.7.1-3 / 7.2）。
+    const castable = this.skills.filter(
+      (skill) =>
+        skill.id !== ADVENTURER_SKILL.id &&
+        (this.cooldowns[skill.id] ?? 0) <= 0 &&
+        this.mpCost(skill) <= this.heroMp,
+    )
+    if (castable.length === 0) return
     this.cast(this.pickSkill(castable))
+  }
+
+  /** 普攻冷却（秒）：受攻速缩短（PRD 2.7.3「攻击速度 影响普攻频率」）。 */
+  private basicAttackCooldown(): number {
+    const base = skillCooldown(this.stats, ADVENTURER_SKILL.cd)
+    return Math.max(0.2, base / attackSpeedFactor(this.stats))
+  }
+
+  /**
+   * 普攻：与技能完全独立，按自身冷却出手；不占用 GCD，也不受技能 CD / 蓝量影响。
+   * 伤害与技能同源：同样结算命中 / 暴击 / 直击（日志与浮动数字带「!」「!!」标记）。
+   */
+  private tickBasicAttack(): void {
+    if (this.basicAttackTimer > 0 || this.sleepTimer > 0) return
+    this.basicAttackTimer = this.basicAttackCooldown()
+    // 零耗蓝普攻的回蓝兜底：避免蓝量见底后彻底退化为「只能普攻」。
+    const stats = this.stats
+    const restore = Math.floor(stats.maxMp * Number(data.heroes.mp.basicAttackRestorePct ?? 0))
+    if (restore > 0) this.heroMp = Math.min(stats.maxMp, this.heroMp + restore)
+    this.resolveDamage(ADVENTURER_SKILL, false)
   }
 
   private pickSkill(pool: SkillLike[]): SkillLike {
@@ -517,7 +578,6 @@ export class BattleSimulator {
       if (a.priority !== b.priority) return a.priority - b.priority
       return b.potency - a.potency
     })
-    // 普攻兜底：其他技能都在 CD 时使用
     return sorted[0] ?? ADVENTURER_SKILL
   }
 
@@ -532,6 +592,13 @@ export class BattleSimulator {
     return base > 0 && this.halfMpCharges > 0 ? Math.floor(base / 2) : base
   }
 
+  /** 一次技能结算的「伤害 + 效果」部分（不含魔力 / CD / GCD）；双重施法时复用。 */
+  private resolveSkillBody(skill: SkillLike): void {
+    if (skill.potency > 0 && this.monster) this.resolveDamage(skill, true)
+    else this.pushLog(`施放 ${skill.name}`, 'skill')
+    this.applyEffects(skill)
+  }
+
   private cast(skill: SkillLike): void {
     const stats = this.stats
     const rawCost = this.rawMpCost(skill)
@@ -541,77 +608,94 @@ export class BattleSimulator {
       this.halfMpCharges -= 1
       this.pushLog(`「水群」生效，${skill.name} 魔力消耗减半（剩余 ${this.halfMpCharges} 次）`, 'skill')
     }
-    // 零耗蓝普攻作为兜底回蓝手段：蓝量见底时仍能缓慢回蓝，避免退化成「只剩普攻」。
-    if (rawCost <= 0) {
-      const restore = Math.floor(stats.maxMp * Number(data.heroes.mp.basicAttackRestorePct ?? 0))
-      if (restore > 0) this.heroMp = Math.min(stats.maxMp, this.heroMp + restore)
-    }
-    // 攻速：缩短 GCD，并让普攻（基础攻击）出手更快
+    // 攻速：缩短 GCD
     const speed = attackSpeedFactor(stats)
-    const cdMult = (this.penalty.cooldownMultiplier ?? 1) / (skill.id === ADVENTURER_SKILL.id ? speed : 1)
-    this.cooldowns[skill.id] = skillCooldown(stats, skill.cd) * cdMult
+    this.cooldowns[skill.id] = skillCooldown(stats, skill.cd) * (this.penalty.cooldownMultiplier ?? 1)
     this.gcd = (data.combat.gcdSeconds as number) / speed
     this.pendingSkillCasts[skill.id] = (this.pendingSkillCasts[skill.id] ?? 0) + 1
 
-    if (skill.potency > 0 && this.monster) {
-      let mult = skillDamageMultiplier(stats, stats.jobId)
-      if (this.doublePowerCharges > 0) {
-        mult *= 2
-        this.doublePowerCharges -= 1
-        this.pushLog(`${skill.name} 触发「割草」，威力翻倍`, 'skill')
-      }
-      // 彩蛋被动「战斗爽」：对战普通怪物时，威力恰为 100% 的技能威力翻倍。
-      if (
-        this.normalMobPotency100Bonus > 0 &&
-        skill.potency === 100 &&
-        this.monster.kind === 'normal'
-      ) {
-        mult *= 1 + this.normalMobPotency100Bonus
-      }
-      const roll = rollDamage(
-        stats,
-        skill.potency,
-        skill.damageType,
-        this.monster.defense,
-        mult,
-        this.penalty,
-        this.targetResistance(),
-      )
-      if (roll.missed) {
-        this.pushFloat('未命中', 'monster', 'miss')
-        this.pushLog(`${skill.name} 未命中`, 'damage')
-      } else {
-        this.monsterHp -= roll.amount
-        const mark = hitMark(roll.isCrit, roll.isDirectHit)
-        this.pushFloat(
-          `${roll.amount}${mark}`,
-          'monster',
-          mark ? hitTone(roll.isCrit, roll.isDirectHit) : 'monster',
-        )
-        if (mark) this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
-        else this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
-        this.rollProcs(stats)
-      }
-    } else {
-      this.pushLog(`施放 ${skill.name}`, 'skill')
-    }
+    this.resolveSkillBody(skill)
 
-    this.applyEffects(skill)
+    // 装备「双重施法」：概率额外释放一次（不再扣蓝 / 不重置 CD-GCD / 不再次判定，避免递归）。
+    const doubleCast = Math.max(0, this.baseStats.termMods.doubleCastPct ?? 0)
+    if (doubleCast > 0 && this.monster && Math.random() * 100 < doubleCast) {
+      this.pushLog(`「双重施法」触发，${skill.name} 再次释放`, 'skill')
+      this.resolveSkillBody(skill)
+    }
 
     if (this.monster && this.monsterHp <= 0) this.killMonster()
   }
 
-  /** 命中触发效果（proc）：灼烧 DOT / 疾风限时攻速。与后端 `combat_model.proc_dps_bonus` 同源。 */
+  /**
+   * 一次命中结算：伤害 + 浮动数字 + 日志 + proc。
+   * isSkill 决定是否消耗充能类彩蛋（「割草」只作用于技能，普攻不吃）。
+   */
+  private resolveDamage(skill: SkillLike, isSkill: boolean): void {
+    const stats = this.stats
+    if (!this.monster) return
+    let mult = skillDamageMultiplier(stats, stats.jobId)
+    if (isSkill && this.doublePowerCharges > 0) {
+      mult *= 2
+      this.doublePowerCharges -= 1
+      this.pushLog(`${skill.name} 触发「割草」，威力翻倍`, 'skill')
+    }
+    // 彩蛋被动「战斗爽」：对战普通怪物时，威力恰为 100% 的技能威力翻倍。
+    if (
+      this.normalMobPotency100Bonus > 0 &&
+      skill.potency === 100 &&
+      this.monster.kind === 'normal'
+    ) {
+      mult *= 1 + this.normalMobPotency100Bonus
+    }
+    const roll = rollDamage(
+      stats,
+      skill.potency,
+      skill.damageType,
+      this.monster.defense,
+      mult,
+      this.penalty,
+      this.targetResistance(),
+    )
+    if (roll.missed) {
+      this.pushFloat('未命中', 'monster', 'miss')
+      this.pushLog(`${skill.name} 未命中`, 'damage')
+      return
+    }
+    this.monsterHp -= roll.amount
+    const mark = hitMark(roll.isCrit, roll.isDirectHit)
+    this.pushFloat(
+      `${roll.amount}${mark}`,
+      'monster',
+      mark ? hitTone(roll.isCrit, roll.isDirectHit) : 'monster',
+    )
+    if (mark) this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
+    else this.pushLog(`${skill.name} 造成 ${roll.amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+    this.rollProcs(stats)
+  }
+
+  /** 命中触发效果（proc）：灼烧/中毒 DOT、疾风限时攻速、凋零减攻、失明降命中、生机/灵息持续回复。与后端 `combat_model.proc_dps_bonus` 同源。 */
   private rollProcs(stats: HeroStats): void {
     if (!this.monster) return
     const proc = (data.combat.proc ?? {}) as {
       burn?: { potencyPct: number; durationSec: number }
+      poison?: { potencyPct: number; durationSec: number }
       haste?: { attackSpeedPct: number; durationSec: number }
+      wither?: { attackDownPct: number; durationSec: number }
+      blind?: { hitDownPct: number; durationSec: number }
+      hpRegenBuff?: { maxHpPctPerSec: number; durationSec: number }
+      mpRegenBuff?: { maxMpPctPerSec: number; durationSec: number }
     }
-    const burnChance = Math.max(0, stats.termMods.burnProcPct ?? 0)
-    if (proc.burn && burnChance > 0 && Math.random() * 100 < burnChance) {
-      this.dots.push({ remaining: proc.burn.durationSec, potency: proc.burn.potencyPct, tick: 1 })
-      this.pushLog('装备触发「灼烧」', 'skill')
+    // 灼烧 / 中毒：命中概率触发，每秒造成 攻击力 × potencyPct% 的持续伤害。
+    const dotProcs: Array<[typeof proc.burn, number | undefined, string]> = [
+      [proc.burn, stats.termMods.burnProcPct, '灼烧'],
+      [proc.poison, stats.termMods.poisonProcPct, '中毒'],
+    ]
+    for (const [dot, chancePct, label] of dotProcs) {
+      const chance = Math.max(0, chancePct ?? 0)
+      if (dot && chance > 0 && Math.random() * 100 < chance) {
+        this.dots.push({ remaining: dot.durationSec, potency: dot.potencyPct, tick: 1 })
+        this.pushLog(`装备触发「${label}」`, 'skill')
+      }
     }
     const hasteChance = Math.max(0, stats.termMods.hasteProcPct ?? 0)
     if (proc.haste && hasteChance > 0 && Math.random() * 100 < hasteChance) {
@@ -622,6 +706,49 @@ export class BattleSimulator {
         name: '疾风',
       })
       this.pushLog('装备触发「疾风」', 'skill')
+    }
+    // 凋零：降低目标攻击力（持续）。
+    const witherChance = Math.max(0, stats.termMods.witherProcPct ?? 0)
+    if (proc.wither && witherChance > 0 && Math.random() * 100 < witherChance) {
+      this.enemyDebuffs.push({
+        stat: 'attackDown',
+        value: proc.wither.attackDownPct / 100,
+        remaining: proc.wither.durationSec,
+        name: '凋零',
+      })
+      this.pushLog('装备触发「凋零」', 'skill')
+    }
+    // 失明：降低目标命中率（持续）。
+    const blindChance = Math.max(0, stats.termMods.blindProcPct ?? 0)
+    if (proc.blind && blindChance > 0 && Math.random() * 100 < blindChance) {
+      this.enemyDebuffs.push({
+        stat: 'hitDown',
+        value: proc.blind.hitDownPct / 100,
+        remaining: proc.blind.durationSec,
+        name: '失明',
+      })
+      this.pushLog('装备触发「失明」', 'skill')
+    }
+    // 生机 / 灵息：命中概率获得限时持续回复。
+    const hpRegenChance = Math.max(0, stats.termMods.hpRegenProcPct ?? 0)
+    if (proc.hpRegenBuff && hpRegenChance > 0 && Math.random() * 100 < hpRegenChance) {
+      this.buffs.push({
+        stat: 'hpRegenBuff',
+        value: proc.hpRegenBuff.maxHpPctPerSec,
+        remaining: proc.hpRegenBuff.durationSec,
+        name: '生机',
+      })
+      this.pushLog('装备触发「生机」', 'skill')
+    }
+    const mpRegenChance = Math.max(0, stats.termMods.mpRegenProcPct ?? 0)
+    if (proc.mpRegenBuff && mpRegenChance > 0 && Math.random() * 100 < mpRegenChance) {
+      this.buffs.push({
+        stat: 'mpRegenBuff',
+        value: proc.mpRegenBuff.maxMpPctPerSec,
+        remaining: proc.mpRegenBuff.durationSec,
+        name: '灵息',
+      })
+      this.pushLog('装备触发「灵息」', 'skill')
     }
   }
 
@@ -767,13 +894,13 @@ export class BattleSimulator {
 
   private monsterAttack(): void {
     const stats = this.stats
-    if (Math.random() * 100 < Math.min(60, stats.dodgePct)) {
+    if (Math.random() * 100 < this.monsterMissChance) {
       this.pushFloat('闪避', 'hero', 'hero')
       return
     }
     if (this.consumeImmunity()) return
     let damage = rollIncoming(
-      this.monster!.attack * this.bossAttackMultiplier(),
+      this.monster!.attack * this.bossAttackMultiplier() * (1 - this.enemyAttackDown),
       100,
       stats.physDef * this.defenseScale,
       stats.tenacityPct,
@@ -918,13 +1045,13 @@ export class BattleSimulator {
   /** BOSS 高威力技能：对英雄造成 `potency%` × BOSS 攻击的伤害。 */
   private bossSkillDamage(enemy: EnemyState, skill: BossSkill, potency: number): void {
     const stats = this.stats
-    if (Math.random() * 100 < Math.min(60, stats.dodgePct)) {
+    if (Math.random() * 100 < this.monsterMissChance) {
       this.pushFloat('闪避', 'hero', 'hero')
       return
     }
     if (this.consumeImmunity()) return
     const attackBuff = enemy.selfBuffs.reduce((sum, b) => (b.stat === 'attackBuff' ? sum + b.value : sum), 0)
-    const attack = enemy.stats.attack * (1 + attackBuff)
+    const attack = enemy.stats.attack * (1 + attackBuff) * (1 - this.enemyAttackDown)
     const defense = (skill.damageType === 'magical' ? stats.magicDef : stats.physDef) * this.defenseScale
     let damage = rollIncoming(
       attack,
@@ -1029,12 +1156,17 @@ export class BattleSimulator {
 
   private heroDies(): void {
     this.phase = 'dead'
-    this.deathTimer = data.heroes.reviveDelaySeconds
+    // 「归魂」缩短 / 「沉魂」延长复活等待，最短 1 秒。
+    const mods = this.baseStats.termMods
+    const factor = 1 - ((mods.reviveHastePct ?? 0) - (mods.reviveDelayPct ?? 0)) / 100
+    this.deathTimer = Math.max(1, Number(data.heroes.reviveDelaySeconds) * factor)
+    this.reviveTotal = this.deathTimer
     this.deathCount += 1
     this.pendingDeath = true
     this.killCount = 0 // PRD 地区 3.2：阵亡后小怪击杀计数归零
     this.enemies = []
     this.dots = []
+    this.enemyDebuffs = []
     this.heroDots = []
     this.pushLog(this.isRaid ? '英雄阵亡！副本挑战失败' : '英雄阵亡！小怪阶段进度重置', 'danger')
   }
@@ -1047,6 +1179,7 @@ export class BattleSimulator {
     this.heroDots = []
     this.phase = 'mob'
     this.spawnTimer = this.spawnInterval
+    this.basicAttackTimer = 0
     this.pushLog('英雄已复活，生命值回满', 'system')
   }
 
@@ -1092,6 +1225,7 @@ export class BattleSimulator {
     this.killCount = 0
     this.enemies = []
     this.dots = []
+    this.enemyDebuffs = []
     this.phase = 'mob'
     this.spawnTimer = this.spawnInterval
     this.pushLog('留在当前地区，继续挂机', 'system')

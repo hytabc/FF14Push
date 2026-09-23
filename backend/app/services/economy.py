@@ -11,25 +11,42 @@ REQUIRED = int(CONFIG.crafting["requiredCount"])
 CRAFT_CATEGORIES = list(CONFIG.crafting["categories"])
 
 
-def refine_cost(rarity: str, refine_count: int = 0, mode: str = "random") -> int:
-    """重造费用 = 品阶基准价 × (1 + costGrowthPerRefine × 已重造次数)。
+def _level_cost_scale(block: dict[str, Any], level: int) -> tuple[int, int]:
+    """等级价格系数（分数：分子 / 分母）= 1 + (num / den) × (等级 − 1)。
+
+    用整数分数结算，避免 25/3 这类系数在小数乘法下被截断（100 级神话「基于当前」精确为 750,000）。
+    1 级恒为 1（分子 = 分母），故低等级装备价格不变。
+    """
+    num = int(block.get("costLevelGrowthNum", 0))
+    den = int(block.get("costLevelGrowthDen", 1)) or 1
+    lv = max(1, int(level or 1))
+    return den + num * (lv - 1), den
+
+
+def refine_cost(rarity: str, refine_count: int = 0, mode: str = "random", level: int = 1) -> int:
+    """重造费用 = 品阶基准价 × (1 + costGrowthPerRefine × 已重造次数) × 等级系数。
 
     递增不封顶：同一件装备重造越多次越贵，避免无限重造刷属性。
+    等级系数 = 1 + 2/27 × (等级 − 1)：1 级 ×1、100 级 ×25/3 ≈ 8.33，物品等级越高越贵。
     mode="basedOnCurrent"（基于当前，每条属性小幅浮动）价格 × basedOnCurrentCostMultiplier。
     """
+    block = CONFIG.economy["refine"]
     base = int(CONFIG.rarities[rarity]["refineCost"])
-    growth = float(CONFIG.economy["refine"]["costGrowthPerRefine"])
+    growth = float(block["costGrowthPerRefine"])
     cost = int(base * (1.0 + growth * max(0, int(refine_count))))
     if mode == "basedOnCurrent":
-        cost = int(cost * float(CONFIG.economy["refine"]["basedOnCurrentCostMultiplier"]))
-    return cost
+        cost = int(cost * float(block["basedOnCurrentCostMultiplier"]))
+    num, den = _level_cost_scale(block, level)
+    return cost * num // den
 
 
-def enchant_cost(rarity: str, mode: str = "random") -> int:
+def enchant_cost(rarity: str, mode: str = "random", level: int = 1) -> int:
+    block = CONFIG.economy["enchant"]
     base = int(CONFIG.rarities[rarity]["enchantCost"])
     if mode == "basedOnCurrent":
-        base = int(base * float(CONFIG.economy["enchant"]["basedOnCurrentCostMultiplier"]))
-    return base
+        base = int(base * float(block["basedOnCurrentCostMultiplier"]))
+    num, den = _level_cost_scale(block, level)
+    return base * num // den
 
 
 def craft_fee(rarity: str) -> int | None:

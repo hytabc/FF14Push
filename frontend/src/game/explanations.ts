@@ -409,3 +409,19 @@ export function raidSkillExplain(poolSize: number): Explain {
     ],
   }
 }
+
+/** 市场手续费。真源：后端 services/market.py::fee_of + economy.json.market */
+export function marketFeeExplain(): Explain {
+  const m = data.economy.market
+  const sample = 1000
+  const fee = Math.floor(sample * m.feePct)
+  return {
+    title: '市场手续费如何计算',
+    lines: [
+      `成交时按整单总价抽取 ${pct(m.feePct, 0)} 手续费（向下取整），手续费直接销毁回收。`,
+      `卖家实收 = 总价 − floor(总价 × ${pct(m.feePct, 0)})；例：总价 ${sample} → 手续费 ${fee}，卖家实收 ${sample - fee}。`,
+      `上架即从背包 / 库存扣除进入托管；未售出 ${m.listingDays} 天自动退回。在售寄售单上限 ${m.maxActiveListings} 个。`,
+      '依据：服务端 services/market.fee_of()，配置 shared/data/economy.json 的 market。',
+    ],
+  }
+}

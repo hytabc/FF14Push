@@ -8,14 +8,33 @@
     "attrBonusMax": 0.6,
     "autoSellRarities": ["common", "uncommon"]
   },
+  "market": {
+    "$comment": "玩家间交易板：上架即从背包/库存扣除进入托管，整单买断成交，成交价抽取手续费（feePct，金币直接销毁回收），未售出到期自动退回卖家。价格完全由玩家自定，仅以 minPrice/maxPrice 做边界保护。",
+    "feePct": 0.10,
+    "listingDays": 7,
+    "maxActiveListings": 20,
+    "maxStackQuantityPerListing": 9999,
+    "minPrice": 1,
+    "maxPrice": 2000000000
+  },
+  "transfer": {
+    "$comment": "好友金币转账：转账方支付 amount，收款方实收 amount − fee（fee = floor(amount × feePct)，金币直接销毁回收）。受单笔上下限与每日累计上限保护，手续费销毁故不构成刷金币来源。",
+    "feePct": 0.10,
+    "minAmount": 1,
+    "maxAmount": 2000000000,
+    "dailyLimit": 2000000000
+  },
   "refine": {
     "$comment": "重造：随机基础属性浮动值与副属性，并重掷/浮动词条；保留品阶/类型/等级需求",
     "$commentMode": "mode=random：彻底随机（现价）——基础属性、副属性与词条全部重新洗牌，等同重新获得该装备；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——属性与词条都在现有值附近独立浮动，可升可降，夹在合法区间内；已有太古词条数不减少。",
     "$commentSpread": "basedOnCurrentDownPct / basedOnCurrentUpPct：浮动幅度按「当前值」的百分比，新值 = 当前值 ×(1 + U(−down, +up))，再夹回该品质的合法区间（稀有/太古不降级）。例：当前 100、0.05 / 0.10 → 95~110。",
     "$commentAncientUpgrade": "basedOnCurrentAncientUpgradeChance：每次「基于当前」重造有该概率把一条普通 Buff 升为太古（数值 = 范围上限 ×1.25）。",
+    "$commentLevelCost": "价格随物品等级线性提高：等级系数 = 1 + (costLevelGrowthNum / costLevelGrowthDen) × (等级 − 1)，即 1 级 ×1、100 级 ×25/3 ≈ 8.33（用整数分数结算，避免截断）。神话 100 级「基于当前」首造 = 30000 × 3 × 25/3 = 750,000。",
     "baseAttrFloat": 0.20,
     "subAttrFloat": 0.20,
     "costGrowthPerRefine": 0.25,
+    "costLevelGrowthNum": 2,
+    "costLevelGrowthDen": 27,
     "basedOnCurrentCostMultiplier": 3,
     "basedOnCurrentDownPct": 0.05,
     "basedOnCurrentUpPct": 0.10,
@@ -26,7 +45,10 @@
     "$commentMode": "mode=random：彻底随机（现价）——全部词条重新随机；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——每条词条在现有值附近独立浮动，可升可降；已有太古词条数不减少。",
     "$commentSpread": "basedOnCurrentDownPct / basedOnCurrentUpPct：浮动幅度按「当前值」的百分比，新值 = 当前值 ×(1 + U(−down, +up))，再夹回该品质的合法区间。",
     "$commentAncientUpgrade": "basedOnCurrentAncientUpgradeChance：每次「基于当前」附魔有该概率把一条普通 Buff 升为太古（数值 = 范围上限 ×1.25）。",
+    "$commentLevelCost": "同重造：等级系数 = 1 + (costLevelGrowthNum / costLevelGrowthDen) × (等级 − 1)，1 级 ×1、100 级 ×25/3 ≈ 8.33。",
     "autoUntilRareExtraCostMultiplier": 10,
+    "costLevelGrowthNum": 2,
+    "costLevelGrowthDen": 27,
     "basedOnCurrentCostMultiplier": 3,
     "basedOnCurrentDownPct": 0.05,
     "basedOnCurrentUpPct": 0.10,
@@ -61,7 +83,17 @@
       "acc": 0.4,
       "tenacity": 0.5,
       "burnProcPct": 1.5,
-      "hasteProcPct": 1.2
+      "hasteProcPct": 1.2,
+      "doubleCastPct": 1.2,
+      "poisonProcPct": 1.3,
+      "witherProcPct": 0.7,
+      "blindProcPct": 0.6,
+      "hpRegenProcPct": 0.5,
+      "mpRegenProcPct": 0.4,
+      "hpRegenPct": 0.3,
+      "mpRegenPct": 0.2,
+      "reviveHastePct": 0.2,
+      "reviveDelayPct": 0.2
     }
   }
 }

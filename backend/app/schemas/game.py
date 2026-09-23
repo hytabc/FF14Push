@@ -242,3 +242,42 @@ class SellStackRequest(BaseModel):
     kind: str = Field(min_length=1, max_length=16)
     itemId: str = Field(min_length=1, max_length=48)
     count: int = Field(default=1, ge=1)
+
+
+# --------------------------------------------------------------- 市场交易板
+class MarketListEntry(BaseModel):
+    """上架条目：装备（type=equipment，itemId 为装备行 id）或堆叠物（type=stack）。"""
+
+    type: Literal["equipment", "stack"]
+    itemId: int | None = None
+    stackKind: Literal["material", "potion", "food"] | None = None
+    stackItemId: str | None = Field(default=None, max_length=48)
+    count: int = Field(default=1, ge=1)
+    unitPrice: int = Field(ge=1)
+
+
+class MarketListRequest(BaseModel):
+    entries: list[MarketListEntry] = Field(min_length=1, max_length=50)
+
+
+class MarketBuyRequest(BaseModel):
+    listingId: int
+
+
+class MarketCancelRequest(BaseModel):
+    listingId: int
+
+
+# --------------------------------------------------------------- 好友系统
+class FriendByCodeRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=12)
+
+
+class FriendTargetRequest(BaseModel):
+    userId: int
+
+
+class FriendTransferRequest(BaseModel):
+    userId: int
+    amount: int = Field(ge=1)
+

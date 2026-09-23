@@ -43,7 +43,7 @@ FF14Push/
 │   ├── alembic/                数据库迁移
 │   ├── app/
 │   │   ├── api/v1/             路由：auth / game / battle / inventory / chest /
-│   │   │                       economy / region / tavern / codex / ranking / tutorial / settings
+│   │   │                       economy / region / tavern / codex / ranking / tutorial / settings / friends
 │   │   ├── core/               配置、DB、JWT、依赖
 │   │   ├── models/             ORM 模型
 │   │   ├── services/           数值引擎、掉落、战斗模型、校验、图鉴、排行…
@@ -326,6 +326,7 @@ monsterHp = refAttack(level) × refGearAttackMultiplier × (refPotencyPerSecond 
 | 游玩时间 | **累计在线时长**：由战斗 / 采集 / 生产 / 钓鱼 / 副本的**服务端**上报窗口累加（`users.play_ms`，毫秒精度）。客户端时间不可信、离开页面即停，因此不含挂机与离线时间。排行榜新增**独立「游玩时间榜」**，同时**每个榜单的行内都显示游玩时间** |
 | 新手指引 | 15 步可操作引导：自动前往对应页面、定位并高亮操作区域；PC 右侧栏、手机可收起底部面板（预留空间），不遮挡操作弹窗。可先了解后继续、跳过（无奖励）及设置内重播（奖励只发一次） |
 | 个人信息 | 设置页支持修改昵称（1–32 个字符），同步页头与排行榜；登录账号不变 |
+| 好友 | 每个账号有唯一**好友码**（8 位易读字符，注册 / 迁移时生成）；凭好友码**申请 + 对方同意**建立好友关系。好友列表显示**在线状态**（绿=在线 / 灰=离线，基于前端 20s 心跳与服务端 `users.last_seen_at`，45s 内有心跳视为在线），可查看对方装备、删除好友。好友间可**金币转账**：转账方支付 X，收款方实收 `X − ⌊X×10%⌋`（手续费销毁回收），另有单笔上下限与每日累计上限；参数见 `shared/data/economy.json:transfer` |
 | 兑换码 | 码与奖励金币由 `REDEEM_CODE` / `REDEEM_GOLD` 配置，每个账号对同一码只能兑换一次；另按客户端 IP 限流并限制**同一 IP 可兑换同一码的账号数**，堵住「多开小号刷码换金币」 |
 | 账号 | 账号密码注册登录 + JWT |
 | 反滥用 | 按客户端 IP 的滑动窗口限流（注册 / 登录 / 兑换），防多开小号与撞库；阈值由 `REGISTER_PER_IP_*` / `LOGIN_PER_IP_5MIN` / `REDEEM_*` 配置，见 `backend/.env.example` |
@@ -413,7 +414,7 @@ npm run gen:icons
 | 出售价格 | PRD 出售 3.2 的「×(1 + 属性评分/100)」随等级线性无上限增长，而箱子价格是固定值 → 高等级「买箱卖装备」稳赚。改为**饱和封顶**的属性系数（1 → 1+`attrBonusMax`），并重定品阶系数，使各箱期望卖价仅约为箱价的 20%-60%，只有抽到高品阶（约 5% 概率）才有赚头。见 `shared/data/economy.json:sell`、`rarities.json:sellCoef` |
 | 雇佣资质系数 | PRD 招募 2.3 的资质系数为 1/2/5/15/50/200，神话资质在英雄 30 级时需 86 万金币，实际不可达；改为 **1/2/3/6/12/30**（`baseRecruitCost` 仍为 1000），神话资质 30 级降到 12 万。见 `shared/data/talents.json:talents.*.recruitCoef` |
 | 太古保底与「太古⇒神话」 | PRD 招募没有保底。本项目给英雄的「太古属性」（0.1% 概率）加**保底**：连续 `ancientPityCount`（500）个候选未出太古时，下一个必出；计数在刷新 / 招募 / 十连 / 注册时推进，出太古后归零并落库在 `tavern.ancient_pity`。并且**任何带太古属性的英雄都必定为神话（红色）资质**（保底或自然触发皆然）——因此太古判定先于点数抽取，总点数落在神话区间 220-260（太古 ×1.25 计算后总值可超出该区间）。见 `shared/data/talents.json`、`backend/app/services/recruiting.py:generate_candidate` |
-| 重造 / 附魔消耗 | PRD 重造 4.2 / 附魔 5.2 最高档为 60 万 / 300 万金币，远超实际收入；下调为**最高 3 万 / 5 万**，品阶递增且附魔始终比重造贵。见 `shared/data/rarities.json` 的 `refineCost` / `enchantCost` |
+| 重造 / 附魔消耗 | PRD 重造 4.2 / 附魔 5.2 最高档为 60 万 / 300 万金币。本项目按「品阶 × 物品等级」定价：1 级基准价下调为**最高 3 万 / 5 万**（品阶递增、附魔始终比重造贵），再乘**等级系数** `1 + (2/27) × (物品等级 − 1)`（1 级 ×1、100 级 ×25/3 ≈ 8.33，用整数分数结算避免截断）。故 **100 级神话「基于当前」首造 = 30000 × 3 × 25/3 = 750,000**。见 `shared/data/rarities.json` 的 `refineCost` / `enchantCost`、`shared/data/economy.json:refine/enchant.costLevelGrowthNum/costLevelGrowthDen` |
 | 重造递增 | PRD 未定义；本项目新增「每次重造在基准价上叠加 25%（不封顶）」，防止同一件装备无限重造刷属性。见 `shared/data/economy.json:refine.costGrowthPerRefine` |
 | 重造/附魔「基于当前」 | PRD 未定义；本项目为两系统各设两模式。**彻底随机** = 全部重洗（重造洗基础+副属性+全部词条，附魔洗全部词条）。**基于当前** = 每条属性/词条在现有值附近按**当前值的百分比**独立浮动（`新值 = 当前值 ×(1 + U(−basedOnCurrentDownPct, +basedOnCurrentUpPct))`，默认 −5%~+10%），可升可降并夹回合法区间（旧实现是「最优值搜索、总值保底不降」，已废弃）；另外**已有太古词条数不减少**，且每次有 `basedOnCurrentAncientUpgradeChance`（5%）概率把一条普通 Buff 升为太古。重造与附魔都支持一次连做多次（请求体 `times`）。见 `shared/data/economy.json:refine/enchant`、`backend/app/services/item_factory.py:float_near_current / _roll_terms_based_on_current` |
 | Debuff 品质 | PRD 附魔 5.3 的稀有/太古对 Debuff 会放大负面数值（更差）。本项目**取消 Debuff 的稀有/太古**：Debuff 恒为普通，仅在随机池内随机；稀有/太古只保留给 Buff（与副属性）。见 `shared/data/economy.json:debuffQualityEnabled` |

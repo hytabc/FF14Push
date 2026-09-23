@@ -685,6 +685,43 @@ export interface RankingEntry {
   payload: Record<string, unknown>
 }
 
+// ------------------------------------------------------------- 好友系统
+/** 好友条目（好友列表与待处理申请共用）。 */
+export interface FriendEntry {
+  userId: number
+  nickname: string
+  username: string
+  online: boolean
+  /** 距上次在线秒数；从未在线为 null。 */
+  lastSeenSecondsAgo: number | null
+  /** 当前英雄等级；无英雄为 null。 */
+  level: number | null
+}
+
+export interface FriendsData {
+  /** 我的好友码（可复制分享）。 */
+  friendCode: string
+  /** 转账手续费比例（如 0.10）。 */
+  feePct: number
+  minAmount: number
+  maxAmount: number
+  dailyLimit: number
+  /** 今日剩余可转账额度（近 24h 累计）。 */
+  remainingToday: number
+  friends: FriendEntry[]
+  incoming: FriendEntry[]
+  outgoing: FriendEntry[]
+}
+
+export interface FriendTransferResult {
+  gold: number
+  amount: number
+  fee: number
+  net: number
+  recipientNickname: string
+  remainingToday: number
+}
+
 
 /** Server settlement basis already includes monster/reward multipliers and penalties. */
 export interface ExpCalculation {
@@ -693,3 +730,57 @@ export interface ExpCalculation {
   catchUpBonus: number
   totalBonusPct: number
 }
+
+// ------------------------------------------------------------- 市场交易板
+/** 装备快照（上架时的属性/词条，供买家预览）。 */
+export interface MarketEquipmentDetail {
+  baseId: string
+  name: string
+  category: Category | string
+  slot: string
+  rarity: RarityId
+  levelReq: number
+  highQuality?: boolean
+  baseAttrs: BaseAttrEntry[]
+  subAttrs: SubAttrEntry[]
+  terms: TermEntry[]
+}
+
+/** 一条寄售单。 */
+export interface MarketListing {
+  id: number
+  /** equipment | material | potion | food */
+  kind: string
+  /** 装备 = 底材 id；堆叠 = 物品 id（用于解析图标）。 */
+  itemKey: string
+  name: string
+  rarity: RarityId | null
+  category: string | null
+  slot: string | null
+  levelReq: number | null
+  quantity: number
+  /** 单价（装备即总价）。 */
+  unitPrice: number
+  /** 整单总价 = 单价 × 数量。 */
+  totalPrice: number
+  /** 上架时的系统回收价（参考）。 */
+  referencePrice: number
+  status: string
+  sellerId: number
+  sellerNickname: string | null
+  createdAt: string | null
+  expiresAt: string | null
+  /** 仅装备：属性 / 词条明细。 */
+  equipment?: MarketEquipmentDetail
+}
+
+/** 上架条目请求体。 */
+export interface MarketListEntry {
+  type: 'equipment' | 'stack'
+  itemId?: number
+  stackKind?: 'material' | 'potion' | 'food'
+  stackItemId?: string
+  count?: number
+  unitPrice: number
+}
+

@@ -60,12 +60,14 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "equippedHeroId": getattr(item, "equipped_hero_id", None),
         "refineCount": item.refine_count,
         "enchantCount": item.enchant_count,
-        # 实付价：重造随重造次数递增，前端直接显示这两个值即可与服务端扣费一致
-        "refineCost": refine_cost(item.rarity, int(item.refine_count or 0)),
-        "enchantCost": enchant_cost(item.rarity),
+        # 实付价：重造随重造次数递增、并随物品等级提高，前端直接显示这些值即可与服务端扣费一致
+        "refineCost": refine_cost(item.rarity, int(item.refine_count or 0), "random", item.level_req),
+        "enchantCost": enchant_cost(item.rarity, "random", item.level_req),
         # 「基于当前」模式（保底不降）的单价，供前端展示两种模式价格
-        "refineCostBasedOnCurrent": refine_cost(item.rarity, int(item.refine_count or 0), "basedOnCurrent"),
-        "enchantCostBasedOnCurrent": enchant_cost(item.rarity, "basedOnCurrent"),
+        "refineCostBasedOnCurrent": refine_cost(
+            item.rarity, int(item.refine_count or 0), "basedOnCurrent", item.level_req
+        ),
+        "enchantCostBasedOnCurrent": enchant_cost(item.rarity, "basedOnCurrent", item.level_req),
         "source": item.source,
         "weaponType": base.weapon_type if base else None,
         "jobId": base.job_id if base else None,

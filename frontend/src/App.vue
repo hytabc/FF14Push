@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
+import { api } from '@/api'
 import ItemActionDialogs from '@/components/ItemActionDialogs.vue'
 import LootBubbles from '@/components/LootBubbles.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/', label: '战斗', icon: '⚔' },
   { to: '/equipment', label: '装备', icon: '🛡' },
   { to: '/inventory', label: '背包', icon: '🎒' },
+  { to: '/market', label: '市场', icon: '🏪' },
   { to: '/chest', label: '抽箱', icon: '📦' },
   { to: '/craft', label: '合成', icon: '⚗' },
   { to: '/gather', label: '采集', icon: '⛏' },
@@ -36,6 +38,7 @@ const NAV = [
   { to: '/tavern', label: '酒馆', icon: '🍺' },
   { to: '/codex', label: '图鉴', icon: '📖' },
   { to: '/ranking', label: '排行', icon: '🏆' },
+  { to: '/friends', label: '好友', icon: '🤝' },
   { to: '/settings', label: '设置', icon: '⚙' },
   { to: '/gametest', label: '游戏测试', icon: '🎮' },
 ]
@@ -56,11 +59,26 @@ watch(
   },
 )
 
+/** 好友在线心跳：登录后在任意页面（含后台标签页可见时）定期上报，好友据此看到在线状态。 */
+const HEARTBEAT_MS = 20000
+let heartbeatTimer: number | undefined
+
+function heartbeat() {
+  if (!auth.isLoggedIn || document.visibilityState !== 'visible') return
+  void api.friendHeartbeat().catch(() => {})
+}
+
 onMounted(async () => {
   if (auth.isLoggedIn) {
     await auth.loadProfile()
     await game.loadState()
   }
+  heartbeat()
+  heartbeatTimer = window.setInterval(heartbeat, HEARTBEAT_MS)
+})
+
+onUnmounted(() => {
+  if (heartbeatTimer) window.clearInterval(heartbeatTimer)
 })
 
 async function logout() {

@@ -13,6 +13,14 @@ def test_draw_counts_unlock_costs() -> None:
     assert costs == {1: 0, 10: 0, 50: 5_000_000, 100: 20_000_000}
 
 
+def test_transfer_fee_and_bounds() -> None:
+    """好友转账：手续费 10%，单笔上下限与每日上限有效（手续费销毁，不可刷金币）。"""
+    transfer = CONFIG.economy["transfer"]
+    assert float(transfer["feePct"]) == pytest.approx(0.10)
+    assert 0 < int(transfer["minAmount"]) <= int(transfer["maxAmount"])
+    assert int(transfer["dailyLimit"]) >= int(transfer["maxAmount"])
+
+
 def test_rarity_probabilities_sum_to_one() -> None:
     for tier in ("normal", "advanced", "boss"):
         total = sum(CONFIG.rarities[r]["boxChance"][tier] for r in CONFIG.rarity_order)

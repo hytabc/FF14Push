@@ -44,6 +44,22 @@
     { "id": "curse", "name": "诅咒", "type": "debuff", "trigger": "持续", "stat": "hpLossPct", "range": [0.5, 2], "desc": "每秒损失最大生命的 {v}%" },
     { "id": "critWeaken", "name": "暴击削弱", "type": "debuff", "trigger": "常驻", "stat": "critStatPct", "range": [-15, -5], "desc": "暴击属性 {v}%" },
     { "id": "dhWeaken", "name": "直击削弱", "type": "debuff", "trigger": "常驻", "stat": "dhStatPct", "range": [-12, -4], "desc": "直击属性 {v}%" },
-    { "id": "detWeaken", "name": "信念动摇", "type": "debuff", "trigger": "常驻", "stat": "detStatPct", "range": [-10, -3], "desc": "信念增伤 {v}%" }
+    { "id": "detWeaken", "name": "信念动摇", "type": "debuff", "trigger": "常驻", "stat": "detStatPct", "range": [-10, -3], "desc": "信念增伤 {v}%" },
+
+    { "id": "vitalitySurge", "name": "生命涌动", "type": "buff", "trigger": "常驻", "stat": "hpRegenPct", "range": [5, 30], "desc": "生命恢复速度 +{v}%" },
+    { "id": "vitalityDecay", "name": "生命枯竭", "type": "debuff", "trigger": "常驻", "stat": "hpRegenPct", "range": [-30, -5], "desc": "生命恢复速度 {v}%" },
+    { "id": "manaSurge", "name": "魔力涌动", "type": "buff", "trigger": "常驻", "stat": "mpRegenPct", "range": [5, 30], "desc": "魔法值恢复速度 +{v}%" },
+    { "id": "manaDecay", "name": "魔力凝滞", "type": "debuff", "trigger": "常驻", "stat": "mpRegenPct", "range": [-30, -5], "desc": "魔法值恢复速度 {v}%" },
+    { "id": "reviveHaste", "name": "归魂", "type": "buff", "trigger": "常驻", "stat": "reviveHastePct", "range": [5, 30], "desc": "死亡复活等待时间 -{v}%" },
+    { "id": "reviveDelay", "name": "沉魂", "type": "debuff", "trigger": "常驻", "stat": "reviveDelayPct", "range": [5, 30], "desc": "死亡复活等待时间 +{v}%" },
+
+    { "id": "doubleCast", "name": "双重施法", "type": "buff", "trigger": "触发", "stat": "doubleCastPct", "range": [3, 12], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "释放技能时 {v}% 概率额外释放一次" },
+
+    { "id": "poisonOnHit", "name": "淬毒", "type": "buff", "trigger": "触发", "stat": "poisonProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标中毒，持续 6 秒每秒受到攻击力 30% 的伤害" },
+    { "id": "witherOnHit", "name": "凋零", "type": "buff", "trigger": "触发", "stat": "witherProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标凋零，8 秒内攻击力 -20%" },
+    { "id": "blindOnHit", "name": "致盲", "type": "buff", "trigger": "触发", "stat": "blindProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标失明，8 秒内命中率 -25%" },
+
+    { "id": "vitalityOnHit", "name": "生机", "type": "buff", "trigger": "触发", "stat": "hpRegenProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率获得「生机」，6 秒内每秒回复 2% 最大生命" },
+    { "id": "spiritOnHit", "name": "灵息", "type": "buff", "trigger": "触发", "stat": "mpRegenProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率获得「灵息」，6 秒内每秒回复 3% 最大魔力" }
   ]
 }

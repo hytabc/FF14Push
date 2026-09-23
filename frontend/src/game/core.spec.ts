@@ -225,7 +225,7 @@ describe('等级压制', () => {
 })
 
 describe('蓝量与治疗平衡', () => {
-  it('持续施放会耗尽蓝量并回落到普攻', () => {
+  it('持续战斗：技能仍消耗蓝量，普攻独立出手', () => {
     const stats = makeStats({
       level: 100,
       jobId: 'PLD',
@@ -249,8 +249,12 @@ describe('蓝量与治疗平衡', () => {
       sim.tick(0.05)
       minMp = Math.min(minMp, sim.heroMp)
     }
-    expect(minMp).toBeLessThanOrEqual(2)
-    expect(sim.log.some((e) => e.text.startsWith('普攻'))).toBe(true)
+    // 蓝量仍会被技能消耗（普攻回蓝不足以让蓝条永远满）
+    expect(minMp).toBeLessThan(stats.maxMp * 0.5)
+    // 普攻与技能完全独立：日志中同时存在普攻与技能
+    const texts = sim.log.map((e) => e.text)
+    expect(texts.some((t) => t.startsWith('普攻'))).toBe(true)
+    expect(texts.some((t) => t.includes('造成') && !t.startsWith('普攻'))).toBe(true)
   })
 
   it('治疗职业技能数值已下调、CD 已延长', () => {
@@ -386,6 +390,59 @@ describe('战斗模拟器', () => {
 
     sim.tick(2)
     expect(sim.monster).not.toBeNull()
+  })
+
+  it('普攻与技能完全独立：技能全都不可用时普攻照常出手并进入日志', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'PLD', attack: 2000, attackSpeedPct: 0 }),
+      regionId: 1,
+      killsRequired: 5,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    for (let i = 0; i < 200 && !sim.monster; i += 1) sim.tick(0.1)
+    expect(sim.monster).toBeTruthy()
+
+    // 蓝量为 0 → 所有技能都负担不起（技能不可用），普攻仍须正常出手
+    sim.heroMp = 0
+    sim.basicAttackTimer = 0
+    const before = sim.log.length
+    sim.tick(0.2)
+    const basic = sim.log.slice(before).filter((e) => e.text.startsWith('普攻'))
+    expect(basic.length).toBeGreaterThan(0)
+    expect(basic.some((e) => e.text.includes('造成'))).toBe(true)
+  })
+
+  it('普攻频率受攻速影响（不影响技能 GCD）', () => {
+    const cooldown = (attackSpeedPct: number): number => {
+      const sim = new BattleSimulator({ stats: makeStats({ jobId: 'PLD', attackSpeedPct }), regionId: 1 })
+      return (sim as unknown as { basicAttackCooldown(): number }).basicAttackCooldown()
+    }
+    const base = cooldown(0)
+    expect(base).toBeCloseTo(data.combat.basicAttackCd as number, 5)
+    expect(cooldown(100)).toBeCloseTo(base / 2, 5)
+    // 上限 2.0：再高的攻速也不再缩短
+    expect(cooldown(500)).toBeCloseTo(base / 2, 5)
+  })
+
+  it('普攻同样结算暴击 / 直击标记（日志带「!!」）', () => {
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const sim = new BattleSimulator({
+        stats: makeStats({ jobId: 'PLD', attack: 1000, critRatePct: 100, dhRatePct: 100 }),
+        regionId: 1,
+      })
+      ;(sim as unknown as { setMonster(m: MonsterStats): void }).setMonster({
+        id: 'dummy', regionId: 0, name: '木桩', templateId: 'normal', kind: 'normal',
+        hp: 1e12, attack: 0, defense: 0, attackInterval: 1, level: 100, resistancePct: 0,
+      })
+      sim.basicAttackTimer = 0
+      ;(sim as unknown as { tickBasicAttack(): void }).tickBasicAttack()
+      expect(sim.log.some((e) => e.text.startsWith('普攻') && e.text.includes('!!'))).toBe(true)
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 
@@ -632,15 +689,19 @@ describe('普通副本多维软惩罚', () => {
     const sim = new BattleSimulator({stats:makeStats(),penalty,
       raid:{bosses:[{...monsterStats(getRegion(1),'normal'),kind:'boss',hp:1e9,attack:0}],enrage:null}})
     sim.heroHp=1;sim.heroMp=0
-    const engine=sim as unknown as {applyEffects(s:unknown):void;bossSkillInterval(s:unknown):number;cast(s:unknown):void}
+    const engine=sim as unknown as {applyEffects(s:unknown):void;bossSkillInterval(s:unknown):number;cast(s:unknown):void;tickBasicAttack():void}
     engine.applyEffects({name:'测试治疗',effects:[{type:'heal',value:.1},{type:'shield',value:.1},{type:'mpRestore',value:.1}]})
     expect(sim.heroHp).toBeCloseTo(1+Math.floor(sim.stats.maxHp*.1)*.75)
     expect(sim.shield).toBe(Math.floor(sim.stats.maxHp*.1*.75))
     expect(sim.heroMp).toBe(Math.floor(sim.stats.maxMp*.1*.8))
     expect(engine.bossSkillInterval({skillInterval:6})).toBeCloseTo(4.8)
     engine.cast(ADVENTURER_SKILL)
-    // 普攻 CD 额外受攻速缩短（见 battle.ts cast）
-    expect(sim.cooldowns[ADVENTURER_SKILL.id]).toBeCloseTo(skillCooldown(sim.stats,ADVENTURER_SKILL.cd)*1.15/attackSpeedFactor(sim.stats))
+    // 技能 CD 受副本 CD 惩罚（cooldownMultiplier）影响
+    expect(sim.cooldowns[ADVENTURER_SKILL.id]).toBeCloseTo(skillCooldown(sim.stats,ADVENTURER_SKILL.cd)*1.15)
+    // 普攻由独立计时器驱动：CD 受攻速缩短，与技能 CD / GCD 无关
+    sim.basicAttackTimer = 0
+    engine.tickBasicAttack()
+    expect(sim.basicAttackTimer).toBeCloseTo(skillCooldown(sim.stats,ADVENTURER_SKILL.cd)/attackSpeedFactor(sim.stats),5)
     const baseline = rollDamage(makeStats({attack:1000}),100,'physical',500,1,null,0,()=>.5)
     const weakened = rollDamage(makeStats({attack:1000}),100,'physical',500,1,penalty,0,()=>.5)
     expect(weakened.amount).toBe(Math.floor(baseline.amount*.65))
@@ -713,12 +774,13 @@ describe('蓝量经济（持续战斗不退化为「普攻循环」）', () => {
     })
     sim.start()
     sim.heroMp = 0
-    ;(sim as unknown as { cast(s: unknown): void }).cast(ADVENTURER_SKILL)
+    sim.basicAttackTimer = 0
+    ;(sim as unknown as { tickBasicAttack(): void }).tickBasicAttack()
     expect(sim.heroMp).toBe(Math.floor(maxMp * data.heroes.mp.basicAttackRestorePct))
   })
 })
 
-describe('地区击杀手感（小怪 3 下 / 精英 5 下 / BOSS 10 下）', () => {
+describe('地区击杀手感（普攻与技能独立出手：小怪 ~4 下 / 精英 ~6 下 / BOSS ~16 下）', () => {
   beforeEach(() => {
     // 0.1：不触发精英判定（< 0.08 才出精英）、必中、不暴击、随机浮动固定；同时普通怪模板取到 normal。
     vi.spyOn(Math, 'random').mockReturnValue(0.1)
@@ -783,25 +845,25 @@ describe('地区击杀手感（小怪 3 下 / 精英 5 下 / BOSS 10 下）', ()
   // 按地区 19 真实的 20 杀额度取样：开局大招会秒掉最早几只，随后才进入稳定节奏。
   const KILLS_REQUIRED = 20
 
-  it('普通小怪平均约 3 下', () => {
+  it('普通小怪平均约 4 下', () => {
     const hits = collectHits(KILLS_REQUIRED, expectedHero()).normal
     expect(hits.length).toBeGreaterThanOrEqual(KILLS_REQUIRED)
-    expect(avg(hits)).toBeGreaterThanOrEqual(2.5)
-    expect(avg(hits)).toBeLessThanOrEqual(4.5)
+    expect(avg(hits)).toBeGreaterThanOrEqual(3)
+    expect(avg(hits)).toBeLessThanOrEqual(5.5)
   })
 
-  it('精英怪平均约 5 下', () => {
+  it('精英怪平均约 6 下', () => {
     const hits = collectHits(KILLS_REQUIRED, expectedHero({ termMods: { eliteChancePct: 100 } })).elite
     expect(hits.length).toBeGreaterThanOrEqual(KILLS_REQUIRED)
-    expect(avg(hits)).toBeGreaterThanOrEqual(4)
-    expect(avg(hits)).toBeLessThanOrEqual(7)
+    expect(avg(hits)).toBeGreaterThanOrEqual(4.5)
+    expect(avg(hits)).toBeLessThanOrEqual(8)
   })
 
-  it('关底 BOSS 约 10 下', () => {
+  it('关底 BOSS 约 16 下', () => {
     const hits = collectHits(KILLS_REQUIRED, expectedHero()).boss
     expect(hits).toHaveLength(1)
-    expect(hits[0]).toBeGreaterThanOrEqual(6)
-    expect(hits[0]).toBeLessThanOrEqual(14)
+    expect(hits[0]).toBeGreaterThanOrEqual(10)
+    expect(hits[0]).toBeLessThanOrEqual(22)
   })
 })
 
@@ -1087,6 +1149,102 @@ describe('装备触发效果（proc）', () => {
     const text = sim.log.map((l) => l.text).join(' | ')
     expect(text).not.toContain('灼烧')
     expect(text).not.toContain('疾风')
+    expect(text).not.toContain('中毒')
+    expect(text).not.toContain('双重施法')
+  })
+
+  it('命中时按概率触发中毒 / 凋零 / 失明 / 生机 / 灵息', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({
+        termMods: {
+          poisonProcPct: 100,
+          witherProcPct: 100,
+          blindProcPct: 100,
+          hpRegenProcPct: 100,
+          mpRegenProcPct: 100,
+        },
+      }),
+      regionId: 1,
+    })
+    sim.start()
+    for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
+    expect(sim.monster).toBeTruthy()
+    const engine = sim as unknown as { cast(s: unknown): void }
+    engine.cast(ADVENTURER_SKILL)
+    const text = sim.log.map((l) => l.text).join(' | ')
+    expect(text).toContain('中毒')
+    expect(text).toContain('凋零')
+    expect(text).toContain('失明')
+    expect(text).toContain('生机')
+    expect(text).toContain('灵息')
+  })
+
+  it('「凋零」降低目标攻击力、「失明」提高怪物失手率', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ dodgePct: 0, termMods: { witherProcPct: 100, blindProcPct: 100 } }),
+      regionId: 1,
+    })
+    sim.start()
+    for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
+    const engine = sim as unknown as {
+      cast(s: unknown): void
+      enemyAttackDown: number
+      monsterMissChance: number
+    }
+    engine.cast(ADVENTURER_SKILL)
+    expect(engine.enemyAttackDown).toBeCloseTo(0.2, 5)
+    expect(engine.monsterMissChance).toBeCloseTo(25, 5)
+  })
+
+  it('「双重施法」按概率额外释放一次技能', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1, termMods: { doubleCastPct: 100 } }),
+      regionId: 1,
+    })
+    sim.start()
+    for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
+    const engine = sim as unknown as { cast(s: unknown): void }
+    engine.cast(ADVENTURER_SKILL)
+    const text = sim.log.map((l) => l.text).join(' | ')
+    expect(text).toContain('双重施法')
+    expect(sim.log.filter((l) => l.text.includes('普攻 造成')).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('「生机 / 灵息」在持续时间内回复生命与魔力', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({
+        maxHp: 100000,
+        maxMp: 100000,
+        hpRegen: 0,
+        mpRegen: 0,
+        physDef: 1e6,
+        magicDef: 1e6,
+        termMods: { hpRegenProcPct: 100, mpRegenProcPct: 100 },
+      }),
+      regionId: 1,
+    })
+    sim.start()
+    for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
+    sim.heroHp = 1000
+    sim.heroMp = 0
+    const engine = sim as unknown as { cast(s: unknown): void }
+    engine.cast(ADVENTURER_SKILL)
+    sim.tick(1)
+    expect(sim.heroHp).toBeGreaterThan(1000)
+    expect(sim.heroMp).toBeGreaterThan(0)
+  })
+
+  it('「归魂」缩短 / 「沉魂」延长复活等待时间，最短 1 秒', () => {
+    const haste = new BattleSimulator({ stats: makeStats({ termMods: { reviveHastePct: 50 } }), regionId: 1 })
+    haste.start()
+    ;(haste as unknown as { heroDies(): void }).heroDies()
+    expect(haste.deathTimer).toBeCloseTo(5, 5)
+    expect(haste.reviveTotal).toBeCloseTo(5, 5)
+
+    const delay = new BattleSimulator({ stats: makeStats({ termMods: { reviveDelayPct: 50 } }), regionId: 1 })
+    delay.start()
+    ;(delay as unknown as { heroDies(): void }).heroDies()
+    expect(delay.deathTimer).toBeCloseTo(15, 5)
   })
 })
 

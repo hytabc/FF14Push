@@ -231,6 +231,8 @@ def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
     attack_speed_pct += mods.get("attackSpeedPct", 0.0)
     dodge_pct = max(0.0, dodge_pct + mods.get("dodgePct", 0.0))
     lifesteal_pct += mods.get("lifestealPct", 0.0)
+    hp_regen = panel["hpRegen"] * (1.0 + mods.get("hpRegenPct", 0.0) / 100.0)
+    mp_regen = max(0.0, panel["mpRegen"] * (1.0 + mods.get("mpRegenPct", 0.0) / 100.0))
 
     # 三属性：装备值 → 词条/主属性联动 → 换算
     crit_value = sub.get("crit", 0.0) * (1 + mods.get("critStatPct", 0.0) / 100.0)
@@ -254,8 +256,8 @@ def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
         main_attr=main_attr,
         max_hp=max_hp,
         max_mp=panel["maxMp"],
-        hp_regen=panel["hpRegen"],
-        mp_regen=panel["mpRegen"],
+        hp_regen=hp_regen,
+        mp_regen=mp_regen,
         attack=attack,
         magic_attack=magic_attack,
         phys_def=panel["physDef"],

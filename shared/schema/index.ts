@@ -690,10 +690,24 @@ export const gameData = {
   },
   economy: economyJson as unknown as {
     sell: { basePrice: number; randomFloat: number; scoreHalf: number; attrBonusMax: number; autoSellRarities: RarityId[] }
+    /** 玩家间交易板：上架托管、整单买断成交，成交价抽 feePct 手续费；未售出 listingDays 天后退回。 */
+    market: {
+      feePct: number
+      listingDays: number
+      maxActiveListings: number
+      maxStackQuantityPerListing: number
+      minPrice: number
+      maxPrice: number
+    }
+    /** 好友金币转账：转账方支付 amount，收款方实收 amount − floor(amount × feePct)。 */
+    transfer: { feePct: number; minAmount: number; maxAmount: number; dailyLimit: number }
     refine: {
       baseAttrFloat: number
       subAttrFloat: number
       costGrowthPerRefine: number
+      /** 等级价格系数 = 1 + (num / den) × (物品等级 − 1)：1 级 ×1、100 级 ×25/3 ≈ 8.33。 */
+      costLevelGrowthNum: number
+      costLevelGrowthDen: number
       basedOnCurrentCostMultiplier: number
       /** 「基于当前」浮动的下浮比例（新值 = 当前值 ×(1 − down)）。 */
       basedOnCurrentDownPct: number
@@ -704,6 +718,9 @@ export const gameData = {
     }
     enchant: {
       autoUntilRareExtraCostMultiplier: number
+      /** 等级价格系数 = 1 + (num / den) × (物品等级 − 1)：与重造同一套等级曲线。 */
+      costLevelGrowthNum: number
+      costLevelGrowthDen: number
       basedOnCurrentCostMultiplier: number
       /** 「基于当前」浮动的下浮比例（新值 = 当前值 ×(1 − down)）。 */
       basedOnCurrentDownPct: number

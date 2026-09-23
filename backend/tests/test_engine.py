@@ -387,19 +387,34 @@ class TestCrafting:
 
 
 class TestUpgradeCosts:
-    """重造 / 附魔的单次消耗：随品阶单调递增、附魔始终比重造贵、且都控制在 5 万以内。"""
+    """重造 / 附魔的单次消耗：随品阶单调递增、附魔始终比重造贵，并随物品等级线性提高。"""
 
-    CAP = 50_000
-
-    def test_costs_within_cap_and_monotonic(self) -> None:
+    def test_costs_monotonic_by_rarity(self) -> None:
         refine = [int(CONFIG.rarities[r]["refineCost"]) for r in CONFIG.rarity_order]
         enchant = [int(CONFIG.rarities[r]["enchantCost"]) for r in CONFIG.rarity_order]
 
-        assert max(refine) <= self.CAP
-        assert max(enchant) <= self.CAP
         assert refine == sorted(refine)
         assert enchant == sorted(enchant)
         assert all(e > r for r, e in zip(refine, enchant))
+        # 1 级基准价落在旧「5 万以内」区间（等级系数 1 级恒为 1）
+        cap = 50_000
+        assert max(refine) <= cap and max(enchant) <= cap
+
+    def test_costs_scale_with_item_level(self) -> None:
+        """等级系数 = 1 + 2/27 ×(等级 − 1)：1 级不动，100 级 ×25/3 ≈ 8.33。"""
+        for rarity in CONFIG.rarity_order:
+            assert refine_cost(rarity, 0, "random", 100) > refine_cost(rarity, 0, "random", 1)
+            assert enchant_cost(rarity, "random", 100) > enchant_cost(rarity, "random", 1)
+
+        # 1 级 = 基准价（不额外加价）
+        assert refine_cost("mythic", 0, "random", 1) == 30_000
+        assert enchant_cost("mythic", "random", 1) == 50_000
+        # 100 级神话「基于当前」首造 = 30000 × 3 × 25/3 = 750,000
+        assert refine_cost("mythic", 0, "basedOnCurrent", 100) == 750_000
+        # 等级内单调：同一品阶等级越高越贵
+        assert refine_cost("mythic", 0, "basedOnCurrent", 100) > refine_cost(
+            "mythic", 0, "basedOnCurrent", 50
+        )
 
 
 class TestSubAttrQuality:
@@ -950,6 +965,49 @@ class TestEggHeroAdditions:
             assert theoretical_dps(yazi, 0.0, None, mob_kind=kind) == pytest.approx(
                 theoretical_dps(mch, 0.0, None, mob_kind=kind)
             )
+
+
+class TestBasicAttackModel:
+    """普攻与技能完全独立：理论模型计入普攻，且普攻间隔受攻速缩短。"""
+
+    def test_dps_rises_with_attack_speed(self) -> None:
+        stats = compute_stats(FakeHero(level=50), [])
+        slow = theoretical_dps(replace(stats, attack_speed_pct=0.0), 0.0, None)
+        fast = theoretical_dps(replace(stats, attack_speed_pct=100.0), 0.0, None)
+        # 攻速只缩短普攻间隔（技能循环不随攻击速度放大），因此模型 DPS 仍应提高。
+        assert fast > slow
+
+
+class TestEnchantNewEffects:
+    """新增附魔词条：中毒触发与双重施法计入理论 DPS，恢复速率词条折算进面板。"""
+
+    def test_poison_proc_increases_dps(self) -> None:
+        base = compute_stats(FakeHero(level=50), [])
+        plain = theoretical_dps(base, 0.0, None)
+        poisoned = theoretical_dps(
+            replace(base, term_mods={**base.term_mods, "poisonProcPct": 100.0}), 0.0, None
+        )
+        assert poisoned > plain
+
+    def test_double_cast_increases_dps(self) -> None:
+        base = compute_stats(FakeHero(level=50), [])
+        plain = theoretical_dps(base, 0.0, None)
+        doubled = theoretical_dps(
+            replace(base, term_mods={**base.term_mods, "doubleCastPct": 100.0}), 0.0, None
+        )
+        assert doubled > plain
+
+    def test_regen_terms_scale_regen(self) -> None:
+        item = FakeItem(
+            terms=[
+                {"id": "vitalitySurge", "stat": "hpRegenPct", "value": 50.0, "type": "buff"},
+                {"id": "manaSurge", "stat": "mpRegenPct", "value": 50.0, "type": "buff"},
+            ]
+        )
+        base = compute_stats(FakeHero(level=50), [])
+        boosted = compute_stats(FakeHero(level=50), [item])
+        assert boosted.hp_regen == pytest.approx(base.hp_regen * 1.5)
+        assert boosted.mp_regen == pytest.approx(base.mp_regen * 1.5)
 
 
 class TestReportDoubleCharges:
