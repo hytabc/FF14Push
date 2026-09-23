@@ -5,6 +5,8 @@ import data from '@shared/schema'
 
 import { api } from '@/api'
 import { ProgressClock } from '@/game/core/progress'
+import type { SequenceStep, StepResult, StepStatus } from '@/game/core/sequence'
+import { SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
 import type { FishCatch } from '@/game/types'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -40,6 +42,14 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const targetCount = ref<number | null>(null)
   const producedCount = ref(0)
 
+  // 采集 / 制作序列：按顺序自动执行多个会话。仅当前页面会话有效（离开页面即停止）。
+  const sequence = ref<SequenceStep[]>([])
+  const seqActive = ref(false)
+  const seqIndex = ref(-1)
+  /** 当前采集步「序列开始后」新采到的目标材料数量。 */
+  const seqGained = ref(0)
+  const seqResults = ref<StepResult[]>([])
+
   // 单次动作进度：与服务端下发的 cycle（秒/余额）对齐，用单调时钟插值展示。
   const progress = ref(0)
   const clock = new ProgressClock()
@@ -59,6 +69,10 @@ export const useDohDolStore = defineStore('dohdol', () => {
     const recipe = state.value?.recipes.find((r) => r.id === recipeId.value)
     return recipe ? recipe.craftable <= 0 : false
   })
+  /** 当前正在执行的序列步骤（未运行序列时为 null）。 */
+  const currentSeqStep = computed(() =>
+    seqActive.value ? sequence.value[seqIndex.value] ?? null : null,
+  )
 
   function renderProgress() {
     progress.value = clock.position()
@@ -135,12 +149,24 @@ export const useDohDolStore = defineStore('dohdol', () => {
     }
     const id = sessionId.value
     busy.value = true
+    // 序列：本步若已达标，则在状态刷新后切到下一步（见下方 completeStep）。
+    let stepComplete: { done: number; target: number } | null = null
     try {
       if (mode.value === 'gather') {
         const [r, rtt] = await timed(() => api.gatherReport(id))
         if (sessionId.value !== id) return
         lastGained.value = r.gained
         syncCycle(r.cycle, rtt)
+        const step = currentSeqStep.value
+        if (step?.kind === 'gather') {
+          // 只统计序列开始后新采到的目标材料，达到数量即完成本步。
+          seqGained.value += r.gained
+            .filter((g) => g.itemId === step.materialId)
+            .reduce((sum, g) => sum + g.count, 0)
+          if (seqGained.value >= step.target) {
+            stepComplete = { done: seqGained.value, target: step.target }
+          }
+        }
       } else if (mode.value === 'produce') {
         const [r, rtt] = await timed(() => api.produceReport(id))
         if (sessionId.value !== id) return
@@ -150,7 +176,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
         if (r.finished) {
           // 达到目标件数：服务端已结束会话，本地直接收尾（不再调用 stop 接口）。
           settle()
-          toast.push(`制造完成，共 ${r.producedTotal} 件`, 'success')
+          stepComplete = { done: r.producedTotal, target: r.targetActions ?? r.producedTotal }
+          if (!seqActive.value) toast.push(`制造完成，共 ${r.producedTotal} 件`, 'success')
         } else {
           syncCycle(r.cycle, rtt)
         }
@@ -172,6 +199,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
         }
       }
       await game.loadState()
+      if (stepComplete) await completeStep(stepComplete.done, stepComplete.target)
     } catch {
       if (sessionId.value === id) await stop(true)
     } finally {
@@ -180,7 +208,9 @@ export const useDohDolStore = defineStore('dohdol', () => {
     }
   }
 
-  async function startGather(jobId: string, regionId: number) {
+  async function startGather(jobId: string, regionId: number, opts?: { fromSequence?: boolean }) {
+    // 手动开始会取消正在跑的序列（保留队列定义）；序列内部启动则不动。
+    if (!opts?.fromSequence) resetRun()
     await stop(true)
     await game.stopBattle(true)
     const [res, rtt] = await timed(() => api.gatherStart(jobId, regionId))
@@ -193,7 +223,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
   }
 
   /** 开始生产。count=null 表示「制作全部」（按当前材料上限）。 */
-  async function startProduce(jobId: string, recipeId_: string, count: number | null = null) {
+  async function startProduce(
+    jobId: string,
+    recipeId_: string,
+    count: number | null = null,
+    opts?: { fromSequence?: boolean },
+  ) {
+    if (!opts?.fromSequence) resetRun()
     await stop(true)
     await game.stopBattle(true)
     const [res, rtt] = await timed(() => api.produceStart(jobId, recipeId_, count))
@@ -242,6 +278,149 @@ export const useDohDolStore = defineStore('dohdol', () => {
     } catch (err) {
       if (!silent) throw err
     }
+  }
+
+  // ------------------------------------------------------------------ 序列
+  /** 清空「运行态」但保留队列定义（手动开始 / 序列结束时用）。 */
+  function resetRun() {
+    seqActive.value = false
+    seqIndex.value = -1
+    seqGained.value = 0
+    seqResults.value = []
+  }
+
+  /** 入列：同一目标的步骤合并数量；超出上限拒绝。 */
+  function addStep(step: SequenceStep) {
+    if (seqActive.value) {
+      toast.push('序列运行中，请先停止再编辑', 'error')
+      return
+    }
+    const key = stepKey(step)
+    const existing = sequence.value.find((s) => stepKey(s) === key)
+    if (existing) {
+      existing.target += step.target
+      toast.push(`已合并到「${existing.name}」，数量 ${existing.target}`, 'info')
+      return
+    }
+    if (sequence.value.length >= SEQ_STEP_LIMIT) {
+      toast.push(`序列最多 ${SEQ_STEP_LIMIT} 步`, 'error')
+      return
+    }
+    sequence.value.push(step)
+  }
+
+  function removeStep(id: string) {
+    if (seqActive.value) return
+    sequence.value = sequence.value.filter((s) => s.id !== id)
+  }
+
+  function moveStep(id: string, dir: -1 | 1) {
+    if (seqActive.value) return
+    const i = sequence.value.findIndex((s) => s.id === id)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= sequence.value.length) return
+    const next = sequence.value.slice()
+    ;[next[i], next[j]] = [next[j], next[i]]
+    sequence.value = next
+  }
+
+  function clearSequence() {
+    if (seqActive.value) return
+    sequence.value = []
+    seqResults.value = []
+  }
+
+  /** 开始执行序列：按顺序自动采集 / 制作，直到全部完成或用户停止。 */
+  async function startSequence() {
+    if (seqActive.value) return
+    if (!sequence.value.length) {
+      toast.push('序列为空，请先添加步骤', 'error')
+      return
+    }
+    await stop(true)
+    await game.stopBattle(true)
+    seqResults.value = []
+    seqIndex.value = 0
+    seqGained.value = 0
+    seqActive.value = true
+    await runStep()
+  }
+
+  /** 停止序列：结束当前会话，本步记为「中断」，保留队列定义。 */
+  async function stopSequence(silent = false) {
+    const step = currentSeqStep.value
+    if (step) {
+      const done = step.kind === 'gather' ? seqGained.value : producedCount.value
+      seqResults.value.push({
+        id: step.id,
+        name: step.name,
+        done,
+        target: step.target,
+        status: 'interrupted',
+      })
+    }
+    resetRun()
+    await stop(silent)
+  }
+
+  /** 启动当前步（采集 / 制作）。启动失败（材料不足 / 等级不足等）→ 跳过并继续。 */
+  async function runStep() {
+    if (!seqActive.value) return
+    const step = sequence.value[seqIndex.value]
+    if (!step) {
+      finishSequence()
+      return
+    }
+    seqGained.value = 0
+    try {
+      if (step.kind === 'gather') {
+        await startGather(step.jobId, step.regionId, { fromSequence: true })
+      } else {
+        await startProduce(step.jobId, step.recipeId, step.target, { fromSequence: true })
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : '启动失败'
+      seqResults.value.push({
+        id: step.id,
+        name: step.name,
+        done: 0,
+        target: step.target,
+        status: 'skipped',
+        reason,
+      })
+      toast.push(`「${step.name}」已跳过：${reason}`, 'error')
+      seqIndex.value += 1
+      await runStep()
+    }
+  }
+
+  /** 当前步达标后的收尾：记录结果并切到下一步。 */
+  async function completeStep(done: number, target: number) {
+    const step = currentSeqStep.value
+    if (!step) return
+    const status: StepStatus = done >= target ? 'done' : 'partial'
+    seqResults.value.push({ id: step.id, name: step.name, done, target, status })
+    toast.push(
+      status === 'done'
+        ? `「${step.name}」完成（${done}/${target}）`
+        : `「${step.name}」仅完成 ${done}/${target}`,
+      status === 'done' ? 'success' : 'info',
+    )
+    seqIndex.value += 1
+    await runStep()
+  }
+
+  function finishSequence() {
+    const total = sequence.value.length
+    const ok = seqResults.value.filter((r) => r.status === 'done').length
+    seqActive.value = false
+    seqIndex.value = -1
+    seqGained.value = 0
+    // 保留 seqResults 供界面展示本次汇总。
+    toast.push(
+      ok >= total ? `序列完成：共 ${total} 步` : `序列结束：${ok}/${total} 步完成`,
+      ok >= total ? 'success' : 'info',
+    )
   }
 
   async function useConsumable(itemId: string) {
@@ -296,6 +475,19 @@ export const useDohDolStore = defineStore('dohdol', () => {
     state,
     isRunning,
     active,
+    // 序列
+    sequence,
+    seqActive,
+    seqIndex,
+    seqGained,
+    seqResults,
+    currentSeqStep,
+    addStep,
+    removeStep,
+    moveStep,
+    clearSequence,
+    startSequence,
+    stopSequence,
     startGather,
     startProduce,
     startFish,

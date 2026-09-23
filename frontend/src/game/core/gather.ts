@@ -11,11 +11,13 @@ export interface GatherTarget {
 
 /**
  * 为采集材料挑一个采集点：只在**已解锁**地区里选，优先产出权重更高、地区更靠前的。
- * 非采集材料（半成品 / 鱼 / 药水等）或没有已解锁产出地时返回 null。
+ * 传入 level 时再按采集等级过滤（避免规划到等级不够的采集点）。
+ * 非采集材料（半成品 / 鱼 / 药水等）或没有可用的产出地时返回 null。
  */
 export function findGatherTarget(
   materialId: string,
   isUnlocked: (regionId: number) => boolean,
+  level?: number,
 ): GatherTarget | null {
   const material = data.materialById[materialId]
   if (!material || material.kind !== 'gather' || !material.jobId) return null
@@ -26,6 +28,7 @@ export function findGatherTarget(
     const yieldEntry = node.yields.find((y) => y.materialId === materialId)
     if (!yieldEntry) continue
     if (!isUnlocked(node.regionId)) continue
+    if (level !== undefined && node.levelReq > level) continue
     candidates.push({ jobId: node.jobId, regionId: node.regionId, weight: yieldEntry.weight })
   }
   if (candidates.length === 0) return null

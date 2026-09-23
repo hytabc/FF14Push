@@ -7,7 +7,9 @@ import type { GatherNodeDef } from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import SequencePanel from '@/components/SequencePanel.vue'
 import { gatherYieldExplain } from '@/game/explanations'
+import { nextStepId, resolveGatherStep } from '@/game/core/sequence'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
@@ -104,6 +106,44 @@ const materials = computed(() =>
 const bonus = computed(() => dohdol.state?.bonus ?? {})
 const running = computed(() => dohdol.isRunning && dohdol.mode === 'gather')
 
+// ---------------------------------------------------------------- 采集序列
+const dolLevel = computed(() => dohdol.state?.progress?.dol?.level ?? 1)
+
+function isRegionUnlocked(regionId: number): boolean {
+  const entry = game.state?.regionProgress?.[String(regionId)]
+  return entry ? entry.unlocked : regionId === 1
+}
+
+function regionName(regionId: number): string {
+  return data.regions.regions.find((r) => r.id === regionId)?.name ?? `地区 ${regionId}`
+}
+
+/** 可加入采集序列的材料：已解锁且采集等级足够的采集点产物。 */
+const seqMaterial = ref('')
+const seqQty = ref(1)
+const gatherMaterialOptions = computed(() => {
+  const out: Array<{ id: string; name: string; regionId: number }> = []
+  for (const m of data.materials.materials) {
+    if (m.kind !== 'gather') continue
+    const step = resolveGatherStep(m.id, 1, isRegionUnlocked, dolLevel.value, 'probe')
+    if (!step) continue
+    out.push({ id: m.id, name: m.name, regionId: step.regionId })
+  }
+  out.sort((a, b) => a.regionId - b.regionId || a.name.localeCompare(b.name))
+  return out
+})
+
+function addGatherStep() {
+  if (!seqMaterial.value) return
+  const qty = Math.max(1, Math.floor(Number(seqQty.value) || 1))
+  const step = resolveGatherStep(seqMaterial.value, qty, isRegionUnlocked, dolLevel.value, nextStepId())
+  if (!step) {
+    toast.push('该材料当前无法采集', 'error')
+    return
+  }
+  dohdol.addStep(step)
+}
+
 const totalValue = computed(() =>
   materials.value.reduce((sum, m) => sum + (m.sell ?? 0) * m.count, 0),
 )
@@ -122,7 +162,7 @@ onMounted(async () => {
   await applyJump()
 })
 onUnmounted(() => {
-  void dohdol.stop(true)
+  void dohdol.stopSequence(true)
 })
 
 /** 从生产页跳转过来时：选中对应采集点，并按需自动开始采集。 */
@@ -148,7 +188,7 @@ function pickJob(id: string) {
 async function toggle() {
   error.value = ''
   if (running.value) {
-    await dohdol.stop()
+    await dohdol.stopSequence()
     return
   }
   if (regionId.value === null) {
@@ -220,7 +260,7 @@ async function toggle() {
         </InfoTip>
       </p>
 
-      <div v-if="running" class="mt-3">
+      <div v-if="running && !dohdol.seqActive" class="mt-3">
         <div class="mb-1 flex justify-between text-[11px] text-ink-400">
           <span>正在采集…</span>
           <span class="font-mono text-emerald-300">{{ dohdol.progressPct }}%</span>
@@ -233,6 +273,45 @@ async function toggle() {
         </div>
       </div>
     </section>
+
+    <SequencePanel
+      title="采集序列"
+      hint="按顺序自动前往各地区采集指定材料；只统计序列开始后新采到的数量。运行中不可编辑队列。"
+    >
+      <template #composer>
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select
+            v-model="seqMaterial"
+            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400 disabled:opacity-40"
+            :disabled="dohdol.seqActive"
+          >
+            <option value="" disabled>选择材料</option>
+            <option v-for="m in gatherMaterialOptions" :key="m.id" :value="m.id">
+              {{ m.name }}（{{ regionName(m.regionId) }}）
+            </option>
+          </select>
+          <input
+            v-model.number="seqQty"
+            type="number"
+            min="1"
+            step="1"
+            class="w-20 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-right outline-none focus:border-amber-400 disabled:opacity-40"
+            :disabled="dohdol.seqActive"
+            title="要采集的数量"
+          >
+          <button
+            class="rounded-md bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition disabled:opacity-40"
+            :disabled="dohdol.seqActive || !seqMaterial"
+            @click="addGatherStep"
+          >
+            添加步骤
+          </button>
+          <span v-if="!gatherMaterialOptions.length" class="text-[11px] text-ink-500">
+            暂无可采集材料（需先解锁地区并提升采集等级）。
+          </span>
+        </div>
+      </template>
+    </SequencePanel>
 
     <section class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
       <button class="flex w-full items-center justify-between text-left" @click="overviewOpen = !overviewOpen">

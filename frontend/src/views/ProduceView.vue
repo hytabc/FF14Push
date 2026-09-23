@@ -6,13 +6,15 @@ import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import SequencePanel from '@/components/SequencePanel.vue'
 import { findGatherTarget } from '@/game/core/gather'
 import { craftQualityExplain, craftRarityExplain } from '@/game/explanations'
+import { nextStepId } from '@/game/core/sequence'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
-import type { RarityId } from '@/game/types'
+import type { RarityId, RecipeView } from '@/game/types'
 import { rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
@@ -109,7 +111,7 @@ onMounted(async () => {
   if (auth.isLoggedIn) await game.loadState()
 })
 onUnmounted(() => {
-  void dohdol.stop(true)
+  void dohdol.stopSequence(true)
 })
 
 /** 每个配方卡片上的「制作 X 个」数量，默认 1。 */
@@ -133,7 +135,7 @@ function amountOf(recipeId: string): number {
 async function startRecipe(recipeId: string, count: number | null) {
   error.value = ''
   if (running.value) {
-    await dohdol.stop()
+    await dohdol.stopSequence()
   }
   try {
     await dohdol.startProduce(job.value, recipeId, count)
@@ -145,7 +147,47 @@ async function startRecipe(recipeId: string, count: number | null) {
 }
 
 async function stop() {
-  await dohdol.stop()
+  await dohdol.stopSequence()
+}
+
+// ---------------------------------------------------------------- 制作序列
+const seqRecipe = ref('')
+const seqQty = ref(1)
+const seqRecipeOptions = computed(() =>
+  (dohdol.state?.recipes ?? [])
+    .filter((r) => r.unlocked)
+    .map((r) => ({
+      id: r.id,
+      label: `[${data.dohdolJobById[r.jobId]?.name ?? r.jobId}] ${r.output.name}（Lv.${r.requiredLevel}）`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label)),
+)
+
+function addProduceStep() {
+  if (!seqRecipe.value) return
+  const recipe = (dohdol.state?.recipes ?? []).find((r) => r.id === seqRecipe.value)
+  if (!recipe) return
+  const qty = Math.max(1, Math.floor(Number(seqQty.value) || 1))
+  dohdol.addStep({
+    kind: 'produce',
+    id: nextStepId(),
+    recipeId: recipe.id,
+    name: recipe.output.name,
+    jobId: recipe.jobId,
+    target: qty,
+  })
+}
+
+/** 配方卡片「＋ 序列」：把该配方与当前数量加入序列。 */
+function addRecipeToSequence(r: RecipeView) {
+  dohdol.addStep({
+    kind: 'produce',
+    id: nextStepId(),
+    recipeId: r.id,
+    name: r.output.name,
+    jobId: r.jobId,
+    target: amountOf(r.id),
+  })
 }
 </script>
 
@@ -249,7 +291,7 @@ async function stop() {
 
       <p v-if="error" class="mt-2 text-xs text-red-400">{{ error }}</p>
 
-      <div v-if="running" class="mt-3">
+      <div v-if="running && !dohdol.seqActive" class="mt-3">
         <div class="mb-1 flex justify-between text-[11px] text-ink-400">
           <span>
             正在制造…
@@ -271,6 +313,43 @@ async function stop() {
         </div>
       </div>
     </section>
+
+    <SequencePanel
+      title="制作序列"
+      hint="按顺序自动制作指定物品；材料一次都不够的步骤会被跳过并继续，结束后汇总每一步的实际完成量。也可点配方卡片上的「＋序列」加入。"
+    >
+      <template #composer>
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select
+            v-model="seqRecipe"
+            class="min-w-48 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400 disabled:opacity-40"
+            :disabled="dohdol.seqActive"
+          >
+            <option value="" disabled>选择配方</option>
+            <option v-for="r in seqRecipeOptions" :key="r.id" :value="r.id">{{ r.label }}</option>
+          </select>
+          <input
+            v-model.number="seqQty"
+            type="number"
+            min="1"
+            step="1"
+            class="w-20 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-right outline-none focus:border-amber-400 disabled:opacity-40"
+            :disabled="dohdol.seqActive"
+            title="要制作的数量"
+          >
+          <button
+            class="rounded-md bg-violet-500/20 px-3 py-1.5 text-xs font-semibold text-violet-300 transition disabled:opacity-40"
+            :disabled="dohdol.seqActive || !seqRecipe"
+            @click="addProduceStep"
+          >
+            添加步骤
+          </button>
+          <span v-if="!seqRecipeOptions.length" class="text-[11px] text-ink-500">
+            暂无可制作配方（需先提升生产等级）。
+          </span>
+        </div>
+      </template>
+    </SequencePanel>
 
     <section class="space-y-2">
       <div
@@ -317,6 +396,15 @@ async function stop() {
               @click="startRecipe(r.id, null)"
             >
               制作全部
+            </button>
+            <button
+              class="rounded-md px-2.5 py-1 text-xs transition"
+              :class="r.unlocked ? 'bg-violet-500/20 text-violet-300' : 'bg-ink-800 text-ink-500'"
+              :disabled="!r.unlocked || dohdol.seqActive"
+              title="把该配方加入制作序列"
+              @click="addRecipeToSequence(r)"
+            >
+              ＋序列
             </button>
           </div>
         </div>

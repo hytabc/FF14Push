@@ -22,4 +22,15 @@ describe('findGatherTarget（生产页 → 采集跳转）', () => {
     expect(findGatherTarget('h_plank', () => true)).toBeNull()
     expect(findGatherTarget('unknown', () => true)).toBeNull()
   })
+
+  it('传入采集等级时只选等级足够的采集点（序列规划用）', () => {
+    // g_wood：地区 2（要求 Lv.3，权重 1）与地区 3（要求 Lv.6，权重 3）
+    expect(findGatherTarget('g_wood', () => true, 6)).toMatchObject({ regionId: 3 })
+    // Lv.3 时地区 3 不可用，回退到地区 2
+    expect(findGatherTarget('g_wood', () => true, 3)).toMatchObject({ regionId: 2 })
+    // Lv.2 时两个采集点都采不了
+    expect(findGatherTarget('g_wood', () => true, 2)).toBeNull()
+    // 不传等级时保持原行为（不受等级限制）
+    expect(findGatherTarget('g_wood', () => true)).toMatchObject({ jobId: 'BTN' })
+  })
 })
