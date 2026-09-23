@@ -61,7 +61,27 @@ const total = computed(() => dohdol.sequence.length)
     <div class="flex flex-wrap items-center gap-2">
       <h2 class="text-xs font-semibold text-ink-300">{{ title }}</h2>
       <span class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-ink-400">共 {{ total }} 步</span>
-      <div class="ml-auto flex items-center gap-1.5">
+      <div class="ml-auto flex flex-wrap items-center gap-1.5">
+        <select
+          v-model="dohdol.loopMode"
+          class="rounded bg-ink-800 px-2 py-1 text-[11px] text-ink-200 disabled:opacity-40"
+          :disabled="dohdol.seqActive"
+          title="循环方式"
+        >
+          <option value="once">不循环</option>
+          <option value="count">循环 N 次</option>
+          <option value="infinite">一直循环</option>
+        </select>
+        <input
+          v-if="dohdol.loopMode === 'count'"
+          v-model.number="dohdol.loopTotal"
+          type="number"
+          min="1"
+          step="1"
+          class="w-14 rounded bg-ink-800 px-2 py-1 text-right text-[11px] text-ink-200 disabled:opacity-40"
+          :disabled="dohdol.seqActive"
+          title="总轮数"
+        >
         <button
           v-if="!dohdol.seqActive"
           class="rounded-md px-3 py-1 text-xs font-semibold transition"
@@ -141,6 +161,7 @@ const total = computed(() => dohdol.sequence.length)
     <div v-if="dohdol.seqActive" class="mt-3">
       <div class="mb-1 flex justify-between text-[11px] text-ink-400">
         <span>
+          <template v-if="dohdol.loopMode !== 'once'">第 {{ dohdol.loopRound }} 轮 · </template>
           第 {{ dohdol.seqIndex + 1 }}/{{ total }} 步 · {{ dohdol.currentSeqStep?.name }}
         </span>
         <span class="font-mono text-emerald-300">{{ dohdol.progressPct }}%</span>
@@ -154,7 +175,9 @@ const total = computed(() => dohdol.sequence.length)
     </div>
 
     <div v-if="dohdol.seqResults.length" class="mt-3 rounded border border-ink-800 bg-ink-950/40 p-2">
-      <p class="mb-1 text-[11px] font-semibold text-ink-300">本次序列结果</p>
+      <p class="mb-1 text-[11px] font-semibold text-ink-300">
+        {{ dohdol.loopMode === 'once' ? '本次序列结果' : `本轮结果（第 ${dohdol.loopRound} 轮）` }}
+      </p>
       <ul class="space-y-0.5 text-[11px]">
         <li v-for="r in dohdol.seqResults" :key="r.id" class="flex items-center gap-2">
           <span class="truncate text-ink-200">{{ r.name }}</span>

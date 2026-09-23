@@ -5,7 +5,7 @@ import data from '@shared/schema'
 
 import { api } from '@/api'
 import { ProgressClock } from '@/game/core/progress'
-import type { SequenceStep, StepResult, StepStatus } from '@/game/core/sequence'
+import type { SequenceLoopMode, SequenceStep, StepResult, StepStatus } from '@/game/core/sequence'
 import { SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
 import type { FishCatch, ActivityLogEntry } from '@/game/types'
 import { activityExpLog } from '@/utils/battleLog'
@@ -56,6 +56,11 @@ export const useDohDolStore = defineStore('dohdol', () => {
   /** 当前采集步「序列开始后」新采到的目标材料数量。 */
   const seqGained = ref(0)
   const seqResults = ref<StepResult[]>([])
+  /** 循环模式（默认不循环，保持旧行为）；count 表示跑完 loopTotal 轮后停止。 */
+  const loopMode = ref<SequenceLoopMode>('once')
+  const loopTotal = ref(3)
+  /** 当前轮次，从 1 起。 */
+  const loopRound = ref(1)
 
   // 单次动作进度：与服务端下发的 cycle（秒/余额）对齐，用单调时钟插值展示。
   const progress = ref(0)
@@ -323,6 +328,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     seqIndex.value = -1
     seqGained.value = 0
     seqResults.value = []
+    loopRound.value = 1
   }
 
   /** 入列：同一目标的步骤合并数量；超出上限拒绝。 */
@@ -364,6 +370,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     if (seqActive.value) return
     sequence.value = []
     seqResults.value = []
+    loopRound.value = 1
   }
 
   /** 开始执行序列：按顺序自动采集 / 制作，直到全部完成或用户停止。 */
@@ -378,6 +385,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     seqResults.value = []
     seqIndex.value = 0
     seqGained.value = 0
+    loopRound.value = 1
     seqActive.value = true
     await runStep()
   }
@@ -449,14 +457,34 @@ export const useDohDolStore = defineStore('dohdol', () => {
   function finishSequence() {
     const total = sequence.value.length
     const ok = seqResults.value.filter((r) => r.status === 'done').length
+    // 本轮是否有实际产出：全部步骤都被跳过 / 未产出时不继续循环，避免空转刷接口。
+    const progressed = seqResults.value.some((r) => r.done > 0)
+    const wantMore =
+      loopMode.value === 'infinite' ||
+      (loopMode.value === 'count' && loopRound.value < Math.max(1, Math.floor(loopTotal.value)))
+
+    if (wantMore && progressed) {
+      loopRound.value += 1
+      seqResults.value = []
+      seqGained.value = 0
+      seqIndex.value = 0
+      toast.push(`第 ${loopRound.value} 轮`, 'info')
+      void runStep()
+      return
+    }
+
     seqActive.value = false
     seqIndex.value = -1
     seqGained.value = 0
-    // 保留 seqResults 供界面展示本次汇总。
-    toast.push(
-      ok >= total ? `序列完成：共 ${total} 步` : `序列结束：${ok}/${total} 步完成`,
-      ok >= total ? 'success' : 'info',
-    )
+    // 保留 seqResults 供界面展示本轮汇总。
+    if (wantMore && !progressed) {
+      toast.push('本轮无任何产出，已停止循环', 'info')
+    } else {
+      toast.push(
+        ok >= total ? `序列完成：共 ${total} 步` : `序列结束：${ok}/${total} 步完成`,
+        ok >= total ? 'success' : 'info',
+      )
+    }
   }
 
   async function useConsumable(itemId: string) {
@@ -518,6 +546,9 @@ export const useDohDolStore = defineStore('dohdol', () => {
     seqIndex,
     seqGained,
     seqResults,
+    loopMode,
+    loopTotal,
+    loopRound,
     currentSeqStep,
     addStep,
     removeStep,

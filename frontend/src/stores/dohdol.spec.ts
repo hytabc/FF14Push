@@ -197,6 +197,78 @@ describe('采集 / 制作序列', () => {
   })
 })
 
+describe('序列循环', () => {
+  const finishedReport = {
+    crafts: 5, recipeId: 'r1', materials: [], items: [], xp: 0,
+    level: { levelsGained: 0, level: 1, exp: 0 },
+    targetActions: 5, producedTotal: 5, finished: true, cycle: cycle(2),
+  }
+
+  it('一直循环：一轮跑完后自动进入下一轮', async () => {
+    mocks.api.produceStart.mockResolvedValue({ sessionId: 1, recipeId: 'r1', targetActions: 5, cycle: cycle(2) })
+    mocks.api.produceReport.mockResolvedValue(finishedReport)
+    const store = useDohDolStore()
+    store.loopMode = 'infinite'
+    store.addStep({ kind: 'produce', id: 'a', recipeId: 'r1', name: 'A', jobId: 'CRP', target: 5 })
+
+    await store.startSequence()
+    expect(store.loopRound).toBe(1)
+
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.seqActive).toBe(true)
+    expect(store.loopRound).toBe(2)
+    expect(store.seqIndex).toBe(0)
+    expect(store.seqResults).toEqual([])
+    expect(mocks.api.produceStart).toHaveBeenCalledTimes(2)
+
+    await store.stopSequence(true)
+  })
+
+  it('循环指定次数：跑满轮数后停止', async () => {
+    mocks.api.produceStart.mockResolvedValue({ sessionId: 1, recipeId: 'r1', targetActions: 5, cycle: cycle(2) })
+    mocks.api.produceReport.mockResolvedValue(finishedReport)
+    const store = useDohDolStore()
+    store.loopMode = 'count'
+    store.loopTotal = 2
+    store.addStep({ kind: 'produce', id: 'a', recipeId: 'r1', name: 'A', jobId: 'CRP', target: 5 })
+
+    await store.startSequence()
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.loopRound).toBe(2)
+    expect(store.seqActive).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.seqActive).toBe(false)
+    expect(store.loopRound).toBe(2)
+    expect(store.seqIndex).toBe(-1)
+  })
+
+  it('循环时不产出的一轮会停止循环（防空转）', async () => {
+    mocks.api.produceStart.mockRejectedValue(new Error('材料不足，无法制造'))
+    const store = useDohDolStore()
+    store.loopMode = 'infinite'
+    store.addStep({ kind: 'produce', id: 'a', recipeId: 'r1', name: 'A', jobId: 'CRP', target: 1 })
+
+    await store.startSequence()
+    expect(mocks.api.produceStart).toHaveBeenCalledTimes(1)
+    expect(store.seqResults[0]).toMatchObject({ id: 'a', done: 0, status: 'skipped' })
+    expect(store.seqActive).toBe(false)
+    expect(store.loopRound).toBe(1)
+  })
+
+  it('不循环（默认）时跑完一轮即结束', async () => {
+    mocks.api.produceStart.mockResolvedValue({ sessionId: 1, recipeId: 'r1', targetActions: 5, cycle: cycle(2) })
+    mocks.api.produceReport.mockResolvedValue(finishedReport)
+    const store = useDohDolStore()
+    store.addStep({ kind: 'produce', id: 'a', recipeId: 'r1', name: 'A', jobId: 'CRP', target: 5 })
+
+    await store.startSequence()
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.seqActive).toBe(false)
+    expect(mocks.api.produceStart).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('生产 / 采集日志', () => {
   it('采集结算追加产出与经验明细', async () => {
     mocks.api.gatherStart.mockResolvedValue({ sessionId: 1, cycle: cycle(2) })

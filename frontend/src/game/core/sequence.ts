@@ -26,6 +26,9 @@ export type SequenceStep = GatherStep | ProduceStep
 
 export type StepStatus = 'done' | 'partial' | 'skipped' | 'interrupted'
 
+/** 序列循环模式：不循环 / 固定轮数 / 无限。 */
+export type SequenceLoopMode = 'once' | 'count' | 'infinite'
+
 export interface StepResult {
   id: string
   name: string
