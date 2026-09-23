@@ -22,31 +22,50 @@ def _float_factor(rng: random.Random, spread: float) -> float:
     return 1.0 + rng.uniform(-spread, spread)
 
 
+def _band_bounds(level: int) -> tuple[int, int | None]:
+    """把请求等级映射到「抽箱档位区间」[lo, hi)（按 chests.json 的 levelBands 划分）。
+
+    同一档位区间内的底材都允许产出：如 80 级档位 → [80, 100) → Lv80/85/90/95。
+    最后一档上界为 None（无上限）。
+    """
+    bands = sorted(int(b["level"]) for b in CONFIG.chests["levelBands"])
+    lo = bands[0]
+    hi = bands[1] if len(bands) > 1 else None
+    for index, band in enumerate(bands):
+        if level >= band:
+            lo = band
+            hi = bands[index + 1] if index + 1 < len(bands) else None
+    return lo, hi
+
+
+def _pick_weighted(candidates: list[BaseItem], level: int, rng: random.Random) -> BaseItem:
+    """在「本档位区间」内挑选底材，档位越高权重越大（同区间内偏置高档）。"""
+    lo, hi = _band_bounds(level)
+    usable = [b for b in candidates if b.level_req >= lo and (hi is None or b.level_req < hi)]
+    if not usable:  # 兜底：区间内无底材时退回到不超过 level 的最高档（正常不会触发）
+        usable = [b for b in candidates if b.level_req <= level] or [
+            b for b in candidates if b.tier_index == 0
+        ]
+    # 档位加权：越接近该档位顶端的档位权重越高
+    best_tier = max(b.tier_index for b in usable)
+    weights = [4 ** max(0, b.tier_index - best_tier + 2) for b in usable]
+    return rng.choices(usable, weights=weights, k=1)[0]
+
+
 def pick_base_item(category: str, level: int, rng: random.Random) -> BaseItem:
-    """按英雄等级挑选可用底材，档位越高权重越大。"""
+    """按等级所属档位挑选可用底材（档位区间内随机，偏置高档）。"""
     candidates = [b for b in CONFIG.base_items if b.category == category]
     if not candidates:
         raise ValueError(f"未知装备大类: {category}")
-    usable = [b for b in candidates if b.level_req <= level]
-    if not usable:
-        usable = [b for b in candidates if b.tier_index == 0]
-    # 档位加权：越接近英雄等级的档位权重越高
-    best_tier = max(b.tier_index for b in usable)
-    weights = [4 ** max(0, b.tier_index - best_tier + 2) for b in usable]
-    return rng.choices(usable, weights=weights, k=1)[0]
+    return _pick_weighted(candidates, level, rng)
 
 
 def pick_base_item_by_slot(slot: str, level: int, rng: random.Random) -> BaseItem:
-    """按装备种类（底材 slot）挑选可用底材，档位越高权重越大。"""
+    """按装备种类（底材 slot）在等级所属档位内挑选底材。"""
     candidates = [b for b in CONFIG.base_items if b.slot == slot]
     if not candidates:
         raise ValueError(f"未知装备种类: {slot}")
-    usable = [b for b in candidates if b.level_req <= level]
-    if not usable:
-        usable = [b for b in candidates if b.tier_index == 0]
-    best_tier = max(b.tier_index for b in usable)
-    weights = [4 ** max(0, b.tier_index - best_tier + 2) for b in usable]
-    return rng.choices(usable, weights=weights, k=1)[0]
+    return _pick_weighted(candidates, level, rng)
 
 
 def generate_item_for_slot(

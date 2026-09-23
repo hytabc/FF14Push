@@ -637,7 +637,7 @@ class TestEconomy:
         me = (await auth_client.get(f"{API}/auth/me")).json()
         async with session_factory() as db:
             hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
-            hero.level = 40
+            hero.level = 100
             await db.commit()
         await _set_gold(auth_client, session_factory, 1_000_000)
 
@@ -645,13 +645,39 @@ class TestEconomy:
             f"{API}/chest/open", json={"chestId": "weaponBox", "count": 10, "level": 40}
         )
         assert high.status_code == 200, high.text
-        assert any(item["levelReq"] == 40 for item in high.json()["items"])
+        assert all(item["levelReq"] == 40 for item in high.json()["items"])
+
+        # 80 级档位覆盖拥挤的 80-100 子区间：可出 Lv80/85/90/95，且不低于 80
+        top = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 10, "level": 80}
+        )
+        assert top.status_code == 200, top.text
+        top_levels = {item["levelReq"] for item in top.json()["items"]}
+        assert top_levels <= {80, 85, 90, 95}
 
         low = await auth_client.post(
             f"{API}/chest/open", json={"chestId": "weaponBox", "count": 10, "level": 1}
         )
         assert low.status_code == 200, low.text
-        assert all(item["levelReq"] <= 1 for item in low.json()["items"])
+        assert all(item["levelReq"] == 1 for item in low.json()["items"])
+
+    async def test_chest_band_20_never_drops_low_level_gear(
+        self, auth_client, session_factory
+    ) -> None:
+        """20 级档位只出 Lv20：修复「20 级箱子偶尔抽出 1 级（铁制）装备」。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.level = 20
+            await db.commit()
+        await _set_gold(auth_client, session_factory, 1_000_000)
+
+        for _ in range(5):
+            resp = await auth_client.post(
+                f"{API}/chest/open", json={"chestId": "weaponBox", "count": 10, "level": 20}
+            )
+            assert resp.status_code == 200, resp.text
+            assert all(item["levelReq"] == 20 for item in resp.json()["items"])
 
     async def test_equip_ignores_level_requirement(self, auth_client, session_factory) -> None:
         """装备不再有等级门槛：低等级英雄也能穿戴高等级装备。"""

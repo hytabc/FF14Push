@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { consumableBonus } from "@/utils/consumables"
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import ItemCard from '@/components/ItemCard.vue'
@@ -25,6 +25,24 @@ const dohdol = useDohDolStore()
 
 const consumables = computed(() => game.state?.dohdol?.consumables ?? [])
 const activeBuffs = computed(() => game.state?.dohdol?.active ?? [])
+
+/** 生效中药水/食物：按服务端绝对到期时间本地每秒重算剩余时长（不再依赖状态刷新）。 */
+const nowMs = ref(Date.now())
+const buffViews = computed(() =>
+  activeBuffs.value.map((b) => {
+    const end = Date.parse(b.expiresAt)
+    const remaining = Number.isFinite(end)
+      ? Math.max(0, Math.ceil((end - nowMs.value) / 1000))
+      : b.remainingSec
+    return { ...b, remaining }
+  }),
+)
+let buffTimer: number | undefined
+
+function mmss(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  return `${m}:${String(seconds % 60).padStart(2, '0')}`
+}
 
 const sortBy = ref<SortKey>('rarity')
 const tagFilter = ref<Set<number>>(new Set())
@@ -118,8 +136,21 @@ const countSummary = computed(() => {
 })
 
 onMounted(async () => {
+  buffTimer = window.setInterval(() => (nowMs.value = Date.now()), 1000)
   if (!game.state) await game.loadState()
 })
+
+onUnmounted(() => {
+  if (buffTimer !== undefined) window.clearInterval(buffTimer)
+})
+
+// 生效中的药水/食物归零后自动刷新状态（后端会顺带清理过期行）。
+watch(
+  () => buffViews.value.some((b) => b.remaining <= 0),
+  (expired) => {
+    if (expired) void game.loadState()
+  },
+)
 
 function toggle(item: Item) {
   const next = new Set(selected.value)
@@ -164,11 +195,11 @@ async function batchSell() {
         <h2 class="text-sm font-semibold text-white">药水 / 食物</h2>
         <div class="flex flex-wrap gap-2 text-[11px]">
           <span
-            v-for="b in activeBuffs"
+            v-for="b in buffViews"
             :key="b.kind"
             class="rounded bg-emerald-500/20 px-2 py-1 text-emerald-200"
           >
-            生效中：{{ b.name }} · {{ b.remainingSec }}s
+            生效中：{{ b.name }} · {{ mmss(b.remaining) }}
           </span>
         </div>
       </div>

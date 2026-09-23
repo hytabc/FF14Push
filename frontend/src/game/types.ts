@@ -112,6 +112,8 @@ export interface ActiveConsumable {
   name: string
   effects: Array<{ stat: string; value: number }>
   remainingSec: number
+  /** 绝对到期时间（ISO 8601，服务端时钟），前端据此实时倒计时。 */
+  expiresAt: string
 }
 
 export interface RecipeInputView {
@@ -279,6 +281,8 @@ export interface FishReportResponse {
   xpBreakdown: ActivityExpBreakdown
   level: { levelsGained: number; level: number; exp: number }
   insightRemainingSec: number
+  /** 「捕鱼人之识」绝对到期时间（ISO 8601，服务端时钟）；未生效时为 null。 */
+  insightExpiresAt: string | null
   newTitles: string[]
   cycle: ActivityCycle
 }

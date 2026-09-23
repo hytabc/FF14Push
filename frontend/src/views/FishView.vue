@@ -20,10 +20,19 @@ const toast = useToastStore()
 const regionId = ref<number | null>(null)
 const error = ref('')
 
+/** 每秒节拍：让「捕鱼人之识」按绝对到期时间实时倒计时。 */
+const nowMs = ref(Date.now())
+let timer: number | undefined
+
 const progress = computed(() => dohdol.state?.progress?.dol ?? null)
 const running = computed(() => dohdol.isRunning && dohdol.mode === 'fish')
 const stats = computed(() => dohdol.state?.fishStats ?? null)
 const titles = computed(() => dohdol.state?.titles ?? [])
+const insightRemaining = computed(() =>
+  dohdol.insightExpiresAt
+    ? Math.max(0, Math.ceil((dohdol.insightExpiresAt - nowMs.value) / 1000))
+    : 0,
+)
 
 const regionOptions = computed(() =>
   data.fish.regions
@@ -57,10 +66,12 @@ function sellAllFish() {
 }
 
 onMounted(async () => {
+  timer = window.setInterval(() => (nowMs.value = Date.now()), 1000)
   if (auth.isLoggedIn) await game.loadState()
   if (regionOptions.value.length && regionId.value === null) regionId.value = regionOptions.value[0].id
 })
 onUnmounted(() => {
+  if (timer !== undefined) window.clearInterval(timer)
   void dohdol.stop(true)
 })
 
@@ -102,10 +113,10 @@ async function toggle() {
           采集等级 Lv.{{ progress.level }} · {{ progress.exp }}/{{ progress.expToNext }}
         </span>
         <span
-          v-if="dohdol.insightRemaining > 0"
+          v-if="insightRemaining > 0"
           class="rounded bg-sky-500/20 px-2 py-1 text-xs text-sky-200"
         >
-          捕鱼人之识 {{ dohdol.insightRemaining }}s
+          捕鱼人之识 {{ insightRemaining }}s
         </span>
       </div>
       <p class="mt-1 text-[11px] text-ink-500">

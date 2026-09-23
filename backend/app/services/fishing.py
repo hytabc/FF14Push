@@ -222,6 +222,7 @@ async def report_fish(
         "xpBreakdown": dohdol_util.xp_breakdown(base_xp, 1.0, bonus_pct, xp, xp_sources),
         "level": level_info,
         "insightRemainingSec": insight_remaining,
+        "insightExpiresAt": expiry.isoformat() if expiry and expiry > now else None,
         "newTitles": new_titles,
         "cycle": dohdol_util.cycle_info(cast_seconds, float(session.credit), now),
     }

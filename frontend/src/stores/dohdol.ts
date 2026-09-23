@@ -39,7 +39,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const lastGained = ref<Array<{ itemId: string; name: string; count: number }>>([])
   const lastProduced = ref<Array<{ baseId: string; name: string; rarity: string }>>([])
   const lastCaught = ref<FishCatch[]>([])
-  const insightRemaining = ref(0)
+  /** 「捕鱼人之识」绝对到期时间（epoch 毫秒），前端据此实时倒计时；null = 未生效。 */
+  const insightExpiresAt = ref<number | null>(null)
   /** 生产 / 采集日志：按结算轮次追加「获取数量 + 经验明细」。 */
   const logEntries = ref<ActivityLogEntry[]>([])
   /** 当前生产会话选中的配方（用于判断材料是否耗尽）。 */
@@ -225,7 +226,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
         if (sessionId.value !== id) return
         lastGained.value = r.gained
         lastCaught.value = r.caught
-        insightRemaining.value = r.insightRemainingSec
+        insightExpiresAt.value = r.insightExpiresAt ? Date.parse(r.insightExpiresAt) : null
         syncCycle(r.cycle, rtt)
         for (const title of r.newTitles) {
           toast.push(`达成称号「${TITLE_NAMES[title] ?? title}」`, 'success')
@@ -287,7 +288,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     mode.value = 'fish'
     recipeId.value = null
     lastCaught.value = []
-    insightRemaining.value = 0
+    insightExpiresAt.value = null
     syncCycle(res.cycle, rtt)
     startLoop()
   }
@@ -501,7 +502,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     lastGained,
     lastProduced,
     lastCaught,
-    insightRemaining,
+    insightExpiresAt,
     logEntries,
     recipeId,
     targetCount,

@@ -114,6 +114,7 @@ async def active_state(db: AsyncSession, user_id: int) -> list[dict[str, Any]]:
                 "name": spec.get("name", row.item_id),
                 "effects": list(row.effects or []),
                 "remainingSec": max(0, int((_aware(row.expires_at) - now).total_seconds())),
+                "expiresAt": _aware(row.expires_at).isoformat(),
             }
         )
     return out
