@@ -39,6 +39,7 @@ const NAV = [
   { to: '/codex', label: '图鉴', icon: '📖' },
   { to: '/ranking', label: '排行', icon: '🏆' },
   { to: '/friends', label: '好友', icon: '🤝' },
+  { to: '/chat', label: '聊天室', icon: '💬' },
   { to: '/settings', label: '设置', icon: '⚙' },
   { to: '/gametest', label: '游戏测试', icon: '🎮' },
 ]

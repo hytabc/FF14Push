@@ -2,6 +2,7 @@
 
 from app.models.account import Hero, HeroSkillStat, User
 from app.models.base import Base, JsonType, TimestampMixin, utcnow
+from app.models.chat import KIND_ANNOUNCEMENT, KIND_NORMAL, ChatMessage, ChatTicket
 from app.models.dohdol import (
     ActivitySession,
     ActiveConsumable,
@@ -40,6 +41,10 @@ __all__ = [
     "MarketListing",
     "Friendship",
     "CoinTransfer",
+    "ChatMessage",
+    "ChatTicket",
+    "KIND_NORMAL",
+    "KIND_ANNOUNCEMENT",
     "ChestPity",
     "ChestUnlock",
     "RegionProgress",

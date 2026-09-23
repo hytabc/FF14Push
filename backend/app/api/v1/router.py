@@ -6,6 +6,7 @@ from app.api.v1 import (
     admin,
     auth,
     battle,
+    chat,
     chest,
     codex,
     dohdol,
@@ -31,6 +32,7 @@ api_router.include_router(battle.router)
 api_router.include_router(inventory.router)
 api_router.include_router(friends.router)
 api_router.include_router(market.router)
+api_router.include_router(chat.router)
 api_router.include_router(chest.router)
 api_router.include_router(economy.router)
 api_router.include_router(region.router)

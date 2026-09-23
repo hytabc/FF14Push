@@ -1,6 +1,7 @@
 import type {
   BattleReportResponse,
   BattleSessionStart,
+  ChatMessage,
   CraftPlan,
   FriendTransferResult,
   FriendsData,
@@ -308,6 +309,20 @@ export const api = {
 
   async friendTransfer(userId: number, amount: number) {
     return (await http.post<FriendTransferResult>('/friends/transfer', { userId, amount })).data
+  },
+
+  // ---------------------------------------------------------------- 聊天室
+  async chatMessages() {
+    return (await http.get<{ messages: ChatMessage[]; serverTime: string }>('/chat/messages'))
+      .data
+  },
+
+  async chatSend(text: string) {
+    return (await http.post<{ message: ChatMessage }>('/chat/messages', { text })).data
+  },
+
+  async chatAnnounce(text: string) {
+    return (await http.post<{ message: ChatMessage }>('/chat/announce', { text })).data
   },
 
   async tutorial() {

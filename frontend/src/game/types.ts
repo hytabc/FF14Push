@@ -713,6 +713,19 @@ export interface FriendsData {
   outgoing: FriendEntry[]
 }
 
+// ------------------------------------------------------------- 聊天室
+/** 大厅消息（普通发言或管理员公告）。聊天室不保留记录，仅返回滚动窗口内的消息。 */
+export interface ChatMessage {
+  id: number
+  kind: 'normal' | 'announcement'
+  text: string
+  createdAt: string
+  userId: number
+  nickname: string
+  username: string
+  isAdmin: boolean
+}
+
 export interface FriendTransferResult {
   gold: number
   amount: number

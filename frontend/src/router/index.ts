@@ -25,6 +25,7 @@ const router = createRouter({
     { path: '/codex', name: 'codex', component: () => import('@/views/CodexView.vue') },
     { path: '/ranking', name: 'ranking', component: () => import('@/views/RankingView.vue'), meta: { public: true } },
     { path: '/friends', name: 'friends', component: () => import('@/views/FriendsView.vue') },
+    { path: '/chat', name: 'chat', component: () => import('@/views/ChatView.vue') },
     { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
     { path: '/gametest', name: 'gametest', component: () => import('@/views/GameTestView.vue') },
     { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue') },

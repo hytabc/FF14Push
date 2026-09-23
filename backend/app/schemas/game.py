@@ -281,3 +281,10 @@ class FriendTransferRequest(BaseModel):
     userId: int
     amount: int = Field(ge=1)
 
+
+# --------------------------------------------------------------- 聊天室
+class ChatSendRequest(BaseModel):
+    """大厅发言 / 管理员公告：仅文本，长度上限与 `services/chat.MAX_TEXT_LEN` 一致。"""
+
+    text: str = Field(min_length=1, max_length=200)
+
