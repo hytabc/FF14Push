@@ -19,6 +19,7 @@
     "targetSurvivalSeconds": 26.0,
     "defenseRatioOfAttack": 0.1
   },
+  "regionHighLevelScale": { "fromLevel": 60, "hpPerLevel": 0.05, "attackPerLevel": 0.0375 },
   "monsterAttackInterval": 2.0,
   "templates": [
     {

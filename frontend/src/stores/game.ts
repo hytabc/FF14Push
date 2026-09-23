@@ -287,6 +287,16 @@ export const useGameStore = defineStore('game', () => {
       lastReportAt = performance.now()
       applyReport(res)
     } catch (e) {
+      const err = toApiError(e)
+      // 会话已被服务端结束（开始远征/竞技场/切换英雄/其它标签页等）：本地静默停战，
+      // 不再重试上报或弹窗，避免「战斗会话不存在或已结束」反复弹出。
+      if (err.status === 404) {
+        running.value = false
+        stopLoop()
+        sessionId.value = null
+        current.pause()
+        return
+      }
       current.restorePending(pending)
       pushError(e)
     } finally {

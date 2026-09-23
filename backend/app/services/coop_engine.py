@@ -23,7 +23,7 @@ def new_battle(dungeon, seats, mode, config, seed=20260922):
         'status':'running','reason':None,'rng':seed,'eventSequence':0,'events':[],
         'heroes':[], 'bosses':[], 'mechanics':[], 'trial':None,'trialDone':dungeon['seats']==2,
         'hadClone':False,'allOfflineSince':None, 'firstBossDeath':None,
-        'rules':{k:config[k] for k in ['soloMultiplier','cloneMultiplier','weaknessMultiplier','weaknessSeconds','reviveSeconds']}}
+        'rules':{**{k:config[k] for k in ['soloMultiplier','cloneMultiplier','weaknessMultiplier','weaknessSeconds','reviveSeconds']},'healingMultiplier':config.get('healingMultiplier',1.0)}}
     for seat in seats:
         snap=deepcopy(seat['snapshot']); stats=snap['stats']
         state['heroes'].append({'slot':seat['slot'],'controllerId':seat['controllerId'],
@@ -70,7 +70,7 @@ def damage_hero(state,hero,amount,source):
 
 def heal_hero(state,source,target,amount,shield=False):
     if target['hp']<=0:return
-    amount=max(0,amount)*multiplier(source,state)
+    amount=max(0,amount)*multiplier(source,state)*state['rules'].get('healingMultiplier',1.0)
     if shield:target['shield']=min(target['snapshot']['stats']['max_hp'],target['shield']+amount)
     else:
         actual=min(amount,target['snapshot']['stats']['max_hp']-target['hp']);target['hp']+=actual;source['healing']+=actual
@@ -197,7 +197,7 @@ def auto_actions(state,hero):
             for ally in targets:heal_hero(state,hero,ally,stats['max_hp']*(1 if typ=='fullHeal' else value),typ=='shield')
         elif typ=='healOverTime':
             targets=alive if skill.get('teamTarget')=='party' else [target]
-            for ally in targets:ally['buffs'].append({'type':typ,'value':stats['max_hp']*value*multiplier(hero,state),'until':now+duration})
+            for ally in targets:ally['buffs'].append({'type':typ,'value':stats['max_hp']*value*multiplier(hero,state)*state['rules'].get('healingMultiplier',1.0),'until':now+duration})
         elif typ in ('damageReduction','allDamageBuff','attackBuff','critRateBuff'):
             hero['buffs'].append({'type':typ,'value':value,'until':now+duration})
         elif typ=='dot':

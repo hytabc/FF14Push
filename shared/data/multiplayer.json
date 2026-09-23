@@ -10,6 +10,7 @@
   "weaknessMultiplier": 0.5,
   "reviveSeconds": 5,
   "weaknessSeconds": 60,
+  "healingMultiplier": 0.75,
   "pvp": {
     "maxSeconds": 180,
     "damageMultiplier": 0.65,

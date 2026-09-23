@@ -64,10 +64,10 @@
       "id": "WHM", "name": "白魔法师", "enName": "White Mage", "role": "healer", "weaponType": "staff", "mainAttr": "int",
       "skills": [
         { "id": "stone", "name": "飞石", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "cure", "name": "治疗", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
-        { "id": "medica", "name": "医济", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.12 }, { "type": "healOverTime", "value": 0.015, "duration": 5 }] },
+        { "id": "cure", "name": "治疗", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.06 }] },
+        { "id": "medica", "name": "医济", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.09 }, { "type": "healOverTime", "value": 0.011, "duration": 5 }] },
         { "id": "holy", "name": "神圣", "cd": 45, "mpCost": 30, "potency": 200, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "stun", "duration": 2 }] },
-        { "id": "benediction", "name": "天赐祝福", "cd": 180, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.5 }] },
+        { "id": "benediction", "name": "天赐祝福", "cd": 180, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.375 }] },
         { "id": "whmDivineJudgment", "name": "苦难之心", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
         { "id": "whmPresence", "name": "神速咏唱", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
@@ -76,8 +76,8 @@
       "id": "SCH", "name": "学者", "enName": "Scholar", "role": "healer", "weaponType": "book", "mainAttr": "int",
       "skills": [
         { "id": "ruin", "name": "毁灭", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "physick", "name": "医术", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
-        { "id": "adloquium", "name": "鼓舞激励之策", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.12, "duration": 10 }] },
+        { "id": "physick", "name": "医术", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.06 }] },
+        { "id": "adloquium", "name": "鼓舞激励之策", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.09, "duration": 10 }] },
         { "id": "bio", "name": "毒菌", "cd": 30, "mpCost": 30, "potency": 180, "damageType": "magical", "target": "single", "priority": 2, "effects": [{ "type": "dot", "value": 0.15, "duration": 10 }] },
         { "id": "chainStratagem", "name": "连环计", "cd": 90, "mpCost": 40, "potency": 250, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [] },
         { "id": "schChainAnnihilation", "name": "炽天附体", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
@@ -88,10 +88,10 @@
       "id": "AST", "name": "占星术士", "enName": "Astrologian", "role": "healer", "weaponType": "globe", "mainAttr": "int",
       "skills": [
         { "id": "malefic", "name": "凶星", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "benefic", "name": "吉星", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
+        { "id": "benefic", "name": "吉星", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.06 }] },
         { "id": "divination", "name": "占卜", "cd": 30, "mpCost": 60, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.15, "duration": 15 }] },
         { "id": "stellarExplosion", "name": "星体爆轰", "cd": 20, "mpCost": 30, "potency": 200, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "macrocosmos", "name": "大宇宙", "cd": 100, "mpCost": 50, "potency": 300, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.10 }] },
+        { "id": "macrocosmos", "name": "大宇宙", "cd": 100, "mpCost": 50, "potency": 300, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.075 }] },
         { "id": "astWheelOfFortune", "name": "命运之轮", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
         { "id": "astDivineSeal", "name": "太阳星座", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]
@@ -100,10 +100,10 @@
       "id": "SGE", "name": "贤者", "enName": "Sage", "role": "healer", "weaponType": "noulith", "mainAttr": "int",
       "skills": [
         { "id": "dosis", "name": "注药", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "magical", "target": "single", "priority": 3, "effects": [] },
-        { "id": "diagnosis", "name": "诊断", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.08 }] },
-        { "id": "eukrasianDiagnosis", "name": "均衡诊断", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.10, "duration": 10 }] },
+        { "id": "diagnosis", "name": "诊断", "cd": 20, "mpCost": 20, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "heal", "value": 0.06 }] },
+        { "id": "eukrasianDiagnosis", "name": "均衡诊断", "cd": 40, "mpCost": 30, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "shield", "value": 0.075, "duration": 10 }] },
         { "id": "phlegma", "name": "发炎", "cd": 20, "mpCost": 30, "potency": 180, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
-        { "id": "pneuma", "name": "魂灵风息", "cd": 100, "mpCost": 55, "potency": 350, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.08 }] },
+        { "id": "pneuma", "name": "魂灵风息", "cd": 100, "mpCost": 55, "potency": 350, "damageType": "magical", "target": "aoe", "priority": 2, "effects": [{ "type": "heal", "value": 0.06 }] },
         { "id": "sgePanhaima", "name": "泛输血", "cd": 120, "mpCost": 200, "potency": 780, "damageType": "magical", "target": "single", "priority": 2, "effects": [] },
         { "id": "sgeZoe", "name": "活化", "cd": 90, "mpCost": 150, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "allDamageBuff", "value": 0.45, "duration": 6 }] }
       ]

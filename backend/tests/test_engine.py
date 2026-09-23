@@ -48,6 +48,7 @@ from app.services.regions_util import (
     level_penalty,
     level_penalty_for_level,
     monster_base_stats,
+    region_scale,
 )
 from app.services.raid_util import (
     all_raids,
@@ -682,14 +683,16 @@ class TestCombatPacing:
     def test_kill_time_is_playable(self, level: int, region: int) -> None:
         stats = compute_stats(FakeHero(level=level), _expected_gear(level))
         kill = theoretical_kill_seconds(stats, region)
-        # 小怪血量按「普通怪约 3 下」上调后，稳态耗时约 5-6s（下限防「秒杀」回归）
-        assert 3.0 <= kill <= 8.0, f"Lv{level} r{region} 击杀耗时 {kill:.1f}s"
+        # 稳态耗时约 5-6s（下限防「秒杀」回归）；Lv60+ 地区怪物血量按 regionHighLevelScale 线性放大，上界同步放宽
+        cap = 8.0 * region_scale(float(CONFIG.region_by_id[region]["levelMin"]))[0]
+        assert 3.0 <= kill <= cap, f"Lv{level} r{region} 击杀耗时 {kill:.1f}s"
 
     @pytest.mark.parametrize("level,region", [(20, 5), (45, 10), (80, 23), (100, 40)])
     def test_boss_time_is_playable(self, level: int, region: int) -> None:
         stats = compute_stats(FakeHero(level=level), _expected_gear(level))
         boss = theoretical_boss_seconds(stats, region)
-        assert 8.0 <= boss <= 35.0, f"Lv{level} r{region} BOSS 耗时 {boss:.1f}s"
+        cap = 35.0 * region_scale(float(CONFIG.region_by_id[region]["levelMin"]))[0]
+        assert 8.0 <= boss <= cap, f"Lv{level} r{region} BOSS 耗时 {boss:.1f}s"
 
     @pytest.mark.parametrize("level,region", [(20, 5), (45, 10), (80, 23), (100, 40)])
     def test_expected_hero_kills_faster_than_naked(self, level: int, region: int) -> None:

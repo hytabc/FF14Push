@@ -305,13 +305,12 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
           <p v-if="hero.eggId" class="text-[11px] text-fuchsia-300">
             🎁 彩蛋英雄 · {{ eggDesc(hero.eggId) }}
           </p>
-          <p v-if="hero.isInitial" class="text-[11px] text-amber-300">
-            初始英雄不可解雇，可招募其他英雄加入名册
+          <p v-if="(game.state?.heroes?.length ?? 1) <= 1" class="text-[11px] text-amber-300">
+            至少保留一名英雄，无法全部解雇
           </p>
           <button
-            v-if="!hero.isInitial"
             class="mt-3 rounded-md bg-rose-600/80 px-3 py-2 text-xs text-white hover:bg-rose-500 disabled:opacity-50"
-            :disabled="busy"
+            :disabled="busy || (game.state?.heroes?.length ?? 1) <= 1"
             @click="dismiss"
           >
             解雇英雄（装备保留）

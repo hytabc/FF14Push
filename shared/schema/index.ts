@@ -619,6 +619,7 @@ export const gameData = {
   subAttrFloat: baseItemsDataRaw.subAttrFloat,
   monsters: monstersJson as unknown as {
     reference: Record<string, unknown>
+    regionHighLevelScale: { fromLevel: number; hpPerLevel: number; attackPerLevel: number }
     monsterAttackInterval: number
     templates: MonsterTemplate[]
     eliteBaseChance: number

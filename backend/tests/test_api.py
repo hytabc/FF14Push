@@ -1285,10 +1285,24 @@ class TestTavern:
         info = (await auth_client.get(f"{API}/tavern")).json()
         assert info["multiCandidates"] == []
 
-    async def test_initial_hero_cannot_be_dismissed(self, auth_client) -> None:
+    async def test_cannot_dismiss_last_hero(self, auth_client) -> None:
         hero_id = (await auth_client.get(f"{API}/game/state")).json()["hero"]["id"]
         resp = await auth_client.post(f"{API}/tavern/dismiss", json={"heroId": hero_id})
         assert resp.status_code == 400
+
+    async def test_can_dismiss_initial_hero_when_others_remain(self, auth_client, session_factory) -> None:
+        initial_id = (await auth_client.get(f"{API}/game/state")).json()["hero"]["id"]
+        await _set_gold(auth_client, session_factory, 1_000_000)
+        recruited = await auth_client.post(f"{API}/tavern/recruit", json={"confirm": True})
+        assert recruited.status_code == 200, recruited.text
+        new_id = recruited.json()["hero"]["id"]
+
+        dismissed = await auth_client.post(f"{API}/tavern/dismiss", json={"heroId": initial_id})
+        assert dismissed.status_code == 200, dismissed.text
+
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        assert [h["id"] for h in state["heroes"]] == [new_id]
+        assert state["hero"]["id"] == new_id  # 初始英雄可解雇，出战英雄自动改派
 
     async def test_dismiss_recruited_hero_keeps_initial_hero(self, auth_client, session_factory) -> None:
         await _set_gold(auth_client, session_factory, 1_000_000)

@@ -13,6 +13,7 @@ const REF = data.monsters.reference as {
   targetSurvivalSeconds: number
   defenseRatioOfAttack: number
 }
+const HIGH_LEVEL_SCALE = data.monsters.regionHighLevelScale
 const MONSTER_INTERVAL = data.monsters.monsterAttackInterval
 const TEMPLATE_BY_ID = new Map(data.monsters.templates.map((t) => [t.id, t]))
 const BOSS_TYPE_BY_ID = new Map(data.bosses.types.map((t) => [t.id, t]))
@@ -27,6 +28,15 @@ function refAttack(level: number): number {
 
 function refHp(level: number): number {
   return REF.heroHp.base + REF.heroHp.perLevel * (level - 1)
+}
+
+/** Lv60 以上地区怪物的额外血量/伤害放大（线性：Lv60×1 → Lv100×3 血、×2.5 攻）。 */
+function regionScale(level: number): { hp: number; atk: number } {
+  const over = Math.max(0, level - HIGH_LEVEL_SCALE.fromLevel)
+  return {
+    hp: 1 + HIGH_LEVEL_SCALE.hpPerLevel * over,
+    atk: 1 + HIGH_LEVEL_SCALE.attackPerLevel * over,
+  }
 }
 
 /** 小怪基准属性。锚定「期望英雄」= 等级匹配 + 等级对应装备 + 5 技能职业。 */
@@ -84,7 +94,9 @@ export function levelPenalty(heroLevel: number, region: RegionDef): LevelPenalty
 
 export function monsterStats(region: RegionDef, templateId: string): MonsterStats {
   const template = TEMPLATE_BY_ID.get(templateId)!
-  const base = monsterBaseStats(regionLevel(region))
+  const level = regionLevel(region)
+  const base = monsterBaseStats(level)
+  const scale = regionScale(level)
   const m = template.multipliers
   return {
     id: templateId,
@@ -92,8 +104,8 @@ export function monsterStats(region: RegionDef, templateId: string): MonsterStat
     name: `${region.name}·${template.examples[0]}`,
     templateId,
     kind: templateId === 'elite' ? 'elite' : 'normal',
-    hp: round(base.hp * m.hp),
-    attack: round(base.attack * m.attack),
+    hp: round(base.hp * m.hp * scale.hp),
+    attack: round(base.attack * m.attack * scale.atk),
     defense: round(base.defense * m.defense),
     attackInterval: round(MONSTER_INTERVAL / m.attackSpeed, 2),
     level: regionLevel(region),
@@ -101,7 +113,9 @@ export function monsterStats(region: RegionDef, templateId: string): MonsterStat
 }
 
 export function bossStats(region: RegionDef): MonsterStats {
-  const base = monsterBaseStats(regionLevel(region))
+  const level = regionLevel(region)
+  const base = monsterBaseStats(level)
+  const scale = regionScale(level)
   const mid = (range: [number, number]) => (range[0] + range[1]) / 2
   const bossType = BOSS_TYPE_BY_ID.get(region.bossType)
   return {
@@ -111,8 +125,8 @@ export function bossStats(region: RegionDef): MonsterStats {
     templateId: 'boss',
     bossType: region.bossType,
     kind: 'boss',
-    hp: round(base.hp * mid(data.bosses.hpMultiplierRange as [number, number])),
-    attack: round(base.attack * mid(data.bosses.attackMultiplierRange as [number, number])),
+    hp: round(base.hp * mid(data.bosses.hpMultiplierRange as [number, number]) * scale.hp),
+    attack: round(base.attack * mid(data.bosses.attackMultiplierRange as [number, number]) * scale.atk),
     defense: round(base.defense * mid(data.bosses.defenseMultiplierRange as [number, number])),
     attackInterval: data.bosses.attackInterval,
     level: regionLevel(region),

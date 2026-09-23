@@ -1,7 +1,7 @@
 """Account-wide activity exclusion and roster operations."""
 from datetime import datetime, timezone
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from app.models import User, Hero, Item, BattleSession, RaidSession, ActivitySession
 from app.models.multiplayer import CoopMember, CoopRoom
 
@@ -28,8 +28,9 @@ async def owned_hero(db, user_id, hero_id):
 async def dismiss_hero(db, user, hero_id):
     await require_idle_team(db, user.id)
     hero = await owned_hero(db, user.id, hero_id)
-    if hero.is_initial:
-        raise HTTPException(400, '初始英雄不可解雇')
+    total = await db.scalar(select(func.count()).select_from(Hero).where(Hero.user_id == user.id))
+    if (total or 0) <= 1:
+        raise HTTPException(400, '至少保留一名英雄，无法解雇')
     await stop_activities(db, user.id)
     await db.execute(update(Item).where(Item.equipped_hero_id == hero.id).values(equipped_slot=None, equipped_hero_id=None))
     if user.active_hero_id == hero.id:

@@ -30,7 +30,7 @@ onMounted(() => act(load))
         <h2>{{ h.name }} <small>Lv.{{ h.level }}</small></h2><p>{{ jobName(h.jobId) }} · {{ h.talentName }} · 经验 {{ h.exp }}</p>
         <p>生命 {{ Math.round(h.stats.maxHp) }} · 攻击 {{ Math.round(Math.max(h.stats.attack, h.stats.magicAttack)) }}</p>
         <button :disabled="busy || roster?.activeHeroId === h.id" @click="switchHero(h.id)">{{ roster?.activeHeroId === h.id ? '当前出战' : '切换出战' }}</button>
-        <button v-if="!h.isInitial" class="danger" :disabled="busy" @click="dismissId = h.id">解雇</button>
+        <button class="danger" :disabled="busy || (roster?.heroes.length ?? 0) <= 1" :title="(roster?.heroes.length ?? 0) <= 1 ? '至少保留一名英雄' : ''" @click="dismissId = h.id">解雇</button>
         <details><summary>独立配装（{{ Object.keys(h.loadout).filter(s => !s.startsWith('doh') && !s.startsWith('dol')).length }} 件）</summary>
           <div v-for="slot in data.slots" :key="slot.id" class="equipment-row"><span>{{ slot.name }}：{{ h.loadout[slot.id]?.name ?? '未穿戴' }}</span>
             <button v-if="h.loadout[slot.id]" :disabled="busy" @click="act(() => http.post(`/heroes/${h.id}/unequip`, { slot: slot.id }))">卸下</button></div>
