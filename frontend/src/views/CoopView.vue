@@ -51,6 +51,7 @@ async function connect() {
 async function open(id: number) {
   socket?.close(); receipt.value = null
   room.value = (await http.get<Room>(`/coop/rooms/${id}`)).data
+  if (room.value.status === 'running') { await game.stopBattle(true); await game.stopRaid(true) }
   localStorage.setItem(`coop.room.${uid.value}`, String(id)); selected.value = mySeats.value.map(s => s.slot)
   await http.post(`/coop/rooms/${id}/heartbeat`); await connect()
 }

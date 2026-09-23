@@ -29,6 +29,20 @@ onMounted(() => act(load))
       <article v-for="h in roster?.heroes" :key="h.id" class="panel">
         <h2>{{ h.name }} <small>Lv.{{ h.level }}</small></h2><p>{{ jobName(h.jobId) }} · {{ h.talentName }} · 经验 {{ h.exp }}</p>
         <p>生命 {{ Math.round(h.stats.maxHp) }} · 攻击 {{ Math.round(Math.max(h.stats.attack, h.stats.magicAttack)) }}</p>
+        <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div class="rounded-lg border p-1.5" :class="h.ancientAttr === 'str' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'">
+            <span class="block text-[10px] text-ink-400">力量</span>
+            <span class="block font-mono text-base text-rose-300">{{ h.strength }}<span v-if="h.ancientAttr === 'str'" class="ml-0.5 align-top text-xs">🌟</span></span>
+          </div>
+          <div class="rounded-lg border p-1.5" :class="h.ancientAttr === 'dex' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'">
+            <span class="block text-[10px] text-ink-400">敏捷</span>
+            <span class="block font-mono text-base text-emerald-300">{{ h.agility }}<span v-if="h.ancientAttr === 'dex'" class="ml-0.5 align-top text-xs">🌟</span></span>
+          </div>
+          <div class="rounded-lg border p-1.5" :class="h.ancientAttr === 'int' ? 'border-term-ancient bg-term-ancient/10' : 'border-ink-700 bg-ink-800/60'">
+            <span class="block text-[10px] text-ink-400">智力</span>
+            <span class="block font-mono text-base text-sky-300">{{ h.intellect }}<span v-if="h.ancientAttr === 'int'" class="ml-0.5 align-top text-xs">🌟</span></span>
+          </div>
+        </div>
         <button :disabled="busy || roster?.activeHeroId === h.id" @click="switchHero(h.id)">{{ roster?.activeHeroId === h.id ? '当前出战' : '切换出战' }}</button>
         <button class="danger" :disabled="busy || (roster?.heroes.length ?? 0) <= 1" :title="(roster?.heroes.length ?? 0) <= 1 ? '至少保留一名英雄' : ''" @click="dismissId = h.id">解雇</button>
         <details><summary>独立配装（{{ Object.keys(h.loadout).filter(s => !s.startsWith('doh') && !s.startsWith('dol')).length }} 件）</summary>
