@@ -27,7 +27,8 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 
 | 路径 | 职责 |
 | --- | --- |
-| `frontend/src/views/` | 游戏页面；`RosterView.vue`、`CoopView.vue`、`ArenaView.vue` 为联机相关入口 |
+| `frontend/src/views/` | 游戏页面；`RosterView.vue`、`CoopView.vue`、`ArenaView.vue` 为联机相关入口；`GameTestView.vue` 为「游戏测试」页，用 iframe 内嵌独立单文件小游戏 |
+| `frontend/public/games/` | 独立单文件小游戏静态资源（`ff14-test-game.html`），由 Vite 直接托管，与主游戏进度无关 |
 | `frontend/src/components/` | 物品卡、弹窗、指引等公共 UI |
 | `frontend/src/stores/` | 认证、游戏状态、生活职业、物品操作等 Pinia 状态 |
 | `frontend/src/api/` | API 调用、JWT 注入、错误及封号响应处理 |

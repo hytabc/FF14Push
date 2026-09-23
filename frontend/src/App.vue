@@ -37,6 +37,7 @@ const NAV = [
   { to: '/codex', label: '图鉴', icon: '📖' },
   { to: '/ranking', label: '排行', icon: '🏆' },
   { to: '/settings', label: '设置', icon: '⚙' },
+  { to: '/gametest', label: '游戏测试', icon: '🎮' },
 ]
 
 /** 管理入口只对管理员可见。 */

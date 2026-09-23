@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>晓月残章 · 以太回溯</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#05070c;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:#e8e2d4;user-select:none;touch-action:none;}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;pointer-events:none;}
+#hud.hide{display:none;}
+
+#bossbar{position:absolute;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  width:min(520px,72vw);text-align:center;}
+#bossName{font-size:13px;letter-spacing:2px;color:#ffb3a7;text-shadow:0 0 8px #ff2d2d80;margin-bottom:3px;}
+#barOuter{height:9px;background:#1a0d10;border:1px solid #4a2028;border-radius:5px;overflow:hidden;
+  box-shadow:0 0 12px #ff2d2d30;}
+#barFill{height:100%;width:100%;background:linear-gradient(90deg,#ff4d4d,#ff9d5c);
+  transition:width .15s linear;box-shadow:0 0 10px #ff6b6b;}
+
+#stageTag{position:absolute;top:calc(46px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  font-size:11px;letter-spacing:3px;color:#8fb8d8;opacity:.85;}
+#timer{position:absolute;top:calc(46px + env(safe-area-inset-top));right:14px;
+  font-size:12px;color:#8fb8d8;font-variant-numeric:tabular-nums;}
+
+#pinfo{position:absolute;top:calc(8px + env(safe-area-inset-top));left:14px;font-size:12px;}
+#pinfo .nm{color:#a8d8ff;letter-spacing:1px;}
+#pbarOuter{margin-top:4px;width:130px;height:7px;background:#0d1520;border:1px solid #24405a;border-radius:4px;overflow:hidden;}
+#pbarFill{height:100%;width:100%;background:linear-gradient(90deg,#4dd2ff,#5cffb0);transition:width .15s;}
+
+#team{position:absolute;top:calc(58px + env(safe-area-inset-top));left:14px;font-size:11px;line-height:1.7;}
+#team .dead{opacity:.35;text-decoration:line-through;}
+
+/* ---------- 摇杆 ---------- */
+#joy{position:absolute;left:calc(20px + env(safe-area-inset-left));
+  bottom:calc(24px + env(safe-area-inset-bottom));
+  width:130px;height:130px;border-radius:50%;
+  background:radial-gradient(circle,rgba(40,90,140,.28),rgba(20,40,70,.12));
+  border:2px solid rgba(90,160,220,.35);pointer-events:auto;touch-action:none;}
+#stick{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
+  background:radial-gradient(circle,#7fd4ff,#2a6ea8);box-shadow:0 0 18px #4db8ff80;
+  transition:transform .06s linear;}
+
+/* ---------- 技能按钮 ---------- */
+#skills{position:absolute;right:calc(20px + env(safe-area-inset-right));
+  bottom:calc(24px + env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(2,74px);grid-gap:10px;pointer-events:none;}
+.sk{width:74px;height:74px;border-radius:16px;pointer-events:auto;touch-action:none;
+  background:linear-gradient(160deg,rgba(30,60,95,.9),rgba(14,26,44,.92));
+  border:2px solid rgba(110,180,240,.5);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;position:relative;overflow:hidden;
+  box-shadow:0 4px 14px rgba(0,0,0,.5),inset 0 0 18px rgba(80,160,255,.12);}
+.sk .k{position:absolute;top:3px;left:6px;font-size:10px;color:#7fb8e8;opacity:.75;}
+.sk .n{font-size:12px;text-align:center;line-height:1.15;padding:0 3px;color:#d8ecff;}
+.sk .c{position:absolute;inset:0;background:rgba(4,8,16,.78);
+  display:flex;align-items:center;justify-content:center;font-size:18px;color:#8fd0ff;
+  font-variant-numeric:tabular-nums;}
+.sk:active{transform:scale(.94);}
+.sk.rdy{border-color:rgba(140,220,255,.9);box-shadow:0 0 16px rgba(90,190,255,.45);}
+
+/* ---------- 菜单 / 结算 ---------- */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;background:radial-gradient(circle at 50% 40%,#0d1a2e 0%,#04070d 75%);
+  padding:20px;z-index:20;overflow-y:auto;}
+.overlay.hide{display:none;}
+.title{font-size:clamp(22px,6vw,34px);letter-spacing:6px;color:#cfe8ff;
+  text-shadow:0 0 24px #4db8ff90;margin-bottom:4px;}
+.sub{font-size:12px;letter-spacing:3px;color:#5f8cb0;margin-bottom:22px;}
+.jobs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+  width:min(460px,92vw);margin-bottom:18px;}
+.job{padding:12px 10px;border-radius:12px;background:rgba(16,30,50,.85);
+  border:1px solid rgba(80,140,200,.35);cursor:pointer;transition:.15s;text-align:center;}
+.job:active{transform:scale(.96);}
+.job.sel{border-color:#7fd4ff;background:rgba(30,70,120,.9);box-shadow:0 0 18px #4db8ff50;}
+.job .jn{font-size:15px;letter-spacing:1px;margin-bottom:3px;}
+.job .jr{font-size:11px;color:#7fa8c8;}
+.job .jd{font-size:10px;color:#587a94;margin-top:5px;line-height:1.4;}
+
+.btn{margin-top:6px;padding:13px 42px;border-radius:30px;cursor:pointer;
+  background:linear-gradient(90deg,#1e6fa8,#2fa8d8);border:none;color:#fff;
+  font-size:15px;letter-spacing:4px;font-family:inherit;
+  box-shadow:0 0 26px #2fa8d860;}
+.btn:active{transform:scale(.96);}
+.btn.g{background:linear-gradient(90deg,#1e8a5a,#2fd88a);box-shadow:0 0 26px #2fd88a60;}
+
+#resultTitle{font-size:26px;letter-spacing:6px;margin-bottom:8px;}
+#resultBody{font-size:13px;color:#9fc0d8;line-height:2;text-align:center;margin-bottom:18px;}
+#routeInfo{font-size:11px;color:#5f8cb0;letter-spacing:1px;margin-bottom:16px;text-align:center;line-height:1.9;}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="hud" class="hide">
+  <div id="pinfo">
+    <div class="nm" id="pname">战士</div>
+    <div id="pbarOuter"><div id="pbarFill"></div></div>
+  </div>
+  <div id="team"></div>
+  <div id="bossbar">
+    <div id="bossName">???</div>
+    <div id="barOuter"><div id="barFill"></div></div>
+  </div>
+  <div id="stageTag">普通副本</div>
+  <div id="timer">0:00</div>
+  <div id="joy"><div id="stick"></div></div>
+  <div id="skills"></div>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="title">晓月残章</div>
+  <div class="sub">ETHEREAL ECHOES · 以太回溯</div>
+  <div class="jobs" id="jobList"></div>
+  <div class="sub" id="routePreview" style="margin-bottom:12px"></div>
+  <button class="btn" id="startBtn">开 始 回 溯</button>
+</div>
+
+<div class="overlay hide" id="result">
+  <div id="resultTitle">回溯结束</div>
+  <div id="routeInfo"></div>
+  <div id="resultBody"></div>
+  <button class="btn g" id="againBtn">再 次 回 溯</button>
+</div>
+
+<script>
+/* =========================================================
+   晓月残章 · 以太回溯   —— 单文件 FF14 风格 Roguelike
+   ========================================================= */
+
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const TAU = Math.PI * 2;
+const ARENA_R = 380;
+
+let W = 0, H = 0, SCALE = 1, CX = 0, CY = 0;
+
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  SCALE = Math.min(W, H) / (ARENA_R * 2.4);
+  CX = W / 2; CY = H / 2;
+}
+window.addEventListener('resize', resize);
+
+/* ================= 工具 ================= */
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd   = (a,b)=>a+Math.random()*(b-a);
+const pick  = arr=>arr[Math.floor(Math.random()*arr.length)];
+const dist2 = (a,b)=>{const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;};
+
+/* ================= 难度分层 ================= */
+const TIERS = {
+  normal: {
+    key:'normal', label:'普通副本', color:'#7fd4ff',
+    bossHp: 760, interval: 7.2, warn: 3.0, sim: 1,
+    dmgMul: 0.65, npcMiss: 0, enrage: 130,
+    pool: ['STEEL','DONUT','RAIDWIDE','TOWER','FRONTAL'],
+    bosses: ['利维亚桑','希瓦','迦楼罗','伊芙利特','泰坦'],
+    desc: '机制单一 · 容错极高'
+  },
+  extreme: {
+    key:'extreme', label:'极神讨伐', color:'#ffd479',
+    bossHp: 1250, interval: 6.0, warn: 2.6, sim: 1,
+    dmgMul: 0.9, npcMiss: 0.05, enrage: 118,
+    pool: ['STEEL','DONUT','STACK','SPREAD','RAIDWIDE','TOWER','FRONTAL','TANKBUSTER'],
+    bosses: ['极·利维亚桑','极·希瓦','极·迦楼罗','极·伊芙利特','极·泰坦'],
+    desc: '机制组合 · 需要站位'
+  },
+  savage: {
+    key:'savage', label:'零式挑战', color:'#ff8a5c',
+    bossHp: 1950, interval: 5.2, warn: 2.2, sim: 2,
+    dmgMul: 1.0, npcMiss: 0.15, enrage: 105,
+    pool: ['STEEL','DONUT','STACK','SPREAD','RAIDWIDE','TOWER','FRONTAL','TANKBUSTER'],
+    bosses: ['零式·万魔殿','零式·边狱','零式·炼狱','零式·阿罗阿罗'],
+    desc: '机制嵌套 · 血量轴 · DPS check'
+  },
+  ultimate: {
+    key:'ultimate', label:'绝境战', color:'#ff5c8a',
+    bossHp: 2650, interval: 4.4, warn: 1.9, sim: 2,
+    dmgMul: 1.15, npcMiss: 0.25, enrage: 92,
+    pool: ['STEEL','DONUT','STACK','SPREAD','RAIDWIDE','TOWER','FRONTAL','TANKBUSTER'],
+    bosses: ['绝·巴哈姆特','绝·伊甸','绝·欧米茄','绝·龙诗战争'],
+    desc: '多阶段连战 · 连坐 · 零失误'
+  }
+};
+
+/* ================= 职业 ================= */
+const JOBS = {
+  WAR: {
+    id:'WAR', name:'战士', role:'坦克', color:'#e0604a', hp:300, speed:172,
+    desc:'自疗与减伤兼备，吃死刑更稳',
+    skills:[
+      {n:'重劈',    cd:0.9,  eff:p=>{ bossDmg(15); }},
+      {n:'暴风斩',  cd:5.5,  eff:p=>{ bossDmg(34); sp(p,'暴风斩'); }},
+      {n:'复仇',    cd:17,   eff:p=>{ p.buffs.mit = 6; float(p.x,p.y-30,'减伤↑','#7fd4ff'); }},
+      {n:'原初的血气', cd:15, eff:p=>{ heal(p, p.maxHp*0.38); }},
+    ]
+  },
+  WHM: {
+    id:'WHM', name:'白魔法师', role:'治疗', color:'#8ad6a0', hp:230, speed:172,
+    desc:'奶量天花板，负责全队血线',
+    skills:[
+      {n:'神圣',    cd:1.1,  eff:p=>{ bossDmg(11); }},
+      {n:'医治',    cd:3.6,  eff:p=>{ const t=lowest(); heal(t, t.maxHp*0.42); }},
+      {n:'救疗',    cd:9,    eff:p=>{ for(const a of G.actors) if(!a.dead) heal(a, a.maxHp*0.30); sp(p,'救疗'); }},
+      {n:'神速咏唱', cd:22,   eff:p=>{ p.buffs.fast = 8; float(p.x,p.y-30,'咏唱加速','#ffe08a'); }},
+    ]
+  },
+  DRG: {
+    id:'DRG', name:'龙骑士', role:'近战', color:'#b58ee0', hp:245, speed:196,
+    desc:'高爆发近战，跳跃附带无敌帧',
+    skills:[
+      {n:'精准刺',  cd:0.75, eff:p=>{ bossDmg(14); }},
+      {n:'樱花怒放', cd:7.5, eff:p=>{ bossDmg(46); sp(p,'樱花怒放'); }},
+      {n:'龙炎冲',  cd:11,   eff:p=>{ dashToBoss(p); bossDmg(26); }},
+      {n:'跳跃',    cd:14,   eff:p=>{ bossDmg(38); p.buffs.invuln = 1.4;
+                                     float(p.x,p.y-30,'无敌帧','#ffd479'); }},
+    ]
+  },
+  BLM: {
+    id:'BLM', name:'黑魔法师', role:'远程', color:'#7fb8ff', hp:215, speed:168,
+    desc:'核爆站桩输出，脆但伤害高',
+    skills:[
+      {n:'冰封/爆炎', cd:0.95, eff:p=>{ bossDmg(16); }},
+      {n:'核爆',      cd:11,   eff:p=>{ bossDmg(62); sp(p,'核爆'); }},
+      {n:'魔罩',      cd:18,   eff:p=>{ p.buffs.shield = 90; float(p.x,p.y-30,'护盾','#a0d8ff'); }},
+      {n:'以太步',    cd:7,    eff:p=>{ blink(p); }},
+    ]
+  }
+};
+
+/* ================= NPC 队友 ================= */
+const NPC_POOL = [
+  {name:'雅·修特拉', role:'治疗', color:'#8ad6a0', hp:230},
+  {name:'桑克瑞德',  role:'坦克', color:'#6fa8dc', hp:290},
+  {name:'埃斯蒂尼安',role:'近战', color:'#b58ee0', hp:245},
+  {name:'于里昂热',  role:'远程', color:'#e0c07a', hp:230},
+  {name:'阿尔菲诺',  role:'治疗', color:'#9fd8e8', hp:235},
+  {name:'阿莉塞',    role:'近战', color:'#f0a0b0', hp:240},
+];
+
+/* ================= 机制元数据 ================= */
+const MECH_NAME = {
+  STEEL:'钢 铁', DONUT:'月 环', STACK:'分 摊', SPREAD:'分 散',
+  TANKBUSTER:'死 刑', RAIDWIDE:'全场AOE', TOWER:'踩 塔', FRONTAL:'正面扇形'
+};
+const MECH_TIP = {
+  STEEL:'远离Boss', DONUT:'贴近Boss', STACK:'全员集合',
+  SPREAD:'互相散开', TANKBUSTER:'开减伤', RAIDWIDE:'治疗群抬',
+  TOWER:'进塔站位', FRONTAL:'绕到背后'
+};
+
+/* ================= 全局状态 ================= */
+const G = {
+  state:'menu',
+  time:0,
+  player:null,
+  npcs:[],
+  actors:[],
+  boss:{x:0,y:0,r:56,hp:1,maxHp:1,name:'',cast:[]},
+  mechanics:[],
+  floaters:[],
+  effects:[],
+  stage:null,
+  route:[],
+  routeIdx:0,
+  mechTimer:0,
+  elapsed:0,
+  shakeT:0,
+};
+
+/* ================= 输入 ================= */
+const keys = {};
+window.addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (['1','2','3','4'].includes(k)) { e.preventDefault(); useSkill(+k-1); }
+});
+window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+window.addEventListener('blur', ()=>{ for(const k in keys) keys[k]=false; });
+
+/* -------- 摇杆 -------- */
+let joyDX = 0, joyDY = 0, joyTouch = null;
+const joyEl = document.getElementById('joy');
+const stickEl = document.getElementById('stick');
+
+function joyMove(clientX, clientY){
+  const r = joyEl.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  let dx = clientX - cx, dy = clientY - cy;
+  const max = r.width/2, len = Math.hypot(dx,dy);
+  if (len > max){ dx = dx/len*max; dy = dy/len*max; }
+  stickEl.style.transform = `translate(${dx}px,${dy}px)`;
+  joyDX = dx/max; joyDY = dy/max;
+}
+function joyEnd(){
+  joyTouch = null; joyDX = 0; joyDY = 0;
+  stickEl.style.transform = 'translate(0,0)';
+}
+joyEl.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  joyTouch = t.identifier;
+  joyMove(t.clientX, t.clientY);
+}, {passive:false});
+joyEl.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  for (const t of e.changedTouches){
+    if (t.identifier === joyTouch){ joyMove(t.clientX, t.clientY); break; }
+  }
+}, {passive:false});
+joyEl.addEventListener('touchend', e=>{
+  for (const t of e.changedTouches) if (t.identifier === joyTouch) joyEnd();
+}, {passive:false});
+joyEl.addEventListener('touchcancel', joyEnd, {passive:false});
+/* 鼠标也能拖摇杆（PC 备用） */
+joyEl.addEventListener('mousedown', e=>{ e.preventDefault(); joyMove(e.clientX,e.clientY);
+  const mv = ev=>joyMove(ev.clientX,ev.clientY);
+  const up = ()=>{ joyEnd(); window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up); };
+  window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
+});
+
+/* ================= 生成器 ================= */
+function makeActor(name, color, role, x, y, hp, speed){
+  return {
+    name, color, role, x, y, r:15,
+    hp, maxHp:hp, speed, dead:false,
+    buffs:{mit:0, shield:0, fast:0, invuln:0},
+    orbitA: Math.atan2(y, x) || 0,
+    ignore:false,
+    hitFlash:0,
+  };
+}
+
+/* ================= 战斗初始化 ================= */
+function buildRoute(){
+  const r = ['normal','extreme','savage'];
+  if (Math.random() < 0.55) r.push('ultimate');
+  return r;
+}
+
+function startRun(jobId){
+  G.route = buildRoute();
+  G.routeIdx = 0;
+  G.player = makeActor(JOBS[jobId].name, JOBS[jobId].color, JOBS[jobId].role,
+                       0, 265, JOBS[jobId].hp, JOBS[jobId].speed);
+  G.player.job = JOBS[jobId];
+  G.player.skills = JOBS[jobId].skills.map(s=>({...s, left:0}));
+
+  // 随机两名队友
+  const pool = NPC_POOL.slice().sort(()=>Math.random()-0.5).slice(0,2);
+  G.npcs = pool.map((n,i)=> makeActor(n.name, n.color, n.role, 0, 0, n.hp, 178));
+
+  startStage();
+}
+
+function startStage(){
+  const tierKey = G.route[G.routeIdx];
+  const tier = TIERS[tierKey];
+  G.stage = tier;
+
+  // 重置玩家状态（保留血量作为 Roguelike 的续航压力）
+  const p = G.player;
+  p.dead = false;
+  p.buffs = {mit:0,shield:0,fast:0,invuln:0};
+  if (p.hp <= 0) p.hp = p.maxHp * 0.5;
+  p.x = 0; p.y = 265;
+  p.skills.forEach(s=>s.left = 0);
+
+  // NPC 站位（环绕 Boss）
+  G.npcs.forEach((n,i)=>{
+    n.dead = false;
+    if (n.hp <= 0) n.hp = n.maxHp * 0.5;
+    n.buffs = {mit:0,shield:0,fast:0,invuln:0};
+    n.orbitA = -Math.PI/2 + (i===0 ? 0.9 : -0.9);
+    n.x = Math.cos(n.orbitA)*175;
+    n.y = Math.sin(n.orbitA)*175;
+  });
+
+  G.boss = {
+    x:0, y:0, r:56,
+    hp: tier.bossHp, maxHp: tier.bossHp,
+    name: pick(tier.bosses),
+    cast: []
+  };
+
+  G.actors = [G.player, ...G.npcs];
+  G.mechanics = [];
+  G.floaters = [];
+  G.effects = [];
+  G.mechTimer = tier.interval * 0.6;
+  G.elapsed = 0;
+  G.state = 'fight';
+
+  document.getElementById('hud').classList.remove('hide');
+  document.getElementById('menu').classList.add('hide');
+  document.getElementById('result').classList.add('hide');
+  document.getElementById('stageTag').textContent =
+    `第 ${G.routeIdx+1} / ${G.route.length} 层 · ${tier.label}`;
+  document.getElementById('stageTag').style.color = tier.color;
+  updateSkillButtons();
+}
+
+/* ================= 技能 ================= */
+function useSkill(i){
+  if (G.state !== 'fight') return;
+  const p = G.player;
+  if (p.dead) return;
+  const s = p.skills[i];
+  if (!s || s.left > 0) return;
+  s.left = s.cd * (p.buffs.fast > 0 ? 0.5 : 1);
+  s.eff(p);
+  // 技能弹跳动效
+  const btns = document.querySelectorAll('.sk');
+  if (btns[i]){ btns[i].style.transform = 'scale(.9)'; setTimeout(()=>btns[i].style.transform='',110); }
+}
+
+function bossDmg(n){
+  if (G.boss.hp <= 0) return;
+  G.boss.hp = Math.max(0, G.boss.hp - n);
+  float(G.boss.x + rnd(-30,30), G.boss.y - 50, '-'+n, '#ffd479');
+}
+function sp(p, name){ // 技能飘字
+  float(p.x, p.y - 34, name, p.color);
+}
+function heal(a, n){
+  if (!a || a.dead) return;
+  const before = a.hp;
+  a.hp = Math.min(a.maxHp, a.hp + n);
+  const g = Math.round(a.hp - before);
+  if (g > 0) float(a.x, a.y - 28, '+'+g, '#7fffa8');
+}
+function lowest(){
+  let best = G.player, r = 2;
+  for (const a of G.actors){
+    if (a.dead) continue;
+    const ratio = a.hp / a.maxHp;
+    if (ratio < r){ r = ratio; best = a; }
+  }
+  return best;
+}
+function dashToBoss(p){
+  const dx = G.boss.x - p.x, dy = G.boss.y - p.y;
+  const d = Math.hypot(dx,dy) || 1;
+  const target = G.boss.r + 34;
+  const nx = G.boss.x - dx/d*target, ny = G.boss.y - dy/d*target;
+  addEffect('dash', p.x, p.y, nx, ny, p.color);
+  p.x = nx; p.y = ny;
+}
+function blink(p){
+  const dx = p.x, dy = p.y;
+  const d = Math.hypot(dx,dy) || 1;
+  const nx = p.x + dx/d*155, ny = p.y + dy/d*155;
+  addEffect('dash', p.x, p.y, nx, ny, '#a0d8ff');
+  p.x = nx; p.y = ny;
+  clampArena(p);
+}
+
+/* ================= 机制生成 ================= */
+function spawnMechanic(type){
+  const st = G.stage;
+  const alive = G.actors.filter(a=>!a.dead);
+  if (!alive.length) return;
+
+  const m = {
+    type, elapsed:0, warnTime: st.warn, resolved:false, impact:0, dead:false,
+    hitPlayer:false, label: MECH_NAME[type]
+  };
+
+  switch(type){
+    case 'STEEL':
+      m.cx = G.boss.x; m.cy = G.boss.y; m.radius = 218; m.dmg = 48*st.dmgMul;
+      break;
+    case 'DONUT':
+      m.cx = G.boss.x; m.cy = G.boss.y; m.inner = 128; m.outer = 312; m.dmg = 48*st.dmgMul;
+      break;
+    case 'STACK':
+      m.target = Math.random()<0.55 ? G.player : pick(alive);
+      if (m.target.dead) m.target = G.player;
+      m.radius = 76; m.dmg = 145*st.dmgMul;
+      m.need = Math.min(3, alive.length);
+      break;
+    case 'SPREAD':
+      m.targets = alive.slice(); m.safe = 172; m.dmg = 44*st.dmgMul;
+      break;
+    case 'TANKBUSTER':
+      m.target = alive.find(a=>a.role==='坦克') || G.player;
+      m.dmg = 155*st.dmgMul;
+      break;
+    case 'RAIDWIDE':
+      m.dmg = 30*st.dmgMul;
+      break;
+    case 'TOWER': {
+      const n = Math.min(3, alive.length);
+      m.towers = [];
+      const base = Math.random()*TAU;
+      for (let i=0;i<n;i++){
+        const ang = base + i*TAU/n;
+        m.towers.push({x:Math.cos(ang)*238, y:Math.sin(ang)*238, filled:false});
+      }
+      m.dmg = 36*st.dmgMul;
+      break;
+    }
+    case 'FRONTAL': {
+      const p = G.player;
+      m.angle = Math.atan2(p.y - G.boss.y, p.x - G.boss.x) + rnd(-0.6,0.6);
+      m.half = Math.PI/4.2; m.radius = 365; m.dmg = 54*st.dmgMul;
+      break;
+    }
+  }
+
+  // 每个 NPC 单独判定"这一轮是否会失误"
+  for (const n of G.npcs) n.ignore = Math.random() < st.npcMiss;
+
+  G.mechanics.push(m);
+  G.boss.cast.push({ type, t: st.warn });
+}
+
+/* ================= 机制判定 ================= */
+function resolveMechanic(m){
+  const st = G.stage;
+  const alive = G.actors.filter(a=>!a.dead);
+  let hitPlayer = false;
+  let dodgeable = true;
+
+  switch(m.type){
+    case 'STEEL':
+      for (const a of alive){
+        if (Math.hypot(a.x-m.cx, a.y-m.cy) < m.radius){
+          hurt(a, m.dmg); if (a===G.player) hitPlayer = true;
+        }
+      }
+      break;
+
+    case 'DONUT':
+      for (const a of alive){
+        const d = Math.hypot(a.x-m.cx, a.y-m.cy);
+        if (d > m.inner && d < m.outer){
+          hurt(a, m.dmg); if (a===G.player) hitPlayer = true;
+        }
+      }
+      break;
+
+    case 'STACK': {
+      let count = 0;
+      for (const a of alive)
+        if (Math.hypot(a.x-m.target.x, a.y-m.target.y) < m.radius) count++;
+      if (count >= m.need){
+        const each = m.dmg / count;
+        for (const a of alive){
+          if (Math.hypot(a.x-m.target.x, a.y-m.target.y) < m.radius){
+            hurt(a, each); if (a===G.player) hitPlayer = true;
+          }
+        }
+      } else {
+        hurt(m.target, m.dmg * 1.6);
+        if (m.target === G.player) hitPlayer = true;
+      }
+      break;
+    }
+
+    case 'SPREAD':
+      for (const a of m.targets){
+        if (a.dead) continue;
+        let bad = false;
+        for (const b of alive){
+          if (b === a) continue;
+          if (Math.hypot(a.x-b.x, a.y-b.y) < m.safe){ bad = true; break; }
+        }
+        if (bad){ hurt(a, m.dmg); if (a===G.player) hitPlayer = true; }
+      }
+      break;
+
+    case 'TANKBUSTER': {
+      const had = m.target.buffs.mit > 0 || m.target.buffs.invuln > 0 || m.target.buffs.shield > 0;
+      hurt(m.target, m.dmg);
+      if (m.target === G.player) hitPlayer = true;
+      if (m.target === G.player && !had) float(G.player.x, G.player.y-46, '未开减伤!', '#ff5c5c');
+      break;
+    }
+
+    case 'RAIDWIDE':
+      for (const a of alive) hurt(a, m.dmg);
+      dodgeable = false;
+      break;
+
+    case 'TOWER': {
+      let empty = 0;
+      for (const t of m.towers){
+        let filled = false;
+        for (const a of alive){
+          if (Math.hypot(a.x-t.x, a.y-t.y) < 58){ filled = true; break; }
+        }
+        t.filled = filled;
+        if (!filled) empty++;
+      }
+      if (empty > 0){
+        for (const a of alive) hurt(a, m.dmg * empty);
+        hitPlayer = !G.player.dead;
+      }
+      break;
+    }
+
+    case 'FRONTAL': {
+      for (const a of alive){
+        const dx = a.x-G.boss.x, dy = a.y-G.boss.y;
+        const d = Math.hypot(dx,dy);
+        if (d > m.radius) continue;
+        let da = Math.atan2(dy,dx) - m.angle;
+        while (da > Math.PI) da -= TAU;
+        while (da < -Math.PI) da += TAU;
+        if (Math.abs(da) < m.half){ hurt(a, m.dmg); if (a===G.player) hitPlayer = true; }
+      }
+      break;
+    }
+  }
+
+  m.hitPlayer = hitPlayer;
+  if (dodgeable && !G.player.dead){
+    if (hitPlayer) float(G.player.x, G.player.y-52, '✕ 被命中', '#ff5c5c');
+    else           float(G.player.x, G.player.y-52, '✓ 处理成功', '#5cffb0');
+  }
+  G.shakeT = Math.max(G.shakeT, hitPlayer ? 0.26 : 0.10);
+  addEffect('ring', m.cx ?? m.target?.x ?? G.boss.x, m.cy ?? m.target?.y ?? G.boss.y,
+            0, 0, hitPlayer ? '#ff4d4d' : '#5cffb0');
+}
+
+/* ================= 伤害 ================= */
+function hurt(a, amount){
+  if (!a || a.dead) return 0;
+  if (a.buffs.invuln > 0) return 0;
+  let mul = 1;
+  if (a.buffs.mit > 0) mul *= 0.40;
+  let dmg = amount * mul;
+  if (a.buffs.shield > 0){
+    const ab = Math.min(a.buffs.shield, dmg);
+    a.buffs.shield -= ab; dmg -= ab;
+    a.buffs.shield = Math.max(0, a.buffs.shield);
+  }
+  dmg = Math.round(dmg);
+  if (dmg <= 0) return 0;
+  a.hp -= dmg;
+  a.hitFlash = 0.22;
+  float(a.x, a.y - 26, '-'+dmg, '#ff6b6b');
+  if (a.hp <= 0){
+    a.hp = 0; a.dead = true;
+    float(a.x, a.y - 50, '倒 下', '#ff3c3c');
+    addEffect('ring', a.x, a.y, 0, 0, '#ff3c3c');
+  }
+  return dmg;
+}
+
+/* ================= 飘字 / 特效 ================= */
+function float(x, y, text, color){
+  G.floaters.push({x, y, text, color, life:1.1, vy:-42});
+}
+function addEffect(type, x, y, tx, ty, color){
+  G.effects.push({type, x, y, tx, ty, color, life: type==='dash'?0.28:0.5, max: type==='dash'?0.28:0.5});
+}
+
+/* ================= 更新 ================= */
+function update(dt){
+  G.time += dt;
+  if (G.state !== 'fight') return;
+
+  G.elapsed += dt;
+
+  // Buff 计时
+  for (const a of G.actors){
+    if (a.dead) continue;
+    for (const k in a.buffs) a.buffs[k] = Math.max(0, a.buffs[k] - dt);
+    if (a.hitFlash > 0) a.hitFlash -= dt;
+    for (const s of (a.skills||[])) if (s.left > 0) s.left -= dt * (a.buffs.fast>0?2:1);
+  }
+
+  updatePlayer(dt);
+  updateNPCs(dt);
+  updateMechanics(dt);
+  updateFloaters(dt);
+  updateEffects(dt);
+
+  // 机制生成
+  G.mechTimer -= dt;
+  if (G.mechTimer <= 0 && G.boss.hp > 0){
+    G.mechTimer = G.stage.interval;
+    const n = G.stage.sim;
+    for (let i=0;i<n;i++){
+      const t = pick(G.stage.pool);
+      if (i === 0) spawnMechanic(t);
+      else setTimeout(()=>{ if (G.state==='fight') spawnMechanic(t); }, 900 + Math.random()*700);
+    }
+  }
+
+  // Boss 读条条
+  G.boss.cast = G.boss.cast.filter(c=>{
+    c.t -= dt; return c.t > 0;
+  });
+
+  if (G.shakeT > 0) G.shakeT -= dt;
+
+  checkEnd();
+}
+
+function updatePlayer(dt){
+  const p = G.player;
+  if (p.dead) return;
+
+  let mx = 0, my = 0;
+  if (keys['w'] || keys['arrowup'])    my -= 1;
+  if (keys['s'] || keys['arrowdown'])  my += 1;
+  if (keys['a'] || keys['arrowleft'])  mx -= 1;
+  if (keys['d'] || keys['arrowright']) mx += 1;
+  mx += joyDX; my += joyDY;
+
+  const len = Math.hypot(mx, my);
+  if (len > 1){ mx /= len; my /= len; }
+  if (len > 0.01){
+    const sp = p.speed * (p.buffs.fast>0 ? 1.12 : 1);
+    p.x += mx * sp * dt;
+    p.y += my * sp * dt;
+  }
+  clampArena(p);
+}
+
+function clampArena(a){
+  const d = Math.hypot(a.x, a.y);
+  const max = ARENA_R - a.r - 8;
+  if (d > max){ a.x = a.x/d*max; a.y = a.y/d*max; }
+}
+
+/* ---------------- NPC AI ---------------- */
+function updateNPCs(dt){
+  const alive = G.actors.filter(a=>!a.dead);
+  const active = G.mechanics.filter(m=>!m.resolved);
+
+  for (const n of G.npcs){
+    if (n.dead) continue;
+
+    // 默认：围绕 Boss 的固定轨道
+    let tx = Math.cos(n.orbitA) * 172;
+    let ty = Math.sin(n.orbitA) * 172;
+
+    if (!n.ignore){
+      for (const m of active){
+        // 钢铁：往外跑
+        if (m.type === 'STEEL'){
+          const d = Math.hypot(tx - m.cx, ty - m.cy) || 1;
+          if (d < m.radius + 46){
+            const k = (m.radius + 62) / d;
+            tx = m.cx + (tx - m.cx) * k;
+            ty = m.cy + (ty - m.cy) * k;
+          }
+        }
+        // 月环：往中心贴
+        else if (m.type === 'DONUT'){
+          const d = Math.hypot(tx - m.cx, ty - m.cy) || 1;
+          if (d > m.inner - 42 && d < m.outer){
+            const k = Math.max(0, (m.inner - 54)) / d;
+            tx = m.cx + (tx - m.cx) * k;
+            ty = m.cy + (ty - m.cy) * k;
+          }
+        }
+        // 分摊：向被点名者靠拢
+        else if (m.type === 'STACK'){
+          if (m.target !== n){
+            const d = Math.hypot(n.x - m.target.x, n.y - m.target.y);
+            if (d > 46){
+              tx = m.target.x + (n.x - m.target.x) / (d||1) * 46;
+              ty = m.target.y + (n.y - m.target.y) / (d||1) * 46;
+            } else { tx = n.x; ty = n.y; }
+          }
+        }
+        // 分散：远离所有其他 actor
+        else if (m.type === 'SPREAD'){
+          let fx = 0, fy = 0;
+          for (const o of alive){
+            if (o === n) continue;
+            const dx = n.x - o.x, dy = n.y - o.y;
+            const d = Math.hypot(dx, dy) || 1;
+            if (d < m.safe + 20){ fx += dx/d * (m.safe + 30 - d); fy += dy/d * (m.safe + 30 - d); }
+          }
+          if (fx || fy){
+            const l = Math.hypot(fx, fy) || 1;
+            tx = n.x + fx/l * 90; ty = n.y + fy/l * 90;
+          }
+        }
+        // 踩塔：分配空塔
+        else if (m.type === 'TOWER'){
+          const idx = G.npcs.indexOf(n);
+          if (m.towers[idx]) { tx = m.towers[idx].x; ty = m.towers[idx].y; }
+        }
+        // 正面扇形：绕到 Boss 背后
+        else if (m.type === 'FRONTAL'){
+          const back = m.angle + Math.PI + (G.npcs.indexOf(n) === 0 ? 0.5 : -0.5);
+          tx = Math.cos(back) * 165; ty = Math.sin(back) * 165;
+        }
+        // 死刑：坦克 NPC 开减伤（简化：直接降低伤害）
+        else if (m.type === 'TANKBUSTER' && m.target === n){
+          n.buffs.mit = Math.max(n.buffs.mit, 2.5);
+        }
+      }
+    }
+
+    // 移动
+    const dx = tx - n.x, dy = ty - n.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 6){
+      const sp = Math.min(n.speed, d * 4.5);
+      n.x += dx/d * sp * dt;
+      n.y += dy/d * sp * dt;
+    }
+    clampArena(n);
+  }
+}
+
+/* ---------------- 机制更新 ---------------- */
+function updateMechanics(dt){
+  for (const m of G.mechanics){
+    m.elapsed += dt;
+
+    if (!m.resolved && m.elapsed >= m.warnTime){
+      m.resolved = true;
+      m.impact = 0;
+      resolveMechanic(m);
+    }
+    if (m.resolved){
+      m.impact += dt;
+      if (m.impact > 0.55) m.dead = true;
+    }
+  }
+  G.mechanics = G.mechanics.filter(m=>!m.dead);
+}
+
+function updateFloaters(dt){
+  for (const f of G.floaters){
+    f.life -= dt; f.y += f.vy * dt; f.vy *= 0.94;
+  }
+  G.floaters = G.floaters.filter(f=>f.life > 0);
+}
+
+function updateEffects(dt){
+  for (const e of G.effects) e.life -= dt;
+  G.effects = G.effects.filter(e=>e.life > 0);
+}
+
+/* ---------------- 结束判定 ---------------- */
+function checkEnd(){
+  if (G.state !== 'fight') return;
+
+  if (G.player.dead){ endStage(false, '你倒下了'); return; }
+  if (G.boss.hp <= 0){ endStage(true, '讨伐成功'); return; }
+  if (G.elapsed > G.stage.enrage){
+    endStage(false, '狂暴 —— 时间耗尽');
+    return;
+  }
+}
+
+function endStage(win, msg){
+  G.state = 'result';
+  document.getElementById('hud').classList.add('hide');
+
+  const box = document.getElementById('result');
+  const title = document.getElementById('resultTitle');
+  const body = document.getElementById('resultBody');
+  const routeInfo = document.getElementById('routeInfo');
+
+  if (win){
+    G.routeIdx++;
+    if (G.routeIdx >= G.route.length){
+      title.textContent = '完 全 通 关';
+      title.style.color = '#7fffa8';
+      routeInfo.innerHTML = G.route.map(k=>TIERS[k].label).join(' → ');
+      body.innerHTML =
+        `你完整回溯了全部 ${G.route.length} 层以太记忆。<br>` +
+        `残存生命：<b>${Math.round(G.player.hp)} / ${G.player.maxHp}</b><br>` +
+        `存活队友：${G.npcs.filter(n=>!n.dead).length} / ${G.npcs.length}`;
+      document.getElementById('againBtn').textContent = '再 次 回 溯';
+    } else {
+      title.textContent = '节 点 突 破';
+      title.style.color = TIERS[G.route[G.routeIdx-1]].color;
+      routeInfo.innerHTML = `已通过：${G.route.slice(0,G.routeIdx).map(k=>TIERS[k].label).join(' → ')}`;
+      body.innerHTML =
+        `下一层：<b style="color:${TIERS[G.route[G.routeIdx]].color}">` +
+        `${TIERS[G.route[G.routeIdx]].label}</b><br>` +
+        `${TIERS[G.route[G.routeIdx]].desc}<br>` +
+        `<span style="font-size:12px;color:#7fa8c8">剩余生命 ${Math.round(G.player.hp)}/${G.player.maxHp}　` +
+        `队友 ${G.npcs.filter(n=>!n.dead).length}/${G.npcs.length}</span>`;
+      document.getElementById('againBtn').textContent = '继 续 深 入';
+    }
+  } else {
+    title.textContent = '回 溯 中 断';
+    title.style.color = '#ff5c5c';
+    routeInfo.innerHTML = G.route.map((k,i)=>
+      `${i < G.routeIdx ? '✔ ' : '✘ '}${TIERS[k].label}`).join('　');
+    body.innerHTML = `${msg}<br><span style="font-size:12px;color:#7fa8c8">` +
+      `倒在：${G.stage.label} · ${G.boss.name}</span>`;
+    document.getElementById('againBtn').textContent = '重 新 回 溯';
+  }
+
+  document.getElementById('result').classList.remove('hide');
+}
+
+/* ================= 渲染 ================= */
+function render(){
+  ctx.clearRect(0, 0, W, H);
+
+  // 背景
+  const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.max(W,H)*0.75);
+  bg.addColorStop(0, '#0b1626');
+  bg.addColorStop(1, '#03050a');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const shake = G.shakeT > 0 ? (Math.random()-0.5) * G.shakeT * 26 : 0;
+
+  ctx.save();
+  ctx.translate(CX + shake, CY + shake);
+  ctx.scale(SCALE, SCALE);
+
+  drawArena();
+  drawMechanicWarnings();
+  drawEffects();
+  if (G.state === 'fight' || G.state === 'result') drawEntities();
+  drawFloaters();
+
+  ctx.restore();
+
+  if (G.state === 'fight') updateHUD();
+}
+
+function drawArena(){
+  ctx.beginPath(); ctx.arc(0, 0, ARENA_R, 0, TAU);
+  ctx.fillStyle = '#0c131f';
+  ctx.fill();
+
+  // 同心圆网格
+  ctx.strokeStyle = 'rgba(70,130,190,0.13)';
+  ctx.lineWidth = 1;
+  for (let r = 76; r < ARENA_R; r += 76){
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+  }
+  for (let i = 0; i < 12; i++){
+    const a = i * TAU / 12;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(a)*ARENA_R, Math.sin(a)*ARENA_R);
+    ctx.stroke();
+  }
+
+  // 边缘发光
+  const tierColor = G.stage ? G.stage.color : '#7fd4ff';
+  ctx.beginPath(); ctx.arc(0, 0, ARENA_R, 0, TAU);
+  ctx.strokeStyle = tierColor + '66';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = tierColor;
+  ctx.shadowBlur = 22;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawMechanicWarnings(){
+  for (const m of G.mechanics){
+    const resolved = m.resolved;
+    const t = resolved ? 1 - m.impact/0.55 : m.elapsed / m.warnTime;
+    const pulse = 0.5 + 0.5 * Math.sin(m.elapsed * 11);
+    const alpha = resolved ? 0.42 * (1 - m.impact/0.55) : 0.10 + 0.20 * pulse;
+
+    ctx.save();
+    switch(m.type){
+      case 'STEEL':
+        ctx.beginPath(); ctx.arc(m.cx, m.cy, m.radius, 0, TAU);
+        ctx.fillStyle = `rgba(255,60,60,${alpha})`; ctx.fill();
+        ctx.strokeStyle = `rgba(255,90,90,${0.55+0.45*pulse})`;
+        ctx.lineWidth = 3; ctx.stroke();
+        // 收缩指示
+        if (!resolved){
+          ctx.beginPath(); ctx.arc(m.cx, m.cy, m.radius * (1 - t*0.0), 0, TAU);
+          ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 2; ctx.stroke();
+        }
+        break;
+
+      case 'DONUT':
+        ctx.beginPath();
+        ctx.arc(m.cx, m.cy, m.outer, 0, TAU);
+        ctx.arc(m.cx, m.cy, m.inner, 0, TAU, true);
+        ctx.fillStyle = `rgba(255,60,60,${alpha})`; ctx.fill();
+        ctx.strokeStyle = `rgba(255,90,90,${0.55+0.45*pulse})`;
+        ctx.lineWidth = 3; ctx.stroke();
+        ctx.beginPath(); ctx.arc(m.cx, m.cy, m.inner, 0, TAU); ctx.stroke();
+        break;
+
+      case 'STACK': {
+        const tg = m.target;
+        if (!tg) break;
+        ctx.beginPath(); ctx.arc(tg.x, tg.y, m.radius, 0, TAU);
+        ctx.fillStyle = `rgba(255,190,60,${alpha})`; ctx.fill();
+        ctx.strokeStyle = `rgba(255,210,90,${0.6+0.4*pulse})`;
+        ctx.lineWidth = 3; ctx.stroke();
+        // 头顶标记
+        ctx.beginPath();
+        ctx.moveTo(tg.x, tg.y - 44); ctx.lineTo(tg.x - 12, tg.y - 62); ctx.lineTo(tg.x + 12, tg.y - 62);
+        ctx.closePath();
+        ctx.fillStyle = '#ffbe3c'; ctx.fill();
+        break;
+      }
+
+      case 'SPREAD':
+        for (const tg of m.targets){
+          if (tg.dead) continue;
+          ctx.beginPath(); ctx.arc(tg.x, tg.y, m.safe * 0.52, 0, TAU);
+          ctx.fillStyle = `rgba(255,120,60,${alpha*0.8})`; ctx.fill();
+          ctx.strokeStyle = `rgba(255,150,90,${0.5+0.4*pulse})`;
+          ctx.lineWidth = 2; ctx.stroke();
+        }
+        break;
+
+      case 'TANKBUSTER': {
+        const tg = m.target;
+        if (!tg) break;
+        ctx.beginPath(); ctx.arc(tg.x, tg.y, 34 + pulse*6, 0, TAU);
+        ctx.strokeStyle = '#ff3c3c'; ctx.lineWidth = 4;
+        ctx.shadowColor = '#ff3c3c'; ctx.shadowBlur = 16; ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.moveTo(tg.x, tg.y - 40); ctx.lineTo(tg.x - 13, tg.y - 66); ctx.lineTo(tg.x + 13, tg.y - 66);
+        ctx.closePath(); ctx.fillStyle = '#ff3c3c'; ctx.fill();
+        break;
+      }
+
+      case 'RAIDWIDE': {
+        const r = ARENA_R * (1 - Math.min(t,1)*0.0);
+        ctx.beginPath(); ctx.arc(0, 0, ARENA_R, 0, TAU);
+        ctx.fillStyle = `rgba(190,90,255,${alpha*0.55})`; ctx.fill();
+        ctx.strokeStyle = `rgba(200,120,255,${0.5+0.4*pulse})`;
+        ctx.lineWidth = 4; ctx.stroke();
+        break;
+      }
+
+      case 'TOWER':
+        for (const tw of m.towers){
+          ctx.beginPath(); ctx.arc(tw.x, tw.y, 58, 0, TAU);
+          ctx.fillStyle = tw.filled
+            ? `rgba(90,255,170,${alpha*0.9})`
+            : `rgba(255,220,60,${alpha*0.9})`;
+          ctx.fill();
+          ctx.strokeStyle = tw.filled ? 'rgba(120,255,190,0.9)' : 'rgba(255,230,90,0.9)';
+          ctx.lineWidth = 3; ctx.stroke();
+          ctx.beginPath(); ctx.arc(tw.x, tw.y, 22, 0, TAU);
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2; ctx.stroke();
+        }
+        break;
+
+      case 'FRONTAL':
+        ctx.beginPath();
+        ctx.moveTo(G.boss.x, G.boss.y);
+        ctx.arc(G.boss.x, G.boss.y, m.radius, m.angle - m.half, m.angle + m.half);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(255,70,70,${alpha})`; ctx.fill();
+        ctx.strokeStyle = `rgba(255,110,110,${0.6+0.4*pulse})`;
+        ctx.lineWidth = 3; ctx.stroke();
+        break;
+    }
+    ctx.restore();
+  }
+}
+
+function drawEffects(){
+  for (const e of G.effects){
+    const k = e.life / e.max;
+    if (e.type === 'ring'){
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, (1 - k) * 130 + 20, 0, TAU);
+      ctx.strokeStyle = e.color + Math.floor(k*200).toString(16).padStart(2,'0');
+      ctx.lineWidth = 4 * k + 1;
+      ctx.stroke();
+    } else if (e.type === 'dash'){
+      ctx.beginPath();
+      ctx.moveTo(e.x, e.y); ctx.lineTo(e.tx, e.ty);
+      ctx.strokeStyle = e.color + Math.floor(k*180).toString(16).padStart(2,'0');
+      ctx.lineWidth = 7 * k;
+      ctx.stroke();
+    }
+  }
+}
+
+function drawEntities(){
+  const boss = G.boss;
+  const bossDead = boss.hp <= 0;
+
+  // Boss
+  if (!bossDead){
+    ctx.save();
+    const pulse = 1 + Math.sin(G.time * 2.4) * 0.03;
+    ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.r * pulse, 0, TAU);
+    const grd = ctx.createRadialGradient(boss.x, boss.y - 16, 6, boss.x, boss.y, boss.r * pulse);
+    grd.addColorStop(0, '#ff8a6a');
+    grd.addColorStop(1, '#8e1e2a');
+    ctx.fillStyle = grd; ctx.fill();
+    ctx.strokeStyle = '#ffb0a0'; ctx.lineWidth = 3; ctx.stroke();
+
+    // 内核
+    ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.r * 0.42, 0, TAU);
+    ctx.fillStyle = 'rgba(255,220,180,0.55)'; ctx.fill();
+
+    // 光环
+    ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.r + 16 + Math.sin(G.time*3)*5, 0, TAU);
+    ctx.strokeStyle = 'rgba(255,90,90,0.30)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+
+    // Boss 读条
+    if (G.boss.cast.length){
+      let y = boss.y - boss.r - 74;
+      for (const c of G.boss.cast){
+        const total = G.stage.warn;
+        const prog = clamp(1 - c.t / total, 0, 1);
+        const bw = 190, bh = 12;
+        ctx.fillStyle = 'rgba(6,10,18,0.85)';
+        ctx.fillRect(boss.x - bw/2, y, bw, bh);
+        ctx.fillStyle = '#ffbe3c';
+        ctx.fillRect(boss.x - bw/2, y, bw * prog, bh);
+        ctx.strokeStyle = 'rgba(255,200,120,0.8)'; ctx.lineWidth = 1.5;
+        ctx.strokeRect(boss.x - bw/2, y, bw, bh);
+
+        ctx.font = '600 22px -apple-system,"PingFang SC",sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffe0a0';
+        ctx.shadowColor = '#ff9c3c'; ctx.shadowBlur = 10;
+        ctx.fillText(MECH_NAME[c.type] || '', boss.x, y - 18);
+        ctx.shadowBlur = 0;
+        ctx.font = '15px -apple-system,"PingFang SC",sans-serif';
+        ctx.fillStyle = 'rgba(200,230,255,0.6)';
+        ctx.fillText(MECH_TIP[c.type] || '', boss.x, y + bh + 14);
+        y -= 68;
+      }
+    }
+  }
+
+  // NPC
+  for (const n of G.npcs){
+    if (n.dead) continue;
+    drawActor(n, false);
+  }
+
+  // 玩家
+  const p = G.player;
+  if (!p.dead) drawActor(p, true);
+}
+
+function drawActor(a, isPlayer){
+  ctx.save();
+
+  // 无敌 / 减伤光环
+  if (a.buffs.invuln > 0){
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r + 12, 0, TAU);
+    ctx.strokeStyle = '#ffd479'; ctx.lineWidth = 3;
+    ctx.shadowColor = '#ffd479'; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
+  } else if (a.buffs.mit > 0){
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r + 9, 0, TAU);
+    ctx.strokeStyle = '#7fd4ff'; ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#7fd4ff'; ctx.shadowBlur = 12; ctx.stroke(); ctx.shadowBlur = 0;
+  }
+  if (a.buffs.shield > 0){
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r + 6, 0, TAU);
+    ctx.strokeStyle = 'rgba(160,216,255,0.85)'; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // 本体
+  const flash = a.hitFlash > 0;
+  ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, TAU);
+  const grd = ctx.createRadialGradient(a.x, a.y - 5, 2, a.x, a.y, a.r);
+  grd.addColorStop(0, flash ? '#ffffff' : '#ffffff');
+  grd.addColorStop(0.28, a.color);
+  grd.addColorStop(1, shade(a.color, -0.45));
+  ctx.fillStyle = grd; ctx.fill();
+  ctx.strokeStyle = isPlayer ? '#ffffff' : 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = isPlayer ? 2.5 : 1.5;
+  ctx.stroke();
+
+  // 玩家标记
+  if (isPlayer){
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r + 18 + Math.sin(G.time*3)*3, 0, TAU);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // 名字
+  ctx.font = isPlayer ? '600 17px -apple-system,"PingFang SC",sans-serif'
+                      : '14px -apple-system,"PingFang SC",sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = isPlayer ? '#ffffff' : 'rgba(210,235,255,0.85)';
+  ctx.fillText(a.name, a.x, a.y - a.r - 20);
+
+  // 血条
+  const bw = 46, bh = 5;
+  const ratio = a.hp / a.maxHp;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(a.x - bw/2, a.y - a.r - 13, bw, bh);
+  ctx.fillStyle = ratio > 0.5 ? '#5cffb0' : ratio > 0.25 ? '#ffd479' : '#ff5c5c';
+  ctx.fillRect(a.x - bw/2, a.y - a.r - 13, bw * ratio, bh);
+
+  ctx.restore();
+}
+
+function shade(hex, amt){
+  const c = hex.replace('#','');
+  let r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+  r = clamp(Math.round(r + 255*amt), 0, 255);
+  g = clamp(Math.round(g + 255*amt), 0, 255);
+  b = clamp(Math.round(b + 255*amt), 0, 255);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawFloaters(){
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const f of G.floaters){
+    const a = clamp(f.life / 1.1, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.font = '700 22px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = f.color; ctx.shadowBlur = 10;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ================= HUD ================= */
+let hudTimer = 0;
+function updateHUD(){
+  const p = G.player;
+  document.getElementById('pbarFill').style.width =
+    clamp(p.hp / p.maxHp * 100, 0, 100) + '%';
+  document.getElementById('pname').textContent = p.name;
+
+  document.getElementById('barFill').style.width =
+    clamp(G.boss.hp / G.boss.maxHp * 100, 0, 100) + '%';
+  document.getElementById('bossName').textContent =
+    `${G.boss.name}　${Math.max(0,Math.round(G.boss.hp))} / ${G.boss.maxHp}`;
+
+  const left = Math.max(0, G.stage.enrage - G.elapsed);
+  const mm = Math.floor(left/60), ss = Math.floor(left%60);
+  document.getElementById('timer').textContent = `${mm}:${String(ss).padStart(2,'0')}`;
+  document.getElementById('timer').style.color = left < 15 ? '#ff5c5c' : '#8fb8d8';
+
+  // 队友状态
+  const team = document.getElementById('team');
+  team.innerHTML = G.npcs.map(n=>
+    `<div class="${n.dead?'dead':''}" style="color:${n.color}">${n.name}</div>`
+  ).join('');
+
+  // 技能冷却
+  hudTimer -= 1/60;
+  const btns = document.querySelectorAll('.sk');
+  p.skills.forEach((s,i)=>{
+    const el = btns[i];
+    if (!el) return;
+    const cd = el.querySelector('.c');
+    if (s.left > 0){
+      cd.style.display = 'flex';
+      cd.textContent = s.left.toFixed(1);
+      el.classList.remove('rdy');
+    } else {
+      cd.style.display = 'none';
+      el.classList.add('rdy');
+    }
+  });
+}
+
+function updateSkillButtons(){
+  const box = document.getElementById('skills');
+  box.innerHTML = '';
+  G.player.skills.forEach((s,i)=>{
+    const d = document.createElement('div');
+    d.className = 'sk';
+    d.innerHTML = `<div class="k">${i+1}</div><div class="n">${s.n}</div><div class="c"></div>`;
+    d.addEventListener('touchstart', e=>{ e.preventDefault(); useSkill(i); }, {passive:false});
+    d.addEventListener('mousedown', e=>{ e.preventDefault(); useSkill(i); });
+    box.appendChild(d);
+  });
+}
+
+/* ================= 主循环 ================= */
+let lastT = performance.now();
+function loop(now){
+  const dt = Math.min((now - lastT) / 1000, 0.05);
+  lastT = now;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ================= 菜单 ================= */
+let selectedJob = 'WAR';
+
+function buildMenu(){
+  const list = document.getElementById('jobList');
+  list.innerHTML = '';
+  for (const id in JOBS){
+    const j = JOBS[id];
+    const d = document.createElement('div');
+    d.className = 'job' + (id === selectedJob ? ' sel' : '');
+    d.innerHTML = `<div class="jn" style="color:${j.color}">${j.name}</div>
+      <div class="jr">${j.role}　HP ${j.hp}</div>
+      <div class="jd">${j.desc}</div>`;
+    d.onclick = ()=>{
+      selectedJob = id;
+      document.querySelectorAll('.job').forEach(x=>x.classList.remove('sel'));
+      d.classList.add('sel');
+    };
+    list.appendChild(d);
+  }
+  document.getElementById('routePreview').textContent =
+    '本次以太航线：普通副本 → 极神讨伐 → 零式挑战 → ???';
+}
+
+document.getElementById('startBtn').onclick = ()=>{
+  startRun(selectedJob);
+};
+
+document.getElementById('againBtn').onclick = ()=>{
+  if (G.state === 'result' && G.routeIdx > 0 && G.routeIdx < G.route.length && !G.player.dead){
+    // 继续深入：保留血量
+    startStage();
+  } else {
+    // 重新开始
+    document.getElementById('result').classList.add('hide');
+    document.getElementById('menu').classList.remove('hide');
+    document.getElementById('hud').classList.add('hide');
+    G.state = 'menu';
+    buildMenu();
+  }
+};
+
+/* ================= 启动 ================= */
+resize();
+buildMenu();
+requestAnimationFrame(loop);
+
+// 阻止移动端默认手势
+document.addEventListener('touchmove', e=>{
+  if (e.target === cv || e.target.closest('#joy') || e.target.closest('.sk')) e.preventDefault();
+}, {passive:false});
+document.addEventListener('gesturestart', e=>e.preventDefault());
+</script>
+</body>
+</html>
