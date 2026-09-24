@@ -401,6 +401,7 @@ export interface KingFishDef {
 export interface FishRegionDef {
   regionId: number
   name: string
+  levelReq: number
   normal: FishDef[]
   king: KingFishDef
   emperor: KingFishDef

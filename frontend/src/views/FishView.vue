@@ -40,10 +40,15 @@ const regionOptions = computed(() =>
       const p = game.state?.regionProgress?.[String(r.regionId)]
       return p ? p.unlocked : r.regionId === 1
     })
-    .map((r) => ({ id: r.regionId, name: r.name })),
+    .map((r) => ({ id: r.regionId, name: r.name, levelReq: r.levelReq })),
 )
 
 const currentRegion = computed(() => data.fish.regions.find((r) => r.regionId === regionId.value) ?? null)
+
+/** 钓场还需采集等级达到 levelReq 才能开始。 */
+const regionLevelLocked = computed(() =>
+  currentRegion.value ? currentRegion.value.levelReq > (progress.value?.level ?? 1) : false,
+)
 
 /** 鱼王/鱼皇「鱼识加成」来自专用装备（药水加成在服务端结算时另计）。 */
 const chanceBonus = computed(() => dohdol.state?.bonus?.fishChancePct ?? 0)
@@ -131,7 +136,9 @@ async function toggle() {
       <div class="flex flex-wrap items-center gap-2">
         <select v-model.number="regionId" class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-200">
           <option :value="null" disabled>选择钓场</option>
-          <option v-for="r in regionOptions" :key="r.id" :value="r.id">{{ r.name }}</option>
+          <option v-for="r in regionOptions" :key="r.id" :value="r.id">
+            {{ r.name }}（要求 Lv.{{ r.levelReq }}）
+          </option>
         </select>
         <button
           class="rounded-md px-4 py-1.5 text-xs font-semibold transition"
@@ -142,6 +149,9 @@ async function toggle() {
         </button>
       </div>
       <p v-if="error" class="mt-2 text-xs text-red-400">{{ error }}</p>
+      <p v-else-if="regionLevelLocked && currentRegion" class="mt-2 text-xs text-amber-300">
+        采集等级不足：该钓场需要 Lv.{{ currentRegion.levelReq }}，当前 Lv.{{ progress?.level ?? 1 }}。
+      </p>
 
       <div v-if="running" class="mt-3">
         <div class="mb-1 flex justify-between text-[11px] text-ink-400">

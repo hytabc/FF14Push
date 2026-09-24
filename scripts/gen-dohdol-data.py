@@ -31,9 +31,10 @@ BASE_ITEMS = json.loads((DATA / "base-items.json").read_text(encoding="utf-8"))
 # 且绝不反超战斗——既保住收集动机，又不让它变成不打怪也能刷钱的路线。
 # 回归保护：backend/tests/test_dohdol.py:TestDohdolSellBalance。
 BAND_SELL = {1: 6, 9: 16, 17: 32, 23: 64, 29: 128, 35: 256}          # 采集素材（地区专属）
-FISH_SELL = {1: 8, 9: 20, 17: 40, 23: 80, 29: 160, 35: 320}          # 普通渔获
-KING_SELL = {1: 160, 9: 400, 17: 800, 23: 1600, 29: 3200, 35: 6400}  # 鱼王（20 × 普通渔获）
-EMPEROR_SELL = {1: 640, 9: 1600, 17: 3200, 23: 6400, 29: 12800, 35: 25600}  # 鱼皇（80 × 普通渔获）
+FISH_SELL = {1: 8, 9: 20, 17: 40, 23: 80, 29: 160, 35: 320}          # 普通渔获（不变）
+# 鱼王 / 鱼皇：全档位整体陡增（每档约 3~3.75×），100 级地区鱼皇 30W。普通渔获不动。
+KING_SELL = {1: 160, 9: 600, 17: 2200, 23: 8000, 29: 25000, 35: 75000}        # 鱼王（约鱼皇的 1/4）
+EMPEROR_SELL = {1: 640, 9: 2400, 17: 9000, 23: 33000, 29: 100000, 35: 300000}  # 鱼皇
 HALF_SELL = 50                                                       # 半成品（统一固定，不随档位变化）
 
 
@@ -412,6 +413,7 @@ for index, r in enumerate(regions):
     fish_regions.append({
         "regionId": rid,
         "name": r["name"],
+        "levelReq": band_level(rid),
         "normal": normal,
         "king": {
             "id": f"k{rid}", "name": FISH_KING_NAMES[index],
@@ -428,7 +430,7 @@ for index, r in enumerate(regions):
     })
 
 dump("fish.json", {
-        "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。sell 为出售单价（金币），按 FISH_SELL / KING_SELL / EMPEROR_SELL 档位表递增（越高档涨幅越大，低阶几乎不变），鱼王/鱼皇分别约为同档普通鱼的 20× / 80×。",
+        "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。levelReq 为采集等级门槛（与采集点一致，40 个地区线性铺满 1-100）。sell 为出售单价（金币）：普通渔获按 FISH_SELL 递增且维持原价；鱼王/鱼皇按 KING_SELL / EMPEROR_SELL 全档位陡增（每档约 3~3.75×），100 级地区鱼皇单价 30W。",
     "castSeconds": 3.0,
     "insightBuffName": "捕鱼人之识",
     "regions": fish_regions,

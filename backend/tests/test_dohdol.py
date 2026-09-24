@@ -137,8 +137,15 @@ class TestSharedData:
                 assert set(region[key]["prereqFishIds"]).issubset(normal_ids)
                 assert region[key]["chance"] > 0
             assert region["emperor"]["chance"] < region["king"]["chance"], "鱼皇概率必须低于鱼王"
+            # 钓场带采集等级门槛，且与同地区采集点一致（1-100 线性铺满）
+            assert int(region["levelReq"]) >= 1
+            assert int(region["levelReq"]) == int(
+                CONFIG.gather_node_by[(region["regionId"], "MIN")]["levelReq"]
+            ), f"地区 {region['regionId']} 钓场门槛与采集点不一致"
             king_names.append(region["king"]["name"])
             emperor_names.append(region["emperor"]["name"])
+        assert int(CONFIG.fish_region_by_id[1]["levelReq"]) == 1
+        assert int(CONFIG.fish_region_by_id[40]["levelReq"]) == 100
         # 鱼王 / 鱼皇每个地区各一条，名称互不重复
         assert len(set(king_names)) == 40
         assert len(set(emperor_names)) == 40
@@ -435,6 +442,24 @@ class TestDohdolSellBalance:
             fish = int(CONFIG.fish_region_by_id[band]["normal"][0]["sell"]) / cast_seconds
             assert gather < cap, f"档位 {band} 采集 {gather:.1f} 金币/秒，超过战斗下限的 30%（{cap:.1f}）"
             assert fish < cap, f"档位 {band} 渔获 {fish:.1f} 金币/秒，超过战斗下限的 30%（{cap:.1f}）"
+
+    def test_fishing_income_including_rare_fish_stays_below_combat(self):
+        """把鱼王/鱼皇的期望收益也计入（鱼识常驻的最坏情形），避免调价后出现「只钓鱼卖鱼」的刷钱路线。"""
+        cast_seconds = float(CONFIG.fish["castSeconds"])
+        for band in self.CHECKED_BANDS:
+            region = CONFIG.fish_region_by_id[band]
+            king_p = float(region["king"]["chance"])
+            emperor_p = (1.0 - king_p) * float(region["emperor"]["chance"])
+            per_cast = (
+                int(region["normal"][0]["sell"])
+                + king_p * int(region["king"]["sell"])
+                + emperor_p * int(region["emperor"]["sell"])
+            )
+            total = per_cast / cast_seconds
+            cap = self._combat_gold_floor_per_sec(band)
+            assert total < cap, (
+                f"档位 {band} 钓鱼（含鱼王/鱼皇）{total:.1f} 金币/秒，不应超过战斗下限 {cap:.1f}"
+            )
 
     def test_half_good_conversion_is_bounded(self):
         """半成品配方：产出卖价不得超过输入卖价的 6 倍，避免「采集 → 加工 → 出售」变成印钞机。"""
@@ -925,6 +950,45 @@ class TestFishApi:
         async with session_factory() as db:
             records = (await db.execute(select(FishRecord))).scalars().all()
             assert records
+
+    @pytest.mark.asyncio
+    async def test_fish_level_requirement(self, auth_client, session_factory):
+        """钓场按采集等级门槛开放（与采集点一致，并叠加在地区解锁之上）。"""
+        from app.models import RegionProgress
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            # 解锁地区 2 的钓场（需先通关地区 1），但采集等级仍为 1
+            for region_id, *flags in ((1, "cleared"), (2, "unlocked")):
+                row = (
+                    await db.execute(
+                        select(RegionProgress).where(
+                            RegionProgress.user_id == me["id"], RegionProgress.region_id == region_id
+                        )
+                    )
+                ).scalar_one()
+                setattr(row, flags[0], True)
+            await db.commit()
+
+        # region 2 需要采集等级 3 → 默认 1 级被拒
+        denied = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 2})
+        assert denied.status_code == 400, denied.text
+        assert "采集等级" in denied.json()["detail"]
+
+        # 提升采集等级后放行
+        async with session_factory() as db:
+            progress = (
+                await db.execute(
+                    select(DohDolProgress).where(
+                        DohDolProgress.user_id == me["id"], DohDolProgress.kind == "dol"
+                    )
+                )
+            ).scalar_one()
+            progress.level = 3
+            await db.commit()
+
+        ok = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 2})
+        assert ok.status_code == 200, ok.text
 
 
 class TestConsumableApi:

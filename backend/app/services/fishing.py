@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import ActivitySession, DohDolProgress, FishRecord, Item, User, UserTitle
 from app.services import consumables, dohdol_util
 from app.services.game_config import CONFIG
-from app.services.gathering import cleared_max_region
+from app.services.gathering import cleared_max_region, progress_level
 from app.services.playtime import add_play_ms
 
 MAX_CASTS_PER_REPORT = 200
@@ -43,6 +43,11 @@ async def start_fish(db: AsyncSession, user: User, items: Sequence[Item], region
         raise ValueError("该地区没有钓场")
     if region_id > await cleared_max_region(db, user.id) + 1:
         raise ValueError("该地区尚未解锁")
+    level = await progress_level(db, user.id, "dol")
+    if level < int(CONFIG.fish_region_by_id[region_id]["levelReq"]):
+        raise ValueError(
+            f"采集等级不足，需要采集等级 {CONFIG.fish_region_by_id[region_id]['levelReq']}"
+        )
 
     await dohdol_util.end_active_sessions(db, user.id)
     await dohdol_util.end_other_battle_sessions(db, user.id)

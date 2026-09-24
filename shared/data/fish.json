@@ -1,11 +1,12 @@
 {
-  "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。sell 为出售单价（金币），按 FISH_SELL / KING_SELL / EMPEROR_SELL 档位表递增（越高档涨幅越大，低阶几乎不变），鱼王/鱼皇分别约为同档普通鱼的 20× / 80×。",
+  "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。levelReq 为采集等级门槛（与采集点一致，40 个地区线性铺满 1-100）。sell 为出售单价（金币）：普通渔获按 FISH_SELL 递增且维持原价；鱼王/鱼皇按 KING_SELL / EMPEROR_SELL 全档位陡增（每档约 3~3.75×），100 级地区鱼皇单价 30W。",
   "castSeconds": 3.0,
   "insightBuffName": "捕鱼人之识",
   "regions": [
     {
       "regionId": 1,
       "name": "中拉诺西亚",
+      "levelReq": 1,
       "normal": [
         {
           "id": "f1_1",
@@ -84,6 +85,7 @@
     {
       "regionId": 2,
       "name": "西拉诺西亚",
+      "levelReq": 3,
       "normal": [
         {
           "id": "f2_1",
@@ -162,6 +164,7 @@
     {
       "regionId": 3,
       "name": "拉诺西亚低地",
+      "levelReq": 6,
       "normal": [
         {
           "id": "f3_1",
@@ -240,6 +243,7 @@
     {
       "regionId": 4,
       "name": "中萨纳兰",
+      "levelReq": 8,
       "normal": [
         {
           "id": "f4_1",
@@ -318,6 +322,7 @@
     {
       "regionId": 5,
       "name": "西萨纳兰",
+      "levelReq": 11,
       "normal": [
         {
           "id": "f5_1",
@@ -396,6 +401,7 @@
     {
       "regionId": 6,
       "name": "黑衣森林中央林区",
+      "levelReq": 13,
       "normal": [
         {
           "id": "f6_1",
@@ -474,6 +480,7 @@
     {
       "regionId": 7,
       "name": "黑衣森林东部林区",
+      "levelReq": 16,
       "normal": [
         {
           "id": "f7_1",
@@ -552,6 +559,7 @@
     {
       "regionId": 8,
       "name": "东萨纳兰",
+      "levelReq": 18,
       "normal": [
         {
           "id": "f8_1",
@@ -630,6 +638,7 @@
     {
       "regionId": 9,
       "name": "南萨纳兰",
+      "levelReq": 21,
       "normal": [
         {
           "id": "f9_1",
@@ -683,7 +692,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 49,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e9",
@@ -702,12 +711,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 138,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 10,
       "name": "摩杜纳",
+      "levelReq": 23,
       "normal": [
         {
           "id": "f10_1",
@@ -761,7 +771,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 50,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e10",
@@ -780,12 +790,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 140,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 11,
       "name": "库尔札斯中央高地",
+      "levelReq": 26,
       "normal": [
         {
           "id": "f11_1",
@@ -839,7 +850,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 51,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e11",
@@ -858,12 +869,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 142,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 12,
       "name": "库尔札斯西部高地",
+      "levelReq": 28,
       "normal": [
         {
           "id": "f12_1",
@@ -917,7 +929,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 52,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e12",
@@ -936,12 +948,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 144,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 13,
       "name": "龙堡参天高地",
+      "levelReq": 31,
       "normal": [
         {
           "id": "f13_1",
@@ -995,7 +1008,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 53,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e13",
@@ -1014,12 +1027,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 146,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 14,
       "name": "翻云雾海",
+      "levelReq": 34,
       "normal": [
         {
           "id": "f14_1",
@@ -1073,7 +1087,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 54,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e14",
@@ -1092,12 +1106,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 148,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 15,
       "name": "龙堡内陆低地",
+      "levelReq": 36,
       "normal": [
         {
           "id": "f15_1",
@@ -1151,7 +1166,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 55,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e15",
@@ -1170,12 +1185,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 150,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 16,
       "name": "田园郡",
+      "levelReq": 39,
       "normal": [
         {
           "id": "f16_1",
@@ -1229,7 +1245,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 56,
-        "sell": 400
+        "sell": 600
       },
       "emperor": {
         "id": "e16",
@@ -1248,12 +1264,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 152,
-        "sell": 1600
+        "sell": 2400
       }
     },
     {
       "regionId": 17,
       "name": "基拉巴尼亚边区",
+      "levelReq": 41,
       "normal": [
         {
           "id": "f17_1",
@@ -1307,7 +1324,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 57,
-        "sell": 800
+        "sell": 2200
       },
       "emperor": {
         "id": "e17",
@@ -1326,12 +1343,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 154,
-        "sell": 3200
+        "sell": 9000
       }
     },
     {
       "regionId": 18,
       "name": "基拉巴尼亚山区",
+      "levelReq": 44,
       "normal": [
         {
           "id": "f18_1",
@@ -1385,7 +1403,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 58,
-        "sell": 800
+        "sell": 2200
       },
       "emperor": {
         "id": "e18",
@@ -1404,12 +1422,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 156,
-        "sell": 3200
+        "sell": 9000
       }
     },
     {
       "regionId": 19,
       "name": "红玉海",
+      "levelReq": 46,
       "normal": [
         {
           "id": "f19_1",
@@ -1463,7 +1482,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 59,
-        "sell": 800
+        "sell": 2200
       },
       "emperor": {
         "id": "e19",
@@ -1482,12 +1501,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 158,
-        "sell": 3200
+        "sell": 9000
       }
     },
     {
       "regionId": 20,
       "name": "延夏",
+      "levelReq": 49,
       "normal": [
         {
           "id": "f20_1",
@@ -1541,7 +1561,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 60,
-        "sell": 800
+        "sell": 2200
       },
       "emperor": {
         "id": "e20",
@@ -1560,12 +1580,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 160,
-        "sell": 3200
+        "sell": 9000
       }
     },
     {
       "regionId": 21,
       "name": "太阳神草原",
+      "levelReq": 51,
       "normal": [
         {
           "id": "f21_1",
@@ -1619,7 +1640,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 61,
-        "sell": 800
+        "sell": 2200
       },
       "emperor": {
         "id": "e21",
@@ -1638,12 +1659,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 162,
-        "sell": 3200
+        "sell": 9000
       }
     },
     {
       "regionId": 22,
       "name": "黄金港",
+      "levelReq": 54,
       "normal": [
         {
           "id": "f22_1",
@@ -1697,7 +1719,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 62,
-        "sell": 800
+        "sell": 2200
       },
       "emperor": {
         "id": "e22",
@@ -1716,12 +1738,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 164,
-        "sell": 3200
+        "sell": 9000
       }
     },
     {
       "regionId": 23,
       "name": "珂露西亚岛",
+      "levelReq": 56,
       "normal": [
         {
           "id": "f23_1",
@@ -1775,7 +1798,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 63,
-        "sell": 1600
+        "sell": 8000
       },
       "emperor": {
         "id": "e23",
@@ -1794,12 +1817,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 166,
-        "sell": 6400
+        "sell": 33000
       }
     },
     {
       "regionId": 24,
       "name": "安穆·艾兰",
+      "levelReq": 59,
       "normal": [
         {
           "id": "f24_1",
@@ -1853,7 +1877,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 64,
-        "sell": 1600
+        "sell": 8000
       },
       "emperor": {
         "id": "e24",
@@ -1872,12 +1896,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 168,
-        "sell": 6400
+        "sell": 33000
       }
     },
     {
       "regionId": 25,
       "name": "伊尔美格",
+      "levelReq": 61,
       "normal": [
         {
           "id": "f25_1",
@@ -1931,7 +1956,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 65,
-        "sell": 1600
+        "sell": 8000
       },
       "emperor": {
         "id": "e25",
@@ -1950,12 +1975,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 170,
-        "sell": 6400
+        "sell": 33000
       }
     },
     {
       "regionId": 26,
       "name": "雷克兰德",
+      "levelReq": 64,
       "normal": [
         {
           "id": "f26_1",
@@ -2009,7 +2035,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 66,
-        "sell": 1600
+        "sell": 8000
       },
       "emperor": {
         "id": "e26",
@@ -2028,12 +2054,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 172,
-        "sell": 6400
+        "sell": 33000
       }
     },
     {
       "regionId": 27,
       "name": "拉凯提卡大森林",
+      "levelReq": 67,
       "normal": [
         {
           "id": "f27_1",
@@ -2087,7 +2114,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 67,
-        "sell": 1600
+        "sell": 8000
       },
       "emperor": {
         "id": "e27",
@@ -2106,12 +2133,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 174,
-        "sell": 6400
+        "sell": 33000
       }
     },
     {
       "regionId": 28,
       "name": "黑风海",
+      "levelReq": 69,
       "normal": [
         {
           "id": "f28_1",
@@ -2165,7 +2193,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 68,
-        "sell": 1600
+        "sell": 8000
       },
       "emperor": {
         "id": "e28",
@@ -2184,12 +2212,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 176,
-        "sell": 6400
+        "sell": 33000
       }
     },
     {
       "regionId": 29,
       "name": "萨维奈岛",
+      "levelReq": 72,
       "normal": [
         {
           "id": "f29_1",
@@ -2243,7 +2272,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 69,
-        "sell": 3200
+        "sell": 25000
       },
       "emperor": {
         "id": "e29",
@@ -2262,12 +2291,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 178,
-        "sell": 12800
+        "sell": 100000
       }
     },
     {
       "regionId": 30,
       "name": "加雷马",
+      "levelReq": 74,
       "normal": [
         {
           "id": "f30_1",
@@ -2321,7 +2351,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 70,
-        "sell": 3200
+        "sell": 25000
       },
       "emperor": {
         "id": "e30",
@@ -2340,12 +2370,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 180,
-        "sell": 12800
+        "sell": 100000
       }
     },
     {
       "regionId": 31,
       "name": "叹息海",
+      "levelReq": 77,
       "normal": [
         {
           "id": "f31_1",
@@ -2399,7 +2430,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 71,
-        "sell": 3200
+        "sell": 25000
       },
       "emperor": {
         "id": "e31",
@@ -2418,12 +2449,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 182,
-        "sell": 12800
+        "sell": 100000
       }
     },
     {
       "regionId": 32,
       "name": "天外天垓",
+      "levelReq": 79,
       "normal": [
         {
           "id": "f32_1",
@@ -2477,7 +2509,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 72,
-        "sell": 3200
+        "sell": 25000
       },
       "emperor": {
         "id": "e32",
@@ -2496,12 +2528,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 184,
-        "sell": 12800
+        "sell": 100000
       }
     },
     {
       "regionId": 33,
       "name": "厄尔庇斯",
+      "levelReq": 82,
       "normal": [
         {
           "id": "f33_1",
@@ -2555,7 +2588,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 73,
-        "sell": 3200
+        "sell": 25000
       },
       "emperor": {
         "id": "e33",
@@ -2574,12 +2607,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 186,
-        "sell": 12800
+        "sell": 100000
       }
     },
     {
       "regionId": 34,
       "name": "迷津",
+      "levelReq": 84,
       "normal": [
         {
           "id": "f34_1",
@@ -2633,7 +2667,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 74,
-        "sell": 3200
+        "sell": 25000
       },
       "emperor": {
         "id": "e34",
@@ -2652,12 +2686,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 188,
-        "sell": 12800
+        "sell": 100000
       }
     },
     {
       "regionId": 35,
       "name": "图拉尔大陆·海岸",
+      "levelReq": 87,
       "normal": [
         {
           "id": "f35_1",
@@ -2711,7 +2746,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 75,
-        "sell": 6400
+        "sell": 75000
       },
       "emperor": {
         "id": "e35",
@@ -2730,12 +2765,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 190,
-        "sell": 25600
+        "sell": 300000
       }
     },
     {
       "regionId": 36,
       "name": "图拉尔大陆·丛林",
+      "levelReq": 89,
       "normal": [
         {
           "id": "f36_1",
@@ -2789,7 +2825,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 76,
-        "sell": 6400
+        "sell": 75000
       },
       "emperor": {
         "id": "e36",
@@ -2808,12 +2844,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 192,
-        "sell": 25600
+        "sell": 300000
       }
     },
     {
       "regionId": 37,
       "name": "图拉尔大陆·遗迹",
+      "levelReq": 92,
       "normal": [
         {
           "id": "f37_1",
@@ -2867,7 +2904,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 77,
-        "sell": 6400
+        "sell": 75000
       },
       "emperor": {
         "id": "e37",
@@ -2886,12 +2923,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 194,
-        "sell": 25600
+        "sell": 300000
       }
     },
     {
       "regionId": 38,
       "name": "图拉尔大陆·火山",
+      "levelReq": 94,
       "normal": [
         {
           "id": "f38_1",
@@ -2945,7 +2983,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 78,
-        "sell": 6400
+        "sell": 75000
       },
       "emperor": {
         "id": "e38",
@@ -2964,12 +3002,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 196,
-        "sell": 25600
+        "sell": 300000
       }
     },
     {
       "regionId": 39,
       "name": "图拉尔大陆·王都",
+      "levelReq": 97,
       "normal": [
         {
           "id": "f39_1",
@@ -3023,7 +3062,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 79,
-        "sell": 6400
+        "sell": 75000
       },
       "emperor": {
         "id": "e39",
@@ -3042,12 +3081,13 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 198,
-        "sell": 25600
+        "sell": 300000
       }
     },
     {
       "regionId": 40,
       "name": "图拉尔大陆·圣域",
+      "levelReq": 100,
       "normal": [
         {
           "id": "f40_1",
@@ -3101,7 +3141,7 @@
         "sizeMin": 160,
         "sizeMax": 240,
         "exp": 80,
-        "sell": 6400
+        "sell": 75000
       },
       "emperor": {
         "id": "e40",
@@ -3120,7 +3160,7 @@
         "sizeMin": 240,
         "sizeMax": 360,
         "exp": 200,
-        "sell": 25600
+        "sell": 300000
       }
     }
   ]
