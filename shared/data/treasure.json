@@ -24,6 +24,6 @@
   "$commentTier": "秘药档位按层（1-2 层 I 档、3-4 层 II 档、5 层 III 档）；魔晶石等级按层的候选区间随机。",
   "potionTierByFloor": [1, 1, 2, 2, 3],
   "materiaLevelByFloor": [[1, 2], [1, 2], [2, 3], [2, 4], [3, 5]],
-  "$commentMinMs": "单层最短服务端计时（防脚本秒通），取值极小、不会误伤高练度玩家。",
-  "minFloorFightMs": 2000
+  "$commentMinMs": "单层最短服务端计时（防脚本秒通）。必须低于客户端战斗的物理下限：GCD 最低约 0.75s，强练度玩家一两次出手即可打完，取 2s 会误伤高练度玩家。",
+  "minFloorFightMs": 500
 }

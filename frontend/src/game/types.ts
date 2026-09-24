@@ -810,6 +810,9 @@ export interface MarketListing {
   status: string
   sellerId: number
   sellerNickname: string | null
+  /** 成交后回填的买家 id 与昵称（仅已售出记录有值）。 */
+  buyerId?: number | null
+  buyerNickname?: string | null
   createdAt: string | null
   expiresAt: string | null
   /** 仅装备：属性 / 词条明细。 */

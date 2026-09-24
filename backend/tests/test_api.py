@@ -1615,6 +1615,34 @@ class TestRaid:
         assert resp.json()["cleared"] is False
         assert "invalid_duration" in resp.json()["failures"]
 
+    async def test_hard_raid_fast_clear_is_accepted(self, auth_client, session_factory) -> None:
+        """强练度玩家远快于理论时长，合法快速通关不能被判为 invalid_duration。
+
+        实测强练度英雄约 1.5s 打完 raid_h1；旧的 durationTolerance=0.5（≈1.74s 下限）
+        会把这种通关判成「战斗时长校验」失败而拿不到通关。
+        """
+        await self._gear_up(auth_client, session_factory, ancient=2)
+        started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
+        async with session_factory() as db:
+            session = await db.get(RaidSession, started["sessionId"])
+            session.started_at = datetime.now(timezone.utc) - timedelta(milliseconds=1500)
+            await db.commit()
+        resp = await auth_client.post(
+            f"{API}/raid/session/report",
+            json={
+                "sessionId": started["sessionId"],
+                "raidId": "raid_h1",
+                "cleared": True,
+                "died": False,
+                "elapsedMs": 1500,
+                "fightMs": 1500,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["cleared"] is True, body
+        assert "invalid_duration" not in body.get("failures", [])
+
     async def test_list_reports_challenge_level_and_daily_limit(self, auth_client, session_factory) -> None:
         """列表展示目标等级与每日奖励次数。"""
         await self._gear_up(auth_client, session_factory, ancient=2)

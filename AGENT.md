@@ -56,6 +56,7 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 
 - **服务端是资产与进度的权威。** 普通战斗由客户端模拟并批量上报，服务端校验收益、击杀额度、解锁及推进；不要信任客户端金币、击杀数或时间。
 - 击杀额度使用服务端记录的真实间隔，客户端 `elapsedMs` 仅供参考。调整模拟器时同时检查 `backend/app/services/validator.py` 和相关战斗模型，避免合法上报被拒或出现超额收益。
+- **时长下限的容差要留足**：挖宝 `shared/data/treasure.json:minFloorFightMs` 与高难 `shared/data/balance.json:raids.*.durationTolerance`（经 `raid_balance.minimumFightMs`）是「防脚本秒通」的服务端计时下限，但客户端一次出手最快约 0.75s，实战还有暴击 / 直击 / 技能方差，强练度玩家会远快于理论时长。下限必须低于合法最快通关，否则会把合法通关误报为「战斗时长异常 / 战斗时长校验」；挖宝客户端对此时长校验会自动等待重试，高难则直接判负，改这两个值时务必同步回归 `test_treasure.py::test_fast_floor_clear_is_accepted` 与 `test_api.py::TestRaid::test_hard_raid_fast_clear_is_accepted`。
 - 普通挂机不提供离线收益。联机「离线合作/克隆体」是独立机制，不等于为普通挂机新增离线回补；团队战斗由 worker 推进，worker 中断也不补算离线时间。
 - 装备归属账号，英雄穿戴状态与账号背包需要保持一致；切换、解雇及多英雄操作应检查 `roster.py`、相关模型与事务逻辑，避免装备或资产重复。
 - 好友金币转账同为服务端权威：`services/friends.py` 按 id 升序双行锁两方账号，校验好友关系 / 余额 / 单笔上下限 / 每日累计额度后再结算，手续费按 `floor(amount × feePct)` 销毁（净额不为 0 增长来源），流水写入 `coin_transfers`。

@@ -116,6 +116,20 @@ async def test_floor_clear_enforces_min_server_time(auth_client, session_factory
 
 
 @pytest.mark.asyncio
+async def test_fast_floor_clear_is_accepted(auth_client, session_factory):
+    """强练度玩家一两次出手即可打完本层（客户端一次出手最快约 0.75s）。
+
+    最短计时若高于该物理下限，合法通关会被误报成「战斗时长异常」，
+    客户端只能卡在无法结算的状态。这里只等 0.6s 也必须能正常结算。
+    """
+    run_id = await _start(auth_client, session_factory)
+    await _age_floor(session_factory, run_id, 600)
+    resp = await auth_client.post(f"{API}/treasure/floor/clear", json={"runId": run_id})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["run"]["status"] == "cleared"
+
+
+@pytest.mark.asyncio
 async def test_wrong_door_ends_run_but_keeps_rewards(auth_client, session_factory, monkeypatch):
     run_id = await _start(auth_client, session_factory, gold=20_000_000)
     _force_random(monkeypatch, 0.9)  # 不触发事件

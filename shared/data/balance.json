@@ -449,7 +449,7 @@
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
-      "durationTolerance": 0.5,
+      "durationTolerance": 0.1,
       "clockToleranceMs": 2000
     },
     "raid_2": {
@@ -464,7 +464,7 @@
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
-      "durationTolerance": 0.5,
+      "durationTolerance": 0.1,
       "clockToleranceMs": 2000
     },
     "raid_3": {
@@ -479,7 +479,7 @@
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
-      "durationTolerance": 0.5,
+      "durationTolerance": 0.1,
       "clockToleranceMs": 2000
     },
     "raid_4": {
@@ -494,7 +494,7 @@
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
-      "durationTolerance": 0.5,
+      "durationTolerance": 0.1,
       "clockToleranceMs": 2000
     },
     "raid_h1": {
@@ -509,7 +509,7 @@
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 2,
-      "durationTolerance": 0.5,
+      "durationTolerance": 0.1,
       "clockToleranceMs": 2000
     },
     "raid_h2": {
@@ -524,7 +524,7 @@
       "topRarity": null,
       "topRarityRatio": 0.0,
       "minAncientTermsPerItem": 3,
-      "durationTolerance": 0.5,
+      "durationTolerance": 0.1,
       "clockToleranceMs": 2000
     }
   },

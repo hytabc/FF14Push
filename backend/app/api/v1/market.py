@@ -119,9 +119,23 @@ async def mine(db: DbSession, user: CurrentUser) -> dict:
         )
     ).scalars().all()
 
+    # 已售出记录需要展示「被谁买走」，批量取买家昵称。
+    buyer_ids = {row.buyer_id for row in closed if row.buyer_id}
+    buyer_names: dict[int, str] = {}
+    if buyer_ids:
+        buyer_names = {
+            row.id: row.nickname
+            for row in (
+                await db.execute(select(User.id, User.nickname).where(User.id.in_(buyer_ids)))
+            ).all()
+        }
+
     return {
         "active": [market.listing_to_dict(row, user.nickname) for row in active],
-        "closed": [market.listing_to_dict(row, user.nickname) for row in closed],
+        "closed": [
+            market.listing_to_dict(row, user.nickname, buyer_nickname=buyer_names.get(row.buyer_id))
+            for row in closed
+        ],
         "activeCount": len(active),
         "maxActiveListings": market.max_active_listings(),
         "feePct": market.fee_pct(),

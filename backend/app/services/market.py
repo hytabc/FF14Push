@@ -218,6 +218,7 @@ def listing_to_dict(
     row: MarketListing,
     seller_nickname: str | None = None,
     levels: dict[str, int] | None = None,
+    buyer_nickname: str | None = None,
 ) -> dict[str, Any]:
     data: dict[str, Any] = {
         "id": row.id,
@@ -235,6 +236,8 @@ def listing_to_dict(
         "status": row.status,
         "sellerId": row.seller_id,
         "sellerNickname": seller_nickname,
+        "buyerId": row.buyer_id,
+        "buyerNickname": buyer_nickname,
         "createdAt": row.created_at.isoformat() if row.created_at else None,
         "expiresAt": row.expires_at.isoformat() if row.expires_at else None,
     }

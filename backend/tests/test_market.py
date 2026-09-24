@@ -203,6 +203,38 @@ async def test_buy_transfers_gold_and_item_with_fee(client, session_factory):
         assert row.status == STATUS_SOLD and row.buyer_id == uid_b and row.fee == 100
 
 
+async def test_mine_shows_who_bought_sold_listing(client, session_factory):
+    """卖家「已结束记录」需能看出物品被谁买走。"""
+    token_a = await _register(client, "mkt_who_a")
+    uid_a = await _user_id(session_factory, "mkt_who_a")
+    item_id = await _seed_item(session_factory, uid_a)
+    _auth(client, token_a)
+    listing_id = (
+        await client.post(
+            f"{API}/market/list",
+            json={"entries": [{"type": "equipment", "itemId": item_id, "unitPrice": 1000}]},
+        )
+    ).json()["listings"][0]["id"]
+
+    # 在售时没有买家
+    mine = (await client.get(f"{API}/market/mine")).json()
+    active = next(l for l in mine["active"] if l["id"] == listing_id)
+    assert active["buyerId"] is None and active["buyerNickname"] is None
+
+    token_b = await _register(client, "mkt_who_b")
+    uid_b = await _user_id(session_factory, "mkt_who_b")
+    await _set_gold(session_factory, uid_b, 5000)
+    _auth(client, token_b)
+    assert (await client.post(f"{API}/market/buy", json={"listingId": listing_id})).status_code == 200
+
+    _auth(client, token_a)
+    mine = (await client.get(f"{API}/market/mine")).json()
+    sold = next(l for l in mine["closed"] if l["id"] == listing_id)
+    assert sold["status"] == STATUS_SOLD
+    assert sold["buyerId"] == uid_b
+    assert sold["buyerNickname"] == "mkt_who_b"
+
+
 async def test_buy_guards_self_and_insufficient_gold(client, session_factory):
     token_a = await _register(client, "mkt_g_a")
     uid_a = await _user_id(session_factory, "mkt_g_a")

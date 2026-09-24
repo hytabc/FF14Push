@@ -6,6 +6,10 @@ from app.services.raid_util import boss_stats_for_raid, eligibility, raid_penalt
 
 
 def snapshot(raid, level, stats, items):
+    # minimumFightMs = 理论时长 × durationTolerance：理论时长只是「期望值」，实战存在
+    # 暴击 / 直击 / 技能 / 词条触发的方差，强练度玩家会显著快于期望值（客户端一次出手
+    # 最快约 0.75s）。容差必须留足，否则合法快速通关会被 clear_failures 判为
+    # invalid_duration（「战斗时长校验」）而拿不到通关。
     rule=BALANCE['raids'][raid['id']]
     normal=raid.get('difficulty','normal')=='normal'
     penalty=raid_penalty(raid,level,stats)

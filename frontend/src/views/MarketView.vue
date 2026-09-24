@@ -558,6 +558,9 @@ async function cancel(listing: MarketListing) {
               >
                 {{ l.status === 'sold' ? '已售出' : l.status === 'expired' ? '已过期' : '已下架' }}
               </span>
+              <span v-if="l.status === 'sold' && l.buyerNickname" class="text-emerald-300/80">
+                被 {{ l.buyerNickname }} 买走
+              </span>
             </div>
           </div>
         </details>

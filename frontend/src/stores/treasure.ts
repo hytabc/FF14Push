@@ -23,6 +23,10 @@ const TICK_MS = 100
 const MAX_FRAME_MS = 400
 /** 后台补算上限（毫秒）：与地区战斗同源（shared/data/combat.json:catchUpSeconds）。 */
 const CATCH_UP_MS = Number(data.combat.catchUpSeconds ?? 300) * 1000
+/** 单层结算被服务端「战斗时长异常」拒绝时的重试间隔与次数。
+ *  服务端计时只增不减，等待后重试必然通过；否则玩家会卡在无法结算的状态里。 */
+const FLOOR_CLEAR_RETRY_MS = 700
+const FLOOR_CLEAR_MAX_RETRIES = 6
 
 /** 挖宝会话：每层客户端模拟战斗，服务端权威结算门 / 宝箱 / 猜大小。 */
 export const useTreasureStore = defineStore('treasure', () => {
@@ -140,6 +144,21 @@ export const useTreasureStore = defineStore('treasure', () => {
     rafId = requestAnimationFrame(step)
   }
 
+  /** 结算本层；被服务端「战斗时长异常」拒绝（战斗过快，尚未达到最短计时）时等待重试。 */
+  async function clearFloorWithRetry(runId: number, elapsedMs: number) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await api.treasureFloorClear(runId, elapsedMs)
+      } catch (e) {
+        const err = toApiError(e)
+        if (err.status !== 400 || !err.message.includes('时长') || attempt >= FLOOR_CLEAR_MAX_RETRIES) {
+          throw e
+        }
+        await new Promise((resolve) => setTimeout(resolve, FLOOR_CLEAR_RETRY_MS))
+      }
+    }
+  }
+
   /** 一层结束（击败怪物或阵亡）时上报一次。 */
   async function finishFloorIfDone() {
     const current = sim.value
@@ -153,7 +172,7 @@ export const useTreasureStore = defineStore('treasure', () => {
     current.pause()
     try {
       if (current.phase === 'cleared') {
-        const res = await api.treasureFloorClear(target.runId, Math.round(current.bossFightMs))
+        const res = await clearFloorWithRetry(target.runId, Math.round(current.bossFightMs))
         run.value = res.run
         event.value = res.event
         if (res.event) toast.push(`特殊事件：猜大小（当前牌面 ${res.event.card}）`, 'loot')
