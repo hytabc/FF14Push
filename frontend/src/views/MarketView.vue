@@ -131,6 +131,23 @@ function kindLabel(kind: string): string {
   return '消耗品'
 }
 
+const REQ_KIND_LABEL: Record<string, string> = {
+  combat: '任一英雄',
+  doh: '生产职业',
+  dol: '采集职业',
+}
+
+/** 购买等级门槛文案；素材 / 消耗品等无门槛返回空串。 */
+function reqText(l: MarketListing): string {
+  if (!l.requiredKind || l.levelReq == null) return ''
+  return `${REQ_KIND_LABEL[l.requiredKind] ?? ''}等级需达到 ${l.levelReq}`
+}
+
+/** 当前玩家是否因等级不足无法购买该寄售单。 */
+function levelLocked(l: MarketListing): boolean {
+  return l.levelMet === false
+}
+
 /** 四舍五入到 1 位小数，整数则省略小数。 */
 function attrValue(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -561,6 +578,7 @@ async function cancel(listing: MarketListing) {
                   <span class="text-ink-100">{{ l.name }}</span>
                   <span v-if="l.rarity" class="text-xs text-ink-400">{{ rarityName(l.rarity) }}</span>
                   <span v-if="l.levelReq" class="text-xs text-ink-500">Lv.{{ l.levelReq }}</span>
+                  <span v-if="levelLocked(l)" class="rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] text-rose-300">{{ reqText(l) }}</span>
                   <span class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">{{ kindLabel(l.kind) }}</span>
                 </div>
                 <div v-if="l.equipment" class="mt-1 flex flex-wrap gap-1 text-[10px] text-ink-400">
@@ -584,7 +602,8 @@ async function cancel(listing: MarketListing) {
                 <span v-if="l.quantity > 1" class="text-ink-400">×{{ l.quantity }} = {{ formatNumber(l.totalPrice) }}</span>
                 <button
                   class="rounded bg-amber-500 px-3 py-1 font-medium text-ink-950 transition hover:bg-amber-400 disabled:opacity-50"
-                  :disabled="busy"
+                  :disabled="busy || levelLocked(l)"
+                  :title="levelLocked(l) ? reqText(l) : ''"
                   @click="openBuy(l)"
                 >
                   购买
@@ -603,9 +622,11 @@ async function cancel(listing: MarketListing) {
             <span v-if="l.quantity > 1" class="text-ink-500">×{{ l.quantity }}</span>
             <span class="text-ink-500">卖家 {{ l.sellerNickname ?? '—' }}</span>
             <span class="ml-auto text-amber-300">{{ formatNumber(l.unitPrice) }} / 件</span>
+            <span v-if="levelLocked(l)" class="text-rose-300">{{ reqText(l) }}</span>
             <button
               class="rounded bg-amber-500 px-3 py-1 font-medium text-ink-950 transition hover:bg-amber-400 disabled:opacity-50"
-              :disabled="busy"
+              :disabled="busy || levelLocked(l)"
+              :title="levelLocked(l) ? reqText(l) : ''"
               @click="openBuy(l)"
             >
               购买
@@ -618,14 +639,16 @@ async function cancel(listing: MarketListing) {
           <button
             v-for="l in listings"
             :key="l.id"
-            class="flex flex-col items-center gap-1 rounded-lg border border-ink-700 p-2 text-center transition hover:border-amber-400/60"
-            :disabled="busy"
+            class="flex flex-col items-center gap-1 rounded-lg border border-ink-700 p-2 text-center transition hover:border-amber-400/60 disabled:opacity-60"
+            :disabled="busy || levelLocked(l)"
+            :title="levelLocked(l) ? reqText(l) : ''"
             @click="openBuy(l)"
           >
             <ItemIcon :base-id="l.itemKey" :rarity="l.rarity ?? undefined" :size="40" :variant="l.kind === 'equipment' ? 'full' : 'plain'" />
             <span class="line-clamp-1 w-full text-[11px] text-ink-200">{{ l.name }}</span>
             <span v-if="l.quantity > 1" class="text-[10px] text-ink-500">×{{ l.quantity }}</span>
             <span class="text-[11px] text-amber-300">{{ formatNumber(l.unitPrice) }}</span>
+            <span v-if="levelLocked(l)" class="line-clamp-2 text-[9px] text-rose-300">{{ reqText(l) }}</span>
           </button>
         </div>
 

@@ -108,6 +108,42 @@ const FLOAT_LIFE = 1
 /** 单次命中对地区关底 BOSS 的伤害上限（占其最大生命 %），见 `bosses.json:maxHitDamagePct`。 */
 const BOSS_MAX_HIT_PCT = Number(data.bosses.maxHitDamagePct ?? 100)
 
+/** 装备词条扩展机制参数（`combat.json:equipEffects`）。概率/强度由词条值承载，此处只放效果量与阈值。 */
+const EQUIP = ((data.combat as Record<string, any>).equipEffects ?? {}) as {
+  proc?: {
+    bleed?: { potencyPct: number; durationSec: number }
+    defBreak?: { defenseDownPct: number; durationSec: number }
+    slow?: { attackSpeedDownPct: number; durationSec: number }
+    stun?: { durationSec: number }
+    reflect?: { damagePct: number }
+    vengeance?: { attackBuffPct: number; durationSec: number }
+    aegis?: { maxHpShieldPct: number; durationSec: number }
+    resolve?: { maxMpRestorePct: number }
+  }
+  conditional?: {
+    lowHp?: { hpThresholdPct: number }
+    opening?: { windowSec: number }
+    boss?: { kinds: string[] }
+    lowMp?: { mpThresholdPct: number }
+  }
+  growth?: {
+    killStackAttackPct?: { maxStacks: number }
+    hitStackSpeedPct?: { maxStacks: number }
+    skillStackDamagePct?: { maxStacks: number }
+  }
+  convert?: { hpToMp?: { intervalSec: number }; mpSurge?: { basePctOfMp: number }; killRestoreMp?: unknown }
+  charge?: {
+    chargeBlast?: { hpThresholdPct: number; potencyPct: number }
+    chargeShield?: { hpThresholdPct: number }
+    chargeHeal?: { castThreshold: number }
+  }
+  special?: {
+    execute?: { hpThresholdPct: number }
+    cheatDeath?: { durationSec: number }
+    revive?: { reviveHpPct: number }
+  }
+}
+
 let uid = 0
 const nextId = () => ++uid
 
@@ -148,6 +184,21 @@ export class BattleSimulator {
   bossFightMs = 0
   deathCount = 0
 
+  /** 条件「先手」计时：当前目标登场后的秒数。 */
+  private monsterElapsed = 0
+  /** 动态成长层数（按词条 stat 键计数）。 */
+  private growthCounts: Record<string, number> = {
+    killStackAttackPct: 0,
+    hitStackSpeedPct: 0,
+    skillStackDamagePct: 0,
+  }
+  /** 累计触发计数：累计造成伤害 / 累计受到伤害 / 累计释放技能次数。 */
+  private chargeDamage = 0
+  private chargeTaken = 0
+  private chargeCasts = 0
+  /** 「不死」每场战斗仅触发一次。 */
+  private cheatDeathUsed = false
+
   pendingKills: KillRecord[] = []
   pendingSkillCasts: Record<string, number> = {}
   pendingBossKill = false
@@ -165,8 +216,13 @@ export class BattleSimulator {
   private readonly normalMobPotency100Bonus: number
   private buffs: ActiveBuff[] = []
   private dots: Array<{ remaining: number; potency: number; tick: number }> = []
-  /** 装备命中触发的敌方减益（凋零=减攻 / 失明=降命中），随目标切换清空。 */
-  private enemyDebuffs: Array<{ stat: 'attackDown' | 'hitDown'; value: number; remaining: number; name: string }> = []
+  /** 装备命中触发的敌方减益（凋零=减攻 / 失明=降命中 / 破防=降防 / 缓速=降攻速），随目标切换清空。 */
+  private enemyDebuffs: Array<{
+    stat: 'attackDown' | 'hitDown' | 'defDown' | 'speedDown'
+    value: number
+    remaining: number
+    name: string
+  }> = []
   /** BOSS 施加给英雄的持续伤害（高难副本）。 */
   private heroDots: Array<{ remaining: number; potencyPerSec: number; tick: number; source: string }> = []
   private regenTimer = 0
@@ -273,6 +329,21 @@ export class BattleSimulator {
     return Math.min(0.8, this.enemyDebuffs.reduce((sum, b) => (b.stat === 'attackDown' ? sum + b.value : sum), 0))
   }
 
+  /** 装备「破防」对当前目标的降防比例（0-0.8），在伤害结算中削减目标防御。 */
+  private get enemyDefenseDown(): number {
+    return Math.min(0.8, this.enemyDebuffs.reduce((sum, b) => (b.stat === 'defDown' ? sum + b.value : sum), 0))
+  }
+
+  /** 装备「缓速」对当前目标的攻速削减比例（0-0.8），在出手间隔上生效。 */
+  private get enemySpeedDown(): number {
+    return Math.min(0.8, this.enemyDebuffs.reduce((sum, b) => (b.stat === 'speedDown' ? sum + b.value : sum), 0))
+  }
+
+  /** 当前目标的实际防御（含「破防」削减）。 */
+  private get targetDefense(): number {
+    return Math.max(0, (this.monster?.defense ?? 0) * (1 - this.enemyDefenseDown))
+  }
+
   /** 怪物出手的失手率（%）：英雄闪避 + 装备「失明」加成，上限 75。 */
   private get monsterMissChance(): number {
     const blind = this.enemyDebuffs.reduce((sum, b) => (b.stat === 'hitDown' ? sum + b.value : sum), 0) * 100
@@ -299,12 +370,34 @@ export class BattleSimulator {
     this.targetIndex = index
     this.dots = []
     this.enemyDebuffs = []
+    this.monsterElapsed = 0
+    this.chargeDamage = 0
     this.pushLog(`切换目标 →「${this.enemies[index].stats.name}」`, 'system')
   }
 
   get stats(): HeroStats {
-    if (this.buffs.length === 0) return this.baseStats
+    const mods = this.baseStats.termMods
+    const hasGrowth = Boolean(mods.killStackAttackPct || mods.hitStackSpeedPct)
+    const hasConditional = Boolean(mods.lowHpAttackPct)
+    if (this.buffs.length === 0 && !hasGrowth && !hasConditional) return this.baseStats
     const clone: HeroStats = { ...this.baseStats, termMods: { ...this.baseStats.termMods } }
+    // 动态成长：战意（攻击）/ 锐意（攻速），层数由战斗事件累加。
+    const g = this.growthCounts
+    if (mods.killStackAttackPct && g.killStackAttackPct > 0) {
+      const m = 1 + (g.killStackAttackPct * mods.killStackAttackPct) / 100
+      clone.attack *= m
+      clone.magicAttack *= m
+    }
+    if (mods.hitStackSpeedPct && g.hitStackSpeedPct > 0) {
+      clone.attackSpeedPct += g.hitStackSpeedPct * mods.hitStackSpeedPct
+    }
+    // 条件：背水（生命低于阈值时攻击提升）
+    const hpPct = this.baseStats.maxHp > 0 ? (this.heroHp / this.baseStats.maxHp) * 100 : 100
+    if (mods.lowHpAttackPct && hpPct < (EQUIP.conditional?.lowHp?.hpThresholdPct ?? 50)) {
+      const m = 1 + mods.lowHpAttackPct / 100
+      clone.attack *= m
+      clone.magicAttack *= m
+    }
     for (const buff of this.buffs) {
       switch (buff.stat) {
         case 'attackBuff':
@@ -409,12 +502,21 @@ export class BattleSimulator {
       for (const buff of this.buffs.filter((b) => b.stat === 'hpRegenBuff')) {
         this.restoreHealth(stats.maxHp * buff.value * ticks * this.healMultiplier, buff.name + '（持续回复）')
       }
-      this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks * (this.penalty.resourceMultiplier ?? 1))
+      this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks * (this.penalty.resourceMultiplier ?? 1) * this.lowMpRegenFactor(stats))
       for (const buff of this.buffs.filter((b) => b.stat === 'mpRegenBuff')) {
         this.heroMp = Math.min(
           stats.maxMp,
           this.heroMp + stats.maxMp * buff.value * ticks * (this.penalty.resourceMultiplier ?? 1),
         )
+      }
+      // 资源转换「转魔」：每秒将最大生命一部分转为魔力（生命不足时不生效）。
+      const hpToMp = this.baseStats.termMods.hpToMpPct ?? 0
+      if (hpToMp > 0) {
+        const cost = stats.maxHp * (hpToMp / 100) * ticks
+        if (this.heroHp > cost) {
+          this.heroHp -= cost
+          this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.maxMp * (hpToMp / 100) * ticks)
+        }
       }
     }
 
@@ -441,6 +543,7 @@ export class BattleSimulator {
     }
 
     if (this.phase === 'boss') this.bossFightMs += dt * 1000
+    this.monsterElapsed += dt
 
     this.castIfReady()
     this.tickBasicAttack()
@@ -510,6 +613,8 @@ export class BattleSimulator {
     this.dots = []
     this.enemyDebuffs = []
     this.heroDots = []
+    this.monsterElapsed = 0
+    this.chargeDamage = 0
   }
 
   /** 目标阵亡：移出战斗。副本模式下若仍有存活 BOSS，则对其施加狂暴。 */
@@ -518,6 +623,8 @@ export class BattleSimulator {
     this.dots = []
     this.enemyDebuffs = []
     this.heroDots = []
+    this.monsterElapsed = 0
+    this.chargeDamage = 0
     if (this.targetIndex >= this.enemies.length) this.targetIndex = Math.max(0, this.enemies.length - 1)
   }
 
@@ -573,6 +680,12 @@ export class BattleSimulator {
     const restore = Math.floor(stats.maxMp * Number(data.heroes.mp.basicAttackRestorePct ?? 0))
     if (restore > 0) this.heroMp = Math.min(stats.maxMp, this.heroMp + restore)
     this.resolveDamage(ADVENTURER_SKILL, false)
+    // 「连击」：概率追加一次普攻（附加普攻不再判定连击，避免无限递归）。
+    const combo = Math.max(0, this.baseStats.termMods.doubleAttackPct ?? 0)
+    if (this.monster && combo > 0 && Math.random() * 100 < combo) {
+      this.pushLog('「连击」触发，追加一次普攻', 'skill')
+      this.resolveDamage(ADVENTURER_SKILL, false)
+    }
   }
 
   private pickSkill(pool: SkillLike[]): SkillLike {
@@ -616,6 +729,20 @@ export class BattleSimulator {
     this.gcd = (data.combat.gcdSeconds as number) / speed
     this.pendingSkillCasts[skill.id] = (this.pendingSkillCasts[skill.id] ?? 0) + 1
 
+    // 动态成长「咏唱」：每次释放技能叠加技能伤害层数。
+    if (this.baseStats.termMods.skillStackDamagePct) {
+      const max = EQUIP.growth?.skillStackDamagePct?.maxStacks ?? 8
+      this.growthCounts.skillStackDamagePct = Math.min(max, (this.growthCounts.skillStackDamagePct ?? 0) + 1)
+    }
+    // 累计触发「咏唱蓄能」：累计释放技能达阈值后治疗。
+    this.chargeCasts += 1
+    const chargeHeal = this.baseStats.termMods.chargeHealPct ?? 0
+    const healThreshold = EQUIP.charge?.chargeHeal?.castThreshold ?? 10
+    if (chargeHeal > 0 && this.chargeCasts >= healThreshold) {
+      this.chargeCasts = 0
+      this.restoreHealth(Math.floor(this.stats.maxHp * (chargeHeal / 100)), '装备「咏唱蓄能」')
+    }
+
     this.resolveSkillBody(skill)
 
     // 装备「双重施法」：概率额外释放一次（不再扣蓝 / 不重置 CD-GCD / 不再次判定，避免递归）。
@@ -635,7 +762,28 @@ export class BattleSimulator {
   private resolveDamage(skill: SkillLike, isSkill: boolean): void {
     const stats = this.stats
     if (!this.monster) return
+    const mods = this.baseStats.termMods
     let mult = skillDamageMultiplier(stats, stats.jobId)
+    // 条件增伤：先手（开战窗口）/ 讨伐（精英与 BOSS）/ 处决（目标残血）。
+    const cond = EQUIP.conditional ?? {}
+    if (mods.openingDamagePct && this.monsterElapsed < (cond.opening?.windowSec ?? 10)) {
+      mult *= 1 + mods.openingDamagePct / 100
+    }
+    if (mods.bossDamagePct && (cond.boss?.kinds ?? ['elite', 'boss']).includes(this.monster.kind)) {
+      mult *= 1 + mods.bossDamagePct / 100
+    }
+    const execHp = EQUIP.special?.execute?.hpThresholdPct ?? 30
+    if (mods.executePct && this.monsterMaxHp > 0 && (this.monsterHp / this.monsterMaxHp) * 100 < execHp) {
+      mult *= 1 + mods.executePct / 100
+    }
+    // 资源转换「魔力灌注」：技能伤害随当前魔力百分比提升。
+    if (mods.mpSurgeDamagePct && stats.maxMp > 0) {
+      mult *= 1 + (this.heroMp / stats.maxMp) * (mods.mpSurgeDamagePct / 100)
+    }
+    // 动态成长「咏唱」：技能伤害按层数提升。
+    if (isSkill && mods.skillStackDamagePct && this.growthCounts.skillStackDamagePct > 0) {
+      mult *= 1 + (this.growthCounts.skillStackDamagePct * mods.skillStackDamagePct) / 100
+    }
     if (isSkill && this.doublePowerCharges > 0) {
       mult *= 2
       this.doublePowerCharges -= 1
@@ -653,7 +801,7 @@ export class BattleSimulator {
       stats,
       skill.potency,
       skill.damageType,
-      this.monster.defense,
+      this.targetDefense,
       mult,
       this.penalty,
       this.targetResistance(),
@@ -673,7 +821,30 @@ export class BattleSimulator {
     )
     if (mark) this.pushLog(`${skill.name} 造成 ${amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
     else this.pushLog(`${skill.name} 造成 ${amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+    // 动态成长「锐意」：每次命中叠加攻速层数。
+    if (mods.hitStackSpeedPct) {
+      const max = EQUIP.growth?.hitStackSpeedPct?.maxStacks ?? 10
+      this.growthCounts.hitStackSpeedPct = Math.min(max, (this.growthCounts.hitStackSpeedPct ?? 0) + 1)
+    }
+    // 累计触发「蓄势」：累计造成伤害达阈值后爆发。
+    this.chargeDamage += amount
+    this.maybeChargeBlast()
     this.rollProcs(stats)
+  }
+
+  /** 累计触发「蓄势」：累计造成目标一定比例最大生命的伤害后，触发一次额外爆发。 */
+  private maybeChargeBlast(): void {
+    if (!this.monster) return
+    const bonus = this.baseStats.termMods.chargeBlastPct ?? 0
+    const hpThreshold = EQUIP.charge?.chargeBlast?.hpThresholdPct ?? 100
+    if (bonus <= 0 || this.monsterMaxHp <= 0) return
+    if (this.chargeDamage < this.monsterMaxHp * (hpThreshold / 100)) return
+    this.chargeDamage = 0
+    const blast = Math.max(1, Math.floor(powerAttack(this.stats) * (bonus / 100)))
+    this.monsterHp -= blast
+    this.pushFloat(`${blast}`, 'monster', 'monster')
+    this.pushLog(`装备触发「蓄势」，造成 ${blast} 伤害`, 'skill')
+    if (this.monsterHp <= 0) this.killMonster()
   }
 
   /** 命中触发效果（proc）：灼烧/中毒 DOT、疾风限时攻速、凋零减攻、失明降命中、生机/灵息持续回复。与后端 `combat_model.proc_dps_bonus` 同源。 */
@@ -731,6 +902,38 @@ export class BattleSimulator {
         name: '失明',
       })
       this.pushLog('装备触发「失明」', 'skill')
+    }
+    // 扩展 proc（combat.json:equipEffects.proc）：裂伤 / 破防 / 缓速 / 眩晕。
+    const equipProc = EQUIP.proc ?? {}
+    const bleedChance = Math.max(0, stats.termMods.bleedProcPct ?? 0)
+    if (equipProc.bleed && bleedChance > 0 && Math.random() * 100 < bleedChance) {
+      this.dots.push({ remaining: equipProc.bleed.durationSec, potency: equipProc.bleed.potencyPct, tick: 1 })
+      this.pushLog('装备触发「裂伤」', 'skill')
+    }
+    const defBreakChance = Math.max(0, stats.termMods.defBreakProcPct ?? 0)
+    if (equipProc.defBreak && defBreakChance > 0 && Math.random() * 100 < defBreakChance) {
+      this.enemyDebuffs.push({
+        stat: 'defDown',
+        value: equipProc.defBreak.defenseDownPct / 100,
+        remaining: equipProc.defBreak.durationSec,
+        name: '破防',
+      })
+      this.pushLog('装备触发「破防」', 'skill')
+    }
+    const slowChance = Math.max(0, stats.termMods.slowProcPct ?? 0)
+    if (equipProc.slow && slowChance > 0 && Math.random() * 100 < slowChance) {
+      this.enemyDebuffs.push({
+        stat: 'speedDown',
+        value: equipProc.slow.attackSpeedDownPct / 100,
+        remaining: equipProc.slow.durationSec,
+        name: '缓速',
+      })
+      this.pushLog('装备触发「缓速」', 'skill')
+    }
+    const stunChance = Math.max(0, stats.termMods.stunProcPct ?? 0)
+    if (equipProc.stun && stunChance > 0 && Math.random() * 100 < stunChance) {
+      this.monsterAttackTimer += equipProc.stun.durationSec
+      this.pushLog('装备触发「眩晕」', 'skill')
     }
     // 生机 / 灵息：命中概率获得限时持续回复。
     const hpRegenChance = Math.max(0, stats.termMods.hpRegenProcPct ?? 0)
@@ -885,10 +1088,19 @@ export class BattleSimulator {
     return Math.max(0, 1 - this.penalty.defenseIgnorePct / 100)
   }
 
-  /** 治疗量倍率：等级压制系数 × 彩蛋「术道恒久」等治疗增益。 */
+  /** 治疗量倍率：等级压制系数 × 彩蛋「术道恒久」等治疗增益 × 词条「治愈之力」。 */
   private get healMultiplier(): number {
     const buff = this.buffs.reduce((sum, b) => (b.stat === 'healingBuff' ? sum + b.value : sum), 0)
-    return (this.penalty.healingMultiplier ?? 1) * (1 + buff)
+    const power = (this.baseStats.termMods.healPowerPct ?? 0) / 100
+    return (this.penalty.healingMultiplier ?? 1) * (1 + buff + power)
+  }
+
+  /** 条件「枯竭」：魔力低于阈值时提升魔力恢复的倍率。 */
+  private lowMpRegenFactor(stats: HeroStats): number {
+    const bonus = this.baseStats.termMods.lowMpRegenPct ?? 0
+    if (bonus <= 0 || stats.maxMp <= 0) return 1
+    const mpPct = (this.heroMp / stats.maxMp) * 100
+    return mpPct < (EQUIP.conditional?.lowMp?.mpThresholdPct ?? 30) ? 1 + bonus / 100 : 1
   }
 
   /** 消耗一层彩蛋「免疫」：返回 true 表示本次伤害被免疫。 */
@@ -900,11 +1112,77 @@ export class BattleSimulator {
     return true
   }
 
+  /** 护盾获得量倍率（词条「护盾强化」）。 */
+  private get shieldMultiplier(): number {
+    return 1 + (this.baseStats.termMods.shieldBoostPct ?? 0) / 100
+  }
+
+  /**
+   * 受击触发（受击类 / 防御类）：格挡减伤 + 反震 / 复仇 / 庇护 / 坚毅概率触发，
+   * 并累计「受创蓄力」。返回结算后的伤害；不建模进后端 DPS（仅影响生存与资源）。
+   */
+  private onHitTaken(stats: HeroStats, damage: number): number {
+    const proc = EQUIP.proc ?? {}
+    const mods = this.baseStats.termMods
+    let out = damage
+    // 格挡：概率使本次伤害减半
+    const blockChance = Math.max(0, mods.blockProcPct ?? 0)
+    if (blockChance > 0 && Math.random() * 100 < blockChance) {
+      out = Math.max(1, Math.floor(out * 0.5))
+      this.pushLog('装备触发「格挡」，伤害减半', 'skill')
+    }
+    // 反震：概率反弹本次伤害的一部分
+    const reflectChance = Math.max(0, mods.reflectProcPct ?? 0)
+    if (proc.reflect && this.monster && reflectChance > 0 && Math.random() * 100 < reflectChance) {
+      const back = Math.max(1, Math.floor(out * (proc.reflect.damagePct / 100)))
+      this.monsterHp -= back
+      this.pushLog(`装备触发「反震」，反弹 ${back} 点伤害`, 'skill')
+      if (this.monsterHp <= 0) {
+        this.killMonster()
+        return out
+      }
+    }
+    // 复仇：概率获得攻击增益
+    const vengeanceChance = Math.max(0, mods.vengeanceProcPct ?? 0)
+    if (proc.vengeance && vengeanceChance > 0 && Math.random() * 100 < vengeanceChance) {
+      this.buffs.push({
+        stat: 'attackBuff',
+        value: proc.vengeance.attackBuffPct / 100,
+        remaining: proc.vengeance.durationSec,
+        name: '复仇',
+      })
+      this.pushLog('装备触发「复仇」，攻击力提升', 'skill')
+    }
+    // 庇护：概率获得护盾
+    const aegisChance = Math.max(0, mods.aegisProcPct ?? 0)
+    if (proc.aegis && aegisChance > 0 && Math.random() * 100 < aegisChance) {
+      this.shield += Math.floor(stats.maxHp * proc.aegis.maxHpShieldPct * this.shieldMultiplier)
+      this.pushLog('装备触发「庇护」，获得护盾', 'skill')
+    }
+    // 坚毅：概率恢复魔力
+    const resolveChance = Math.max(0, mods.resolveProcPct ?? 0)
+    if (proc.resolve && resolveChance > 0 && Math.random() * 100 < resolveChance) {
+      this.heroMp = Math.min(stats.maxMp, this.heroMp + Math.floor(stats.maxMp * proc.resolve.maxMpRestorePct))
+      this.pushLog('装备触发「坚毅」，恢复魔力', 'skill')
+    }
+    // 累计触发「受创蓄力」：累计受到一定比例最大生命的伤害后获得护盾。
+    this.chargeTaken += damage
+    const chargeShield = mods.chargeShieldPct ?? 0
+    const shieldThreshold = EQUIP.charge?.chargeShield?.hpThresholdPct ?? 30
+    if (chargeShield > 0 && stats.maxHp > 0 && this.chargeTaken >= stats.maxHp * (shieldThreshold / 100)) {
+      this.chargeTaken = 0
+      this.shield += Math.floor(stats.maxHp * (chargeShield / 100) * this.shieldMultiplier)
+      this.pushLog('装备触发「受创蓄力」，获得护盾', 'skill')
+    }
+    return out
+  }
+
   private tickMonster(dt: number): void {
     if (!this.monster) return
     this.monsterAttackTimer -= dt
     if (this.monsterAttackTimer > 0) return
-    this.monsterAttackTimer = this.monster.attackInterval
+    // 「缓速」延长目标出手间隔（攻速下降）
+    this.monsterAttackTimer = this.monster.attackInterval / (1 - this.enemySpeedDown)
     this.monsterAttack()
   }
 
@@ -923,6 +1201,8 @@ export class BattleSimulator {
       stats.termMods.damageTakenPct ?? 0,
       this.penalty.damageTakenBonusPct,
     )
+    damage = this.onHitTaken(stats, damage)
+    if (!this.monster) return
 
     // 荆棘反弹
     const thorns = stats.termMods.thornsPct
@@ -1077,6 +1357,7 @@ export class BattleSimulator {
       stats.termMods.damageTakenPct ?? 0,
       this.penalty.damageTakenBonusPct,
     )
+    damage = this.onHitTaken(stats, damage)
     if (this.shield > 0) {
       const absorbed = Math.min(this.shield, damage)
       this.shield -= absorbed
@@ -1123,6 +1404,16 @@ export class BattleSimulator {
     if (!monster) return
     const isBoss = monster.kind === 'boss'
     this.pushLog(`击败「${monster.name}」！`, 'boss')
+    // 动态成长「战意」：击杀叠加攻击层数。
+    if (this.baseStats.termMods.killStackAttackPct) {
+      const max = EQUIP.growth?.killStackAttackPct?.maxStacks ?? 10
+      this.growthCounts.killStackAttackPct = Math.min(max, (this.growthCounts.killStackAttackPct ?? 0) + 1)
+    }
+    // 资源转换「汲魔」：击杀恢复魔力。
+    const killMp = this.baseStats.termMods.killRestoreMpPct ?? 0
+    if (killMp > 0) {
+      this.heroMp = Math.min(this.stats.maxMp, this.heroMp + Math.floor(this.stats.maxMp * (killMp / 100)))
+    }
 
     if (!this.isRaid) {
       // 地区战斗：小怪计入上报，BOSS 触发通关
@@ -1171,6 +1462,14 @@ export class BattleSimulator {
   }
 
   private heroDies(): void {
+    // 「不死」：受致命伤害时概率免死并保留 1 点生命（每场战斗 1 次）。
+    const cheat = this.baseStats.termMods.cheatDeathPct ?? 0
+    if (cheat > 0 && !this.cheatDeathUsed && Math.random() * 100 < cheat) {
+      this.cheatDeathUsed = true
+      this.heroHp = 1
+      this.pushLog('装备触发「不死」，免于死亡并保留 1 点生命', 'danger')
+      return
+    }
     this.phase = 'dead'
     // 「归魂」缩短 / 「沉魂」延长复活等待，最短 1 秒。
     const mods = this.baseStats.termMods
@@ -1184,7 +1483,25 @@ export class BattleSimulator {
     this.dots = []
     this.enemyDebuffs = []
     this.heroDots = []
+    this.resetCombatGrowth()
+    // 「死亡抵抗」：概率当场复活（回复 30% 生命，不进入等待）。
+    const reviveChance = mods.reviveChancePct ?? 0
+    if (!this.isRaid && reviveChance > 0 && Math.random() * 100 < reviveChance) {
+      this.pendingDeath = false
+      this.pushLog('装备触发「死亡抵抗」，立即复活', 'danger')
+      this.revive()
+      this.heroHp = Math.max(1, Math.floor(this.stats.maxHp * (EQUIP.special?.revive?.reviveHpPct ?? 0.3)))
+      return
+    }
     this.pushLog(this.isRaid ? '英雄阵亡！副本挑战失败' : '英雄阵亡！小怪阶段进度重置', 'danger')
+  }
+
+  /** 复活 / 免死后重置战斗内成长与累计计数。 */
+  private resetCombatGrowth(): void {
+    this.growthCounts = { killStackAttackPct: 0, hitStackSpeedPct: 0, skillStackDamagePct: 0 }
+    this.chargeDamage = 0
+    this.chargeTaken = 0
+    this.chargeCasts = 0
   }
 
   private revive(): void {
@@ -1196,6 +1513,8 @@ export class BattleSimulator {
     this.phase = 'mob'
     this.spawnTimer = this.spawnInterval
     this.basicAttackTimer = 0
+    this.cheatDeathUsed = false
+    this.resetCombatGrowth()
     this.pushLog('英雄已复活，生命值回满', 'system')
   }
 

@@ -79,8 +79,9 @@ async def listings(
         )
     ).all()
 
+    levels = await market.buyer_levels(db, user.id)
     return {
-        "listings": [market.listing_to_dict(row, nickname) for row, nickname in rows],
+        "listings": [market.listing_to_dict(row, nickname, levels) for row, nickname in rows],
         "total": total,
         "page": page,
         "pageSize": pageSize,

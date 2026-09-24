@@ -165,42 +165,62 @@ async def report_produce(
         session.ended_at = now
 
     rng = random.Random()
+    # 词条「杰作 / 瑕疵」：概率提升 / 降低本次制造的品质加成
+    quality_jump = equip.get("craftQualityJumpPct", 0.0)
+    if quality_jump > 0 and rng.random() * 100 < quality_jump:
+        quality_bonus += 0.5
+    elif quality_jump < 0 and rng.random() * 100 < -quality_jump:
+        quality_bonus = max(0.0, quality_bonus - 0.5)
+    material_save = equip.get("craftMaterialSavePct", 0.0)
+    extra_output = equip.get("craftExtraOutputPct", 0.0)
     produced: list[dict[str, Any]] = []
     material_out: dict[str, int] = {}
     equipment_out: list[dict[str, Any]] = []
     output = recipe["output"]
     # 经验按每件实际产出累计：装备按其抽到的品阶加权，材料 / 半成品 / 消耗品恒为 1.0。
-    # 彩蛋「生产专家」的额外产出只多给一件物品，不额外计入经验。
+    # 额外产出（词条「多产」/ 彩蛋「生产专家」）只多给一件物品，不额外计入经验。
     xp_units = 0.0
     for _ in range(crafts):
+        # 材料节省 / 浪费：正值为「概率不消耗」，负值为「概率额外消耗 1 份」
         for entry in recipe["inputs"]:
+            need = int(entry["count"])
+            if material_save > 0 and rng.random() * 100 < material_save:
+                continue
+            if material_save < 0 and rng.random() * 100 < -material_save:
+                need += 1
             await dohdol_util.stack_consume(
-                db, user.id, dohdol_util.STACK_MATERIAL, entry["itemId"], int(entry["count"])
+                db, user.id, dohdol_util.STACK_MATERIAL, entry["itemId"], need
             )
-        # 彩蛋被动「生产专家」：命中则本次多产出一件（对全部产出类型生效）。
-        extra = 2 if craft_extra > 0 and rng.random() < craft_extra else 1
+        # 产出件数：词条「多产 / 减产」+ 彩蛋被动「生产专家」
+        produce_count = 1
+        if extra_output > 0 and rng.random() * 100 < extra_output:
+            produce_count += 1
+        elif extra_output < 0 and rng.random() * 100 < -extra_output:
+            produce_count = 0
+        if craft_extra > 0 and rng.random() < craft_extra:
+            produce_count += 1
         if output["kind"] == "equipment":
-            crafted = generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
-            xp_units += craft_xp_rarity_multiplier(crafted["rarity"])
-            equipment_out.append(crafted)
-            if extra > 1:
-                equipment_out.append(
-                    generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
-                )
+            for index in range(produce_count):
+                crafted = generate_crafted_item(output["baseId"], rng, quality_bonus, rarity_luck)
+                equipment_out.append(crafted)
+                if index == 0:
+                    xp_units += craft_xp_rarity_multiplier(crafted["rarity"])
         elif output["kind"] == "consumable":
-            spec = dohdol_util.consumable_def(output["itemId"])
-            kind = spec["kind"] if spec else "potion"
-            count = int(output.get("count", 1)) * extra
-            await dohdol_util.stack_add(db, user.id, kind, output["itemId"], count)
-            material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
-            xp_units += 1.0
+            if produce_count > 0:
+                spec = dohdol_util.consumable_def(output["itemId"])
+                kind = spec["kind"] if spec else "potion"
+                count = int(output.get("count", 1)) * produce_count
+                await dohdol_util.stack_add(db, user.id, kind, output["itemId"], count)
+                material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
+                xp_units += 1.0
         else:
-            count = int(output.get("count", 1)) * extra
-            await dohdol_util.stack_add(
-                db, user.id, dohdol_util.STACK_MATERIAL, output["itemId"], count
-            )
-            material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
-            xp_units += 1.0
+            if produce_count > 0:
+                count = int(output.get("count", 1)) * produce_count
+                await dohdol_util.stack_add(
+                    db, user.id, dohdol_util.STACK_MATERIAL, output["itemId"], count
+                )
+                material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
+                xp_units += 1.0
 
     if equipment_out:
         produced = await insert_items(db, user, equipment_out, source="craft")

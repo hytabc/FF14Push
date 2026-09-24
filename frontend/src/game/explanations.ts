@@ -425,3 +425,57 @@ export function marketFeeExplain(): Explain {
     ],
   }
 }
+
+/** 装备词条扩展机制说明（受击 / 条件 / 成长 / 资源转换 / 累计 / 特殊）。真源：combat.json:equipEffects。 */
+const EQUIP_EFFECTS = (combat.equipEffects ?? {}) as Record<string, any>
+
+export function equipEffectExplain(stat: string): Explain | null {
+  const proc = EQUIP_EFFECTS.proc ?? {}
+  const cond = EQUIP_EFFECTS.conditional ?? {}
+  const growth = EQUIP_EFFECTS.growth ?? {}
+  const charge = EQUIP_EFFECTS.charge ?? {}
+  const special = EQUIP_EFFECTS.special ?? {}
+  const rows: Record<string, string[]> = {
+    bleedProcPct: [`命中时按词条概率触发，${proc.bleed?.durationSec}s 内每秒造成攻击力 ${proc.bleed?.potencyPct}% 的持续伤害（不吃增伤）。`],
+    defBreakProcPct: [`命中时按词条概率使目标防御 -${proc.defBreak?.defenseDownPct}%，持续 ${proc.defBreak?.durationSec}s；破防按期望覆盖率计入后端击杀额度模型。`],
+    slowProcPct: [`命中时按词条概率使目标攻速 -${proc.slow?.attackSpeedDownPct}%（出手间隔变长），持续 ${proc.slow?.durationSec}s。`],
+    stunProcPct: [`命中时按词条概率延长目标下次出手 ${proc.stun?.durationSec}s。`],
+    reflectProcPct: [`受到攻击时按词条概率反弹该次伤害的 ${proc.reflect?.damagePct}%。`],
+    vengeanceProcPct: [`受到攻击时按词条概率获得攻击 +${proc.vengeance?.attackBuffPct}%，持续 ${proc.vengeance?.durationSec}s。`],
+    aegisProcPct: [`受到攻击时按词条概率获得最大生命 ${pct(Number(proc.aegis?.maxHpShieldPct ?? 0), 0)} 的护盾。`],
+    resolveProcPct: [`受到攻击时按词条概率恢复 ${pct(Number(proc.resolve?.maxMpRestorePct ?? 0), 0)} 最大魔力。`],
+    blockProcPct: ['受到攻击时按词条概率格挡，本次伤害减半。'],
+    doubleAttackPct: ['普攻命中有概率追加一次普攻（附加普攻不再连锁触发连击）。'],
+    lowHpAttackPct: [`生命低于 ${cond.lowHp?.hpThresholdPct}% 时攻击力提升词条值。`],
+    openingDamagePct: [`战斗开始 ${cond.opening?.windowSec}s 内造成的伤害提升词条值。`],
+    bossDamagePct: [`对精英与 BOSS 造成的伤害提升词条值（判定目标：${(cond.boss?.kinds ?? []).join(' / ')}）。`],
+    lowMpRegenPct: [`魔力低于 ${cond.lowMp?.mpThresholdPct}% 时魔力恢复速度提升词条值。`],
+    killStackAttackPct: [`每击杀一名敌人叠加 1 层（最多 ${growth.killStackAttackPct?.maxStacks} 层），每层攻击力提升词条值。`],
+    hitStackSpeedPct: [`每次命中叠加 1 层（最多 ${growth.hitStackSpeedPct?.maxStacks} 层），每层攻击速度提升词条值。`],
+    skillStackDamagePct: [`每次释放技能叠加 1 层（最多 ${growth.skillStackDamagePct?.maxStacks} 层），每层技能伤害提升词条值。`],
+    hpToMpPct: ['每秒将最大生命的一部分（词条值%）转化为魔力，生命不足时不生效。'],
+    mpSurgeDamagePct: ['技能伤害额外提升 当前魔力百分比 × 词条值%。'],
+    killRestoreMpPct: ['击杀敌人恢复词条值% 的最大魔力。'],
+    vitToAttackPct: ['体力值的一部分（词条值%）转化为攻击力。'],
+    critToDetPct: ['暴击值的一部分（词条值%）转化为信念值。'],
+    executePct: [`目标生命低于 ${special.execute?.hpThresholdPct}% 时对其伤害提升词条值。`],
+    cheatDeathPct: ['受到致命伤害时按词条概率免死并保留 1 点生命（每场战斗 1 次）。'],
+    reviveChancePct: [`死亡时按词条概率立即复活并回复 ${pct(Number(special.revive?.reviveHpPct ?? 0), 0)} 生命。`],
+    chargeBlastPct: [`累计造成目标 ${charge.chargeBlast?.hpThresholdPct}% 最大生命的伤害后触发一次爆发（攻击力 × 词条值%）。`],
+    chargeShieldPct: [`累计受到 ${charge.chargeShield?.hpThresholdPct}% 最大生命的伤害后获得护盾（最大生命 × 词条值%）。`],
+    chargeHealPct: [`每累计释放 ${charge.chargeHeal?.castThreshold} 次技能恢复 最大生命 × 词条值%。`],
+    berserkPct: ['攻击力提升词条值，同时按 cost 比例提高受到的伤害。'],
+    glassCannonPct: ['造成的伤害提升词条值，同时按 cost 比例降低最大生命。'],
+    recklessPct: ['技能伤害提升词条值，同时按 cost 比例提高受到的伤害。'],
+  }
+  const lines = rows[stat]
+  if (!lines) return null
+  return {
+    title: '词条机制说明',
+    lines: [
+      ...lines,
+      '触发概率 = 该词条当前数值（见上方数值范围）；效果量与阈值取自 shared/data/combat.json 的 equipEffects。',
+      '依据：前端 core/battle.ts 与后端 combat_model.py 同源结算。',
+    ],
+  }
+}

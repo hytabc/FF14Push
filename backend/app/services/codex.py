@@ -209,6 +209,7 @@ def term_codex_entries() -> list[dict[str, Any]]:
                     "slots": t.get("slots", []),
                     "desc": t["desc"],
                     "source": source,
+                    "category": t.get("category", ""),
                 }
             )
     return out

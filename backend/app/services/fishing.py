@@ -157,6 +157,7 @@ async def report_fish(
     caught: list[dict[str, Any]] = []
     gained: dict[str, int] = {}
     new_titles: list[str] = []
+    double_catch_pct = equip.get("fishDoubleCatchPct", 0.0)
 
     for _ in range(casts):
         insight_active = (_aware(session.insight_expires_at) or now) > now
@@ -169,11 +170,21 @@ async def report_fish(
         else:
             pick = _pick_normal(region, rng)
 
+        # 「双钩」增加鱼获数量；「脱钩」有概率本次没有收获。
+        catch_count = 1
+        if double_catch_pct > 0 and rng.random() * 100 < double_catch_pct:
+            catch_count = 2
+        elif double_catch_pct < 0 and rng.random() * 100 < -double_catch_pct:
+            catch_count = 0
+        if catch_count == 0:
+            continue
+
         size = rng.randint(int(pick["sizeMin"]), int(pick["sizeMax"]))
         await _record_fish(db, user.id, pick["id"], int(session.region_id), kind, size)
-        await dohdol_util.stack_add(db, user.id, dohdol_util.STACK_MATERIAL, pick["id"], 1)
-        gained[pick["id"]] = gained.get(pick["id"], 0) + 1
-        caught.append({"id": pick["id"], "name": pick["name"], "kind": kind, "size": size, "exp": pick["exp"]})
+        await dohdol_util.stack_add(db, user.id, dohdol_util.STACK_MATERIAL, pick["id"], catch_count)
+        gained[pick["id"]] = gained.get(pick["id"], 0) + catch_count
+        for _ in range(catch_count):
+            caught.append({"id": pick["id"], "name": pick["name"], "kind": kind, "size": size, "exp": pick["exp"]})
 
         if kind == "normal":
             session_fish.add(pick["id"])

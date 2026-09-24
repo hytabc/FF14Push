@@ -79,6 +79,22 @@ export function termQualityClass(quality: TermQuality): string {
   }[quality]
 }
 
+/** 词条类别 id → 中文名（战斗 + 生产/采集两个池的名表）。 */
+const TERM_CATEGORY_BY_ID: Record<string, string> = Object.fromEntries(
+  [...data.terms.categories, ...data.dohdolEquipment.termCategories].map((c) => [c.id, c.name]),
+)
+
+export function termCategoryName(id?: string): string {
+  if (!id) return ''
+  return TERM_CATEGORY_BY_ID[id] ?? id
+}
+
+/** 词条类别 id 列表（战斗 + 生产/采集），供图鉴筛选下拉使用。 */
+export const TERM_CATEGORY_OPTIONS: { id: string; name: string }[] = [
+  ...data.terms.categories,
+  ...data.dohdolEquipment.termCategories,
+]
+
 /** 副属性品质 → 文本色：普通天蓝，稀有/太古金色（太古更亮 + 发光）。 */
 export function subAttrQualityClass(quality?: TermQuality): string {
   if (quality === 'ancient') return 'text-term-ancient term-ancient-glow'

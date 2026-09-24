@@ -91,14 +91,24 @@ export interface AttributeDef {
   desc?: string
 }
 
+/** 词条副作用（风险代价类）：落库时 value = round(主值 × ratio)，累加进 term_mods[stat]。 */
+export interface TermCostDef {
+  stat: string
+  ratio: number
+}
+
 export interface TermDef {
   id: string
   name: string
+  /** 词条类别（见 terms.json:categories）：attribute/onAttack/abnormal/... */
+  category: string
   type: 'buff' | 'debuff'
   trigger: string
   stat: string
   range: [number, number]
   slots?: SlotId[]
+  /** 风险代价类词条的副作用；desc 中的 {c} 为折算后的副作用值。 */
+  cost?: TermCostDef
   desc: string
 }
 
@@ -106,12 +116,19 @@ export interface TermDef {
 export interface ProductionTermDef {
   id: string
   name: string
+  category: string
   type: 'buff' | 'debuff'
   trigger: string
   stat: string
   range: [number, number]
   slots: string[]
   desc: string
+}
+
+/** 词条类别名表（id → 中文名）。 */
+export interface TermCategoryDef {
+  id: string
+  name: string
 }
 
 export interface SkillEffect {
@@ -447,6 +464,7 @@ const termsData = termsJson as unknown as {
   qualityChances: Record<TermQuality, number>
   qualityRules: Record<TermQuality, { name: string; valueRule: string; border: string; sellValue: number }>
   debuffValue: Record<TermQuality, number>
+  categories: TermCategoryDef[]
   terms: TermDef[]
 }
 
@@ -789,6 +807,7 @@ export const gameData = {
     slots: DohDolSlotDef[]
     categories: Array<{ id: DohDolCategory; name: string; kind: DohDolJobKind }>
     bonusNames: Record<string, string>
+    termCategories: TermCategoryDef[]
     terms: ProductionTermDef[]
     items: DohDolItemDef[]
   },

@@ -52,22 +52,29 @@ def proc_dps_bonus(stats: HeroStats, base_dps: float, attack_rate: float) -> flo
     """装备触发效果（proc）的期望每秒收益。
 
     与前端 `battle.ts` 的实际结算口径对应：
-      - 灼烧 / 中毒：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
+      - 灼烧 / 中毒 / 裂伤：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
       - 疾风：命中概率获得限时攻速，等价于按攻速加成比例提升输出。
+
+    仅镜像影响期望 DPS 的部分；凋零 / 失明 / 缓速 / 眩晕 / 反震 / 复仇 / 庇护 / 坚毅等只影响
+    生存与资源，不进入模型（见 docs/enchant-terms-expansion-design.md 的镜像清单）。
     """
     cfg = CONFIG.combat.get("proc") or {}
+    equip_proc = (CONFIG.combat.get("equipEffects") or {}).get("proc") or {}
     power = stats.power_attack
     extra = 0.0
 
-    # 灼烧 / 中毒：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
-    for key, stat_key in (("burn", "burnProcPct"), ("poison", "poisonProcPct")):
-        dot = cfg.get(key)
-        if not dot:
+    # 灼烧 / 中毒 / 裂伤：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
+    for key, stat_key, dot_cfg in (
+        ("burn", "burnProcPct", cfg.get("burn")),
+        ("poison", "poisonProcPct", cfg.get("poison")),
+        ("bleed", "bleedProcPct", equip_proc.get("bleed")),
+    ):
+        if not dot_cfg:
             continue
         chance = max(0.0, stats.term_mods.get(stat_key, 0.0)) / 100.0
         if chance > 0:
-            uptime = min(1.0, chance * attack_rate * float(dot["durationSec"]))
-            extra += uptime * power * float(dot["potencyPct"]) / 100.0
+            uptime = min(1.0, chance * attack_rate * float(dot_cfg["durationSec"]))
+            extra += uptime * power * float(dot_cfg["potencyPct"]) / 100.0
 
     haste = cfg.get("haste")
     if haste:
@@ -77,6 +84,55 @@ def proc_dps_bonus(stats: HeroStats, base_dps: float, attack_rate: float) -> flo
             extra += uptime * float(haste["attackSpeedPct"]) / 100.0 * base_dps
 
     return extra
+
+
+def equip_dps_multiplier(stats: HeroStats, mob_kind: str) -> float:
+    """装备词条扩展机制的期望增伤系数（条件 / 资源转换 / 累计触发 / 动态成长）。
+
+    与前端 `battle.ts` 口径对应，为避免合法上报被击杀额度拒绝，估算偏保守偏增益。
+    生存 / 资源类机制（受击触发、格挡、护盾等）不在此处。
+    """
+    mods = stats.term_mods
+    equip = CONFIG.combat.get("equipEffects") or {}
+    cond = equip.get("conditional") or {}
+    growth = equip.get("growth") or {}
+    m = 1.0
+    # 背水：生命低于阈值时生效，按约一半时间覆盖估算
+    low_hp = max(0.0, mods.get("lowHpAttackPct", 0.0))
+    if low_hp:
+        m *= 1.0 + (low_hp / 100.0) * 0.5
+    # 讨伐：仅对精英 / BOSS 生效
+    boss_bonus = max(0.0, mods.get("bossDamagePct", 0.0))
+    boss_kinds = (cond.get("boss") or {}).get("kinds") or ["elite", "boss"]
+    if boss_bonus and mob_kind in boss_kinds:
+        m *= 1.0 + boss_bonus / 100.0
+    # 魔力灌注：按平均 50% 魔力估算
+    surge = max(0.0, mods.get("mpSurgeDamagePct", 0.0))
+    if surge:
+        m *= 1.0 + (surge / 100.0) * 0.5
+    # 处决：目标残血阶段按 20% 覆盖估算
+    execute = max(0.0, mods.get("executePct", 0.0))
+    if execute:
+        m *= 1.0 + (execute / 100.0) * 0.2
+    # 蓄势：累计触发的额外爆发，按 20% 增伤估算
+    charge = max(0.0, mods.get("chargeBlastPct", 0.0))
+    if charge:
+        m *= 1.0 + (charge / 100.0) * 0.2
+    # 动态成长：按层数上限的一半作为战斗内平均层数
+    kill = max(0.0, mods.get("killStackAttackPct", 0.0))
+    if kill:
+        stacks = float((growth.get("killStackAttackPct") or {}).get("maxStacks", 10)) * 0.5
+        m *= 1.0 + (kill * stacks) / 100.0
+    skill = max(0.0, mods.get("skillStackDamagePct", 0.0))
+    if skill:
+        stacks = float((growth.get("skillStackDamagePct") or {}).get("maxStacks", 8)) * 0.5
+        m *= 1.0 + (skill * stacks) / 100.0
+    # 锐意（攻速成长）：攻速对 DPS 的放大按折半估算
+    speed = max(0.0, mods.get("hitStackSpeedPct", 0.0))
+    if speed:
+        stacks = float((growth.get("hitStackSpeedPct") or {}).get("maxStacks", 10)) * 0.5
+        m *= 1.0 + ((speed * stacks) / 100.0) * 0.5
+    return m
 
 
 def theoretical_dps(
@@ -127,13 +183,26 @@ def theoretical_dps(
     basic_cd = max(0.2, skill_cooldown(stats, BASIC_ATTACK_CD) / attack_speed_factor(stats))
     basic_rate = 1.0 / basic_cd
 
-    attack_rate = cast_rate * double_cast + basic_rate
+    # 「连击」：概率追加一次普攻（额外普攻按同一普攻威力结算）
+    double_attack = max(0.0, stats.term_mods.get("doubleAttackPct", 0.0)) / 100.0
+    extra_basic_rate = double_attack * basic_rate
+
+    attack_rate = cast_rate * double_cast + basic_rate + extra_basic_rate
     gross = power * (potency_per_sec / 100.0) * mult * skill_mult
-    gross += stats.attack * (BASIC_ATTACK_POTENCY / 100.0) * basic_rate * mult * skill_mult
+    gross += stats.attack * (BASIC_ATTACK_POTENCY / 100.0) * (basic_rate + extra_basic_rate) * mult * skill_mult
     mitigated = max(gross * 0.10, gross - target_defense * attack_rate)
+    # 「破防」：降低目标防御，等效于减少减防项（按触发期望覆盖率计入）
+    equip_proc = (CONFIG.combat.get("equipEffects") or {}).get("proc") or {}
+    def_break = equip_proc.get("defBreak")
+    db_chance = max(0.0, stats.term_mods.get("defBreakProcPct", 0.0)) / 100.0
+    if def_break and db_chance > 0:
+        uptime = min(1.0, db_chance * attack_rate * float(def_break["durationSec"]))
+        mitigated += uptime * float(def_break["defenseDownPct"]) / 100.0 * target_defense * attack_rate
     # 彩蛋技能增伤按平均覆盖计入，避免合法的高输出上报被击杀额度误判
     dps = max(1.0, mitigated) * dps_uplift(stats.egg_id)
-    # 装备触发效果（灼烧 / 疾风）的期望收益
+    # 装备词条扩展机制的期望增伤（条件 / 资源转换 / 累计触发 / 动态成长），与前端 battle.ts 同源
+    dps *= equip_dps_multiplier(stats, mob_kind)
+    # 装备触发效果（灼烧 / 中毒 / 裂伤 / 疾风）的期望收益
     dps += proc_dps_bonus(stats, dps, attack_rate)
 
     if penalty:

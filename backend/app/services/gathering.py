@@ -113,9 +113,35 @@ async def report_gather(
 
     rng = random.Random()
     gained: dict[str, int] = {}
+    extra_action_pct = equip.get("gatherExtraActionPct", 0.0)
+    double_pct = equip.get("gatherDoublePct", 0.0)
+    rare_pct = equip.get("gatherRareChancePct", 0.0)
+
+    def one_action() -> list[tuple[str, int]]:
+        """一次采集动作的产出（含「珍稀 / 满载」词条加成）。"""
+        rolls = list(dohdol_util.roll_gather_yield(node, int(progress.level), yield_pct, rng))
+        # 珍稀 / 空手：概率追加一份主材料 / 概率丢失一份
+        if rare_pct > 0 and rolls and rng.random() * 100 < rare_pct:
+            rolls.append((rolls[0][0], 1))
+        elif rare_pct < 0 and len(rolls) > 1 and rng.random() * 100 < -rare_pct:
+            rolls = rolls[1:]
+        # 满载 / 减产：概率产量翻倍 / 减半
+        if double_pct > 0 and rng.random() * 100 < double_pct:
+            rolls = [(m, c * 2) for m, c in rolls]
+        elif double_pct < 0 and rng.random() * 100 < -double_pct:
+            rolls = [(m, max(1, c // 2)) for m, c in rolls]
+        return rolls
+
     for _ in range(actions):
-        for material_id, count in dohdol_util.roll_gather_yield(node, int(progress.level), yield_pct, rng):
+        # 怠惰：概率浪费一次动作
+        if extra_action_pct < 0 and rng.random() * 100 < -extra_action_pct:
+            continue
+        for material_id, count in one_action():
             gained[material_id] = gained.get(material_id, 0) + count
+        # 勤采：概率额外采集一次
+        if extra_action_pct > 0 and rng.random() * 100 < extra_action_pct:
+            for material_id, count in one_action():
+                gained[material_id] = gained.get(material_id, 0) + count
     for material_id, count in gained.items():
         await dohdol_util.stack_add(db, user.id, dohdol_util.STACK_MATERIAL, material_id, count)
 

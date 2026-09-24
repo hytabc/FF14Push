@@ -329,19 +329,33 @@ def _roll_terms_from_pool(
         else:
             value = _extreme_value(float(lo), float(hi)) * ANCIENT_FACTOR
 
-        out.append(
-            {
-                "id": term["id"],
-                "name": term["name"],
-                "type": term["type"],
-                "stat": term["stat"],
-                "trigger": term["trigger"],
-                "value": round(value, 2),
-                "quality": quality,
-                "desc": term["desc"],
-            }
-        )
+        out.append(_term_payload(term, round(value, 2), quality))
     return out
+
+
+def _term_payload(term: dict[str, Any], value: float, quality: str) -> dict[str, Any]:
+    """词条落库对象：定义字段 + 掷出的数值/品质；risk 词条额外折算 cost 副作用值。"""
+    payload = {
+        "id": term["id"],
+        "name": term["name"],
+        "type": term["type"],
+        "stat": term["stat"],
+        "trigger": term["trigger"],
+        "value": value,
+        "quality": quality,
+        "desc": term["desc"],
+    }
+    if term.get("category"):
+        payload["category"] = term["category"]
+    cost = term.get("cost")
+    if cost:
+        ratio = float(cost["ratio"])
+        payload["cost"] = {
+            "stat": cost["stat"],
+            "ratio": ratio,
+            "value": round(value * ratio, 2),
+        }
+    return payload
 
 
 def _roll_quality(rng: random.Random, bonus: float = 0.0) -> str:
@@ -618,6 +632,9 @@ def _upgrade_random_common_buff(terms: list[dict[str, Any]], rng: random.Random)
     lo, hi = term_range(term["id"])
     term["quality"] = "ancient"
     term["value"] = round(_extreme_value(lo, hi) * ANCIENT_FACTOR, 2)
+    cost = term.get("cost")
+    if cost:
+        cost["value"] = round(term["value"] * float(cost.get("ratio", 0.0)), 2)
     return True
 
 
@@ -636,7 +653,12 @@ def float_terms_based_on_current(
         quality = "common" if term.get("type") == "debuff" else term.get("quality", "common")
         lo, hi = term_range(term["id"])
         value = float_near_current(rng, float(term["value"]), lo, hi, quality, down_pct, up_pct)
-        out.append({**term, "quality": quality, "value": round(value, 2)})
+        updated = {**term, "quality": quality, "value": round(value, 2)}
+        cost = term.get("cost")
+        if cost:
+            ratio = float(cost.get("ratio", 0.0))
+            updated["cost"] = {**cost, "value": round(value * ratio, 2)}
+        out.append(updated)
     return out
 
 

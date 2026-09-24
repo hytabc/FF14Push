@@ -1371,3 +1371,50 @@ class TestActivityTiming:
         assert result["cycle"]["seconds"] == pytest.approx(initial_seconds)
         assert result[count_key] == 1
         assert result["cycle"]["credit"] == pytest.approx(0.01, abs=1e-6)
+
+
+class TestExtendedDedicatedTerms:
+    """扩展的生产/采集词条（材料节省 / 额外产出 / 满载 / 双钩 …，见设计文档第 6 节）。"""
+
+    EXPANDED = {
+        "dohFrugal", "dohProlific", "dohMasterpiece",
+        "dolExtraAction", "dolRareFind", "dolDoubleHaul", "dolDoubleCatch",
+        "dohWasteful", "dohBarren", "dohFlawed", "dolIdle", "dolBarren", "dolBadCatch",
+    }
+
+    def test_expanded_terms_present_and_categorized(self) -> None:
+        terms = CONFIG.dohdol_equipment["terms"]
+        ids = {t["id"] for t in terms}
+        assert self.EXPANDED <= ids, sorted(self.EXPANDED - ids)
+        cats = {c["id"] for c in CONFIG.dohdol_equipment["termCategories"]}
+        assert cats
+        for term in terms:
+            assert term["category"] in cats, term["id"]
+
+    def test_new_bonus_stats_are_named(self) -> None:
+        """新增生产加成键都要有中文名（避免原始 key 泄漏到界面）。"""
+        names = CONFIG.dohdol_equipment["bonusNames"]
+        for stat in (
+            "craftMaterialSavePct", "craftExtraOutputPct", "craftQualityJumpPct",
+            "gatherExtraActionPct", "gatherRareChancePct", "gatherDoublePct", "fishDoubleCatchPct",
+        ):
+            assert stat in names, stat
+
+    def test_equipped_bonus_sums_expanded_stats(self) -> None:
+        from tests.fakes import FakeItem
+
+        item = FakeItem(
+            category="doh_tool",
+            base_id="dh_dohTool_0",
+            slot="dohTool",
+            equipped_slot="dohTool",
+            terms=[
+                {
+                    "id": "dohFrugal", "name": "节俭", "type": "buff",
+                    "stat": "craftMaterialSavePct", "trigger": "触发", "value": 12.0,
+                    "quality": "common", "desc": "制造时 {v}% 概率不消耗材料", "category": "doh",
+                }
+            ],
+        )
+        bonus = dohdol_util.equipped_bonus([item])
+        assert bonus.get("craftMaterialSavePct") == pytest.approx(12.0)

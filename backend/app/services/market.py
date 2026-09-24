@@ -16,7 +16,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, Item, MarketListing, User
+from app.models import AuditLog, DohDolProgress, Item, MarketListing, User
 from app.models.base import utcnow
 from app.models.market import (
     LISTING_KIND_EQUIPMENT,
@@ -28,9 +28,26 @@ from app.models.market import (
 from app.services import dohdol_util
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
+from app.services.progression import highest_hero_level
 from app.services.roster import lock_user
 from app.services.serialization import item_to_dict
 from app.services.valuation import sell_price, sell_price_range
+
+
+# 生产 / 采集专用装备分类 → 对应的职业等级 kind。
+DOHDOL_CATEGORY_KIND = {
+    "doh_tool": "doh",
+    "doh_gear": "doh",
+    "dol_tool": "dol",
+    "dol_gear": "dol",
+}
+
+# 等级门槛类别 → 玩家可读名称（用于错误提示）。
+REQ_KIND_LABEL = {
+    "combat": "任意英雄等级",
+    "doh": "生产职业等级",
+    "dol": "采集职业等级",
+}
 
 
 # ------------------------------------------------------------------ 配置
@@ -85,6 +102,50 @@ def _aware(dt: Any) -> Any:
 
 def is_expired(row: MarketListing) -> bool:
     return _aware(row.expires_at) <= utcnow()
+
+
+# ------------------------------------------------------------------ 购买等级门槛
+def requirement_of(row: MarketListing) -> tuple[str, int] | None:
+    """购买该寄售单所需的等级门槛，返回 (kind, level)；素材 / 消耗品无限制返回 None。
+
+    - 战斗职业装备（weapon / armor / accessory）→ kind="combat"：账号内任一英雄达标即可。
+    - 生产 / 采集专用装备 → kind="doh" / "dol"：对应职业等级达标。
+    - 等级要求 ≤ 1 视为无门槛。
+    """
+    if row.kind != LISTING_KIND_EQUIPMENT:
+        return None
+    level = int(row.level_req or 1)
+    if level <= 1:
+        return None
+    return (DOHDOL_CATEGORY_KIND.get(row.category or "", "combat"), level)
+
+
+async def buyer_levels(db: AsyncSession, user_id: int) -> dict[str, int]:
+    """买家可用于购买限制的三类等级：战斗（最高英雄）/ 生产 / 采集。"""
+    rows = (
+        await db.execute(select(DohDolProgress).where(DohDolProgress.user_id == user_id))
+    ).scalars().all()
+    by_kind = {row.kind: int(row.level) for row in rows}
+    return {
+        "combat": await highest_hero_level(db, user_id),
+        "doh": by_kind.get("doh", 1),
+        "dol": by_kind.get("dol", 1),
+    }
+
+
+def meets_requirement(row: MarketListing, levels: dict[str, int]) -> bool:
+    req = requirement_of(row)
+    if req is None:
+        return True
+    kind, level = req
+    return levels.get(kind, 1) >= level
+
+
+def requirement_error(row: MarketListing) -> str:
+    req = requirement_of(row)
+    assert req is not None
+    kind, level = req
+    return f"需要{REQ_KIND_LABEL[kind]}达到 {level} 级才能购买"
 
 
 # ------------------------------------------------------------------ 快照
@@ -153,7 +214,11 @@ async def recreate_item(
 
 
 # ------------------------------------------------------------------ 序列化
-def listing_to_dict(row: MarketListing, seller_nickname: str | None = None) -> dict[str, Any]:
+def listing_to_dict(
+    row: MarketListing,
+    seller_nickname: str | None = None,
+    levels: dict[str, int] | None = None,
+) -> dict[str, Any]:
     data: dict[str, Any] = {
         "id": row.id,
         "kind": row.kind,
@@ -173,6 +238,10 @@ def listing_to_dict(row: MarketListing, seller_nickname: str | None = None) -> d
         "createdAt": row.created_at.isoformat() if row.created_at else None,
         "expiresAt": row.expires_at.isoformat() if row.expires_at else None,
     }
+    req = requirement_of(row)
+    data["requiredKind"] = req[0] if req else None
+    if levels is not None:
+        data["levelMet"] = meets_requirement(row, levels)
     if row.kind == LISTING_KIND_EQUIPMENT and row.snapshot:
         data["equipment"] = snapshot_detail(row.snapshot)
     return data
@@ -280,6 +349,9 @@ async def buy_listing(
     seller = await lock_user(db, row.seller_id)
     if seller is None or seller.banned:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="卖家当前不可交易")
+
+    if not meets_requirement(row, await buyer_levels(db, buyer.id)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=requirement_error(row))
 
     total = int(row.unit_price) * int(row.quantity)
     if int(buyer.gold) < total:

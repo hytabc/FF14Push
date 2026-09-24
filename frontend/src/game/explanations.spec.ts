@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import data from '@shared/schema'
 
-import { chestLuckExplain, craftRarityExplain } from './explanations'
+import { chestLuckExplain, craftRarityExplain, equipEffectExplain } from './explanations'
 import type { ChestRarityLuck, CraftOdds, RarityId } from './types'
 
 function fakeCraft(): CraftOdds {
@@ -76,5 +76,17 @@ describe('chestLuckExplain', () => {
     expect(text).toContain('抽箱品阶概率料理 / 秘药')
     expect(text).toContain('装备品阶幸运')
     expect(text).toContain('仅提升箱子的装备品阶抽取概率')
+  })
+})
+
+describe('equipEffectExplain', () => {
+  it('explains an implemented mechanic with its shared-config parameters', () => {
+    const text = equipEffectExplain('bleedProcPct')?.lines.join('\n') ?? ''
+    expect(text).toContain('命中时按词条概率触发')
+    expect(text).toContain('equipEffects')
+  })
+
+  it('returns null for stats without an extended mechanic', () => {
+    expect(equipEffectExplain('attackPct')).toBeNull()
   })
 })

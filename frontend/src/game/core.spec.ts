@@ -283,6 +283,75 @@ describe('蓝量与治疗平衡', () => {
   })
 })
 
+describe('装备词条扩展机制', () => {
+  beforeEach(() => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  function runUntil(sim: BattleSimulator, marker: string, ticks = 600): boolean {
+    for (let i = 0; i < ticks; i += 1) {
+      sim.tick(0.05)
+      if (sim.log.some((e) => e.text.includes(marker))) return true
+    }
+    return false
+  }
+
+  it('「连击」按概率追加普攻', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ termMods: { doubleAttackPct: 100 } }),
+      regionId: 1,
+      killsRequired: 999,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    expect(runUntil(sim, '连击')).toBe(true)
+  })
+
+  it('「蓄势」累计伤害达阈值后触发爆发', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 500, termMods: { chargeBlastPct: 20 } }),
+      regionId: 1,
+      killsRequired: 999,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    expect(runUntil(sim, '蓄势')).toBe(true)
+  })
+
+  it('「不死」受致命伤害时免死并保留 1 点生命', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ level: 100, maxHp: 100, hpRegen: 0, physDef: 0, attack: 1, termMods: { cheatDeathPct: 100 } }),
+      regionId: 40,
+      killsRequired: 999,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    expect(runUntil(sim, '不死')).toBe(true)
+    expect(sim.phase).toBe('mob')
+    expect(sim.heroHp).toBe(1)
+  })
+
+  it('「死亡抵抗」死亡时立即复活并回复 30% 生命', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ level: 100, maxHp: 100, hpRegen: 0, physDef: 0, attack: 1, termMods: { reviveChancePct: 100 } }),
+      regionId: 40,
+      killsRequired: 999,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    expect(runUntil(sim, '死亡抵抗')).toBe(true)
+    expect(sim.phase).toBe('mob')
+    expect(sim.heroHp).toBeCloseTo(30, 0)
+  })
+})
+
 describe('战斗模拟器', () => {
   beforeEach(() => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5)

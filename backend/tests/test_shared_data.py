@@ -371,3 +371,43 @@ def test_high_tier_consumables_are_sell_safe() -> None:
         )
         assert consumed > 0, recipe["id"]
         assert produced <= consumed, f"{recipe['id']} 产出 {produced} 超过输入 {consumed}"
+
+
+def test_terms_have_categories() -> None:
+    """每个词条（战斗 + 生产/采集）都带合法 category，且名表覆盖全部引用。"""
+    combat_cats = {c["id"] for c in CONFIG.terms["categories"]}
+    assert combat_cats, "战斗词条类别名表为空"
+    for term in CONFIG.terms["terms"]:
+        assert term.get("category") in combat_cats, term["id"]
+    # 生产/采集类别名表同样覆盖该池全部词条
+    prod_cats = {c["id"] for c in CONFIG.dohdol_equipment["termCategories"]}
+    assert prod_cats, "生产/采集词条类别名表为空"
+    for term in CONFIG.dohdol_equipment["terms"]:
+        assert term.get("category") in prod_cats, term["id"]
+
+
+def test_risk_terms_declare_cost() -> None:
+    """风险代价类词条必须声明 cost（stat 在 combat.json 中可消费），desc 含 {c} 占位符。"""
+    for term in CONFIG.terms["terms"]:
+        if term.get("category") != "risk":
+            continue
+        cost = term.get("cost")
+        assert cost and cost.get("stat") and float(cost["ratio"]) != 0, term["id"]
+        assert "{c}" in term["desc"], term["id"]
+
+
+def test_power_weights_cover_new_term_stats() -> None:
+    """影响评分/战力的新增词条 stat 均登记了 power.weights（未登记即 0 权重）。"""
+    weights = CONFIG.economy["power"]["weights"]
+    new_stats = {
+        "magicAttackPct", "physDefPct", "magicDefPct", "maxMpPct", "healPowerPct",
+        "guardPct", "blockProcPct", "shieldBoostPct", "doubleAttackPct", "bleedProcPct",
+        "defBreakProcPct", "slowProcPct", "stunProcPct", "reflectProcPct", "vengeanceProcPct",
+        "aegisProcPct", "resolveProcPct", "lowHpAttackPct", "openingDamagePct", "bossDamagePct",
+        "lowMpRegenPct", "killStackAttackPct", "hitStackSpeedPct", "skillStackDamagePct",
+        "hpToMpPct", "mpSurgeDamagePct", "killRestoreMpPct", "vitToAttackPct", "critToDetPct",
+        "berserkPct", "glassCannonPct", "recklessPct", "reviveChancePct", "executePct",
+        "cheatDeathPct", "chargeBlastPct", "chargeShieldPct", "chargeHealPct",
+    }
+    missing = sorted(new_stats - set(weights))
+    assert not missing, f"缺少权重：{missing}"

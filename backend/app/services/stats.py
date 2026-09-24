@@ -118,6 +118,10 @@ def aggregate_equipment(items: Iterable[Any]) -> EquipmentAggregate:
             stat = term.get("stat")
             if stat:
                 agg.term_mods[stat] = agg.term_mods.get(stat, 0.0) + float(term["value"])
+            cost = term.get("cost")
+            if cost and cost.get("stat"):
+                cost_stat = cost["stat"]
+                agg.term_mods[cost_stat] = agg.term_mods.get(cost_stat, 0.0) + float(cost["value"])
         if item.slot == "mainHand":
             base = CONFIG.base_item_by_id.get(item.base_id)
             if base and base.weapon_type:
@@ -225,12 +229,19 @@ def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
 
     mods = agg.term_mods
     max_hp = panel["maxHp"] * (1.0 + mods.get("maxHpPct", 0.0) / 100.0)
-    atk_mult = 1.0 + mods.get("attackPct", 0.0) / 100.0
+    max_mp = panel["maxMp"] * (1.0 + mods.get("maxMpPct", 0.0) / 100.0)
+    atk_mult = 1.0 + (mods.get("attackPct", 0.0) + mods.get("berserkPct", 0.0)) / 100.0
     attack = panel["attack"] * atk_mult
-    magic_attack = panel["magicAttack"] * atk_mult
+    magic_attack = panel["magicAttack"] * atk_mult * (1.0 + mods.get("magicAttackPct", 0.0) / 100.0)
+    # 联动：体力值的一部分转化为攻击力
+    if mods.get("vitToAttackPct"):
+        attack += total_core.get("vit", 0.0) * mods["vitToAttackPct"] / 100.0
+    phys_def = panel["physDef"] * (1.0 + mods.get("physDefPct", 0.0) / 100.0)
+    magic_def = panel["magicDef"] * (1.0 + mods.get("magicDefPct", 0.0) / 100.0)
     attack_speed_pct += mods.get("attackSpeedPct", 0.0)
     dodge_pct = max(0.0, dodge_pct + mods.get("dodgePct", 0.0))
     lifesteal_pct += mods.get("lifestealPct", 0.0)
+    tenacity_pct += mods.get("guardPct", 0.0)
     hp_regen = panel["hpRegen"] * (1.0 + mods.get("hpRegenPct", 0.0) / 100.0)
     mp_regen = max(0.0, panel["mpRegen"] * (1.0 + mods.get("mpRegenPct", 0.0) / 100.0))
 
@@ -243,10 +254,14 @@ def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
     crit_value *= 1.0 + link.get(bias, {}).get("crit", 0.0)
     dh_value *= 1.0 + link.get(bias, {}).get("dh", 0.0)
     det_value *= 1.0 + link.get(bias, {}).get("det", 0.0)
+    # 联动：暴击值的一部分转化为信念值
+    if mods.get("critToDetPct"):
+        det_value += crit_value * mods["critToDetPct"] / 100.0
 
     crit_rate, crit_dmg, dh_rate, det_bonus = convert_three_attrs(level, crit_value, dh_value, det_value)
     crit_rate += mods.get("critRatePct", 0.0)
     crit_dmg += mods.get("critDamagePct", 0.0)
+    det_bonus += mods.get("glassCannonPct", 0.0)
     if mods.get("dhConvertPct"):
         dh_rate += crit_rate * mods["dhConvertPct"] / 100.0
 
@@ -255,13 +270,13 @@ def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
         job_id=job_id,
         main_attr=main_attr,
         max_hp=max_hp,
-        max_mp=panel["maxMp"],
+        max_mp=max_mp,
         hp_regen=hp_regen,
         mp_regen=mp_regen,
         attack=attack,
         magic_attack=magic_attack,
-        phys_def=panel["physDef"],
-        magic_def=panel["magicDef"],
+        phys_def=phys_def,
+        magic_def=magic_def,
         dodge_pct=dodge_pct,
         attack_speed_pct=attack_speed_pct,
         hit_rate_pct=hit_rate_pct,
@@ -307,7 +322,9 @@ def convert_three_attrs(
 
 def skill_damage_multiplier(stats: HeroStats, job_id: str) -> float:
     """技能伤害加成：词条 + 职业匹配。"""
-    mult = 1.0 + stats.term_mods.get("skillDamagePct", 0.0) / 100.0
+    mult = 1.0 + (
+        stats.term_mods.get("skillDamagePct", 0.0) + stats.term_mods.get("recklessPct", 0.0)
+    ) / 100.0
     job = CONFIG.job_by_id.get(job_id)
     if job and job["mainAttr"] == stats.main_attr and job_id != "adventurer":
         mult *= 1.0 + float(CONFIG.heroes["jobMatchBonus"]["skillDamagePct"])

@@ -56,6 +56,10 @@ export interface TermEntry {
   value: number
   quality: TermQuality
   desc: string
+  /** 词条类别（见 terms.json / dohdol-equipment.json 的 categories 名表）。 */
+  category?: string
+  /** 风险代价类词条的副作用（value 已按 ratio 折算）。 */
+  cost?: { stat: string; value: number; name: string }
 }
 
 export interface Item {
@@ -772,6 +776,10 @@ export interface MarketListing {
   category: string | null
   slot: string | null
   levelReq: number | null
+  /** 购买等级门槛类别：combat = 任一英雄达标 / doh / dol；无限制为 null。 */
+  requiredKind?: 'combat' | 'doh' | 'dol' | null
+  /** 当前玩家是否满足购买等级门槛（仅浏览列表返回；缺省视为满足）。 */
+  levelMet?: boolean
   quantity: number
   /** 单价（装备即总价）。 */
   unitPrice: number

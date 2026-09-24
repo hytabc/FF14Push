@@ -6,7 +6,7 @@ import data from '@shared/schema'
 import ItemIcon from '@/components/ItemIcon.vue'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, JobRole, RarityId, TermQuality } from '@/game/types'
-import { RARITY_ORDER, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termQualityClass, termQualityName } from '@/utils/format'
+import { RARITY_ORDER, TERM_CATEGORY_OPTIONS, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termCategoryName, termQualityClass, termQualityName } from '@/utils/format'
 import {
   EQUIP_GROUP_LABEL,
   ROLE_LABELS,
@@ -42,8 +42,9 @@ const equipSubAttrs = ref<Set<string>>(new Set())
 const equipTerms = ref<Set<string>>(new Set())
 const showEquipAdvanced = ref(false)
 
-/** 词条图鉴专属筛选：来源 / 类型 / 已解锁品质。 */
+/** 词条图鉴专属筛选：来源 / 类别 / 类型 / 已解锁品质。 */
 const termSource = ref<'all' | 'combat' | 'production'>('all')
+const termCategory = ref<string>('all')
 const termType = ref<'all' | 'buff' | 'debuff'>('all')
 const termQualities = ref<Set<TermQuality>>(new Set())
 
@@ -150,11 +151,16 @@ function resetEquipFilters() {
 }
 
 const hasTermFilters = computed(
-  () => termSource.value !== 'all' || termType.value !== 'all' || termQualities.value.size > 0,
+  () =>
+    termSource.value !== 'all' ||
+    termCategory.value !== 'all' ||
+    termType.value !== 'all' ||
+    termQualities.value.size > 0,
 )
 
 function resetTermFilters() {
   termSource.value = 'all'
+  termCategory.value = 'all'
   termType.value = 'all'
   termQualities.value = new Set()
 }
@@ -267,6 +273,7 @@ const filtered = computed(() => {
   }
   if (category.value === 'term') {
     if (termSource.value !== 'all') list = list.filter((e) => e.source === termSource.value)
+    if (termCategory.value !== 'all') list = list.filter((e) => e.category === termCategory.value)
     if (termType.value !== 'all') list = list.filter((e) => e.type === termType.value)
     if (termQualities.value.size) {
       const picked = [...termQualities.value]
@@ -425,6 +432,10 @@ function entryRarity(entry: Entry): RarityId {
           <option value="all">全部来源</option>
           <option value="combat">战斗装备</option>
           <option value="production">生产采集装备</option>
+        </select>
+        <select v-model="termCategory" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
+          <option value="all">全部类别</option>
+          <option v-for="c in TERM_CATEGORY_OPTIONS" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
         <select v-model="termType" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400">
           <option value="all">全部类型</option>
@@ -657,6 +668,12 @@ function entryRarity(entry: Entry): RarityId {
             >
               生产
             </span>
+            <span
+              v-if="termCategoryName(entry.category)"
+              class="shrink-0 rounded bg-ink-700/60 px-1 py-0.5 text-[10px] text-ink-300"
+            >
+              {{ termCategoryName(entry.category) }}
+            </span>
           </div>
           <span
             class="shrink-0 rounded px-1.5 py-0.5 text-[10px]"
@@ -665,7 +682,7 @@ function entryRarity(entry: Entry): RarityId {
             {{ entry.type === 'buff' ? 'Buff' : 'Debuff' }}
           </span>
         </div>
-        <p class="mt-1 text-[11px] text-ink-400">{{ entry.desc.replace('{v}', 'X') }}</p>
+        <p class="mt-1 text-[11px] text-ink-400">{{ entry.desc.replace('{v}', 'X').replace('{c}', 'X') }}</p>
         <p class="mt-1 text-[10px] text-ink-500">
           数值范围：{{ entry.range?.[0] }} ~ {{ entry.range?.[1] }}
         </p>

@@ -1374,3 +1374,99 @@ class TestPowerScoring:
         low_power = sum(dps(i) for i in ranked[:third]) / third
         high_power = sum(dps(i) for i in ranked[-third:]) / third
         assert high_power > low_power, f"高战力组 {high_power:.0f} 未高于低战力组 {low_power:.0f}"
+
+
+class TestEnchantExpansion:
+    """附魔扩展（12 类）：category 落库、风险代价 cost 折算、新机制镜像后端模型。"""
+
+    def test_generated_terms_carry_category(self) -> None:
+        cats = {c["id"] for c in CONFIG.terms["categories"]}
+        rng = random.Random(11)
+        seen: set[str] = set()
+        for _ in range(150):
+            item, _ = generate_item("weapon", 100, rarity="mythic", rng=rng)
+            for term in item["terms"]:
+                assert term.get("category") in cats, term["id"]
+                seen.add(term["category"])
+        assert len(seen) >= 3, f"样本应覆盖多个类别：{seen}"
+
+    def test_risk_term_cost_is_folded(self) -> None:
+        """风险代价词条落库时 cost.value = round(主值 × ratio)。"""
+        rng = random.Random(13)
+        found: dict[str, dict] = {}
+        for _ in range(600):
+            for category in ("weapon", "armor"):
+                item, _ = generate_item(category, 100, rarity="mythic", rng=rng)
+                for term in item["terms"]:
+                    if term.get("cost"):
+                        found[term["id"]] = term
+        assert found, "应能生成带 cost 的风险代价词条"
+        for term in found.values():
+            spec = CONFIG.term_by_id[term["id"]]["cost"]
+            assert term["cost"]["stat"] == spec["stat"]
+            assert term["cost"]["value"] == pytest.approx(round(term["value"] * spec["ratio"], 2))
+
+    def test_cost_stat_enters_panel(self) -> None:
+        """glassCannon 的 cost（负 maxHpPct）应降低面板最大生命，主效果提升全伤害。"""
+        hero = FakeHero(level=50)
+        base = compute_stats(hero, [])
+        item = FakeItem(
+            rarity="mythic",
+            terms=[
+                {
+                    "id": "glassCannon", "name": "玻璃大炮", "type": "buff", "stat": "glassCannonPct",
+                    "trigger": "常驻", "value": 20.0, "quality": "common", "desc": "",
+                    "cost": {"stat": "maxHpPct", "ratio": -0.5, "value": -10.0},
+                }
+            ],
+        )
+        with_item = compute_stats(hero, [item])
+        assert with_item.max_hp == pytest.approx(base.max_hp * 0.9)
+        assert with_item.det_bonus_pct == pytest.approx(base.det_bonus_pct + 20.0)
+
+    def test_new_panel_terms_reach_panel(self) -> None:
+        hero = FakeHero(level=50)
+        base = compute_stats(hero, [])
+        item = FakeItem(
+            rarity="mythic",
+            terms=[
+                {"id": "magicPower", "name": "魔力增幅", "type": "buff", "stat": "magicAttackPct", "trigger": "常驻", "value": 15.0, "quality": "common", "desc": ""},
+                {"id": "ironWall", "name": "铁壁", "type": "buff", "stat": "physDefPct", "trigger": "常驻", "value": 20.0, "quality": "common", "desc": ""},
+                {"id": "guard", "name": "守护", "type": "buff", "stat": "guardPct", "trigger": "常驻", "value": 10.0, "quality": "common", "desc": ""},
+                {"id": "manaPool", "name": "魔力上限", "type": "buff", "stat": "maxMpPct", "trigger": "常驻", "value": 25.0, "quality": "common", "desc": ""},
+            ],
+        )
+        with_item = compute_stats(hero, [item])
+        assert with_item.magic_attack == pytest.approx(base.magic_attack * 1.15)
+        assert with_item.phys_def == pytest.approx(base.phys_def * 1.20)
+        assert with_item.max_mp == pytest.approx(base.max_mp * 1.25)
+        assert with_item.tenacity_pct == pytest.approx(base.tenacity_pct + 10.0)
+
+    def test_double_attack_raises_theoretical_dps(self) -> None:
+        """「连击」追加普攻 → 期望 DPS 提升（后端击杀额度需同步放宽）。"""
+        stats = compute_stats(FakeHero(level=50), [])
+        boosted = replace(stats, term_mods={**stats.term_mods, "doubleAttackPct": 50.0})
+        assert theoretical_dps(boosted, 0.0, None) > theoretical_dps(stats, 0.0, None)
+
+    def test_conditional_and_growth_raise_theoretical_dps(self) -> None:
+        """条件 / 成长 / 累计触发 / 处决等 DPS 相关机制应计入后端模型。"""
+        stats = compute_stats(FakeHero(level=50), [])
+        plain = theoretical_dps(stats, 0.0, None, mob_kind="boss")
+        boosted = replace(
+            stats,
+            term_mods={
+                **stats.term_mods,
+                "bossDamagePct": 25.0,
+                "lowHpAttackPct": 25.0,
+                "killStackAttackPct": 4.0,
+                "executePct": 20.0,
+                "chargeBlastPct": 20.0,
+                "mpSurgeDamagePct": 20.0,
+            },
+        )
+        assert theoretical_dps(boosted, 0.0, None, mob_kind="boss") > plain
+
+    def test_bleed_proc_raises_theoretical_dps(self) -> None:
+        stats = compute_stats(FakeHero(level=50), [])
+        boosted = replace(stats, term_mods={**stats.term_mods, "bleedProcPct": 40.0})
+        assert theoretical_dps(boosted, 0.0, None) > theoretical_dps(stats, 0.0, None)

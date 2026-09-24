@@ -45,7 +45,7 @@ export function jobSkills(jobId: string): SkillLike[] {
 }
 
 export function skillDamageMultiplier(stats: HeroStats, jobId: string): number {
-  let mult = 1 + (stats.termMods.skillDamagePct ?? 0) / 100
+  let mult = 1 + ((stats.termMods.skillDamagePct ?? 0) + (stats.termMods.recklessPct ?? 0)) / 100
   const job = data.jobById[jobId]
   if (job && job.mainAttr === stats.mainAttr && jobId !== 'adventurer') {
     mult *= 1 + data.heroes.jobMatchBonus.skillDamagePct
@@ -180,10 +180,13 @@ export function estimateDps(
   const basicRate = 1 / basicCd
 
   const attackRate = castRate * doubleCast + basicRate
+  // 连击：概率追加一次普攻（普攻与技能独立，附加普攻按同一普攻威力结算）
+  const doubleAttack = Math.max(0, stats.termMods.doubleAttackPct ?? 0) / 100
+  const extraBasicRate = doubleAttack * basicRate
   const gross =
     powerAttack(stats) * (potencyPerSec / 100) * damageMult * mult +
-    stats.attack * (BASIC_ATTACK_POTENCY / 100) * basicRate * damageMult * mult
-  let dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * attackRate))
+    stats.attack * (BASIC_ATTACK_POTENCY / 100) * (basicRate + extraBasicRate) * damageMult * mult
+  let dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * (attackRate + extraBasicRate)))
   dps += procDpsBonus(stats, dps, attackRate)
   if (!penalty) return dps
   return Math.max(
@@ -201,12 +204,16 @@ export function procDpsBonus(stats: HeroStats, baseDps: number, attackRate: numb
     poison?: { potencyPct: number; durationSec: number; tickSec: number }
     haste?: { attackSpeedPct: number; durationSec: number }
   }
+  const equip = ((data.combat as Record<string, any>).equipEffects?.proc ?? {}) as {
+    bleed?: { potencyPct: number; durationSec: number }
+  }
   const power = powerAttack(stats)
   let extra = 0
-  // 灼烧 / 中毒：命中概率触发，每秒造成 攻击力 × potencyPct%（不吃增伤，与 battle.ts:tickDots 一致）。
-  const dotProcs: Array<[typeof proc.burn, number]> = [
+  // 灼烧 / 中毒 / 裂伤：命中概率触发，每秒造成 攻击力 × potencyPct%（不吃增伤，与 battle.ts:tickDots 一致）。
+  const dotProcs: Array<[{ potencyPct: number; durationSec: number } | undefined, number]> = [
     [proc.burn, Math.max(0, stats.termMods.burnProcPct ?? 0)],
     [proc.poison, Math.max(0, stats.termMods.poisonProcPct ?? 0)],
+    [equip.bleed, Math.max(0, stats.termMods.bleedProcPct ?? 0)],
   ]
   for (const [dot, chancePct] of dotProcs) {
     if (!dot || chancePct <= 0) continue

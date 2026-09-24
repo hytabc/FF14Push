@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from app.models import Item, MarketListing, StackItem, User
+from app.models import DohDolProgress, Hero, Item, MarketListing, StackItem, User
 from app.models.base import utcnow
 from app.models.market import STATUS_ACTIVE, STATUS_EXPIRED, STATUS_SOLD
 from app.services import market
@@ -88,6 +88,41 @@ async def _seed_stack(session_factory, user_id: int, kind: str, item_id: str, co
     async with session_factory() as db:
         db.add(StackItem(user_id=user_id, kind=kind, item_id=item_id, count=count))
         await db.commit()
+
+
+async def _set_hero_level(session_factory, user_id: int, level: int) -> None:
+    async with session_factory() as db:
+        hero = (
+            await db.execute(select(Hero).where(Hero.user_id == user_id).order_by(Hero.id))
+        ).scalars().first()
+        hero.level = level
+        await db.commit()
+
+
+async def _set_dohdol_level(session_factory, user_id: int, kind: str, level: int) -> None:
+    async with session_factory() as db:
+        row = (
+            await db.execute(
+                select(DohDolProgress).where(
+                    DohDolProgress.user_id == user_id, DohDolProgress.kind == kind
+                )
+            )
+        ).scalar_one()
+        row.level = level
+        await db.commit()
+
+
+async def _list_one(client, item_id: int, price: int) -> int:
+    resp = await client.post(
+        f"{API}/market/list",
+        json={"entries": [{"type": "equipment", "itemId": item_id, "unitPrice": price}]},
+    )
+    assert resp.status_code == 200, resp.text
+    return int(resp.json()["listings"][0]["id"])
+
+
+def _mk_listing(kind: str, category: str | None = None, level_req: int | None = None) -> MarketListing:
+    return MarketListing(kind=kind, category=category, level_req=level_req)
 
 
 async def test_equipment_list_escrows_and_cancel_returns_it(client, session_factory):
@@ -321,3 +356,118 @@ def test_market_config_and_fee_math():
         assert market.net_of(price) == price - market.fee_of(price)
     # 往返（买入 → 再上架卖出）必然净亏，封堵市场与系统回收间的套利
     assert market.net_of(1000) < 1000
+
+
+# ------------------------------------------------------------------ 购买等级门槛
+def test_purchase_level_requirement_mapping():
+    assert market.requirement_of(_mk_listing("equipment", "weapon", 60)) == ("combat", 60)
+    assert market.requirement_of(_mk_listing("equipment", "armor", 20)) == ("combat", 20)
+    assert market.requirement_of(_mk_listing("equipment", "accessory", 5)) == ("combat", 5)
+    assert market.requirement_of(_mk_listing("equipment", "doh_tool", 30)) == ("doh", 30)
+    assert market.requirement_of(_mk_listing("equipment", "doh_gear", 30)) == ("doh", 30)
+    assert market.requirement_of(_mk_listing("equipment", "dol_tool", 30)) == ("dol", 30)
+    assert market.requirement_of(_mk_listing("equipment", "dol_gear", 30)) == ("dol", 30)
+    # 1 级无门槛；素材 / 消耗品不受限
+    assert market.requirement_of(_mk_listing("equipment", "weapon", 1)) is None
+    assert market.requirement_of(_mk_listing("material")) is None
+    assert market.requirement_of(_mk_listing("potion")) is None
+    assert market.requirement_of(_mk_listing("food")) is None
+
+    doh_gear = _mk_listing("equipment", "doh_gear", 30)
+    assert market.meets_requirement(doh_gear, {"combat": 100, "doh": 29, "dol": 100}) is False
+    assert market.meets_requirement(doh_gear, {"combat": 100, "doh": 30, "dol": 1}) is True
+    assert "生产职业等级" in market.requirement_error(doh_gear)
+
+    combat = _mk_listing("equipment", "weapon", 60)
+    assert market.meets_requirement(combat, {"combat": 59, "doh": 100, "dol": 100}) is False
+    assert market.meets_requirement(combat, {"combat": 60, "doh": 1, "dol": 1}) is True
+
+    material = _mk_listing("material")
+    assert market.meets_requirement(material, {"combat": 1, "doh": 1, "dol": 1}) is True
+
+
+async def test_buy_combat_equipment_requires_hero_level(client, session_factory):
+    token_a = await _register(client, "mkt_lv_sell")
+    uid_a = await _user_id(session_factory, "mkt_lv_sell")
+    item_id = await _seed_item(session_factory, uid_a, category="weapon", level_req=60)
+    _auth(client, token_a)
+    listing_id = await _list_one(client, item_id, 1000)
+
+    token_b = await _register(client, "mkt_lv_buy")
+    uid_b = await _user_id(session_factory, "mkt_lv_buy")
+    await _set_gold(session_factory, uid_b, 5000)
+    _auth(client, token_b)
+
+    # 英雄仅 1 级 → 拒绝
+    resp = await client.post(f"{API}/market/buy", json={"listingId": listing_id})
+    assert resp.status_code == 400
+    assert "等级" in resp.json()["detail"]
+
+    # 账号内任一英雄达标即可购买
+    await _set_hero_level(session_factory, uid_b, 60)
+    resp = await client.post(f"{API}/market/buy", json={"listingId": listing_id})
+    assert resp.status_code == 200, resp.text
+
+
+async def test_buy_dohdol_equipment_requires_matching_job_level(client, session_factory):
+    token_a = await _register(client, "mkt_dh_sell")
+    uid_a = await _user_id(session_factory, "mkt_dh_sell")
+    item_id = await _seed_item(
+        session_factory, uid_a, base_id="dh_dohGear", category="doh_gear", slot="head", level_req=50
+    )
+    _auth(client, token_a)
+    listing_id = await _list_one(client, item_id, 800)
+
+    token_b = await _register(client, "mkt_dh_buy")
+    uid_b = await _user_id(session_factory, "mkt_dh_buy")
+    await _set_gold(session_factory, uid_b, 5000)
+    _auth(client, token_b)
+
+    # 战斗等级再高也不能替代生产等级
+    await _set_hero_level(session_factory, uid_b, 100)
+    assert (await client.post(f"{API}/market/buy", json={"listingId": listing_id})).status_code == 400
+
+    # 采集等级达标也不行，必须是生产等级
+    await _set_dohdol_level(session_factory, uid_b, "dol", 100)
+    assert (await client.post(f"{API}/market/buy", json={"listingId": listing_id})).status_code == 400
+
+    # 生产等级达标 → 成交
+    await _set_dohdol_level(session_factory, uid_b, "doh", 50)
+    resp = await client.post(f"{API}/market/buy", json={"listingId": listing_id})
+    assert resp.status_code == 200, resp.text
+
+
+async def test_listings_expose_purchase_level_requirement(client, session_factory):
+    token_a = await _register(client, "mkt_req_a")
+    uid_a = await _user_id(session_factory, "mkt_req_a")
+    equip_id = await _seed_item(session_factory, uid_a, level_req=40)
+    await _seed_stack(session_factory, uid_a, "material", "g_ore", 5)
+    _auth(client, token_a)
+    resp = await client.post(
+        f"{API}/market/list",
+        json={
+            "entries": [
+                {"type": "equipment", "itemId": equip_id, "unitPrice": 500},
+                {"type": "stack", "stackKind": "material", "stackItemId": "g_ore", "count": 5, "unitPrice": 20},
+            ]
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    token_b = await _register(client, "mkt_req_b")
+    uid_b = await _user_id(session_factory, "mkt_req_b")
+    _auth(client, token_b)
+
+    body = (await client.get(f"{API}/market/listings")).json()
+    by_kind = {row["kind"]: row for row in body["listings"]}
+    assert by_kind["equipment"]["requiredKind"] == "combat"
+    assert by_kind["equipment"]["levelMet"] is False
+    # 素材不受等级限制
+    assert by_kind["material"]["requiredKind"] is None
+    assert by_kind["material"]["levelMet"] is True
+
+    # 英雄达标后 levelMet 转为 True
+    await _set_hero_level(session_factory, uid_b, 40)
+    body = (await client.get(f"{API}/market/listings")).json()
+    equip = next(row for row in body["listings"] if row["kind"] == "equipment")
+    assert equip["levelMet"] is True
