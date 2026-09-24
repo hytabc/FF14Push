@@ -58,6 +58,31 @@ export function skillCooldown(stats: HeroStats, baseCd: number): number {
   return Math.max(0.5, baseCd * (1 - reduce))
 }
 
+/** 治疗 / 护盾类技能的效果类型（用于判定治疗职业技能的额外耗蓝）。 */
+export const HEAL_SKILL_EFFECT_TYPES = ['heal', 'healOverTime', 'fullHeal', 'healingBuff', 'shield']
+
+export function isHealingSkill(skill: SkillLike): boolean {
+  return (skill.effects ?? []).some((e) => HEAL_SKILL_EFFECT_TYPES.includes(String(e.type)))
+}
+
+/**
+ * 技能实际耗蓝：`mpCost × 伤害类型系数`；治疗职业（role === 'healer'）的治疗 / 护盾类技能
+ * 额外收取「最大魔力 × `heroes.json:mp.healSkillCostMaxMpPct`」，避免固定耗蓝被膨胀的蓝条与
+ * 回蓝掩盖、形成无限自愈。与 `battle.ts` 的结算同源，供技能面板展示。
+ */
+export function skillMpCost(stats: HeroStats, skill: SkillLike): number {
+  const scale =
+    skill.damageType === 'magical'
+      ? data.heroes.mp.magicalSkillCostScale
+      : data.heroes.mp.physicalSkillCostScale
+  let cost = skill.mpCost * scale
+  const pct = Number(data.heroes.mp.healSkillCostMaxMpPct ?? 0)
+  if (pct > 0 && data.jobById[stats.jobId]?.role === 'healer' && isHealingSkill(skill)) {
+    cost += stats.maxMp * pct
+  }
+  return Math.floor(cost)
+}
+
 /** 攻速系数 = 1 + 攻击速度% / 100，上限 2.0。用于缩短 GCD 与普攻间隔（服务端不建模出手频率）。 */
 export const MAX_ATTACK_SPEED_FACTOR = 2
 

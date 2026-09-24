@@ -18,6 +18,7 @@ import {
   playerAttackMultiplier,
   playerDefenseMultiplier,
 } from '@/game/core/difficulty'
+import { skillMpCost, type SkillLike } from '@/game/core/combat'
 import { dodgeExplain, threeAttrExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { jobName, rarityClass, rarityName } from '@/utils/format'
@@ -30,6 +31,12 @@ const hero = computed(() => game.hero)
 const region = computed(() => game.state?.currentRegion ?? null)
 
 const stats = computed(() => hero.value?.stats ?? null)
+
+/** 技能实际耗蓝（治疗职业的治疗 / 护盾技能含「最大魔力%」附加费）；展示与结算同源。 */
+function mpCostOf(skill: SkillLike | { mpCost: number }): number {
+  const s = stats.value
+  return s ? skillMpCost(s, skill as unknown as SkillLike) : skill.mpCost
+}
 
 // ---- 难度等级 ----
 const difficultyLevel = computed(() => game.state?.difficulty?.level ?? 0)
@@ -413,7 +420,7 @@ function dodgeInfo() {
         >
           <p class="truncate text-[11px] font-medium text-ink-200">{{ skill.name }}</p>
           <p class="mt-0.5 text-[10px] text-ink-400">
-            {{ skill.potency > 0 ? `${skill.potency}% 威力` : '辅助' }} · MP {{ skill.mpCost }}
+            {{ skill.potency > 0 ? `${skill.potency}% 威力` : '辅助' }} · MP {{ mpCostOf(skill) }}
           </p>
           <p class="text-[10px] text-ink-400">
             CD {{ skill.cd }}s

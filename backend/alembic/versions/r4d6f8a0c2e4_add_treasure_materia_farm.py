@@ -2,7 +2,7 @@
 
 三个新系统：
 - `materia_sockets`：账号级 11 个战斗装备栏位各 5 孔的镶嵌结果（不随装备更换）。
-- `farm_plots`：种田田地（账号级，初始 2 片最多 10 片）；`users.farm_unlocked` 记录已解锁片数。
+- `farm_plots`：种田田地（账号级，初始 2 片最多 12 片）；`users.farm_unlocked` 记录已解锁片数。
 - `treasure_runs`：挖宝 5 层副本的服务端权威状态机（层数 / 门 / 宝箱 / 猜大小）。
 
 只新增表与一列，不清空任何数据。

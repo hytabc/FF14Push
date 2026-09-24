@@ -149,23 +149,32 @@
     "mpCostPct": -0.1,
     "equipMainAttrPct": 0.15
   },
-  "$commentMp": "MP 系统。来源：PRD 7.2。技能 mpCost 已按威力重排。蓝量是「节奏」而非「硬墙」：蓝池随等级成长（物理职业不再因为智力低而只有指甲盖大的蓝条），回复也必须随等级成长（mpRegen 在 levelUpGain 里），使持续回复足以覆盖填充技能的消耗 —— 否则蓝条见底后只剩「普攻 + 最低威力技能」的循环。基本攻击（零耗蓝）额外回复少量蓝量，作为见底时的兜底回蓝手段。",
+  "$commentMp": "MP 系统。来源：PRD 7.2。技能 mpCost 已按威力重排。蓝量是「节奏」而非「硬墙」：蓝池随等级成长（物理职业不再因为智力低而只有指甲盖大的蓝条），回复也必须随等级成长（mpRegen 在 levelUpGain 里），使持续回复足以覆盖填充技能的消耗 —— 否则蓝条见底后只剩「普攻 + 最低威力技能」的循环。基本攻击（零耗蓝）额外回复少量蓝量，作为见底时的兜底回蓝手段。**例外**：治疗职业的治疗 / 护盾技能按最大魔力比例额外收费（见 `healSkillCostMaxMpPct`），使「无限自愈、永不死亡」不可能。",
   "mp": {
     "physicalSkillCostScale": 1.0,
     "magicalSkillCostScale": 1.0,
     "regenTickSeconds": 1,
     "$commentBasicAttackRestore": "普攻（零耗蓝）施放时回复的最大蓝量比例，避免蓝量见底后彻底退化为纯普攻。",
-    "basicAttackRestorePct": 0.03
+    "basicAttackRestorePct": 0.03,
+    "$commentHealSkillCost": "治疗职业（role=healer）的治疗 / 护盾类技能（效果含 heal / healOverTime / fullHeal / healingBuff / shield）额外按「最大魔力 × 该系数」收费。治疗技能耗蓝过低时，膨胀的蓝条与基础回蓝会永久覆盖其消耗，形成无限自愈、永不死亡；按最大魔力比例收费使其在任意等级都是有限资源。前端 combat.ts:skillMpCost / battle.ts 结算，技能面板展示实际耗蓝。",
+    "healSkillCostMaxMpPct": 0.12
   },
   "$commentDeath": "复活等待与 BOSS 出现延迟。来源：PRD 地区 3.2 / 4.1",
   "reviveDelaySeconds": 10,
   "bossSpawnDelaySeconds": 3,
-  "$commentInitialHero": "初始英雄：三维平均、资质普通、均衡型。来源：PRD 招募 2.2。starterWeapon 为开局自动装备的起始武器（铁制长剑 → 骑士），否则重锚定后裸英雄会在新手阶段被卡死。",
+  "$commentInitialHero": "初始英雄：三维平均、资质普通、均衡型。来源：PRD 招募 2.2。starterWeapon 为开局自动装备的起始武器（铁制长枪 → 龙骑士·近战DPS），否则重锚定后裸英雄会在新手阶段被卡死。刻意选基准职业（近战DPS，攻防效率均 100%），避免唯一的新手英雄因职业效率被削弱开荒。",
   "initialHero": {
     "talent": "common",
     "attrBias": "balanced",
     "totalPoints": 100,
     "name": "冒险者",
-    "starterWeapon": "w_sword_shield_0"
+    "starterWeapon": "w_lance_0"
+  },
+  "$commentRoster": "远征队（英雄名册）容量：基准 8 席，可用金币扩充。第 k 个新席位价格 = firstExpandCost + (k-1) × expandCostStep（线性递增），上限 maxCapacity 席。",
+  "roster": {
+    "baseCapacity": 8,
+    "maxCapacity": 20,
+    "firstExpandCost": 25000000,
+    "expandCostStep": 25000000
   }
 }

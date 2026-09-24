@@ -9,7 +9,7 @@ import { sound } from '@/game/audio'
 import { BattleSimulator } from '@/game/core/battle'
 import type { AutoSoldItem, Category, GameState, Item, RaidBossEntry, RaidReportResponse, RerollMode, SlotId } from '@/game/types'
 
-import { experienceLog } from '@/utils/battleLog'
+import { experienceLog, goldLog } from '@/utils/battleLog'
 
 import { useAuthStore } from './auth'
 import { useLootStore } from './loot'
@@ -363,7 +363,11 @@ export const useGameStore = defineStore('game', () => {
     if (!state.value || !current) return
 
     if (res.expGained > 0) current.recordReward(experienceLog(res.expGained, res.expCalculation))
-    if (res.boss) current.recordReward(res.boss.bossName + '：' + experienceLog(res.boss.exp, res.boss.expCalculation))
+    if (res.goldGained > 0) current.recordReward(goldLog(res.goldGained, res.goldCalculation))
+    if (res.boss) {
+      current.recordReward(res.boss.bossName + '：' + experienceLog(res.boss.exp, res.boss.expCalculation))
+      if (res.boss.gold > 0) current.recordReward(res.boss.bossName + '：' + goldLog(res.boss.gold, res.boss.goldCalculation))
+    }
     logVersion.value += 1
     state.value.user.gold = res.gold
     state.value.hero.level = res.level.level
@@ -541,6 +545,7 @@ export const useGameStore = defineStore('game', () => {
       })
       raidResult.value = res
       if (res.cleared) current.recordReward('副本通关：' + experienceLog(res.expGained, res.expCalculation))
+      if (res.goldGained > 0) current.recordReward('副本通关：' + goldLog(res.goldGained, res.goldCalculation))
       logVersion.value += 1
       if (res.pendingChest) setRaidChest(res.pendingChest.count, res.pendingChest.slots)
       if (state.value) state.value.user.gold = res.gold

@@ -59,20 +59,20 @@
 | onHitTaken | reflectOnHit | 反震 | reflectProcPct | [5,20] | 身/腿/脚/饰 | 受击 {v}% 概率反弹本次伤害的 30% |
 | onHitTaken | vengeanceOnHit | 复仇 | vengeanceProcPct | [5,20] | 身/饰 | 受击 {v}% 概率获得攻击 +15%，持续 6 秒 |
 | onHitTaken | aegisOnHit | 庇护 | aegisProcPct | [5,20] | 身/饰 | 受击 {v}% 概率获得最大生命 8% 的护盾 |
-| onHitTaken | resolveOnHit | 坚毅 | resolveProcPct | [5,20] | 头/饰 | 受击 {v}% 概率恢复 6% 最大魔力 |
+| onHitTaken | resolveOnHit | 坚毅 | resolveProcPct | [3,12] | 头/饰 | 受击 {v}% 概率恢复 6% 最大魔力 |
 | defense | guard | 守护 | guardPct | [3,15] | 全 | 受到伤害 -{v}% |
 | defense | block | 格挡 | blockProcPct | [5,20] | 盾/身/手 | {v}% 概率格挡，本次伤害减半 |
 | defense | shieldBoost | 护盾强化 | shieldBoostPct | [5,25] | 盾/头/身 | 护盾获得量 +{v}% |
 | conditional | lastStand | 背水 | lowHpAttackPct | [5,25] | 全 | 生命低于 50% 时攻击 +{v}% |
 | conditional | openingRush | 先手 | openingDamagePct | [5,25] | 主手/饰 | 战斗开始 10 秒内伤害 +{v}% |
 | conditional | bossHunter | 讨伐 | bossDamagePct | [5,25] | 主手/饰 | 对精英与 BOSS 伤害 +{v}% |
-| conditional | desperateMp | 枯竭 | lowMpRegenPct | [10,40] | 头/饰 | 魔力低于 30% 时魔力恢复 +{v}% |
+| conditional | desperateMp | 枯竭 | lowMpRegenPct | [5,20] | 头/饰 | 魔力低于 30% 时魔力恢复 +{v}% |
 | growth | battleSpirit | 战意 | killStackAttackPct | [1,4] | 主手/身 | 每击杀 +{v}% 攻击，最多 10 层 |
 | growth | sharpness | 锐意 | hitStackSpeedPct | [0.5,2] | 手/饰 | 每次命中 +{v}% 攻击速度，最多 10 层 |
 | growth | chanting | 咏唱 | skillStackDamagePct | [1,3] | 主手/头 | 每次释放技能 +{v}% 技能伤害，最多 8 层 |
-| convert | hpToMp | 转魔 | hpToMpPct | [5,20] | 头/饰 | 每秒将最大生命 {v}% 转为魔力 |
+| convert | hpToMp | 转魔 | hpToMpPct | [3,10] | 头/饰 | 魔力 < 50% 时每秒将最大生命 {v}% 转为魔力，恢复到 80% 停止 |
 | convert | mpSurge | 魔力灌注 | mpSurgeDamagePct | [5,20] | 主手/饰 | 技能伤害额外提升 当前魔力% × {v}% |
-| convert | killRestoreMp | 汲魔 | killRestoreMpPct | [5,20] | 饰 | 击杀恢复 {v}% 最大魔力 |
+| convert | killRestoreMp | 汲魔 | killRestoreMpPct | [3,10] | 饰 | 击杀恢复 {v}% 最大魔力 |
 | synergy | vitToAttack | 体魄 | vitToAttackPct | [5,20] | 身/饰 | 体力值的 {v}% 转化为攻击 |
 | synergy | critToDet | 断罪 | critToDetPct | [5,20] | 头/饰 | 暴击值的 {v}% 转化为信念 |
 | synergy | dhConvert | 直击转化 | dhConvertPct | [5,15] | 耳/镯 | 暴击率的 {v}% 转化为直击率（既有词条，归入本类） |

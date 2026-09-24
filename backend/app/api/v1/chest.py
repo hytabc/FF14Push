@@ -15,6 +15,7 @@ from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import PityState, chest_by_id
+from app.services.progression import highest_hero_level
 from app.services.stats import compute_stats
 
 router = APIRouter(prefix="/chest", tags=["chest"])
@@ -88,18 +89,20 @@ async def open_chest(
             detail=f"需要先解锁 {payload.count} 连抽",
         )
 
-    # 抽箱等级档位：需玩家等级达到档位；省略时按玩家当前等级（等级同步）。
+    # 抽箱等级档位：按「角色库（名册）内最高英雄等级」判定解锁（非当前上场英雄）。
+    # 省略档位时按该最高等级生成（等级同步）。
+    roster_level = await highest_hero_level(db, user.id)
     band = payload.level
     band_multiplier = 1.0
     if band is None:
-        band = hero.level
+        band = roster_level
     else:
         if band not in LEVEL_BAND_MULTIPLIER:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="未知的抽箱等级档位")
-        if hero.level < band:
+        if roster_level < band:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"需要英雄等级 {band} 才能抽取该档位",
+                detail=f"需要角色库最高等级 {band} 才能抽取该档位",
             )
         band_multiplier = LEVEL_BAND_MULTIPLIER[band]
 

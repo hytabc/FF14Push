@@ -9,6 +9,7 @@ import JobFigure from '@/components/JobFigure.vue'
 import JobIcon from '@/components/JobIcon.vue'
 import StatTip from '@/components/StatTip.vue'
 import TermBadges from '@/components/TermBadges.vue'
+import { isHealingSkill, skillMpCost, type SkillLike } from '@/game/core/combat'
 import { eggSkillSet } from '@/game/core/egg'
 import { statExplain, type Explain, type StatKey } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
@@ -50,6 +51,21 @@ const skills = computed(() => {
 })
 
 const eggDesc = computed(() => (hero.value?.eggId ? (data.eggHeroes.byId[hero.value.eggId]?.desc ?? '彩蛋英雄') : ''))
+
+/** 技能实际耗蓝（治疗职业的治疗 / 护盾技能含「最大魔力%」附加费）；展示与结算同源。 */
+function mpCostOf(skill: SkillLike | { mpCost: number }): number {
+  const s = stats.value
+  return s ? skillMpCost(s, skill as unknown as SkillLike) : skill.mpCost
+}
+
+/** 治疗技能耗蓝的拆分（供 title 提示，说明数字如何得来）。 */
+function mpCostTip(skill: SkillLike | { mpCost: number }): string {
+  const s = stats.value
+  const pct = Number(data.heroes.mp.healSkillCostMaxMpPct ?? 0)
+  if (!s || pct <= 0) return ''
+  if (data.jobById[s.jobId]?.role !== 'healer' || !isHealingSkill(skill as SkillLike)) return ''
+  return `基础 ${skill.mpCost} + 最大魔力 ${Math.round(s.maxMp)} × ${(pct * 100).toFixed(0)}% = ${mpCostOf(skill)}`
+}
 
 /** 当前职业的绝技（招牌技能）。 */
 const signature = computed(() => data.jobById[hero.value?.jobId ?? '']?.signature ?? null)
@@ -364,8 +380,8 @@ const powerTip = computed(() => statExplain('power', statCtx.value))
         >
           <div class="flex items-center justify-between text-xs">
             <span class="font-medium text-ink-100">{{ skill.name }}</span>
-            <span class="text-ink-400">
-              CD {{ skill.cd }}s · {{ skill.potency > 0 ? `${skill.potency}% 威力` : '辅助效果' }} · MP {{ skill.mpCost }}
+            <span class="text-ink-400" :title="mpCostTip(skill)">
+              CD {{ skill.cd }}s · {{ skill.potency > 0 ? `${skill.potency}% 威力` : '辅助效果' }} · MP {{ mpCostOf(skill) }}
             </span>
           </div>
           <div class="mt-2 flex items-center gap-2">

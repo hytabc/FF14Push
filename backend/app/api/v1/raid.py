@@ -27,7 +27,7 @@ from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item, generate_item_for_slot
 from app.services.loot import chest_by_id
 from app.services.playtime import MAX_RAID_PLAY_MS, add_play_ms
-from app.services.progression import apply_exp, combat_exp, exp_calculation
+from app.services.progression import apply_exp, combat_exp, exp_calculation, gold_calculation
 from app.services.raid_util import (
     all_raids,
     boss_stats_for_raid,
@@ -249,6 +249,8 @@ async def report_session(
     reward_allowed = first_clear or int(row.rewarded_today or 0) < daily_limit
 
     gold = 0
+    gold_base = 0
+    gold_after_penalty = 0
     raw_exp = 0
     after_bonus_exp = 0
     exp_gained = 0
@@ -271,8 +273,9 @@ async def report_session(
             session.balance_snapshot["penalty"]["rewardMultiplier"],
             current["penalty"]["rewardMultiplier"],
         )
-        gold = int(reward["firstGold"]) if first_clear else int(reward["repeatGold"])
-        gold = int(gold * reward_multiplier * (1.0 + potion_mods.get("goldGainPct", 0.0) / 100.0))
+        gold_base = int(reward["firstGold"]) if first_clear else int(reward["repeatGold"])
+        gold_after_penalty = int(gold_base * reward_multiplier)
+        gold = int(gold_base * reward_multiplier * (1.0 + potion_mods.get("goldGainPct", 0.0) / 100.0))
         user.gold = int(user.gold) + gold
 
         # 通关经验：首通用 firstExp，重刷用 repeatExp（高难副本的 repeatExp 更高）
@@ -319,6 +322,7 @@ async def report_session(
         "remainingToday": remaining_today,
         "gold": int(user.gold),
         "goldGained": gold,
+        "goldCalculation": gold_calculation(gold_base, gold_after_penalty, gold),
         "expGained": exp_gained,
         "expCalculation": exp_calculation(raw_exp, after_bonus_exp, exp_gained),
         "level": level_info,

@@ -87,9 +87,12 @@ const bestRarityId = computed<RarityId>(() => {
   return best >= 0 ? order[best] : 'common'
 })
 
-const heroLevel = computed(() => game.hero?.level ?? 1)
-/** 已解锁的等级档位（玩家等级达到即可选）。 */
-const unlockedBands = computed(() => LEVEL_BANDS.filter((b) => b.level <= heroLevel.value))
+/** 抽箱档位解锁依据：角色库（名册）内最高英雄等级，而非当前上场英雄。 */
+const rosterLevel = computed(() =>
+  Math.max(1, game.hero?.level ?? 1, ...(game.state?.heroes ?? []).map((h) => h.level)),
+)
+/** 已解锁的等级档位（角色库最高等级达到即可选）。 */
+const unlockedBands = computed(() => LEVEL_BANDS.filter((b) => b.level <= rosterLevel.value))
 const band = ref<number>(LEVEL_BANDS[0].level)
 const bandDef = computed(() => LEVEL_BANDS.find((b) => b.level === band.value) ?? LEVEL_BANDS[0])
 /** 抽箱品阶幸运（服务端结算的全部来源：通关地区 / 装备品阶幸运 / 料理秘药 / 远征·高难通关 / 彩蛋）。 */
@@ -185,7 +188,7 @@ onBeforeUnmount(() => {
 })
 
 function isUnlocked(level: number): boolean {
-  return heroLevel.value >= level
+  return rosterLevel.value >= level
 }
 
 function canContinueDraw(): boolean {
@@ -257,7 +260,7 @@ async function draw(chestId: string, count: number) {
       <div class="flex flex-wrap items-center gap-2">
         <h3 class="text-sm font-semibold text-white">抽取档位</h3>
         <span class="text-[11px] text-ink-400">
-          箱子内容按所选档位生成（装备无穿戴等级限制），档位越高价格越高；需达到对应等级才可选择，当前 Lv.{{ heroLevel }}。
+          箱子内容按所选档位生成（装备无穿戴等级限制），档位越高价格越高；需角色库最高等级达到该档位才可选择，当前最高 Lv.{{ rosterLevel }}。
         </span>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
@@ -273,7 +276,7 @@ async function draw(chestId: string, count: number) {
                 : 'border-ink-600 text-ink-300 hover:border-ink-400'
           "
           :disabled="!isUnlocked(b.level)"
-          :title="isUnlocked(b.level) ? `抽取 ${b.level} 级档位` : `需要英雄等级 ${b.level}`"
+          :title="isUnlocked(b.level) ? `抽取 ${b.level} 级档位` : `需要角色库最高等级 ${b.level}`"
           @click="band = b.level"
         >
           <span v-if="!isUnlocked(b.level)">🔒 </span>{{ b.level }} 级

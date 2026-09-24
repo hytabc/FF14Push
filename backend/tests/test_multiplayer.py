@@ -12,9 +12,11 @@ from app.services.coop_rooms import validate_party
 from app.services.coop_snapshot import entry_failures
 from app.services.pvp_engine import duel
 from app.services.stats import compute_stats
+from app.services.game_config import CONFIG
 from app.coop_worker import tick_rooms
 
 API='/api/v1'
+STARTER_JOB_ID=CONFIG.base_item_by_id[str(CONFIG.heroes['initialHero']['starterWeapon'])].job_id
 
 def reference_seats(dungeon,boost=1):
     roles=['tank','healer','dps','dps','tank','healer','dps','dps'] if dungeon['seats']==8 else ['tank','dps']
@@ -139,7 +141,7 @@ async def test_roster_preserves_equipment_isolation_and_session_binding(auth_cli
         heroes=(await db.scalars(select(Hero).where(Hero.user_id==before['user']['id']))).all()
         items=(await db.scalars(select(Item))).all()
         assert compute_stats(next(h for h in heroes if h.id==old),items).job_id=='adventurer'
-        assert compute_stats(next(h for h in heroes if h.id==new),items).job_id=='PLD'
+        assert compute_stats(next(h for h in heroes if h.id==new),items).job_id==STARTER_JOB_ID
 
 async def test_roster_capacity_explicit_dismiss(auth_client,session_factory):
     for _ in range(7):await recruit(auth_client,session_factory)
@@ -148,6 +150,44 @@ async def test_roster_capacity_explicit_dismiss(auth_client,session_factory):
     roster=(await auth_client.get(API+'/heroes')).json();assert len(roster['heroes'])==8
     assert (await auth_client.delete(f"{API}/heroes/{roster['heroes'][-1]['id']}")).status_code==200
     assert len((await auth_client.get(API+'/heroes')).json()['heroes'])==7
+
+
+async def _set_gold(sessions,amount):
+    async with sessions() as db:
+        user=(await db.scalars(select(User))).first();user.gold=amount;await db.commit()
+
+
+async def test_roster_expand_scales_cost_and_raises_capacity(auth_client,session_factory):
+    cfg=CONFIG.heroes['roster']
+    base,top=int(cfg['baseCapacity']),int(cfg['maxCapacity'])
+    first,step=int(cfg['firstExpandCost']),int(cfg['expandCostStep'])
+    roster=(await auth_client.get(API+'/heroes')).json()
+    assert roster['capacity']==base and roster['maxCapacity']==top and roster['expandCost']==first
+
+    await _set_gold(session_factory,first-1)
+    poor=await auth_client.post(API+'/heroes/expand')
+    assert poor.status_code==400 and '金币不足' in poor.json()['detail']
+
+    await _set_gold(session_factory,10**12)
+    gold=10**12
+    for i in range(top-base):
+        resp=await auth_client.post(API+'/heroes/expand');assert resp.status_code==200,resp.text
+        body=resp.json();cost=first+i*step
+        assert body['cost']==cost and body['capacity']==base+1+i and body['maxCapacity']==top
+        assert body['expandCost']==(first+(i+1)*step if base+1+i<top else None)
+        gold-=cost;assert body['gold']==gold
+    capped=await auth_client.post(API+'/heroes/expand')
+    assert capped.status_code==400 and '上限' in capped.json()['detail']
+    assert (await auth_client.get(API+'/heroes')).json()['capacity']==top
+
+
+async def test_recruit_past_base_capacity_after_expand(auth_client,session_factory):
+    for _ in range(7):await recruit(auth_client,session_factory)
+    assert (await auth_client.post(API+'/tavern/recruit',json={'confirm':True})).status_code==409
+    await _set_gold(session_factory,10**12)
+    assert (await auth_client.post(API+'/heroes/expand')).status_code==200
+    assert (await auth_client.post(API+'/tavern/recruit',json={'confirm':True})).status_code==200
+    assert len((await auth_client.get(API+'/heroes')).json()['heroes'])==9
 
 async def seed_heroes(sessions,uid,dungeon_id='normal_1',count=2):
     """Real items from recorded reference fixture; no API-supplied combat stats."""

@@ -6,6 +6,57 @@ from app.models import User, Hero, Item, BattleSession, RaidSession, ActivitySes
 from app.models.multiplayer import CoopMember, CoopRoom
 from app.models.treasure import STATUS_ENDED, TreasureRun
 from app.models.world_boss import SESSION_RUNNING, WorldBossSession
+from app.services.game_config import CONFIG
+
+
+def _roster_config() -> dict:
+    return CONFIG.heroes.get("roster") or {}
+
+
+def base_hero_capacity() -> int:
+    """名册基准容量（不花金币即可拥有的席位数）。"""
+    return int(_roster_config().get("baseCapacity", 8))
+
+
+def max_hero_capacity() -> int:
+    """名册容量上限。"""
+    return int(_roster_config().get("maxCapacity", base_hero_capacity()))
+
+
+def hero_capacity(user) -> int:
+    """该账号当前名册容量（钳制在基准与上限之间）。"""
+    value = int(getattr(user, "hero_capacity", 0) or 0)
+    return max(base_hero_capacity(), min(max_hero_capacity(), value))
+
+
+def hero_expand_cost(capacity: int) -> int | None:
+    """从当前容量再开一席的金币价格；已达上限返回 None。价格线性递增。"""
+    if capacity >= max_hero_capacity():
+        return None
+    first = int(_roster_config().get("firstExpandCost", 0))
+    step = int(_roster_config().get("expandCostStep", 0))
+    return first + (capacity - base_hero_capacity()) * step
+
+
+async def expand_hero_roster(db, user) -> dict:
+    """花费金币为该账号的名册扩充一席。"""
+    capacity = hero_capacity(user)
+    cost = hero_expand_cost(capacity)
+    if cost is None:
+        raise HTTPException(400, f"远征队席位已达上限（{max_hero_capacity()} 席）")
+    if int(user.gold) < cost:
+        raise HTTPException(400, f"金币不足，需要 {cost}")
+    user.gold = int(user.gold) - cost
+    user.hero_capacity = capacity + 1
+    await db.flush()
+    return {
+        "gold": int(user.gold),
+        "cost": cost,
+        "capacity": capacity + 1,
+        "maxCapacity": max_hero_capacity(),
+        "expandCost": hero_expand_cost(capacity + 1),
+    }
+
 
 async def lock_user(db, user_id):
     return await db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))

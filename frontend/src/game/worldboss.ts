@@ -177,6 +177,34 @@ export function nextRewardTier(damage: number, tiers: WorldBossRewardTier[]): Wo
   return tiers.find((tier) => damage < tier.minDamage) ?? null
 }
 
+/**
+ * 档位区间进度：当前档到下一档之间的完成比例（0-1，已封顶或空表为 1）。
+ * 与 `rewardTier` / `nextRewardTier` 同源，保证进度条随伤害单调前进、不抽搐。
+ */
+export function tierProgress(
+  damage: number,
+  tiers: WorldBossRewardTier[],
+): {
+  /** 已达的最高档（未达任何档为 null）。 */
+  current: WorldBossRewardTier | null
+  /** 下一档（已封顶为 null）。 */
+  next: WorldBossRewardTier | null
+  /** 当前档的阈值（未达档为 0）。 */
+  floor: number
+  /** 当前档 → 下一档的完成比例（0-1）。 */
+  fraction: number
+  /** 距下一档还差多少（已封顶为 0）。 */
+  remaining: number
+} {
+  const current = rewardTier(damage, tiers)
+  const next = nextRewardTier(damage, tiers)
+  const floor = current?.minDamage ?? 0
+  if (!next) return { current, next: null, floor, fraction: 1, remaining: 0 }
+  const span = next.minDamage - floor
+  const fraction = span > 0 ? Math.max(0, Math.min(1, (damage - floor) / span)) : 0
+  return { current, next, floor, fraction, remaining: Math.max(0, next.minDamage - damage) }
+}
+
 /** 按剩余血量占比取阶段（与服务端 `phase_for_ratio` 同源）：满足 ratio ≥ minHpRatio 的最高阶段。 */
 export function phaseForRatio(ratio: number, table: WorldBossPhase[]): WorldBossPhase | null {
   const valid = table.filter((p) => p.minHpRatio <= ratio)
@@ -184,11 +212,16 @@ export function phaseForRatio(ratio: number, table: WorldBossPhase[]): WorldBoss
   return valid.reduce((best, p) => (p.minHpRatio > best.minHpRatio ? p : best))
 }
 
-/** 等级削弱提示文案（80~99 被削弱，满级不再削弱）。 */
-export function weaknessHint(level: number, rules: WorldBossRules): string {
-  if (level >= rules.fullPowerLevel) return '满级：无削弱'
+/**
+ * 等级削弱提示文案（80~99 被削弱，满级不再削弱）。
+ * `compact` 用于狭窄的上阵卡片：省去「（100 级解除）」括注（该规则已在说明卡里讲清）。
+ */
+export function weaknessHint(level: number, rules: WorldBossRules, compact = false): string {
+  if (level >= rules.fullPowerLevel) return compact ? '满级' : '满级：无削弱'
   const floor = rules.weaknessFloor
   const ratio = (level - rules.levelRequirement) / (rules.fullPowerLevel - rules.levelRequirement)
   const mult = floor + (1 - floor) * Math.max(0, Math.min(1, ratio))
-  return `削弱中：输出/治疗 ×${mult.toFixed(2)}（${rules.fullPowerLevel} 级解除）`
+  return compact
+    ? `削弱 ×${mult.toFixed(2)}`
+    : `削弱中：输出/治疗 ×${mult.toFixed(2)}（${rules.fullPowerLevel} 级解除）`
 }

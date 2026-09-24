@@ -35,8 +35,11 @@ class User(Base, TimestampMixin):
     # 见 services/difficulty.py 与 shared/data/combat.json:difficulty。
     battle_difficulty: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
     battle_difficulty_max: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
-    # 种田：已解锁的田地数量（初始 2，最多 10）。见 services/farm.py 与 shared/data/farm.json。
+    # 种田：已解锁的田地数量（初始 2，最多 12）。见 services/farm.py 与 shared/data/farm.json。
     farm_unlocked: Mapped[int] = mapped_column(sa.Integer, default=2, server_default="2")
+    # 远征队（英雄名册）容量：基准 8 席，可用金币扩充，每席价格线性递增，上限 20 席。
+    # 见 services/roster.py 与 shared/data/heroes.json:roster。
+    hero_capacity: Mapped[int] = mapped_column(sa.Integer, default=8, server_default="8")
     # 佩戴中的称号（titles.json 的 title id）；None = 不佩戴。最多一个，展示在排行榜 / 玩家资料。
     active_title_id: Mapped[str | None] = mapped_column(sa.String(48), nullable=True)
     # 会话纪元：登录时 +1，令牌内携带该值（JWT 的 ep 声明）。与当前值不一致的令牌即失效，

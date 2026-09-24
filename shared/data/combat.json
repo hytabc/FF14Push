@@ -77,7 +77,7 @@
     "wither": { "attackDownPct": 20, "durationSec": 8 },
     "blind": { "hitDownPct": 25, "durationSec": 8 },
     "hpRegenBuff": { "maxHpPctPerSec": 0.02, "durationSec": 6 },
-    "mpRegenBuff": { "maxMpPctPerSec": 0.03, "durationSec": 6 }
+    "mpRegenBuff": { "maxMpPctPerSec": 0.015, "durationSec": 4 }
   },
   "$commentEquipEffects": "装备词条扩展机制的参数（概率/强度由词条值承载）。proc=命中/受击触发效果量；conditional=条件阈值；growth=成长层数上限；convert=资源转换；charge=累计触发阈值；special=复活/处决/免死。前端 battle.ts 结算，后端 combat_model.py 只镜像影响期望 DPS 的部分（见 docs/enchant-terms-expansion-design.md 的镜像清单）。",
   "equipEffects": {
@@ -103,7 +103,7 @@
       "skillStackDamagePct": { "maxStacks": 8 }
     },
     "convert": {
-      "hpToMp": { "intervalSec": 1 },
+      "hpToMp": { "intervalSec": 1, "startMpPct": 50, "stopMpPct": 80 },
       "mpSurge": { "basePctOfMp": 1.0 },
       "killRestoreMp": {}
     },

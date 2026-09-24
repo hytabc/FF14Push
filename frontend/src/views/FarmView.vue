@@ -197,7 +197,7 @@ function pickHero(hero: Hero) {
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">种田</h2>
         <span class="text-xs text-ink-400">
-          田地 {{ farm?.unlocked ?? 0 }} / {{ farm?.maxPlots ?? 10 }} 片 · 作物按
+          田地 {{ farm?.unlocked ?? 0 }} / {{ farm?.maxPlots ?? 12 }} 片 · 作物按
           <strong class="text-ink-200">真实时间</strong>生长（离线也生长）
         </span>
         <InfoTip title="生长与收获">

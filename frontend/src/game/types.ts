@@ -410,6 +410,8 @@ export interface StatBreakdown {
   mainAttr: string
   jobId: string
   jobMatch: boolean
+  /** 职业定位的攻防效率（jobs.json:roles）：attack / defense 为乘算系数，近战DPS 为基准 1.0。 */
+  roleEfficiency?: { role: string | null; attack: number; defense: number }
   /** 资质成长系数（talents.growthCoef）。 */
   growthCoef: number
   /** 装备三维入核心属性的折算率（已含职业匹配加成）。 */
@@ -588,6 +590,7 @@ export interface RaidReportResponse {
   remainingToday?: number
   gold: number
   goldGained: number
+  goldCalculation?: GoldCalculation
   /** 本次通关获得的经验（首通用 firstExp，重刷用 repeatExp）。 */
   expGained: number
   expCalculation?: ExpCalculation
@@ -687,6 +690,8 @@ export interface GameState {
   catchUpExpBonusPct?: number
   activeHeroId?: number | null
   heroes?: Hero[]
+  /** 远征队（英雄名册）容量：当前席位数、上限与再开一席的金币价格（已达上限为 null）。 */
+  roster?: { capacity: number; maxCapacity: number; expandCost: number | null }
   user: { id: number; nickname: string; gold: number; activeTitleId: string | null }
   hero: Hero
   power: number
@@ -734,6 +739,7 @@ export interface BattleSessionStart {
 export interface BattleReportResponse {
   gold: number
   goldGained: number
+  goldCalculation?: GoldCalculation
   expGained: number
   expCalculation?: ExpCalculation
   level: { levelsGained: number; exp: number; level: number }
@@ -744,6 +750,7 @@ export interface BattleReportResponse {
   autoGold: number
   boss: {
     gold: number
+    goldCalculation?: GoldCalculation
     exp: number
     expCalculation?: ExpCalculation
     level: { levelsGained: number; exp: number; level: number }
@@ -843,6 +850,14 @@ export interface ExpCalculation {
   base: number
   efficiencyBonus: number
   catchUpBonus: number
+  totalBonusPct: number
+}
+
+/** 金币结算明细（与 ExpCalculation 同构）：结算基础 / 收益加成 / 药水加成。 */
+export interface GoldCalculation {
+  base: number
+  penaltyBonus: number
+  potionBonus: number
   totalBonusPct: number
 }
 

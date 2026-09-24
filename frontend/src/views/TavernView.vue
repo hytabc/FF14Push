@@ -31,6 +31,9 @@ const nowMs = ref(Date.now())
 let timer: number | undefined
 
 const hero = computed(() => game.hero)
+// 远征队（英雄名册）容量：随账号用金币扩充的席位变化。
+const capacity = computed(() => game.state?.roster?.capacity ?? 8)
+const expandCost = computed(() => game.state?.roster?.expandCost ?? null)
 const canAfford = computed(() => (candidate.value?.recruitCost ?? 0) <= game.gold)
 const shortfall = computed(() => Math.max(0, (candidate.value?.recruitCost ?? 0) - game.gold))
 const canAffordTenPull = computed(() => tenPullCost.value <= game.gold)
@@ -283,7 +286,10 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
     <section class="card p-4">
       <div class="flex flex-wrap items-center gap-3">
         <h2 class="text-lg font-semibold text-white">英雄酒馆</h2>
-        <span class="text-xs text-ink-400">英雄名册上限 8 名，新英雄独立养成，不替换现有英雄</span>
+        <span class="text-xs text-ink-400">
+          英雄名册上限 {{ capacity }} 名，新英雄独立养成，不替换现有英雄。
+          <RouterLink v-if="expandCost != null" to="/roster" class="text-amber-300 hover:underline">可在名册页扩充席位 →</RouterLink>
+        </span>
         <span class="ml-auto font-mono text-sm text-amber-300">💰 {{ game.gold.toLocaleString() }}</span>
       </div>
     </section>
@@ -491,7 +497,7 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
 
     <Modal :open="confirmRecruit" title="确认招募英雄" @close="confirmRecruit = false">
       <p class="text-sm text-ink-200">
-        新英雄以 1 级加入名册，当前英雄的等级、经验和装备全部保留。最多拥有 8 名英雄。
+        新英雄以 1 级加入名册，当前英雄的等级、经验和装备全部保留。最多拥有 {{ capacity }} 名英雄。
       </p>
       <p v-if="candidate" class="mt-3 text-xs text-ink-400">
         新英雄：{{ candidate.name }} · {{ rarityName(candidate.talent) }} · {{ candidate.attrBiasLabel }} ·
@@ -516,7 +522,7 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
       @close="confirmMultiIndex = null"
     >
       <p class="text-sm text-ink-200">
-        新英雄以 1 级加入名册，当前英雄的等级、经验和装备全部保留。最多拥有 8 名英雄。
+        新英雄以 1 级加入名册，当前英雄的等级、经验和装备全部保留。最多拥有 {{ capacity }} 名英雄。
       </p>
       <p v-if="pickedMulti" class="mt-3 text-xs text-ink-400">
         新英雄：{{ pickedMulti.name }} · {{ rarityName(pickedMulti.talent) }} · {{ pickedMulti.attrBiasLabel }} ·

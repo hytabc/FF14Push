@@ -183,6 +183,28 @@ class TestSharedData:
                 for tod in fish.get("timeOfDay", []) or []:
                     assert tod in windows, f"{fish['id']} 的时段 {tod} 未定义"
 
+    def test_fish_special_prereq_gates_overlap(self):
+        """特殊鱼的每条前置必须能在其自身天气 / 时段窗口内钓起。
+
+        前置计数只在特殊鱼自身的门槛窗口内累计（见 services/fishing.py::_advance_intuition），
+        若前置与特殊鱼窗口互斥（如困难鱼「圣龙」要求白昼晴朗、前置紫鱼「神域灯鱼」只在深夜），
+        该特殊鱼的直觉将永远无法触发。
+        """
+
+        def overlaps(a, b) -> bool:
+            return not a or not b or bool(set(a) & set(b))
+
+        for region in CONFIG.fish["regions"]:
+            for s in region["specials"]:
+                for req in s["intuition"]["requires"]:
+                    pre = CONFIG.fish_by_id[req["fishId"]]
+                    assert overlaps(s.get("weather"), pre.get("weather")), (
+                        f"{s['id']} 与前置 {req['fishId']} 的天气窗口互斥"
+                    )
+                    assert overlaps(s.get("timeOfDay"), pre.get("timeOfDay")), (
+                        f"{s['id']} 与前置 {req['fishId']} 的时段窗口互斥"
+                    )
+
     def test_fish_has_difficult_legends(self):
         """困难鱼（legend）存在，且包含七彩天主的多前置链。"""
         legends = [

@@ -578,7 +578,17 @@ const jobsData = jobsJson as unknown as {
   gcd: number
   maxSkills: number
   skillPriorityOrder: number[]
-  roles: Record<JobRole, { id: JobRole; name: string }>
+  roles: Record<
+    JobRole,
+    {
+      id: JobRole
+      name: string
+      /** 攻击效率：对面板攻击（attack / magicAttack）的乘算系数，近战DPS 为基准 1.0。 */
+      attackEfficiency: number
+      /** 防御效率：对面板防御（physDef / magicDef）的乘算系数，近战DPS 为基准 1.0。 */
+      defenseEfficiency: number
+    }
+  >
   jobs: JobDef[]
 }
 

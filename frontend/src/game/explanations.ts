@@ -462,6 +462,7 @@ export function equipEffectExplain(stat: string): Explain | null {
   const proc = EQUIP_EFFECTS.proc ?? {}
   const cond = EQUIP_EFFECTS.conditional ?? {}
   const growth = EQUIP_EFFECTS.growth ?? {}
+  const convert = EQUIP_EFFECTS.convert ?? {}
   const charge = EQUIP_EFFECTS.charge ?? {}
   const special = EQUIP_EFFECTS.special ?? {}
   const rows: Record<string, string[]> = {
@@ -482,7 +483,7 @@ export function equipEffectExplain(stat: string): Explain | null {
     killStackAttackPct: [`每击杀一名敌人叠加 1 层（最多 ${growth.killStackAttackPct?.maxStacks} 层），每层攻击力提升词条值。`],
     hitStackSpeedPct: [`每次命中叠加 1 层（最多 ${growth.hitStackSpeedPct?.maxStacks} 层），每层攻击速度提升词条值。`],
     skillStackDamagePct: [`每次释放技能叠加 1 层（最多 ${growth.skillStackDamagePct?.maxStacks} 层），每层技能伤害提升词条值。`],
-    hpToMpPct: ['每秒将最大生命的一部分（词条值%）转化为魔力，生命不足时不生效。'],
+    hpToMpPct: [`魔力低于 ${convert.hpToMp?.startMpPct}% 时，每秒将最大生命的一部分（词条值%）转化为魔力，魔力恢复到 ${convert.hpToMp?.stopMpPct}% 后停止；生命不足时不生效。`],
     mpSurgeDamagePct: ['技能伤害额外提升 当前魔力百分比 × 词条值%。'],
     killRestoreMpPct: ['击杀敌人恢复词条值% 的最大魔力。'],
     vitToAttackPct: ['体力值的一部分（词条值%）转化为攻击力。'],
@@ -628,6 +629,12 @@ export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
   const mods = b?.termMods ?? s?.termMods ?? {}
   const mainAttr = b?.mainAttr ?? s?.mainAttr ?? null
   const note = b ? null : '（拆解数据未就绪，数值以面板为准）'
+  const roleEff = b?.roleEfficiency ?? null
+  const roleName = roleEff?.role ? ((data.jobs.roles as any)[roleEff.role]?.name ?? roleEff.role) : null
+  const effLine = (which: 'attack' | 'defense'): string =>
+    !roleEff || roleEff[which] === 1
+      ? ''
+      : `× 职业${which === 'attack' ? '攻击' : '防御'}效率 ${num(roleEff[which] * 100, 0)}%（${roleName ?? '基础'}定位）`
 
   const finish = (title: string, usage: string, lines: string[]): Explain => ({
     title,
@@ -716,6 +723,7 @@ export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
       ef.attack ? `装备攻击 +${num(ef.attack)}` : '',
       `攻击加成词条：${modsText(mods, [['attackPct', '攻击'], ['berserkPct', '狂暴']]) || '无'}`,
       mods.vitToAttackPct ? `+ 体力转化：体力 ${num(core?.vit ?? 0)} × ${num(mods.vitToAttackPct, 1)}%` : '',
+      effLine('attack'),
       `= ${num(s?.attack ?? 0)}`,
     ])
   }
@@ -728,6 +736,7 @@ export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
       ef.magicAttack ? `装备魔攻 +${num(ef.magicAttack)}` : '',
       `× (1 + 攻击词条 ${num((mods.attackPct ?? 0) + (mods.berserkPct ?? 0), 1)}%)` +
         (mods.magicAttackPct ? ` × (1 + 魔攻词条 ${num(mods.magicAttackPct, 1)}%)` : ''),
+      effLine('attack'),
       `= ${num(s?.magicAttack ?? 0)}`,
     ])
   }
@@ -738,6 +747,7 @@ export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
       `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
       ef.physDef ? `装备物防 +${num(ef.physDef)}` : '',
       `物防加成词条：${modsText(mods, [['physDefPct', '物防']]) || '无'}`,
+      effLine('defense'),
       `= ${num(s?.physDef ?? 0)}`,
     ])
   }
@@ -748,6 +758,7 @@ export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
       `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
       ef.magicDef ? `装备魔防 +${num(ef.magicDef)}` : '',
       `魔防加成词条：${modsText(mods, [['magicDefPct', '魔防']]) || '无'}`,
+      effLine('defense'),
       `= ${num(s?.magicDef ?? 0)}`,
     ])
   }

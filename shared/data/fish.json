@@ -2075,7 +2075,7 @@
           "rarity": "purple",
           "weight": 2,
           "timeOfDay": [
-            "night"
+            "day"
           ],
           "sizeMin": 105,
           "sizeMax": 172,
@@ -2560,7 +2560,7 @@
           "rarity": "purple",
           "weight": 2,
           "timeOfDay": [
-            "night"
+            "dawn"
           ],
           "sizeMin": 105,
           "sizeMax": 172,
@@ -3223,7 +3223,7 @@
           "rarity": "purple",
           "weight": 2,
           "timeOfDay": [
-            "night"
+            "dusk"
           ],
           "sizeMin": 105,
           "sizeMax": 172,
@@ -5515,7 +5515,7 @@
           "rarity": "purple",
           "weight": 2,
           "timeOfDay": [
-            "night"
+            "day"
           ],
           "sizeMin": 105,
           "sizeMax": 172,
@@ -6181,7 +6181,7 @@
           "rarity": "purple",
           "weight": 2,
           "timeOfDay": [
-            "night"
+            "dusk"
           ],
           "sizeMin": 105,
           "sizeMax": 172,

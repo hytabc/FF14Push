@@ -61,8 +61,8 @@ async def test_initial_state(auth_client):
     data = (await auth_client.get(f"{API}/farm/state")).json()
     assert data["unlocked"] == 2
     assert data["initialPlots"] == 2
-    assert data["maxPlots"] == 10
-    assert len(data["plots"]) == 10
+    assert data["maxPlots"] == 12
+    assert len(data["plots"]) == 12
     assert [p["locked"] for p in data["plots"][:3]] == [False, False, True]
     assert data["expansionCost"] == CONFIG.farm["expansionCosts"][0]
     assert data["stages"] == 5
@@ -80,7 +80,7 @@ async def test_expand_deducts_gold_and_caps(auth_client, session_factory):
 
     await _set_gold(session_factory, 10_000_000_000)
     gold_before = 10_000_000_000
-    for step in range(8):  # 2 → 10
+    for step in range(10):  # 2 → 12
         resp = await auth_client.post(f"{API}/farm/expand")
         assert resp.status_code == 200, resp.text
         cost = CONFIG.farm["expansionCosts"][step]
@@ -203,7 +203,7 @@ async def test_harvest_empty_plot_rejected(auth_client):
 @pytest.mark.asyncio
 async def test_farm_helpers_expose_config():
     assert farm.initial_plots() == 2
-    assert farm.max_plots() == 10
+    assert farm.max_plots() == 12
     assert farm.stages() == 5
     assert farm.total_seconds() == 3000
     assert farm.expansion_costs() == [int(c) for c in CONFIG.farm["expansionCosts"]]

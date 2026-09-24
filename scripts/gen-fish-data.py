@@ -54,13 +54,13 @@ EXTRA_NORMAL: dict[int, dict[str, Any]] = {
     12: {"blue": [{"name": "雪原鳟", "weather": ["snow"]}, {"name": "霜牙梭子鱼", "weather": ["blizzard"]}],
          "purple": {"name": "冬夜鲟", "timeOfDay": ["night"]}},
     13: {"blue": [{"name": "苍穹旗鱼", "weather": ["wind"]}, {"name": "云海鳟", "weather": ["clouds"]}],
-         "purple": {"name": "龙鳞鱼", "timeOfDay": ["night"]}},
+         "purple": {"name": "龙鳞鱼", "timeOfDay": ["day"]}},
     14: {"blue": [{"name": "云雾鲳", "weather": ["clouds"]}, {"name": "风语鳟", "weather": ["wind"]}],
          "purple": {"name": "天穹水母", "timeOfDay": ["night"]}},
     15: {"blue": [{"name": "苔原鲈", "weather": ["clouds"]}, {"name": "溪谷虹鳟", "weather": ["rain"]}],
          "purple": {"name": "古龙鳕", "timeOfDay": ["night"]}},
     16: {"blue": [{"name": "田园鲫", "weather": ["clear"]}, {"name": "牧草鲑", "weather": ["rain"]}],
-         "purple": {"name": "萤火提灯鱼", "timeOfDay": ["night"]}},
+         "purple": {"name": "萤火提灯鱼", "timeOfDay": ["dawn"]}},
     17: {"blue": [{"name": "高原鳟", "weather": ["clear"]}, {"name": "岩壁鲈", "weather": ["wind"]}],
          "purple": {"name": "翡翠水母", "timeOfDay": ["night"]}},
     18: {"blue": [{"name": "山涧虹鳟", "weather": ["rain"]}, {"name": "峭壁鲶", "weather": ["wind"]}],
@@ -68,7 +68,7 @@ EXTRA_NORMAL: dict[int, dict[str, Any]] = {
     19: {"blue": [{"name": "红玉鲷", "weather": ["clear"]}, {"name": "碧波旗鱼", "weather": ["rain"]}],
          "purple": {"name": "珊瑚夜光鱼", "timeOfDay": ["night"]}},
     20: {"blue": [{"name": "樱花鲑", "weather": ["clear"]}, {"name": "潮汐鲳", "weather": ["thunder"]}],
-         "purple": {"name": "月下章鱼", "timeOfDay": ["night"]}},
+         "purple": {"name": "月下章鱼", "timeOfDay": ["dusk"]}},
     21: {"blue": [{"name": "草原鳟", "weather": ["clear"]}, {"name": "疾风鲈", "weather": ["wind"]}],
          "purple": {"name": "草原夜光鲤", "timeOfDay": ["night"]}},
     22: {"blue": [{"name": "黄金鲹", "weather": ["clear"]}, {"name": "港町鲭", "weather": ["rain"]}],
@@ -94,7 +94,7 @@ EXTRA_NORMAL: dict[int, dict[str, Any]] = {
     32: {"blue": [{"name": "星霜鳕", "weather": ["snow"]}, {"name": "天外鲑", "weather": ["blizzard"]}],
          "purple": {"name": "极星水母", "timeOfDay": ["night"]}},
     33: {"blue": [{"name": "乐园鲷", "weather": ["clear"]}, {"name": "花海鳟", "weather": ["rain"]}],
-         "purple": {"name": "神域灯鱼", "timeOfDay": ["night"]}},
+         "purple": {"name": "神域灯鱼", "timeOfDay": ["day"]}},
     34: {"blue": [{"name": "迷宫鳜", "weather": ["fog"]}, {"name": "幽径鲶", "weather": ["rain"]}],
          "purple": {"name": "幻境水母", "timeOfDay": ["night"]}},
     35: {"blue": [{"name": "图拉尔旗鱼", "weather": ["clear"]}, {"name": "礁湖鲳", "weather": ["rain"]}],
@@ -102,7 +102,7 @@ EXTRA_NORMAL: dict[int, dict[str, Any]] = {
     36: {"blue": [{"name": "雨林象鱼", "weather": ["rain"]}, {"name": "藤桥鲶", "weather": ["thunder"]}],
          "purple": {"name": "密林幽光鱼", "timeOfDay": ["night"]}},
     37: {"blue": [{"name": "遗迹鲈", "weather": ["dust"]}, {"name": "王墓鳅", "weather": ["heat"]}],
-         "purple": {"name": "王都夜光鱼", "timeOfDay": ["night"]}},
+         "purple": {"name": "王都夜光鱼", "timeOfDay": ["dusk"]}},
     38: {"blue": [{"name": "熔岩鳟", "weather": ["heat"]}, {"name": "火山鲶", "weather": ["clear"]}],
          "purple": {"name": "熔核水母", "timeOfDay": ["night"]}},
     39: {"blue": [{"name": "王都鲷", "weather": ["clear"]}, {"name": "护城旗鱼", "weather": ["clouds"]}],
@@ -297,6 +297,28 @@ def build() -> dict[str, Any]:
                 assert w in weather_keys[rid], f"地区 {rid} 无天气 {w}"
             for req in s["intuition"]["requires"]:
                 assert req["fishId"] in all_ids, f"{s['id']} 前置引用不存在：{req['fishId']}"
+
+    # ── 校验：特殊鱼的天气 / 时段门槛必须与每条前置鱼可同时命中 ──
+    # 前置计数只在特殊鱼自身的门槛窗口内累计（services/fishing.py::_advance_intuition），
+    # 两者互斥（如困难鱼要求白昼、其前置紫鱼只在深夜）则该鱼永远无法触发。
+    gate_by_id: dict[str, tuple[list[str] | None, list[str] | None]] = {
+        f["id"]: (f.get("weather"), f.get("timeOfDay"))
+        for region in regions_out
+        for f in [*region["normal"], *region["specials"]]
+    }
+
+    def _overlaps(a: list[str] | None, b: list[str] | None) -> bool:
+        return not a or not b or bool(set(a) & set(b))
+
+    for region in regions_out:
+        for s in region["specials"]:
+            for req in s["intuition"]["requires"]:
+                pw, pt = gate_by_id[req["fishId"]]
+                assert _overlaps(s.get("weather"), pw) and _overlaps(s.get("timeOfDay"), pt), (
+                    f"{s['id']} 与前置 {req['fishId']} 的天气/时段窗口互斥，永远无法触发"
+                    f"（{s['id']}: weather={s.get('weather')} timeOfDay={s.get('timeOfDay')}；"
+                    f"前置: weather={pw} timeOfDay={pt}）"
+                )
 
     return {
         "$comment": (

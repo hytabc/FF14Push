@@ -8,7 +8,14 @@ export interface Snapshot {
   items: { id: number; slot: string; rarity: string }[]
 }
 export interface Registration { id: number; userId: number; kind: string; snapshot: Snapshot }
-export interface Roster { activeHeroId: number | null; capacity: number; heroes: (Hero & { id: number; loadout: Record<string, Item> })[] }
+export interface Roster {
+  activeHeroId: number | null
+  capacity: number
+  maxCapacity: number
+  /** 再开一席的金币价格；已达上限为 null。 */
+  expandCost: number | null
+  heroes: (Hero & { id: number; loadout: Record<string, Item> })[]
+}
 export interface Dungeon {
   id: string; name: string; difficulty: string; requiredLevel: number; seats: number
   prerequisite: string | null; enrageSeconds: number

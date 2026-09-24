@@ -9,6 +9,7 @@ import {
   respawnIn,
   rewardTier,
   reviveIn,
+  tierProgress,
   weaknessHint,
   type WorldBossRewardTier,
   type WorldBossRules,
@@ -76,6 +77,12 @@ describe('世界BOSS 前端辅助', () => {
     expect(weaknessHint(90, RULES)).toContain('×0.55')
   })
 
+  it('紧凑削弱提示：省略括注，满级只显示「满级」（供上阵卡片使用）', () => {
+    expect(weaknessHint(100, RULES, true)).toBe('满级')
+    expect(weaknessHint(80, RULES, true)).toBe('削弱 ×0.10')
+    expect(weaknessHint(90, RULES, true)).toBe('削弱 ×0.55')
+  })
+
   it('讨伐周期倒计时按服务端 epoch 秒计算，不为负', () => {
     expect(periodIn(1_000, 400)).toBe(600)
     expect(periodIn(1_000, 1_000)).toBe(0)
@@ -91,5 +98,48 @@ describe('世界BOSS 前端辅助', () => {
     expect(nextRewardTier(0, TIERS)?.minDamage).toBe(5_000_000)
     expect(nextRewardTier(5_000_000, TIERS)?.minDamage).toBe(50_000_000)
     expect(nextRewardTier(200_000_000, TIERS)).toBeNull()
+  })
+})
+
+describe('世界BOSS 档位进度', () => {
+  it('未达首档：从 0 起算，next 指向首档', () => {
+    const p = tierProgress(0, TIERS)
+    expect(p.current).toBeNull()
+    expect(p.next?.minDamage).toBe(5_000_000)
+    expect(p.floor).toBe(0)
+    expect(p.fraction).toBe(0)
+    expect(p.remaining).toBe(5_000_000)
+  })
+
+  it('档内线性推进（首档 + 到二档的一半 = 50%）', () => {
+    const p = tierProgress(5_000_000 + 22_500_000, TIERS)
+    expect(p.current?.items).toBe(1)
+    expect(p.next?.items).toBe(2)
+    expect(p.fraction).toBeCloseTo(0.5, 6)
+    expect(p.remaining).toBe(22_500_000)
+  })
+
+  it('恰好到档：进度归零、current 前进一档', () => {
+    const p = tierProgress(50_000_000, TIERS)
+    expect(p.current?.items).toBe(2)
+    expect(p.next?.items).toBe(4)
+    expect(p.floor).toBe(50_000_000)
+    expect(p.fraction).toBe(0)
+  })
+
+  it('封顶：无下一档，进度为 1、remaining 为 0', () => {
+    const p = tierProgress(999_999_999, TIERS)
+    expect(p.current?.items).toBe(4)
+    expect(p.next).toBeNull()
+    expect(p.fraction).toBe(1)
+    expect(p.remaining).toBe(0)
+  })
+
+  it('空档位表不崩：全部为 null / 进度 1', () => {
+    const p = tierProgress(123, [])
+    expect(p.current).toBeNull()
+    expect(p.next).toBeNull()
+    expect(p.fraction).toBe(1)
+    expect(p.remaining).toBe(0)
   })
 })

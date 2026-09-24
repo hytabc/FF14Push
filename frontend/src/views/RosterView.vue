@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { jobName } from '@/utils/format'
+import { formatNumber, jobName } from '@/utils/format'
 import { onMounted, ref } from 'vue'
 import data from '@shared/schema'
 import { http, toApiError } from '@/api/client'
@@ -7,7 +7,7 @@ import { useGameStore } from '@/stores/game'
 import type { Roster } from '@/game/multiplayer'
 import Modal from '@/components/Modal.vue'
 const game = useGameStore()
-const roster = ref<Roster | null>(null), error = ref(''), busy = ref(false), dismissId = ref<number | null>(null)
+const roster = ref<Roster | null>(null), error = ref(''), busy = ref(false), dismissId = ref<number | null>(null), expandOpen = ref(false)
 const selectedItems = ref<Record<number, number>>({}), selectedSlots = ref<Record<number, string>>({})
 async function load() { roster.value = (await http.get<Roster>('/heroes')).data; await game.loadState() }
 async function act(fn: () => Promise<unknown>) {
@@ -18,13 +18,27 @@ async function switchHero(id: number) {
   await act(async () => { await game.stopBattle(true); await game.stopRaid(true); await http.post('/heroes/switch', { heroId: id }) })
 }
 async function dismiss() { if (dismissId.value !== null) await act(() => http.delete(`/heroes/${dismissId.value}`)); dismissId.value = null }
+async function expand() { expandOpen.value = false; await act(() => http.post('/heroes/expand', {})) }
 onMounted(() => act(load))
 </script>
 <template>
   <main class="dlc">
-    <header><p class="eyebrow">八英雄远征 · 英雄名册</p><h1>你的远征队 <small>{{ roster?.heroes.length ?? 0 }} / 8</small></h1>
+    <header><p class="eyebrow">八英雄远征 · 英雄名册</p><h1>你的远征队 <small>{{ roster?.heroes.length ?? 0 }} / {{ roster?.capacity ?? 0 }}</small></h1>
       <p>每名英雄独立成长与配装。日常只有当前英雄练级；装备脱下后可转交。</p><RouterLink to="/tavern">前往酒馆招募 →</RouterLink></header>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <section v-if="roster" class="panel">
+      <h2>远征队席位 <small>{{ roster.capacity }} / {{ roster.maxCapacity }}</small></h2>
+      <p>席位决定可同时拥有的英雄数量。可用金币扩充，每多开一席价格更高（线性递增）。</p>
+      <button
+        v-if="roster.expandCost !== null"
+        :disabled="busy || game.gold < roster.expandCost"
+        :title="game.gold < roster.expandCost ? '金币不足' : ''"
+        @click="expandOpen = true"
+      >
+        扩充一席 · {{ formatNumber(roster.expandCost) }} 金币
+      </button>
+      <p v-else>已达上限 {{ roster.maxCapacity }} 席。</p>
+    </section>
     <div class="cards">
       <article v-for="h in roster?.heroes" :key="h.id" class="panel">
         <h2>{{ h.name }} <small>Lv.{{ h.level }}</small></h2><p>{{ jobName(h.jobId) }} · {{ h.talentName }} · 经验 {{ h.exp }}</p>
@@ -55,5 +69,9 @@ onMounted(() => act(load))
       </article>
     </div>
     <Modal :open="dismissId !== null" title="确认解雇英雄" @close="dismissId = null"><p>该英雄等级与经验将永久删除，穿戴装备回到共享背包。</p><template #footer><button @click="dismissId = null">取消</button><button :disabled="busy" @click="dismiss">确认解雇</button></template></Modal>
+    <Modal :open="expandOpen" title="扩充远征队席位" @close="expandOpen = false">
+      <p>将花费 <b>{{ formatNumber(roster?.expandCost ?? 0) }}</b> 金币，把远征队席位从 {{ roster?.capacity }} 扩充到 {{ (roster?.capacity ?? 0) + 1 }} 席（持有 💰 {{ game.gold.toLocaleString() }}）。</p>
+      <template #footer><button @click="expandOpen = false">取消</button><button :disabled="busy" @click="expand">确认扩充</button></template>
+    </Modal>
   </main>
 </template>

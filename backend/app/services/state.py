@@ -31,6 +31,7 @@ from app.services.materia import socket_mods as materia_socket_mods
 from app.services.progression import exp_to_next, highest_hero_level
 from app.services.recruiting import initial_hero, recruit_cost, with_recruit_cost
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
+from app.services.roster import hero_capacity, hero_expand_cost, max_hero_capacity
 from app.services.serialization import hero_to_dict, item_to_dict, loadout, tag_to_dict
 from app.services.stats import compute_stats, compute_stats_with_breakdown
 from app.services.qualification import region_access
@@ -162,6 +163,11 @@ async def build_game_state(
         "loadout": loadout(items, hero.id),
         "activeHeroId": user.active_hero_id,
         "heroes": [hero_to_dict(h, compute_stats(h, items, socket_mods)) for h in (await db.scalars(select(Hero).where(Hero.user_id == user.id).order_by(Hero.id))).all()],
+        "roster": {
+            "capacity": hero_capacity(user),
+            "maxCapacity": max_hero_capacity(),
+            "expandCost": hero_expand_cost(hero_capacity(user)),
+        },
         "items": [item_to_dict(item, sell_price_range(item)) for item in items],
         "itemCounts": count_by_rarity(items),
         "tags": [tag_to_dict(t) for t in tag_rows],

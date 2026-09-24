@@ -1,22 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import { http, toApiError } from '@/api/client'
+import BossFigure from '@/components/BossFigure.vue'
+import InfoTip from '@/components/InfoTip.vue'
+import ItemIcon from '@/components/ItemIcon.vue'
 import JobIcon from '@/components/JobIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { sound } from '@/game/audio'
 import { useAuthStore } from '@/stores/auth'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
-import { jobName, formatNumber } from '@/utils/format'
+import { jobName, formatNumber, rarityClass, rarityName } from '@/utils/format'
 import {
   mergeEvents,
-  nextRewardTier,
   periodIn,
   respawnIn,
-  rewardTier,
   reviveIn,
+  tierProgress,
   weaknessHint,
   type WorldBossLeaderboard,
   type WorldBossLeaderboardEntry,
@@ -38,6 +40,8 @@ const detail = ref<WorldBossLeaderboardEntry | null>(null)
 const error = ref('')
 const notice = ref('')
 const busy = ref(false)
+/** 首次载入骨架屏。 */
+const loading = ref(true)
 const tick = ref(0)
 
 /** 榜单展开：各英雄占比条的颜色（按名次轮换）。 */
@@ -93,25 +97,91 @@ const periodLeft = computed(() => {
   return boss.value ? periodIn(boss.value.periodEndsAt, Date.now() / 1000) : 0
 })
 const rewardTiers = computed(() => state.value?.reward.tiers ?? [])
-/** 名次加成表（按名次升序，用于说明文案）。 */
+/** 名次加成表（按名次升序，用于规则说明）。 */
 const rankBonusList = computed(() => {
   const table = state.value?.reward.rankBonus ?? {}
   return Object.keys(table)
     .map((key) => ({ rank: Number(key), items: table[key] }))
     .sort((a, b) => a.rank - b.rank)
 })
-/** 我的周期档位进度（档位只看个人累计伤害，与他人无关）。 */
-const myProgress = computed(() => {
-  const damage = state.value?.myDamage ?? 0
-  const tiers = rewardTiers.value
-  const next = nextRewardTier(damage, tiers)
+/** 我的周期累计伤害（档位只看它，与他人无关）。 */
+const myDamage = computed(() => state.value?.myDamage ?? 0)
+/** 我的档位进度（进度条与文案同源）。 */
+const progress = computed(() => tierProgress(myDamage.value, rewardTiers.value))
+/** 榜单首名伤害：行内伤害条按此归一化。 */
+const topDamage = computed(() => {
+  const entries = leaderboard.value?.entries ?? []
+  return entries.length ? Math.max(...entries.map((e) => e.damage)) : 0
+})
+
+/** BOSS 关键数值（拆成「标签 + 数值」，不再写成整句）。 */
+const bossStats = computed(() => {
+  const b = boss.value
+  if (!b) return []
+  return [
+    { label: '攻击力', value: formatNumber(b.attack) },
+    { label: '技能间隔', value: `${b.skillIntervalSeconds} 秒` },
+    { label: '英雄复活', value: `${b.reviveSeconds} 秒` },
+  ]
+})
+
+// ---- 版面说明（原本铺在版面上的整段文字，收进「?」说明卡） ----
+
+const phaseInfo = computed(() => {
+  const b = boss.value
+  if (!b) return { title: '阶段机制', lines: [] as string[] }
   return {
-    damage,
-    items: rewardTier(damage, tiers)?.items ?? 0,
-    nextDamage: next?.minDamage ?? null,
-    remaining: next ? Math.max(0, next.minDamage - damage) : 0,
+    title: `阶段 P${b.phase} · ${b.phaseName}`,
+    lines: [
+      `全服剩余血量越低，BOSS 防御越厚、技能越强：`,
+      `英雄输出 ×${(1 / (b.defenseMultiplier || 1)).toFixed(2)}（防御 ×${b.defenseMultiplier}）`,
+      `BOSS 技能威力 ×${b.skillPotencyMultiplier}（普攻不受影响）`,
+      ...(state.value?.phases ?? []).map(
+        (p) => `P${p.id} ${p.name}：血量 ≤ ${(p.minHpRatio * 100).toFixed(0)}% → 防御 ×${p.defenseMultiplier} · 技能 ×${p.skillPotencyMultiplier}`,
+      ),
+    ],
   }
 })
+
+const progressInfo = {
+  title: '我的本周期进度',
+  lines: [
+    '档位只看你自己的周期累计伤害，与他人无关：达到阈值即拿对应基础件数（保底）。',
+    '名次加成按榜单排名额外发放，仅前 10 名。',
+  ],
+}
+
+const deployInfo = computed(() => ({
+  title: '上阵规则',
+  lines: [
+    `每周期最多上阵 ${rules.value.heroSlots} 名英雄，需 Lv.${rules.value.levelRequirement} 以上。`,
+    `${rules.value.levelRequirement}–${rules.value.fullPowerLevel - 1} 级英雄会被削弱，达到 Lv.${rules.value.fullPowerLevel} 才不受影响。`,
+    '周期内 BOSS 可反复讨伐；奖励只看你自己的周期累计伤害，别人打得再快也不影响你的奖励。',
+  ],
+}))
+
+const leaderboardInfo = computed(() => ({
+  title: '本周期伤害榜',
+  lines: [
+    `周期累计伤害 ≥ ${formatNumber(leaderboard.value?.minDamage ?? 0)} 才能入榜并参与奖励。`,
+    '奖励件数 = 档位件数（按周期累计伤害）+ 名次加成（仅前 10 名）。',
+    '点击任一行可查看该玩家各英雄的伤害与占比。',
+  ],
+}))
+
+// ---- 无障碍播报：阶段 / 存亡变化（倒计时本身不进 live region，避免每秒刷屏） ----
+const announcement = ref('')
+const bossStatusKey = computed(() => (boss.value ? `${boss.value.status}:${boss.value.phase}` : ''))
+watch(
+  bossStatusKey,
+  (next, prev) => {
+    const b = boss.value
+    if (!prev || !b || next === prev) return
+    announcement.value =
+      b.status === 'alive' ? `BOSS 进入第 ${b.phase} 阶段 · ${b.phaseName}` : 'BOSS 已被击破，进入休整'
+  },
+  { immediate: true },
+)
 
 /** 秒数 → 人类可读时长（用于周期倒计时）。 */
 function durationText(seconds: number): string {
@@ -121,6 +191,27 @@ function durationText(seconds: number): string {
   if (hours) return `${hours} 小时 ${minutes} 分`
   if (minutes) return `${minutes} 分 ${total % 60} 秒`
   return `${total} 秒`
+}
+
+/** 英雄血量占比（0-100）。 */
+function hpPctOf(hero: { hp: number; maxHp: number }): number {
+  return hero.maxHp > 0 ? Math.max(0, Math.min(100, (hero.hp / hero.maxHp) * 100)) : 0
+}
+
+/** 该英雄本场输出占全队输出的比例（0-100）。 */
+function heroShare(damage: number): number {
+  const total = session.value?.damageDealt ?? 0
+  return total > 0 ? Math.max(0, Math.min(100, (damage / total) * 100)) : 0
+}
+
+/** 榜单行伤害条宽度（相对首名归一化，最少 2% 以保证可见）。 */
+function damageShare(damage: number): number {
+  return topDamage.value > 0 ? Math.max(2, Math.min(100, (damage / topDamage.value) * 100)) : 0
+}
+
+/** 上阵顺序（1-based；未选中为 0）。 */
+function selectedIndex(heroId: number): number {
+  return selected.value.indexOf(heroId) + 1
 }
 
 async function act(fn: () => Promise<unknown>) {
@@ -249,6 +340,8 @@ onMounted(() => {
     await game.loadState()
     await load()
     await connect()
+  }).finally(() => {
+    loading.value = false
   })
   interval = setInterval(() => void heartbeat(), 5000)
   clock = setInterval(() => (tick.value += 1), 1000)
@@ -263,266 +356,439 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="space-y-4">
-    <header class="flex flex-wrap items-end gap-3">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-ink-400">全服共享血量 · 世界BOSS</p>
-        <h1 class="text-xl font-bold text-amber-200">{{ boss?.name ?? '世界BOSS' }}</h1>
+  <main class="space-y-6">
+    <p v-if="error" role="alert" class="rounded-lg bg-rose-500/15 px-4 py-3 text-sm text-rose-200">{{ error }}</p>
+    <p v-if="notice" role="status" class="rounded-lg bg-amber-500/15 px-4 py-3 text-sm text-amber-200">{{ notice }}</p>
+
+    <!-- 首次载入：骨架屏（避免空壳数字） -->
+    <template v-if="loading && !state">
+      <section class="card h-48 animate-pulse p-6">
+        <div class="h-6 w-48 rounded bg-ink-700"></div>
+        <div class="mt-4 h-3 w-2/3 rounded bg-ink-700"></div>
+        <div class="mt-8 h-6 w-full rounded bg-ink-700"></div>
+      </section>
+      <div class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <div class="space-y-6">
+          <section class="card h-36 animate-pulse"></section>
+          <section class="card h-52 animate-pulse"></section>
+        </div>
+        <section class="card h-72 animate-pulse"></section>
       </div>
-      <span v-if="boss" class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-300">第 {{ boss.cycle }} 周期</span>
-      <span v-if="boss" class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-300">
-        本周期已讨伐 {{ boss.kills }} 次 · 剩余 {{ durationText(periodLeft) }}
-      </span>
-      <span
-        v-if="boss"
-        class="rounded px-2 py-1 text-xs"
-        :class="boss.status === 'alive' ? 'bg-emerald-500/20 text-emerald-200' : 'bg-amber-500/20 text-amber-200'"
-      >
-        {{ boss.status === 'alive' ? '讨伐中' : `休整中 · ${respawnLeft}s 后重生` }}
-      </span>
-    </header>
+    </template>
 
-    <p v-if="error" role="alert" class="rounded bg-rose-500/15 px-3 py-2 text-sm text-rose-200">{{ error }}</p>
-    <p v-if="notice" role="status" class="rounded bg-amber-500/15 px-3 py-2 text-sm text-amber-200">{{ notice }}</p>
+    <template v-else>
+      <!-- ① BOSS 主视觉带 -->
+      <section class="card relative overflow-hidden">
+        <div class="pointer-events-none absolute -bottom-16 -right-12 h-80 w-80 rounded-full bg-amber-500/15 blur-3xl"></div>
 
-    <div class="grid gap-4 lg:grid-cols-[2fr_1fr]">
-      <div class="space-y-4">
-        <!-- BOSS 血量 / 阶段 -->
-        <section class="panel space-y-2">
-          <div class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-            <div class="flex items-center gap-2">
-              <strong class="text-rose-200">{{ boss?.name ?? '—' }}</strong>
-              <span
-                v-if="boss"
-                class="rounded px-2 py-0.5 text-xs"
-                :class="boss.phase >= 3 ? 'bg-rose-500/25 text-rose-200' : boss.phase === 2 ? 'bg-amber-500/25 text-amber-200' : 'bg-ink-700 text-ink-200'"
-              >
-                P{{ boss.phase }} · {{ boss.phaseName }}
-              </span>
+        <div class="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:gap-6">
+          <div class="min-w-0 flex-1 space-y-5">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h1 class="text-2xl font-bold text-amber-200">{{ boss?.name ?? '世界BOSS' }}</h1>
+                  <span
+                    v-if="boss"
+                    class="rounded px-2 py-0.5 text-xs font-medium"
+                    :class="boss.phase >= 3 ? 'bg-rose-500/25 text-rose-100' : boss.phase === 2 ? 'bg-amber-500/25 text-amber-100' : 'bg-ink-700 text-white'"
+                  >
+                    P{{ boss.phase }} · {{ boss.phaseName }}
+                  </span>
+                  <InfoTip :title="phaseInfo.title">
+                    <p v-for="(line, i) in phaseInfo.lines" :key="i" class="font-mono">{{ line }}</p>
+                  </InfoTip>
+                </div>
+                <p v-if="boss" class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-400">
+                  <span>第 {{ boss.cycle }} 周期</span>
+                  <span>本周期已讨伐 {{ boss.kills }} 次</span>
+                  <span :class="boss.status === 'alive' ? 'text-emerald-300' : 'text-amber-300'">
+                    {{ boss.status === 'alive' ? '讨伐中' : `休整中 · ${respawnLeft}s 后重生` }}
+                  </span>
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-ink-400">周期剩余</p>
+                <p class="font-mono text-lg text-amber-200">{{ durationText(periodLeft) }}</p>
+              </div>
             </div>
-            <span class="font-mono text-ink-300">
-              {{ formatNumber(boss?.hp ?? 0) }} / {{ formatNumber(boss?.maxHp ?? 0) }}
-            </span>
+
+            <!-- 共享血量条：分段 + 阶段刻度 -->
+            <div class="space-y-1.5">
+              <div class="flex items-end justify-between gap-2">
+                <span class="text-xs text-ink-400">全服共享血量</span>
+                <span class="font-mono text-sm text-ink-200">
+                  {{ formatNumber(boss?.hp ?? 0) }}
+                  <span class="text-ink-400">/ {{ formatNumber(boss?.maxHp ?? 0) }}</span>
+                  <span class="ml-2 text-rose-200">{{ hpPct.toFixed(1) }}%</span>
+                </span>
+              </div>
+              <div class="relative pb-4">
+                <div
+                  class="relative h-6 overflow-hidden rounded-full bg-ink-950/80 ring-1 ring-ink-700"
+                  role="progressbar"
+                  aria-label="全服共享血量"
+                  :aria-valuemin="0"
+                  :aria-valuemax="boss?.maxHp ?? 0"
+                  :aria-valuenow="boss?.hp ?? 0"
+                >
+                  <div
+                    class="h-full rounded-full bg-gradient-to-r from-rose-700 via-rose-500 to-rose-400 shadow-lg shadow-rose-500/30 transition-all duration-500"
+                    :style="{ width: `${hpPct}%` }"
+                  />
+                  <span
+                    v-for="p in phaseMarks"
+                    :key="p.id"
+                    class="absolute inset-y-0 w-px bg-white/50"
+                    :style="{ left: `${p.minHpRatio * 100}%` }"
+                  />
+                </div>
+                <span
+                  v-for="p in phaseMarks"
+                  :key="`tick-${p.id}`"
+                  class="absolute bottom-0 -translate-x-1/2 font-mono text-[10px] text-ink-400"
+                  :style="{ left: `${p.minHpRatio * 100}%` }"
+                >
+                  P{{ p.id + 1 }}
+                </span>
+              </div>
+            </div>
+
+            <dl class="grid grid-cols-2 gap-3 border-t border-ink-700/60 pt-4 sm:grid-cols-4">
+              <div v-for="s in bossStats" :key="s.label">
+                <dt class="text-[11px] text-ink-400">{{ s.label }}</dt>
+                <dd class="font-mono text-sm text-white">{{ s.value }}</dd>
+              </div>
+              <div>
+                <dt class="text-[11px] text-ink-400">本周期讨伐</dt>
+                <dd class="font-mono text-sm text-white">{{ boss?.kills ?? 0 }} 次</dd>
+              </div>
+            </dl>
+
+            <p v-if="boss && boss.status !== 'alive'" class="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              BOSS 正在重整旗鼓，{{ respawnLeft }} 秒后重生；此刻进场后会自动开战。
+            </p>
           </div>
-          <div class="relative h-4 w-full overflow-hidden rounded bg-ink-800">
-            <div class="h-full bg-rose-500 transition-all" :style="{ width: `${hpPct}%` }" />
-            <!-- 阶段分界（P2/P3 进入点） -->
-            <span
-              v-for="p in phaseMarks"
-              :key="p.id"
-              class="absolute top-0 h-full w-px bg-white/50"
-              :style="{ left: `${p.minHpRatio * 100}%` }"
-              :title="`${p.name}：血量 ≤ ${(p.minHpRatio * 100).toFixed(0)}%`"
+
+          <div class="hidden h-40 shrink-0 sm:block lg:h-56">
+            <BossFigure
+              :boss-key="boss?.key"
+              :name="boss?.name ?? '世界BOSS'"
+              class="brightness-110 contrast-105 drop-shadow-[0_10px_28px_rgba(0,0,0,0.65)]"
             />
           </div>
-          <p class="text-xs text-ink-400">
-            攻击力 {{ formatNumber(boss?.attack ?? 0) }} · 每 {{ boss?.skillIntervalSeconds ?? 6 }} 秒随机释放技能 ·
-            英雄死亡后 {{ boss?.reviveSeconds ?? 10 }} 秒独立复活
-          </p>
-          <p v-if="boss" class="text-xs text-ink-400">
-            当前阶段：英雄输出 ×{{ (1 / (boss.defenseMultiplier || 1)).toFixed(2) }}（防御 ×{{ boss.defenseMultiplier }}） ·
-            BOSS 技能威力 ×{{ boss.skillPotencyMultiplier }}（普攻不变）
-          </p>
-          <div class="flex flex-wrap gap-2 text-[11px] text-ink-400">
-            <span v-for="p in state?.phases ?? []" :key="p.id" class="rounded bg-ink-800 px-2 py-0.5">
-              P{{ p.id }} {{ p.name }}：血量 ≤ {{ (p.minHpRatio * 100).toFixed(0) }}% · 防御 ×{{ p.defenseMultiplier }} · 技能 ×{{ p.skillPotencyMultiplier }}
-            </span>
-          </div>
-        </section>
+        </div>
+      </section>
+      <p role="status" aria-live="polite" class="sr-only">{{ announcement }}</p>
 
-        <!-- 我的周期进度（档位只看个人累计伤害，与他人无关） -->
-        <section class="panel space-y-2">
-          <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 class="font-semibold">我的本周期进度</h2>
-            <span class="text-xs text-ink-400">周期剩余 {{ durationText(periodLeft) }}</span>
-          </div>
-          <p class="text-sm text-ink-300">
-            本周期累计伤害 <span class="font-mono text-amber-200">{{ formatNumber(myProgress.damage) }}</span>
-            <template v-if="myProgress.items">
-              · 当前档位 <span class="text-amber-200">{{ myProgress.items }} 件</span>
-            </template>
-            <template v-else>
-              · <span class="text-ink-400">未达保底门槛 {{ formatNumber(leaderboard?.minDamage ?? 0) }}</span>
-            </template>
-          </p>
-          <p v-if="myProgress.nextDamage" class="text-xs text-ink-400">
-            距下一档（累计 {{ formatNumber(myProgress.nextDamage) }}）还差 {{ formatNumber(myProgress.remaining) }}
-          </p>
-          <p v-else-if="myProgress.items" class="text-xs text-emerald-300">已达最高档位。</p>
-        </section>
-
-        <!-- 上阵 / 战斗 -->
-        <section v-if="!session" class="panel space-y-3">
-          <div class="flex items-center justify-between">
-            <h2 class="font-semibold">上阵英雄（最多 {{ rules.heroSlots }} 名 · 需 Lv.{{ rules.levelRequirement }} 以上）</h2>
-            <button
-              class="rounded bg-amber-500/90 px-3 py-1.5 text-sm font-semibold text-ink-950 disabled:opacity-40"
-              :disabled="busy || !selected.length"
-              @click="enter"
-            >
-              进入战场（{{ selected.length }}）
-            </button>
-          </div>
-          <p v-if="boss && boss.status !== 'alive'" class="text-xs text-amber-300">
-            BOSS 正在重整旗鼓，{{ respawnLeft }} 秒后重生；此刻进场后会自动开战。
-          </p>
-          <p class="text-xs text-ink-400">
-            本周期内 BOSS 可反复讨伐；奖励只看你自己的周期累计伤害，别人打得再快也不影响你的奖励。
-          </p>
-          <p class="text-xs text-ink-400">
-            {{ rules.levelRequirement }}–{{ rules.fullPowerLevel - 1 }} 级英雄会被严重削弱，达到 Lv.{{ rules.fullPowerLevel }} 才不受影响。
-          </p>
-          <div v-if="!eligible.length" class="text-sm text-ink-400">
-            没有符合条件的英雄：需达到 Lv.{{ rules.levelRequirement }}。可前往「名册 / 酒馆」培养。
-          </div>
-          <div v-else class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            <button
-              v-for="h in eligible"
-              :key="h.id"
-              class="flex items-center gap-2 rounded border px-3 py-2 text-left text-sm transition"
-              :class="selected.includes(h.id) ? 'border-amber-400 bg-amber-500/10' : 'border-ink-700 hover:border-ink-500'"
-              :disabled="busy"
-              @click="toggle(h.id)"
-            >
-              <JobIcon :job-id="h.jobId" :size="20" />
-              <span class="min-w-0 flex-1">
-                <span class="block truncate">{{ h.name }} · Lv.{{ h.level }}</span>
-                <span class="block truncate text-xs text-ink-400">{{ jobName(h.jobId) }} · {{ weaknessHint(h.level, rules) }}</span>
-              </span>
-            </button>
-          </div>
-        </section>
-
-        <template v-else>
-          <section class="panel space-y-2">
-            <div class="flex items-center justify-between">
-              <h2 class="font-semibold">战斗进行中</h2>
-              <button class="rounded border border-ink-600 px-3 py-1 text-sm" :disabled="busy" @click="leave">撤离</button>
-            </div>
-            <p class="text-xs text-ink-400">
-              已战斗 {{ (session.elapsedMs / 1000).toFixed(0) }} 秒 · 本场输出 {{ formatNumber(session.damageDealt) }} ·
-              本轮累计 {{ formatNumber(state?.myDamage ?? 0) }}
-            </p>
-          </section>
-
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <article v-for="h in session.heroes" :key="h.slot" class="panel space-y-1 text-sm">
-              <div class="flex items-center gap-2">
-                <JobIcon :job-id="h.jobId" :size="20" />
-                <span class="min-w-0 flex-1 truncate">{{ h.name }}</span>
-                <span class="text-xs text-ink-400">Lv.{{ h.level }}</span>
+      <div class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <div class="space-y-6">
+          <!-- ② 我的周期进度 -->
+          <section class="card space-y-4 p-6">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-1">
+                <h2 class="text-sm font-semibold text-white">我的本周期进度</h2>
+                <InfoTip :title="progressInfo.title">
+                  <p v-for="(line, i) in progressInfo.lines" :key="i">{{ line }}</p>
+                </InfoTip>
               </div>
-              <div class="h-2 w-full overflow-hidden rounded bg-ink-800">
+              <span class="text-xs text-ink-400">周期剩余 {{ durationText(periodLeft) }}</span>
+            </div>
+
+            <div class="flex flex-wrap items-end justify-between gap-3">
+              <p class="text-sm text-ink-200">
+                累计伤害 <span class="font-mono text-xl text-amber-200">{{ formatNumber(myDamage) }}</span>
+              </p>
+              <span v-if="progress.current" class="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-100">
+                当前档位 {{ progress.current.items }} 件
+              </span>
+              <span v-else class="rounded bg-ink-700 px-2 py-1 text-xs text-ink-400">
+                未达保底 {{ formatNumber(leaderboard?.minDamage ?? 0) }}
+              </span>
+            </div>
+
+            <div class="space-y-2">
+              <div
+                class="h-3 overflow-hidden rounded-full bg-ink-950/70 ring-1 ring-ink-700"
+                role="progressbar"
+                aria-label="距下一档进度"
+                :aria-valuemin="0"
+                :aria-valuemax="100"
+                :aria-valuenow="Math.round(progress.fraction * 100)"
+              >
                 <div
-                  class="h-full transition-all"
-                  :class="h.hp > 0 ? 'bg-emerald-500' : 'bg-ink-600'"
-                  :style="{ width: `${h.maxHp > 0 ? Math.max(0, (h.hp / h.maxHp) * 100) : 0}%` }"
+                  class="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
+                  :style="{ width: `${progress.fraction * 100}%` }"
                 />
               </div>
-              <div class="flex justify-between text-xs text-ink-400">
-                <span>HP {{ formatNumber(Math.round(h.hp)) }}</span>
-                <span v-if="h.hp <= 0" class="text-rose-300">复活 {{ reviveIn(h.deadUntil, session.elapsedMs) }}s</span>
-                <span v-else>MP {{ Math.round(h.mp) }}</span>
+              <div class="flex justify-between gap-2 font-mono text-[11px] text-ink-400">
+                <span>{{ formatNumber(progress.floor) }}</span>
+                <span v-if="progress.next">距下一档 {{ formatNumber(progress.remaining) }} → {{ formatNumber(progress.next.minDamage) }}</span>
+                <span v-else class="text-emerald-300">已达最高档位</span>
               </div>
-              <div class="flex justify-between text-xs text-ink-400">
-                <span>输出 {{ formatNumber(h.damage) }}</span>
-                <span>倒下 {{ h.deaths }}</span>
-              </div>
-            </article>
-          </div>
+            </div>
 
-          <section class="panel space-y-1">
-            <h2 class="font-semibold">BOSS 技能</h2>
-            <p v-if="!bossSkills.length" class="text-sm text-ink-400">尚未释放技能。</p>
-            <ul class="space-y-0.5 text-sm">
-              <li v-for="e in bossSkills" :key="e.seq" class="animate-rise text-rose-200">
-                <span class="font-mono text-xs text-ink-500">[{{ (e.at / 1000).toFixed(1) }}s]</span> {{ e.text }}
-              </li>
-            </ul>
-          </section>
-        </template>
-
-        <!-- 结算领取 -->
-        <section v-if="state?.unclaimedCycle" class="panel space-y-2">
-          <h2 class="font-semibold text-amber-200">上周期已结算（第 {{ state.unclaimedCycle }} 周期）</h2>
-          <p class="text-sm text-ink-300">
-            你的周期累计伤害 {{ formatNumber(state.myDamage) }}，可按「档位 + 名次加成」领取「绝境龙神」系列装备。
-          </p>
-          <button
-            class="rounded bg-amber-500/90 px-3 py-1.5 text-sm font-semibold text-ink-950 disabled:opacity-40"
-            :disabled="busy || !!receipt"
-            @click="claim"
-          >
-            {{ receipt ? '已领取' : '领取奖励' }}
-          </button>
-          <p v-if="receipt" class="text-sm text-emerald-200">
-            第 {{ receipt.rank }} 名 · 档位 {{ receipt.tierItems }} 件 + 名次加成 {{ receipt.rankBonus }} 件 = {{ receipt.items }} 件绝境龙神装备
-          </p>
-          <ul v-if="receipt" class="max-h-40 space-y-0.5 overflow-auto text-xs text-ink-300">
-            <li v-for="it in receipt.grants.items" :key="it.id">{{ it.name }}（{{ it.rarity }}）</li>
-          </ul>
-        </section>
-      </div>
-
-      <!-- 侧边：本周期伤害榜 -->
-      <aside class="space-y-3">
-        <section class="panel space-y-2">
-          <div class="flex items-baseline justify-between">
-            <h2 class="font-semibold">本周期伤害榜</h2>
-            <span class="text-xs text-ink-400">第 {{ leaderboard?.cycle ?? boss?.cycle ?? 1 }} 周期</span>
-          </div>
-          <p class="text-xs text-ink-400">
-            周期累计伤害 ≥ {{ formatNumber(leaderboard?.minDamage ?? 0) }} 才能入榜；件数 = 档位（累计伤害）+ 名次加成。
-          </p>
-          <p class="text-xs text-ink-500">点击任一行可展开查看该玩家各英雄的伤害与占比。</p>
-          <ol class="space-y-1 text-sm">
-            <li v-for="e in leaderboard?.entries ?? []" :key="e.userId">
-              <button
-                type="button"
-                class="flex w-full items-center gap-2 rounded px-2 py-1 text-left transition hover:bg-ink-700/60"
-                :class="e.userId === uid ? 'bg-amber-500/15' : 'odd:bg-ink-800/40'"
-                @click="detail = e"
+            <div class="flex flex-wrap gap-1.5">
+              <span
+                v-for="(t, i) in rewardTiers"
+                :key="t.minDamage"
+                class="rounded px-2 py-0.5 text-[11px]"
+                :class="myDamage >= t.minDamage ? 'bg-amber-500/20 text-amber-100' : 'bg-ink-800 text-ink-400'"
               >
-                <span class="w-6 shrink-0 text-right font-mono" :class="e.rank <= 3 ? 'text-amber-300' : 'text-ink-400'">{{ e.rank }}</span>
-                <span class="min-w-0 flex-1 truncate">
-                  {{ e.nickname }}<span class="text-ink-500">#{{ e.username }}</span>
-                </span>
-                <span class="shrink-0 font-mono text-xs text-ink-200">{{ formatNumber(e.damage) }}</span>
-                <span class="w-10 shrink-0 text-right text-xs text-amber-300">×{{ e.items }}</span>
-                <span class="shrink-0 text-ink-500">›</span>
-              </button>
-            </li>
-            <li v-if="!(leaderboard?.entries ?? []).length" class="px-2 py-1 text-ink-400">暂无达标玩家。</li>
-          </ol>
-          <p v-if="leaderboard?.me" class="border-t border-ink-700 pt-2 text-sm text-amber-200">
-            我的排名：第 {{ leaderboard.me.rank }} 名 · {{ formatNumber(leaderboard.me.damage) }} · ×{{ leaderboard.me.items }}
-            <button type="button" class="ml-2 underline decoration-dotted" @click="detail = leaderboard!.me">查看分英雄伤害</button>
-          </p>
-          <p v-else class="border-t border-ink-700 pt-2 text-xs text-ink-400">
-            我本周期累计 {{ formatNumber(state?.myDamage ?? 0) }}，未达入榜门槛。
-          </p>
-        </section>
+                第 {{ i + 1 }} 档 {{ formatNumber(t.minDamage) }} · {{ t.items }} 件
+              </span>
+            </div>
+          </section>
 
-        <section class="panel space-y-1 text-xs text-ink-400">
-          <h2 class="text-sm font-semibold text-ink-200">奖励说明</h2>
-          <p>
-            按「讨伐周期」结算（每 {{ durationText(boss?.periodSeconds ?? 0) }} 一轮）：周期内 BOSS 可反复击杀，
-            奖励只看你自己的周期累计伤害 —— 别人打得再快也不影响你的奖励。
-          </p>
-          <p>件数 = 档位（周期累计伤害）+ 名次加成（仅前 10 名）。</p>
-          <ul class="space-y-0.5">
-            <li v-for="(tier, i) in rewardTiers" :key="tier.minDamage">
-              第 {{ i + 1 }} 档：累计伤害 ≥ {{ formatNumber(tier.minDamage) }} → {{ tier.items }} 件
-            </li>
-          </ul>
-          <p>
-            名次加成：<span v-for="(row, i) in rankBonusList" :key="row.rank">{{ i ? ' · ' : ''
-              }}第 {{ row.rank }} 名 +{{ row.items }}</span>
-          </p>
-          <p>「绝境龙神」固定红色品质 / 100 级，仅世界BOSS 掉落；可重造 / 附魔但代价远高于其他装备。</p>
-        </section>
-      </aside>
-    </div>
+          <!-- ③ 行动区：上阵 / 战斗中 -->
+          <section v-if="!session" class="card space-y-4 p-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-sm font-semibold text-white">上阵英雄</h2>
+                <InfoTip :title="deployInfo.title">
+                  <p v-for="(line, i) in deployInfo.lines" :key="i">{{ line }}</p>
+                </InfoTip>
+                <span class="font-mono text-xs text-ink-400">{{ selected.length }} / {{ rules.heroSlots }}</span>
+              </div>
+              <button
+                class="min-h-11 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-ink-950 transition hover:bg-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-40"
+                :disabled="busy || !selected.length"
+                @click="enter"
+              >
+                {{ busy ? '进入中…' : `进入战场（${selected.length}）` }}
+              </button>
+            </div>
+
+            <p v-if="!eligible.length" class="text-sm text-ink-400">
+              没有符合条件的英雄（需 Lv.{{ rules.levelRequirement }} 以上）。可前往
+              <RouterLink to="/roster" class="text-amber-300 underline decoration-dotted">名册</RouterLink> 或
+              <RouterLink to="/tavern" class="text-amber-300 underline decoration-dotted">酒馆</RouterLink> 培养。
+            </p>
+            <div v-else class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              <button
+                v-for="h in eligible"
+                :key="h.id"
+                class="relative flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-60"
+                :class="selected.includes(h.id) ? 'border-amber-400 bg-amber-500/10' : 'border-ink-700 hover:border-ink-400'"
+                :disabled="busy"
+                :aria-pressed="selected.includes(h.id)"
+                @click="toggle(h.id)"
+              >
+                <JobIcon :job-id="h.jobId" :size="24" />
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-white">{{ h.name }} <span class="text-ink-400">Lv.{{ h.level }}</span></span>
+                  <span class="block text-xs text-ink-400">{{ jobName(h.jobId) }} · {{ weaknessHint(h.level, rules, true) }}</span>
+                </span>
+                <span
+                  v-if="selectedIndex(h.id)"
+                  class="absolute -left-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-amber-400 text-[11px] font-bold text-ink-950"
+                >
+                  {{ selectedIndex(h.id) }}
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <template v-else>
+            <section class="card space-y-4 p-6">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-sm font-semibold text-white">战斗进行中</h2>
+                <button
+                  class="min-h-9 rounded-lg border border-ink-600 px-3 text-sm text-ink-200 transition hover:border-ink-400 focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-40"
+                  :disabled="busy"
+                  @click="leave"
+                >
+                  撤离
+                </button>
+              </div>
+              <dl class="grid grid-cols-3 gap-3">
+                <div>
+                  <dt class="text-[11px] text-ink-400">已战斗</dt>
+                  <dd class="font-mono text-sm text-white">{{ (session.elapsedMs / 1000).toFixed(0) }} 秒</dd>
+                </div>
+                <div>
+                  <dt class="text-[11px] text-ink-400">本场输出</dt>
+                  <dd class="font-mono text-sm text-white">{{ formatNumber(session.damageDealt) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-[11px] text-ink-400">本轮累计</dt>
+                  <dd class="font-mono text-sm text-amber-200">{{ formatNumber(myDamage) }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <article v-for="h in session.heroes" :key="h.slot" class="card space-y-2 p-3 text-sm">
+                <div class="flex items-center gap-2">
+                  <JobIcon :job-id="h.jobId" :size="22" />
+                  <span class="min-w-0 flex-1 truncate text-white">{{ h.name }}</span>
+                  <span class="text-xs text-ink-400">Lv.{{ h.level }}</span>
+                </div>
+                <div class="h-2 overflow-hidden rounded-full bg-ink-800">
+                  <div
+                    class="h-full transition-all"
+                    :class="h.hp > 0 ? 'bg-emerald-500' : 'bg-ink-600'"
+                    :style="{ width: `${hpPctOf(h)}%` }"
+                  />
+                </div>
+                <div class="flex justify-between text-xs text-ink-400">
+                  <span>HP {{ formatNumber(Math.round(h.hp)) }}</span>
+                  <span v-if="h.hp <= 0" class="text-rose-300">复活 {{ reviveIn(h.deadUntil, session.elapsedMs) }}s</span>
+                  <span v-else>MP {{ Math.round(h.mp) }}</span>
+                </div>
+                <div class="flex justify-between text-xs text-ink-400">
+                  <span>输出 {{ formatNumber(h.damage) }}</span>
+                  <span>倒下 {{ h.deaths }}</span>
+                </div>
+                <div class="h-1 overflow-hidden rounded-full bg-ink-800" :title="`本场输出占比 ${heroShare(h.damage).toFixed(1)}%`">
+                  <div class="h-full bg-amber-400/70" :style="{ width: `${heroShare(h.damage)}%` }" />
+                </div>
+              </article>
+            </div>
+
+            <section class="card space-y-2 p-6">
+              <h2 class="text-sm font-semibold text-white">BOSS 技能</h2>
+              <p v-if="!bossSkills.length" class="text-sm text-ink-400">尚未释放技能。</p>
+              <ul class="space-y-1 text-sm">
+                <li v-for="e in bossSkills" :key="e.seq" class="flex gap-2 text-rose-200">
+                  <span class="shrink-0 font-mono text-xs text-ink-400">{{ (e.at / 1000).toFixed(1) }}s</span>
+                  <span class="min-w-0 flex-1">{{ e.text }}</span>
+                </li>
+              </ul>
+            </section>
+          </template>
+
+          <!-- ④ 结算领取 -->
+          <section v-if="state?.unclaimedCycle" class="space-y-4 rounded-xl border border-amber-500/50 bg-amber-500/10 p-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="min-w-0">
+                <h2 class="text-sm font-semibold text-amber-100">第 {{ state.unclaimedCycle }} 周期已结算</h2>
+                <p class="mt-0.5 text-xs text-amber-200/80">
+                  周期累计伤害 {{ formatNumber(myDamage) }}，可按「档位 + 名次加成」领取「绝境龙神」装备。
+                </p>
+              </div>
+              <button
+                class="min-h-11 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-ink-950 transition hover:bg-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-40"
+                :disabled="busy || !!receipt"
+                @click="claim"
+              >
+                {{ receipt ? '已领取' : '领取奖励' }}
+              </button>
+            </div>
+            <template v-if="receipt">
+              <p class="text-sm text-emerald-200">
+                第 {{ receipt.rank }} 名 · 档位 {{ receipt.tierItems }} 件 + 名次加成 {{ receipt.rankBonus }} 件 = {{ receipt.items }} 件
+              </p>
+              <ul class="grid gap-1.5 sm:grid-cols-2">
+                <li v-for="it in receipt.grants.items" :key="it.id" class="flex items-center gap-2 text-xs">
+                  <ItemIcon :base-id="it.baseId" :rarity="it.rarity" :size="20" />
+                  <span class="min-w-0 flex-1 truncate" :class="rarityClass(it.rarity)">{{ it.name }}</span>
+                  <span class="shrink-0 text-ink-400">{{ rarityName(it.rarity) }}</span>
+                </li>
+              </ul>
+            </template>
+          </section>
+        </div>
+
+        <!-- ⑤ 侧栏：伤害榜 + 奖励规则 -->
+        <aside class="space-y-6">
+          <section class="card space-y-3 p-6">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-1">
+                <h2 class="text-sm font-semibold text-white">本周期伤害榜</h2>
+                <InfoTip :title="leaderboardInfo.title">
+                  <p v-for="(line, i) in leaderboardInfo.lines" :key="i">{{ line }}</p>
+                </InfoTip>
+              </div>
+              <span class="text-xs text-ink-400">第 {{ leaderboard?.cycle ?? boss?.cycle ?? 1 }} 周期</span>
+            </div>
+
+            <ol class="space-y-1">
+              <li v-for="e in leaderboard?.entries ?? []" :key="e.userId">
+                <button
+                  type="button"
+                  class="relative flex min-h-11 w-full items-center gap-2 overflow-hidden rounded-lg px-2 text-left text-sm transition hover:bg-ink-700/50 focus-visible:ring-2 focus-visible:ring-amber-300"
+                  :class="e.userId === uid ? 'bg-amber-500/15' : ''"
+                  aria-haspopup="dialog"
+                  @click="detail = e"
+                >
+                  <span
+                    class="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-400/25 to-amber-400/5"
+                    :style="{ width: `${damageShare(e.damage)}%` }"
+                  />
+                  <span
+                    class="relative w-6 shrink-0 text-center font-mono"
+                    :class="e.rank === 1 ? 'text-amber-300' : e.rank === 2 ? 'text-ink-200' : e.rank === 3 ? 'text-orange-300' : 'text-ink-400'"
+                  >
+                    {{ e.rank }}
+                  </span>
+                  <span class="relative min-w-0 flex-1 truncate text-ink-200">
+                    {{ e.nickname }}<span class="text-ink-400">#{{ e.username }}</span>
+                  </span>
+                  <span class="relative shrink-0 font-mono text-xs text-ink-200">{{ formatNumber(e.damage) }}</span>
+                  <span class="relative w-10 shrink-0 text-right text-xs text-amber-300">×{{ e.items }}</span>
+                  <span class="relative shrink-0 text-ink-400">›</span>
+                </button>
+              </li>
+              <li v-if="!(leaderboard?.entries ?? []).length" class="px-2 py-3 text-ink-400">本周期还没有人达标。</li>
+            </ol>
+
+            <div class="border-t border-ink-700 pt-3 text-sm">
+              <div v-if="leaderboard?.me" class="flex items-center justify-between gap-2 text-amber-200">
+                <span class="min-w-0">
+                  我的排名：第 {{ leaderboard.me.rank }} 名 · {{ formatNumber(leaderboard.me.damage) }} · ×{{ leaderboard.me.items }}
+                </span>
+                <button
+                  type="button"
+                  class="shrink-0 text-xs underline decoration-dotted focus-visible:ring-2 focus-visible:ring-amber-300"
+                  @click="detail = leaderboard!.me"
+                >
+                  分英雄
+                </button>
+              </div>
+              <p v-else class="text-xs text-ink-400">
+                我本周期累计 {{ formatNumber(myDamage) }}，未达入榜门槛 {{ formatNumber(leaderboard?.minDamage ?? 0) }}。
+              </p>
+            </div>
+          </section>
+
+          <details class="card p-6 text-xs text-ink-200">
+            <summary class="cursor-pointer text-sm font-semibold text-white">奖励规则</summary>
+            <div class="mt-3 space-y-3">
+              <p>
+                按「讨伐周期」结算（每 {{ durationText(boss?.periodSeconds ?? 0) }} 一轮）：周期内 BOSS 可反复击杀，
+                奖励只看你自己的周期累计伤害，别人打得再快也不影响你的奖励。
+              </p>
+              <div>
+                <p class="mb-1 font-medium text-ink-200">档位（周期累计伤害）</p>
+                <table class="w-full text-left">
+                  <thead>
+                    <tr class="text-ink-400">
+                      <th class="py-0.5 font-normal">档位</th>
+                      <th class="py-0.5 font-normal">累计伤害 ≥</th>
+                      <th class="py-0.5 text-right font-normal">件数</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(t, i) in rewardTiers" :key="t.minDamage" class="border-t border-ink-800">
+                      <td class="py-1">第 {{ i + 1 }} 档</td>
+                      <td class="py-1 font-mono">{{ formatNumber(t.minDamage) }}</td>
+                      <td class="py-1 text-right">{{ t.items }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <p class="mb-1 font-medium text-ink-200">名次加成（仅前 10 名）</p>
+                <p class="flex flex-wrap gap-x-2 gap-y-0.5">
+                  <span v-for="row in rankBonusList" :key="row.rank">第 {{ row.rank }} 名 +{{ row.items }}</span>
+                </p>
+              </div>
+              <p>「绝境龙神」固定红色品质 / 100 级，仅世界BOSS 掉落；可重造 / 附魔但代价远高于其他装备。</p>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </template>
 
     <!-- 榜单展开：单玩家分英雄伤害与占比 -->
     <Modal
@@ -530,13 +796,12 @@ onUnmounted(() => {
       :title="detail ? `第 ${detail.rank} 名 · ${detail.nickname}#${detail.username}` : ''"
       @close="detail = null"
     >
-      <div v-if="detail" class="space-y-3 text-sm">
-        <p class="text-ink-300">
+      <div v-if="detail" class="space-y-4 text-sm">
+        <p class="text-ink-200">
           本周期累计伤害 <span class="font-mono text-amber-200">{{ formatNumber(detail.damage) }}</span>
           · 预计奖励 ×{{ detail.items }}（档位 {{ detail.tierItems }} + 名次加成 {{ detail.rankBonus }}）
         </p>
 
-        <!-- 占比堆叠条 -->
         <div class="flex h-3 w-full overflow-hidden rounded bg-ink-800">
           <span
             v-for="(h, i) in detail.heroes"
@@ -547,7 +812,7 @@ onUnmounted(() => {
           />
         </div>
 
-        <ul class="space-y-1">
+        <ul class="space-y-2">
           <li v-for="(h, i) in detail.heroes" :key="h.heroId" class="flex items-center gap-2">
             <span class="h-2.5 w-2.5 shrink-0 rounded-sm" :class="HERO_COLORS[i % HERO_COLORS.length]" />
             <JobIcon :job-id="h.jobId" :size="18" />

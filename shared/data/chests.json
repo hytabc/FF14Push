@@ -1,6 +1,6 @@
 {
   "$comment": "箱子定义与保底。来源：PRD 2.8",
-  "$commentLevelBands": "抽箱等级档位：玩家等级达到该档位后才可选择；箱子内容按该档位等级生成（等同该等级玩家此前抽取到的装备）。priceMultiplier 为箱子价格的等级倍率（高档位更贵，量级与地区金币产出曲线对齐）。",
+  "$commentLevelBands": "抽箱等级档位：角色库（名册）内最高英雄等级达到该档位后才可选择（非当前上场英雄）；箱子内容按该档位等级生成（等同该等级玩家此前抽取到的装备）。priceMultiplier 为箱子价格的等级倍率（高档位更贵，量级与地区金币产出曲线对齐）。",
   "levelBands": [
     { "level": 1, "priceMultiplier": 1 },
     { "level": 20, "priceMultiplier": 6 },

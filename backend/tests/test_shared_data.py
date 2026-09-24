@@ -108,6 +108,36 @@ def test_weapon_types_cover_jobs() -> None:
     assert weapon_types == base_weapon_types
 
 
+def test_healer_heal_skill_costs_are_raised() -> None:
+    """治疗职业的治疗 / 护盾技能：耗蓝与 CD 已提高，且另按最大魔力比例计费（见 heroes.json:mp）。"""
+    heal_types = {"heal", "healOverTime", "fullHeal", "healingBuff", "shield"}
+    assert 0 < float(CONFIG.heroes["mp"]["healSkillCostMaxMpPct"]) < 1
+    for job in CONFIG.jobs["jobs"]:
+        if job["role"] != "healer":
+            continue
+        for skill in job["skills"]:
+            if not any(e.get("type") in heal_types for e in skill.get("effects") or []):
+                continue
+            assert skill["mpCost"] >= 40, (job["id"], skill["id"], skill["mpCost"])
+            assert skill["cd"] >= 30, (job["id"], skill["id"], skill["cd"])
+
+
+def test_mp_regen_sources_are_bounded() -> None:
+    """回蓝来源已收敛，避免「无限回蓝 → 无限回血 → 永不死亡」。"""
+    proc = CONFIG.combat["proc"]["mpRegenBuff"]
+    assert float(proc["maxMpPctPerSec"]) <= 0.015
+    caps = {
+        "spiritOnHit": 12,
+        "resolveOnHit": 12,
+        "desperateMp": 20,
+        "hpToMp": 10,
+        "killRestoreMp": 10,
+    }
+    ranges = {t["id"]: t["range"] for t in CONFIG.terms["terms"]}
+    for tid, cap in caps.items():
+        assert ranges[tid][1] <= cap, (tid, ranges[tid], cap)
+
+
 def test_base_items_expanded() -> None:
     """底材 = 族 × 档位 × 变体(minTier ≤ 档位)，且 id 唯一。"""
     raw = CONFIG.raw["baseItems"]
@@ -561,10 +591,10 @@ def test_materia_config() -> None:
 
 
 def test_farm_config() -> None:
-    """种田：初始 2 片、最多 10 片、扩张越往后越贵；5 阶段 × 10min；金币/经验种子产出。"""
+    """种田：初始 2 片、最多 12 片、扩张越往后越贵；5 阶段 × 10min；金币/经验种子产出。"""
     cfg = CONFIG.farm
     assert int(cfg["initialPlots"]) == 2
-    assert int(cfg["maxPlots"]) == 10
+    assert int(cfg["maxPlots"]) == 12
     costs = [int(c) for c in cfg["expansionCosts"]]
     assert len(costs) == int(cfg["maxPlots"]) - int(cfg["initialPlots"])
     assert costs == sorted(costs) and costs[0] < costs[-1]
@@ -575,6 +605,17 @@ def test_farm_config() -> None:
     assert seeds["seed_exp"]["yield"] == {"type": "heroLevel", "levels": 1}
     # 种子不可出售，避免「种田 → 卖种子」套利
     assert all(int(s["sell"]) == 0 for s in cfg["seeds"])
+
+
+def test_hero_roster_config() -> None:
+    """远征队（英雄名册）容量：基准 8 席、上限 20 席；扩充价格线性递增（首价 2500W、每席 +2500W）。"""
+    cfg = CONFIG.heroes["roster"]
+    base, top = int(cfg["baseCapacity"]), int(cfg["maxCapacity"])
+    assert base == 8 and top == 20
+    first, step = int(cfg["firstExpandCost"]), int(cfg["expandCostStep"])
+    assert first == 25_000_000 and step == 25_000_000
+    costs = [first + i * step for i in range(top - base)]
+    assert costs == sorted(costs) and costs[0] == 25_000_000 and costs[0] < costs[-1]
 
 
 def test_treasure_config() -> None:

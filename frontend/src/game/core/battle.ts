@@ -19,6 +19,7 @@ import {
   rollIncoming,
   skillCooldown,
   skillDamageMultiplier,
+  skillMpCost,
   type SkillLike,
 } from './combat'
 import { eggNormalMobPotency100Bonus, eggSkillSet } from './egg'
@@ -142,7 +143,11 @@ const EQUIP = ((data.combat as Record<string, any>).equipEffects ?? {}) as {
     hitStackSpeedPct?: { maxStacks: number }
     skillStackDamagePct?: { maxStacks: number }
   }
-  convert?: { hpToMp?: { intervalSec: number }; mpSurge?: { basePctOfMp: number }; killRestoreMp?: unknown }
+  convert?: {
+    hpToMp?: { intervalSec: number; startMpPct?: number; stopMpPct?: number }
+    mpSurge?: { basePctOfMp: number }
+    killRestoreMp?: unknown
+  }
   charge?: {
     chargeBlast?: { hpThresholdPct: number; potencyPct: number }
     chargeShield?: { hpThresholdPct: number }
@@ -166,6 +171,12 @@ export class BattleSimulator {
 
   phase: Phase = 'idle'
   killCount = 0
+  /** 服务端已确认小怪击杀数达标（`region_kill_count >= killsRequired`）：只有此时才放行 BOSS。
+   *
+   *  服务端按窗口额度取整入账，计数可能滞后于客户端；若客户端在本地达标就进场 BOSS，
+   *  `_settle_boss` 会因服务端计数不足而静默丢弃整次结算（含金币）。改为由服务端确认后出场。
+   */
+  bossUnlocked = false
   /** 生命值以整数结算：存活时至少保留 1 点，0 表示阵亡。 */
   private heroHpValue = 0
   heroMp = 0
@@ -225,6 +236,8 @@ export class BattleSimulator {
   private chargeCasts = 0
   /** 「不死」每场战斗仅触发一次。 */
   private cheatDeathUsed = false
+  /** 「转魔」磁滞状态：魔力低于 startMpPct 激活，恢复到 stopMpPct 后关闭。 */
+  private hpToMpActive = false
 
   pendingKills: KillRecord[] = []
   pendingSkillCasts: Record<string, number> = {}
@@ -570,13 +583,21 @@ export class BattleSimulator {
           this.heroMp + stats.maxMp * buff.value * ticks * (this.penalty.resourceMultiplier ?? 1),
         )
       }
-      // 资源转换「转魔」：每秒将最大生命一部分转为魔力（生命不足时不生效）。
+      // 资源转换「转魔」：魔力低于门槛才启动，恢复到目标值后停止，避免满蓝时仍持续
+      // 扣血。生命不足时不生效。
       const hpToMp = this.baseStats.termMods.hpToMpPct ?? 0
-      if (hpToMp > 0) {
-        const cost = stats.maxHp * (hpToMp / 100) * ticks
-        if (this.heroHp > cost) {
-          this.heroHp -= cost
-          this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.maxMp * (hpToMp / 100) * ticks)
+      if (hpToMp > 0 && stats.maxMp > 0) {
+        const startPct = EQUIP.convert?.hpToMp?.startMpPct ?? 50
+        const stopPct = EQUIP.convert?.hpToMp?.stopMpPct ?? 80
+        const mpPct = (this.heroMp / stats.maxMp) * 100
+        if (this.hpToMpActive && mpPct >= stopPct) this.hpToMpActive = false
+        else if (!this.hpToMpActive && mpPct < startPct) this.hpToMpActive = true
+        if (this.hpToMpActive) {
+          const cost = stats.maxHp * (hpToMp / 100) * ticks
+          if (this.heroHp > cost) {
+            this.heroHp -= cost
+            this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.maxMp * (hpToMp / 100) * ticks)
+          }
         }
       }
     }
@@ -789,8 +810,7 @@ export class BattleSimulator {
   }
 
   private rawMpCost(skill: SkillLike): number {
-    const scale = skill.damageType === 'magical' ? data.heroes.mp.magicalSkillCostScale : data.heroes.mp.physicalSkillCostScale
-    return Math.floor(skill.mpCost * scale)
+    return skillMpCost(this.stats, skill)
   }
 
   /** 实际魔力消耗：彩蛋「水群」生效时减半（仅对有耗蓝的技能生效）。 */
@@ -1526,11 +1546,10 @@ export class BattleSimulator {
     if (!this.isRaid) {
       // 地区战斗：小怪计入上报，BOSS 触发通关
       let gold = this.rollGold(monster.kind)
-      let doubled = false
       if (!isBoss && this.doubleRewardCharges > 0) {
+        // 彩蛋「拔豆芽」：该只怪物奖励翻倍（金币与经验同步翻倍，明细由服务端结算）。
         this.doubleRewardCharges -= 1
         gold *= 2
-        doubled = true
       }
       const exp = Math.max(
         1,
@@ -1539,9 +1558,8 @@ export class BattleSimulator {
       if (isBoss) {
         this.pendingBossKill = true
       } else {
-        // 装备不再由怪物掉落：只能通过抽箱获取
+        // 装备不再由怪物掉落：只能通过抽箱获取；金币明细由服务端结算后写入日志。
         this.pendingKills.push({ monsterId: monster.templateId, gold, exp })
-        this.pushLog(`击败 ${monster.name}，获得 ${gold} 金币${doubled ? '（翻倍）' : ''}`, 'loot')
       }
     }
 
@@ -1565,13 +1583,18 @@ export class BattleSimulator {
     }
 
     this.killCount += 1
-    if (this.killCount >= this.killsRequired) {
-      this.phase = 'boss'
-      this.bossTimer = data.heroes.bossSpawnDelaySeconds
-      this.pushLog('小怪阶段完成，BOSS 即将出现…', 'system')
+    if (this.bossUnlocked && this.killCount >= this.killsRequired) {
+      this.enterBossPhase()
     } else {
       this.spawnTimer = this.spawnInterval
     }
+  }
+
+  /** 进入 BOSS 阶段：仅在服务端确认击杀数达标（`bossUnlocked`）后调用。 */
+  private enterBossPhase(): void {
+    this.phase = 'boss'
+    this.bossTimer = data.heroes.bossSpawnDelaySeconds
+    this.pushLog('小怪阶段完成，BOSS 即将出现…', 'system')
   }
 
   private heroDies(): void {
@@ -1601,6 +1624,7 @@ export class BattleSimulator {
     this.deathCount += 1
     this.pendingDeath = true
     this.killCount = 0 // PRD 地区 3.2：阵亡后小怪击杀计数归零
+    this.bossUnlocked = false
     this.enemies = []
     this.dots = []
     this.enemyDebuffs = []
@@ -1684,6 +1708,7 @@ export class BattleSimulator {
   continueAfterClear(): void {
     if (this.isRaid || this.phase !== 'cleared') return
     this.killCount = 0
+    this.bossUnlocked = false
     this.enemies = []
     this.dots = []
     this.enemyDebuffs = []
@@ -1700,7 +1725,7 @@ export class BattleSimulator {
     this.enemies = []
     this.dots = []
     this.enemyDebuffs = []
-    if (this.killCount >= this.killsRequired) {
+    if (this.bossUnlocked) {
       this.phase = 'boss'
       this.bossTimer = data.heroes.bossSpawnDelaySeconds
     } else {
@@ -1766,9 +1791,10 @@ export class BattleSimulator {
   applyServerKillCount(count: number, killsRequired: number): void {
     this.killCount = count
     this.killsRequired = killsRequired
-    if (count >= killsRequired && this.phase === 'mob' && !this.monster) {
-      this.phase = 'boss'
-      this.bossTimer = data.heroes.bossSpawnDelaySeconds
+    // 服务端据其权威计数判定 BOSS 结算资格：达标后才允许出场。
+    this.bossUnlocked = count >= killsRequired
+    if (this.bossUnlocked && this.phase === 'mob' && !this.monster) {
+      this.enterBossPhase()
     }
   }
 

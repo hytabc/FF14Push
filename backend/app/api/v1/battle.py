@@ -42,7 +42,7 @@ from app.services.game_config import CONFIG
 from app.services.grants import grant_generated_items
 from app.services.item_factory import generate_item
 from app.services.loot import boss_box_for_region, chest_by_id
-from app.services.progression import apply_exp, combat_exp, exp_calculation
+from app.services.progression import apply_exp, combat_exp, exp_calculation, gold_calculation
 from app.services.playtime import add_play_ms
 from app.services.regions_util import apply_exp_bonus, kills_required, roll_gold, spawn_interval
 from app.services.stats import compute_stats
@@ -235,8 +235,9 @@ async def report(
 
     # 金币与经验（服务端重新结算）
     reward_multiplier = effective_penalty(stats,payload.regionId)["rewardMultiplier"]
-    result.total_gold = int(result.total_gold * reward_multiplier)
-    result.total_gold = int(result.total_gold * (1.0 + potion_mods.get("goldGainPct", 0.0) / 100.0))
+    gold_base = int(result.total_gold)
+    gold_after_penalty = int(gold_base * reward_multiplier)
+    result.total_gold = int(gold_after_penalty * (1.0 + potion_mods.get("goldGainPct", 0.0) / 100.0))
     result.total_exp = int(result.total_exp * reward_multiplier)
     user.gold = int(user.gold) + result.total_gold
     gained_exp = apply_exp_bonus(result.total_exp, merged_mods)  # 经验获取效率 Buff
@@ -310,6 +311,7 @@ async def report(
     return {
         "gold": int(user.gold),
         "goldGained": result.total_gold,
+        "goldCalculation": gold_calculation(gold_base, gold_after_penalty, result.total_gold),
         "expGained": gained_exp,
         "expCalculation": exp_calculation(result.total_exp, after_bonus_exp, gained_exp),
         "level": level_info,
@@ -345,12 +347,13 @@ async def _settle_boss(
 
     region = CONFIG.region_by_id[payload.regionId]
     gold_potion = float((term_mods or {}).get("goldGainPct", 0.0)) / 100.0
-    boss_gold = int(
-        roll_gold(payload.regionId, "boss", 0.0, rng)
-        * effective_penalty(compute_stats(hero,items,socket_mods),payload.regionId)["rewardMultiplier"]
-        * (1.0 + gold_potion)
-        * monster_gold_multiplier(difficulty)
-    )
+    gold_raw = roll_gold(payload.regionId, "boss", 0.0, rng)
+    gold_diff_mult = monster_gold_multiplier(difficulty)
+    gold_reward_mult = effective_penalty(compute_stats(hero,items,socket_mods),payload.regionId)["rewardMultiplier"]
+    boss_gold = int(gold_raw * gold_reward_mult * (1.0 + gold_potion) * gold_diff_mult)
+    # 金币明细：难度计入「结算基础」（与地区小怪上报口径一致），末项吸收四舍五入残差。
+    gold_base = int(gold_raw * gold_diff_mult)
+    gold_after_penalty = int(gold_base * gold_reward_mult)
     base_boss_exp = max(
         1, int(boss_gold * float(CONFIG.monsters["xpPerGold"]) * monster_exp_multiplier(difficulty))
     )
@@ -403,6 +406,7 @@ async def _settle_boss(
 
     return {
         "gold": boss_gold,
+        "goldCalculation": gold_calculation(gold_base, gold_after_penalty, boss_gold),
         "exp": boss_exp,
         "expCalculation": exp_calculation(base_boss_exp, after_bonus_exp, boss_exp),
         "level": level_info,

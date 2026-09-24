@@ -89,3 +89,18 @@ def exp_calculation(base: int, after_bonus: int, gained: int) -> dict[str, int |
         "catchUpBonus": gained - after_bonus,
         "totalBonusPct": round((gained / base - 1) * 100, 2) if base > 0 else 0,
     }
+
+
+def gold_calculation(base: int, after_penalty: int, final: int) -> dict[str, int | float]:
+    """金币结算明细（与 exp_calculation 同构），供前端战斗日志展示。
+
+    `base` 为结算基础（已含难度与客户端上报口径），`after_penalty` 为乘上收益倍率后的值，
+    `final` 为实际入账值；各档差额之和恰好等于 `final`（末项吸收四舍五入残差）。
+    """
+    base, after_penalty, final = int(base), int(after_penalty), int(final)
+    return {
+        "base": base,
+        "penaltyBonus": after_penalty - base,
+        "potionBonus": final - after_penalty,
+        "totalBonusPct": round((final / base - 1) * 100, 2) if base > 0 else 0,
+    }

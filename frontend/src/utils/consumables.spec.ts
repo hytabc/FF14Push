@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { consumableBonus } from './consumables'
-import { activityExpLog, experienceLog } from './battleLog'
+import { activityExpLog, experienceLog, goldLog } from './battleLog'
 
 describe('消耗品与经验展示', () => {
   it('显示所有效果和时长，并正确换算抽箱幸运比例', () => {
@@ -12,6 +12,11 @@ describe('消耗品与经验展示', () => {
     expect(experienceLog(320, { base: 100, efficiencyBonus: 60, catchUpBonus: 160, totalBonusPct: 220 }))
       .toBe('获得经验 320（+220%；结算基础 100，效率加成 +60，追赶加成 +160）')
     expect(experienceLog(50)).toBe('获得经验 50')
+  })
+  it('金币收益展示服务端结算明细（与经验日志同构）', () => {
+    expect(goldLog(307, { base: 450, penaltyBonus: -171, potionBonus: 28, totalBonusPct: -31.78 }))
+      .toBe('获得金币 307（-31.78%；结算基础 450，收益加成 −171，药水加成 +28）')
+    expect(goldLog(120)).toBe('获得金币 120')
   })
   it('生产 / 采集经验展示基础、品阶系数与逐条来源', () => {
     expect(

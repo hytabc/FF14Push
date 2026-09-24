@@ -156,6 +156,20 @@ def _job_main_attr_for_attack(job_id: str, bias: str) -> str:
     return "str"
 
 
+def role_efficiency(job_id: str | None) -> tuple[float, float]:
+    """职业定位的攻击 / 防御效率（见 shared/data/jobs.json:roles）。
+
+    返回 (攻击效率, 防御效率)，以近战DPS 为基准 1.0；无职业（冒险者）缺省 1.0。
+    结算时分别乘算到面板攻击（attack / magicAttack）与防御（physDef / magicDef），
+    因此会同时作用于客户端实战与本模块的校验模型（两者共用同一份 HeroStats）。
+    """
+    job = CONFIG.job_by_id.get(job_id) if job_id else None
+    role = CONFIG.jobs["roles"].get(job["role"]) if job else None
+    if not role:
+        return 1.0, 1.0
+    return float(role.get("attackEfficiency", 1.0)), float(role.get("defenseEfficiency", 1.0))
+
+
 def _resolve_coef(coef: dict[str, float], attr_source: str | None) -> dict[str, float]:
     if attr_source is None:
         return dict(coef)
@@ -266,6 +280,11 @@ def _compute(
         attack += total_core.get("vit", 0.0) * mods["vitToAttackPct"] / 100.0
     phys_def = panel["physDef"] * (1.0 + mods.get("physDefPct", 0.0) / 100.0)
     magic_def = panel["magicDef"] * (1.0 + mods.get("magicDefPct", 0.0) / 100.0)
+    atk_eff, def_eff = role_efficiency(job_id)
+    attack *= atk_eff
+    magic_attack *= atk_eff
+    phys_def *= def_eff
+    magic_def *= def_eff
     attack_speed_pct += mods.get("attackSpeedPct", 0.0)
     dodge_pct = max(0.0, dodge_pct + mods.get("dodgePct", 0.0))
     lifesteal_pct += mods.get("lifestealPct", 0.0)
@@ -299,6 +318,11 @@ def _compute(
         "mainAttr": main_attr,
         "jobId": job_id,
         "jobMatch": job_match,
+        "roleEfficiency": {
+            "role": (CONFIG.job_by_id.get(job_id) or {}).get("role"),
+            "attack": round(atk_eff, 4),
+            "defense": round(def_eff, 4),
+        },
         "growthCoef": round(gc, 4),
         "biasRates": {a: round(r, 4) for a, r in bias_rates.items()},
         "jobMatchBonusPct": round(float(CONFIG.heroes["jobMatchBonus"]["equipMainAttrPct"]) * 100, 2),

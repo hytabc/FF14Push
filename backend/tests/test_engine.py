@@ -262,6 +262,49 @@ class TestHeroStats:
     def test_hero_power_positive(self) -> None:
         assert hero_power(compute_stats(FakeHero(level=30), [])) > 0
 
+    def test_role_attack_defense_efficiency(self) -> None:
+        """职业定位效率：同装备、同主属性下，攻击 / 防御面板按 jobs.json:roles 的系数缩放。"""
+        from tests.fakes import FakeItem
+
+        roles = CONFIG.jobs["roles"]
+
+        def weapon_for(job_id: str) -> str:
+            return next(b.id for b in CONFIG.base_items if b.job_id == job_id and b.category == "weapon")
+
+        def build(job_id: str) -> tuple[float, float]:
+            stats = compute_stats(
+                FakeHero(level=60),
+                [
+                    FakeItem(
+                        category="weapon",
+                        base_id=weapon_for(job_id),
+                        slot="mainHand",
+                        equipped_slot="mainHand",
+                        base_attrs=[
+                            {"attr": "attack", "value": 100.0},
+                            {"attr": "physDef", "value": 100.0},
+                        ],
+                    )
+                ],
+            )
+            return stats.attack, stats.phys_def
+
+        # 力量系：近战DPS（龙骑士）vs 坦克（骑士）——同主属性，可直接比。
+        melee_atk, melee_def = build("DRG")
+        tank_atk, tank_def = build("PLD")
+        assert tank_atk / melee_atk == pytest.approx(roles["tank"]["attackEfficiency"])
+        assert tank_def / melee_def == pytest.approx(roles["tank"]["defenseEfficiency"])
+
+        # 智力系：治疗（白魔）vs 远程法系（黑魔）——同主属性，只差定位效率。
+        heal_atk, heal_def = build("WHM")
+        caster_atk, caster_def = build("BLM")
+        assert heal_atk / caster_atk == pytest.approx(
+            roles["healer"]["attackEfficiency"] / roles["magicalRanged"]["attackEfficiency"]
+        )
+        assert heal_def / caster_def == pytest.approx(
+            roles["healer"]["defenseEfficiency"] / roles["magicalRanged"]["defenseEfficiency"]
+        )
+
 
 class TestLoot:
     def test_rarity_distribution_matches_config(self) -> None:
@@ -594,13 +637,22 @@ class TestRaidPressure:
             self.equipped_slot = slot
 
     def _bar_items(self, level: int, ancient: int) -> list[Any]:
-        """达标装：全神话底材 + ancient 个攻击类太古词条 + 全部副属性取太古上限。"""
+        """达标装：全神话底材 + ancient 个攻击类太古词条 + 全部副属性取太古上限。
+
+        主手固定取基准职业（近战DPS）武器：副本 requiredPower 与地区门槛均以基准职业校准，
+        治疗 / 坦克的攻防效率会改变各自战力，不应作为门槛可达性的参照。
+        """
         rng = random.Random(11)
+        role_of = {j["id"]: j["role"] for j in CONFIG.jobs["jobs"]}
         items = []
         for slot in self.RAID_SLOTS:
             usable = [
                 b for b in CONFIG.base_items if slot in possible_slots(b) and b.level_req <= level
             ]
+            if slot == "mainHand":
+                melee = [b for b in usable if role_of.get(b.job_id) == "melee"]
+                if melee:
+                    usable = melee
             base = max(usable, key=lambda b: (b.tier_index, b.level_req))
             generated, _ = generate_item(
                 base.category, level, rarity="mythic", base_id=base.id, rng=rng

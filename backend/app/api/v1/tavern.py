@@ -24,8 +24,6 @@ from app.services.stats import compute_stats
 
 router = APIRouter(prefix="/tavern", tags=["tavern"])
 
-MAX_HEROES = 8
-
 
 async def _tavern(db: DbSession, user_id: int) -> TavernState:
     row = (await db.execute(select(TavernState).where(TavernState.user_id == user_id))).scalar_one_or_none()
@@ -56,11 +54,12 @@ async def _replace_hero(
 ) -> Hero:
     """扣费并添加新英雄（现有英雄与装备保持独立）。"""
     candidate = normalize_candidate(candidate)  # 带太古属性必定为神话
-    from app.services.roster import require_idle_team
+    from app.services.roster import hero_capacity, require_idle_team
     await require_idle_team(db, user.id)
     count = len((await db.scalars(select(Hero.id).where(Hero.user_id == user.id))).all())
-    if count >= MAX_HEROES:
-        raise HTTPException(409, "英雄名册已满（最多8名）")
+    capacity = hero_capacity(user)
+    if count >= capacity:
+        raise HTTPException(409, f"英雄名册已满（当前 {capacity} 席，可在英雄名册页花费金币扩充席位）")
     user.gold = int(user.gold) - cost
 
     new_hero = Hero(

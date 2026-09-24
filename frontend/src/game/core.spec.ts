@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BattleSimulator } from '@/game/core/battle'
 import { eggSkillSet } from '@/game/core/egg'
-import { attackSpeedFactor, estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
+import { attackSpeedFactor, estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, skillMpCost, ADVENTURER_SKILL, type SkillLike } from '@/game/core/combat'
 import {
   monsterExpMultiplier,
   monsterGoldMultiplier,
@@ -249,6 +249,8 @@ describe('蓝量与治疗平衡', () => {
       killCount: 0,
     })
     sim.start()
+    // 服务端已确认击杀数：放行 BOSS（地区战斗的 BOSS 出场由服务端确认）。
+    sim.bossUnlocked = true
     let minMp = stats.maxMp
     for (let i = 0; i < 2400; i += 1) {
       if (sim.phase === 'cleared') sim.continueAfterClear()
@@ -286,6 +288,42 @@ describe('蓝量与治疗平衡', () => {
         }
       }
     }
+  })
+
+  it('治疗职业技能耗蓝 = 基础值 + 最大魔力 × 系数；其他定位不加收', () => {
+    const pct = Number(data.heroes.mp.healSkillCostMaxMpPct)
+    expect(pct).toBeGreaterThan(0)
+    const cure = data.jobById['WHM'].skills.find((s) => s.id === 'cure')!
+    expect(skillMpCost(makeStats({ jobId: 'WHM', maxMp: 2000 }), cure as unknown as SkillLike)).toBe(
+      Math.floor(cure.mpCost + 2000 * pct),
+    )
+    // 坦克（非治疗定位）的护盾技能不加收附加费
+    const shel = data.jobById['PLD'].skills.find((s) => s.id === 'holySheltron')!
+    expect(skillMpCost(makeStats({ jobId: 'PLD', maxMp: 2000 }), shel as unknown as SkillLike)).toBe(shel.mpCost)
+  })
+
+  it('治疗职业无法无限自愈：持续战斗中蓝量被治疗耗尽', () => {
+    const stats = makeStats({
+      level: 100,
+      jobId: 'WHM',
+      maxMp: 1500,
+      mpRegen: 6,
+      attack: 300,
+      magicAttack: 300,
+      maxHp: 200000,
+      physDef: 2000,
+      magicDef: 2000,
+    })
+    const sim = new BattleSimulator({ stats, regionId: 1, killsRequired: 9999, spawnInterval: 1, killCount: 0 })
+    sim.start()
+    let minMp = stats.maxMp
+    for (let i = 0; i < 6000; i += 1) {
+      if (sim.phase === 'cleared') sim.continueAfterClear()
+      sim.tick(0.05)
+      minMp = Math.min(minMp, sim.heroMp)
+    }
+    // 治疗技能按最大魔力比例收费后，蓝量会被显著消耗，不再永远满蓝
+    expect(minMp).toBeLessThan(stats.maxMp * 0.5)
   })
 })
 
@@ -357,6 +395,56 @@ describe('装备词条扩展机制', () => {
     expect(sim.heroHp).toBeCloseTo(30, 0)
   })
 
+  it('「转魔」魔力充足时不扣血，低于 50% 才启动并恢复到 80% 后停止', () => {
+    const dummy: MonsterStats = {
+      id: 'dummy',
+      regionId: 0,
+      name: '木桩',
+      templateId: 'dummy',
+      kind: 'boss',
+      hp: 1e12,
+      attack: 0,
+      defense: 0,
+      attackInterval: 999,
+      level: 100,
+      resistancePct: 0,
+    }
+    const maxMp = 1000
+    const maxHp = 10000
+    const sim = new BattleSimulator({
+      stats: makeStats({ maxHp, maxMp, hpRegen: 0, mpRegen: 0, termMods: { hpToMpPct: 10 } }),
+      raid: { bosses: [dummy], enrage: null },
+    })
+    sim.start()
+    // 隔离「转魔」：禁掉技能与普攻，木桩攻击为 0，生命 / 魔力只受转换影响。
+    sim.gcd = 1e9
+    sim.basicAttackTimer = 1e9
+    const cost = Math.floor(maxHp * 0.1)
+
+    // 满蓝：不启动转换，生命不变。
+    const hpFull = sim.heroHp
+    sim.tick(1)
+    expect(sim.heroMp).toBe(maxMp)
+    expect(sim.heroHp).toBe(hpFull)
+
+    // 魔力 40%（< 50%）：启动，扣 10% 最大生命换 10% 最大魔力。
+    sim.heroMp = Math.floor(maxMp * 0.4)
+    const hpBefore = sim.heroHp
+    sim.tick(1)
+    expect(sim.heroHp).toBe(hpBefore - cost)
+    expect(sim.heroMp).toBe(Math.floor(maxMp * 0.4) + Math.floor(maxMp * 0.1))
+
+    // 启动后一路转换到 80% 门槛，而不是停在 50%。
+    for (let i = 0; i < 20; i += 1) sim.tick(1)
+    expect(sim.heroMp).toBe(Math.floor(maxMp * 0.8))
+
+    // 达到门槛后停止：不再扣血。
+    const hpSettled = sim.heroHp
+    sim.tick(1)
+    expect(sim.heroHp).toBe(hpSettled)
+    expect(sim.heroMp).toBe(Math.floor(maxMp * 0.8))
+  })
+
   it('存活英雄生命值恒为整数且 ≥ 1，不会出现「显示 0 血却仍可战斗」', () => {
     const sim = new BattleSimulator({
       stats: makeStats({ level: 60, maxHp: 5000, hpRegen: 7.5, attack: 30, physDef: 20 }),
@@ -411,7 +499,7 @@ describe('战斗模拟器', () => {
     expect(sim.killCount).toBeGreaterThan(0)
   })
 
-  it('击杀数达标后进入 BOSS 阶段', () => {
+  it('击杀数达标且服务端确认后才进入 BOSS 阶段', () => {
     const sim = createSim()
     sim.start()
     let guard = 0
@@ -420,6 +508,14 @@ describe('战斗模拟器', () => {
       guard += 1
     }
     expect(sim.killCount).toBeGreaterThanOrEqual(3)
+    // 本地达标不再直接进场：服务端未确认时继续刷小怪。
+    expect(sim.phase).toBe('mob')
+    sim.applyServerKillCount(3, 3)
+    guard = 0
+    while (sim.phase !== 'boss' && guard < 2000) {
+      sim.tick(0.1)
+      guard += 1
+    }
     expect(sim.phase).toBe('boss')
   })
 
@@ -468,6 +564,7 @@ describe('战斗模拟器', () => {
       killCount: 0,
     })
     sim.start()
+    sim.bossUnlocked = true
     let guard = 0
     while (sim.phase !== 'cleared' && guard < 20000) {
       sim.tick(0.1)
@@ -493,6 +590,7 @@ describe('战斗模拟器', () => {
       killCount: 0,
     })
     sim.start()
+    sim.bossUnlocked = true
     let guard = 0
     while (sim.phase !== 'cleared' && guard < 20000) {
       sim.tick(0.1)
@@ -518,6 +616,7 @@ describe('战斗模拟器', () => {
       killCount: 0,
     })
     sim.start()
+    sim.bossUnlocked = true
     let guard = 0
     while (sim.phase !== 'cleared' && guard < 20000) {
       sim.tick(0.1)
@@ -796,6 +895,7 @@ describe('高难副本模拟器', () => {
       killCount: 0,
     })
     regionSim.start()
+    regionSim.bossUnlocked = true
     let guard = 0
     while (regionSim.phase !== 'cleared' && guard < 20000) {
       regionSim.tick(0.1)
@@ -965,6 +1065,8 @@ describe('地区击杀手感（普攻与技能独立出手：小怪 ~4 下 / 精
     )
     const sim = new BattleSimulator({ stats, regionId: 19, killsRequired, spawnInterval: 1, killCount: 0 })
     sim.start()
+    // 直接放行 BOSS，保持「刷满 killsRequired 小怪后打关底 BOSS」的自然顺序。
+    sim.bossUnlocked = true
     const byKind: Record<string, number[]> = { normal: [], elite: [], boss: [] }
     let hits = 0
     let prev: MonsterStats | null = null

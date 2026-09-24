@@ -305,6 +305,9 @@ class TestBattleLoop:
         assert result["gold"] > 0
         assert result["expGained"] > 0
         assert result["killCount"] > 0
+        # 金币明细：各档差额之和等于实际入账，供前端日志展示。
+        calc = result["goldCalculation"]
+        assert calc["base"] + calc["penaltyBonus"] + calc["potionBonus"] == result["goldGained"]
 
     async def test_lower_level_hero_gets_double_battle_exp(self, auth_client, session_factory):
         async with session_factory() as db:
@@ -494,6 +497,7 @@ class TestBattleLoop:
         session = started.json()["sessionId"]
 
         cleared = None
+        gold_before = 0
         for _ in range(100):
             resp = await _report(
                 auth_client,
@@ -504,6 +508,7 @@ class TestBattleLoop:
             )
             assert resp.status_code == 200, resp.text
             if resp.json()["killCount"] >= resp.json()["killsRequired"]:
+                gold_before = (await auth_client.get(f"{API}/game/state")).json()["user"]["gold"]
                 cleared = await _report(
                     auth_client,
                     session_factory,
@@ -519,6 +524,11 @@ class TestBattleLoop:
         body = cleared.json()
         assert body["boss"]["firstClear"] is True
         assert body["boss"]["items"], "BOSS 应掉落宝箱装备"
+        # BOSS 金币：必须实际入账，并返回明细（供前端日志展示）。
+        assert body["boss"]["gold"] > 0, "BOSS 应掉落金币"
+        assert body["gold"] >= gold_before + body["boss"]["gold"]
+        boss_calc = body["boss"]["goldCalculation"]
+        assert boss_calc["base"] + boss_calc["penaltyBonus"] + boss_calc["potionBonus"] == body["boss"]["gold"]
 
         regions = (await auth_client.get(f"{API}/region")).json()
         by_id = {r["id"]: r for r in regions["regions"]}
@@ -616,6 +626,35 @@ class TestEconomy:
         assert ok.status_code == 200, ok.text
         for item in ok.json()["items"]:
             assert item["levelReq"] <= 1
+
+    async def test_chest_band_uses_roster_max_level(self, auth_client, session_factory) -> None:
+        """档位解锁按角色库（名册）内最高等级，而非当前上场英雄。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        await _set_gold(auth_client, session_factory, 10_000_000)
+
+        # 名册只有 1 级的上场英雄：100 级档位不可用。
+        locked = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 1, "level": 100}
+        )
+        assert locked.status_code == 400
+
+        # 名册内新增 100 级英雄（不作为上场英雄）：档位随之解锁。
+        async with session_factory() as db:
+            db.add(
+                Hero(
+                    user_id=me["id"],
+                    name="满级英雄",
+                    level=100,
+                    talent="common",
+                    attr_bias="balanced",
+                )
+            )
+            await db.commit()
+
+        ok = await auth_client.post(
+            f"{API}/chest/open", json={"chestId": "weaponBox", "count": 1, "level": 100}
+        )
+        assert ok.status_code == 200, ok.text
 
     async def test_chest_price_scales_with_band(self, auth_client, session_factory) -> None:
         me = (await auth_client.get(f"{API}/auth/me")).json()
@@ -1423,7 +1462,7 @@ class TestTavern:
         hero = state.json()["hero"]
         assert hero["name"] == "冒险者"
         assert hero["level"] == 1
-        assert hero["jobId"] == "PLD"
+        assert hero["jobId"] == CONFIG.base_item_by_id[STARTER_BASE_ID].job_id
         assert hero["isInitial"] is True
         assert hero["currentRegionId"] == 1
 
