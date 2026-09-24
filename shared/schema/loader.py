@@ -93,6 +93,7 @@ class GameConfig:
     chests: dict[str, Any]
     crafting: dict[str, Any]
     economy: dict[str, Any]
+    market_reference: dict[str, Any]
     talents: dict[str, Any]
     egg_heroes: dict[str, Any]
     heroes: dict[str, Any]
@@ -217,6 +218,7 @@ def load_game_data() -> GameConfig:
         "chests": _load("chests.json"),
         "crafting": _load("crafting.json"),
         "economy": _load("economy.json"),
+        "marketReference": _load("market-reference.json"),
         "talents": _load("talents.json"),
         "eggHeroes": _load("egg-heroes.json"),
         "heroes": _load("heroes.json"),
@@ -358,6 +360,7 @@ def load_game_data() -> GameConfig:
         chests=raw["chests"],
         crafting=raw["crafting"],
         economy=raw["economy"],
+        market_reference=raw["marketReference"],
         talents=raw["talents"],
         egg_heroes=raw["eggHeroes"],
         heroes=raw["heroes"],

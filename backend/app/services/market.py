@@ -30,13 +30,13 @@ from app.models.market import (
     STATUS_FILLED,
     STATUS_SOLD,
 )
-from app.services import devices, dohdol_util
+from app.services import devices, dohdol_util, reference
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
 from app.services.progression import highest_hero_level
 from app.services.roster import lock_user
 from app.services.serialization import item_to_dict
-from app.services.valuation import sell_price, sell_price_range
+from app.services.valuation import sell_price_range
 
 
 # 生产 / 采集专用装备分类 → 对应的职业等级 kind。
@@ -94,10 +94,10 @@ def max_price() -> int:
 
 
 def reference_price_of(kind: str, item_key: str) -> int:
-    """系统回收价（参考值）：堆叠物取配置单价（装备需实体，另算）。"""
+    """堆叠物参考价：按来源成本折算（不低于系统回收价）；装备需实体，另算。"""
     if kind == LISTING_KIND_EQUIPMENT:
         return 0
-    return int(dohdol_util.sell_price(kind, item_key))
+    return int(reference.stack_reference(kind, item_key))
 
 
 def _aware(dt: Any) -> Any:
@@ -312,7 +312,7 @@ async def list_equipment(
         level_req=item.level_req,
         quantity=1,
         unit_price=int(unit_price),
-        reference_price=int(sell_price(item)),
+        reference_price=int(reference.item_reference(item)),
         snapshot=snapshot,
         seller_ip=ip,
     )

@@ -15,7 +15,7 @@ from app.models.market import (
     STATUS_FILLED,
     STATUS_SOLD,
 )
-from app.services import dohdol_util, market
+from app.services import dohdol_util, market, reference
 from app.services.game_config import CONFIG
 
 API = "/api/v1"
@@ -536,8 +536,8 @@ async def test_materia_listing_and_buy(client, session_factory):
     assert resp.status_code == 200, resp.text
     listing = resp.json()["listings"][0]
     assert listing["kind"] == "materia" and listing["quantity"] == 3
-    assert listing["referencePrice"] == dohdol_util.sell_price("materia", "m_crit_1")
-    assert listing["referencePrice"] > 0  # 魔晶石有系统回收价
+    assert listing["referencePrice"] == reference.stack_reference("materia", "m_crit_1")
+    assert listing["referencePrice"] > 0  # 魔晶石按挖宝来源成本折算，参考价为正
 
     token_b = await _register(client, "mkt_m_b")
     uid_b = await _user_id(session_factory, "mkt_m_b")
@@ -575,7 +575,7 @@ async def test_materia_listing_and_buy(client, session_factory):
 
 
 async def test_seed_listing_and_buy(client, session_factory):
-    """种子可在交易板上架：系统回收价为 0，但玩家间仍可按自定价格交易。"""
+    """种子可在交易板上架：系统回收价为 0，参考价按挖宝来源成本折算为正。"""
     token_a = await _register(client, "mkt_seed_a")
     uid_a = await _user_id(session_factory, "mkt_seed_a")
     await _seed_stack(session_factory, uid_a, "seed", "seed_gold", 4)
@@ -598,7 +598,8 @@ async def test_seed_listing_and_buy(client, session_factory):
     assert resp.status_code == 200, resp.text
     listing = resp.json()["listings"][0]
     assert listing["kind"] == "seed" and listing["quantity"] == 2
-    assert listing["referencePrice"] == 0
+    assert listing["referencePrice"] == reference.stack_reference("seed", "seed_gold")
+    assert listing["referencePrice"] > 0  # 回收价为 0，参考价按挖宝来源成本折算为正
 
     token_b = await _register(client, "mkt_seed_b")
     uid_b = await _user_id(session_factory, "mkt_seed_b")

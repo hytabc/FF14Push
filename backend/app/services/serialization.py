@@ -7,6 +7,7 @@ from typing import Any, Iterable
 from app.services.economy import enchant_cost, is_exclusive_base, refine_cost
 from app.services.game_config import CONFIG
 from app.services.item_factory import base_attr_range, dohdol_base_attr_range, sub_attr_range
+from app.services.reference import item_reference
 from app.services.slots_util import possible_slots
 from app.services.valuation import item_score
 
@@ -53,6 +54,8 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "rarity": item.rarity,
         "levelReq": item.level_req,
         "score": int(round(item_score(item))),
+        # 交易板参考价：按真实获取来源折算（抽箱期望成本 × 属性/词条系数）。
+        "referencePrice": item_reference(item),
         "highQuality": bool(getattr(item, "high_quality", False)),
         "baseAttrs": _attrs_with_range(item.base_attrs, base_band),
         "subAttrs": _attrs_with_range(item.sub_attrs, sub_band),

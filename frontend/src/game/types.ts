@@ -94,6 +94,8 @@ export interface Item {
   tagIds: number[]
   sellPriceMin: number
   sellPriceMax: number
+  /** 交易板参考价（按真实获取来源折算的期望成本，可能高于回收价）。 */
+  referencePrice: number
 }
 
 // ------------------------------------------------------------- 生产 / 采集 DLC
@@ -897,7 +899,7 @@ export interface MarketListing {
   unitPrice: number
   /** 整单总价 = 单价 × 数量。 */
   totalPrice: number
-  /** 上架时的系统回收价（参考）。 */
+  /** 上架时的交易板参考价（按真实获取来源折算的期望成本）。 */
   referencePrice: number
   status: string
   sellerId: number
@@ -937,7 +939,7 @@ export interface MarketBuyOrder {
   totalPrice: number
   /** 剩余部分对应的托管金币。 */
   remainingPrice: number
-  /** 发布时的系统回收价（参考）。 */
+  /** 发布时的交易板参考价（按真实获取来源折算的期望成本）。 */
   referencePrice: number
   /** active | filled | cancelled | expired */
   status: string

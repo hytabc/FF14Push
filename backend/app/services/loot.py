@@ -100,6 +100,24 @@ def draw_rarity(
     return final, state
 
 
+def pity_rarity_distribution(
+    box_tier: str, draws: int = 2_000_000, seed: int = 20240924
+) -> dict[str, float]:
+    """保底稳态下的品阶分布：模拟 draws 次完整抽箱（含保底），返回各「最终品阶」频率。
+
+    固定种子 → 输出确定可复现（供 scripts/derive-market-reference.py 与测试共用）。
+    参考价用它求「每件该品阶装备的期望抽取次数 = 1 / 该品阶频率」。
+    """
+    rng = random.Random(seed)
+    counts = {rarity: 0 for rarity in RARITY_ORDER}
+    state = PityState()
+    for _ in range(max(0, int(draws))):
+        final, state = draw_rarity(box_tier, state, rng, 0.0)
+        counts[final] += 1
+    total = sum(counts.values()) or 1
+    return {rarity: counts[rarity] / total for rarity in RARITY_ORDER}
+
+
 def boss_box_for_region(region_id: int) -> str:
     """按地区序号决定 BOSS 宝箱品质。来源：PRD 地区 4.4"""
     for rule in CONFIG.chests["bossRewardBoxByTier"]:

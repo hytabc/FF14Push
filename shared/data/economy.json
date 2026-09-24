@@ -17,7 +17,22 @@
     "maxActiveBuyOrders": 20,
     "maxStackQuantityPerListing": 9999,
     "minPrice": 1,
-    "maxPrice": 2000000000
+    "maxPrice": 2000000000,
+    "$commentReference": "交易板参考价：按真实获取来源折算的公允价值。装备 = 抽箱期望成本（含保底，与合成取最省）× 属性/词条实时系数；堆叠物 = 来源成本折算（魔晶石/种子按挖宝入场分摊、药水/食物按配方材料成本、材料按档位价值）。基准数字由 scripts/derive-market-reference.py 生成到 shared/data/market-reference.json，这里只放实时系数与调节位；改动 chests/rarities/crafting/treasure/materia/recipes 后需重跑该脚本。",
+    "$commentReferenceFactor": "装备实时系数：ratio = 属性评分 / 该品类·品阶·档位的期望评分；attrF = clamp(ratio^attrExponent, attrMin, attrMax)；termF = clamp(1 + Σ词条价值, termMin, termMax)；参考价 = 基准 × attrF × termF，并夹到 [回收价, maxPrice]。good 装（更高属性 / 稀有·太古词条）参考价更高。",
+    "reference": {
+      "attrExponent": 0.5,
+      "attrMin": 0.7,
+      "attrMax": 1.6,
+      "termMin": 0.5,
+      "termMax": 2.0,
+      "termValue": { "common": 0.0, "rare": 0.2, "ancient": 0.6 },
+      "debuffValue": { "common": -0.1, "rare": -0.1, "ancient": -0.1 },
+      "$commentMaterialMultiplier": "材料参考价 = materials/fish 的档位价值 sell × 该倍率（默认 1.0 即等于回收价；材料无金币来源成本，档位价值是唯一的官方计价）。",
+      "materialMultiplier": 1.0,
+      "$commentSeedYieldFactor": "种子收益下限：可确定收益的种子（金币种子）参考价不低于 收益 × 该系数（避免成本口径把 1000 万收益的种子估得过低）。经验种子无金币计价，不设下限。",
+      "seedYieldFactor": 0.5
+    }
   },
   "transfer": {
     "$comment": "好友金币转账：转账方支付 amount，收款方实收 amount − fee（fee = floor(amount × feePct)，金币直接销毁回收）。受单笔上下限与每日累计上限保护，手续费销毁故不构成刷金币来源。",

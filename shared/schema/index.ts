@@ -36,6 +36,7 @@ import eggHeroesJson from '../data/egg-heroes.json'
 import materiaJson from '../data/materia.json'
 import farmJson from '../data/farm.json'
 import treasureJson from '../data/treasure.json'
+import marketReferenceJson from '../data/market-reference.json'
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
@@ -1090,6 +1091,12 @@ export const gameData = {
     potionTierByFloor: number[]
     materiaLevelByFloor: number[][]
     minFloorFightMs: number
+  },
+  /** 交易板参考价基准表（由 scripts/derive-market-reference.py 生成）。 */
+  marketReference: marketReferenceJson as unknown as {
+    equipment: Record<string, Record<string, Record<string, number>>>
+    expectedScore: Record<string, Record<string, Record<string, number>>>
+    stacks: Record<string, Record<string, number>>
   },
 }
 

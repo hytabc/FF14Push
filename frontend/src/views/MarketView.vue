@@ -106,8 +106,15 @@ interface StackRow {
   name: string
   have: number
   sell: number
+  reference: number
 }
 const stackEdits = ref<Record<string, { count: number; price: number }>>({})
+
+/** 堆叠物参考价（按来源成本折算，来自共享配置），回退到系统回收价。 */
+function stackReference(kind: StackKind, itemId: string, sell: number): number {
+  const table = data.marketReference.stacks[kind] ?? {}
+  return Math.max(table[itemId] ?? 0, sell)
+}
 
 // 购买确认
 const buyTarget = ref<MarketListing | null>(null)
@@ -124,6 +131,7 @@ function toStackRows(items: MaterialStackItem[] | undefined): StackRow[] {
     name: m.name,
     have: m.count,
     sell: m.sell ?? 0,
+    reference: stackReference(m.kind as StackKind, m.itemId, m.sell ?? 0),
   }))
 }
 
@@ -168,6 +176,7 @@ interface BuyCandidate {
   itemId: string
   name: string
   sell: number
+  reference: number
 }
 
 const buyCatalog = computed<BuyCandidate[]>(() => [
@@ -176,24 +185,28 @@ const buyCatalog = computed<BuyCandidate[]>(() => [
     itemId: m.id,
     name: m.name,
     sell: m.sell ?? 0,
+    reference: stackReference('material', m.id, m.sell ?? 0),
   })),
   ...data.consumables.items.map((c) => ({
     kind: c.kind as StackKind,
     itemId: c.id,
     name: c.name,
     sell: c.sell ?? 0,
+    reference: stackReference(c.kind as StackKind, c.id, c.sell ?? 0),
   })),
   ...Object.values(data.materiaById).map((m) => ({
     kind: 'materia' as const,
     itemId: m.id,
     name: m.name,
     sell: m.sell,
+    reference: stackReference('materia', m.id, m.sell),
   })),
   ...data.farm.seeds.map((s) => ({
     kind: 'seed' as const,
     itemId: s.id,
     name: s.name,
     sell: s.sell,
+    reference: stackReference('seed', s.id, s.sell),
   })),
 ])
 
@@ -213,7 +226,7 @@ function buyKey(row: BuyCandidate): string {
 }
 
 function buyEditOf(row: BuyCandidate) {
-  return buyEdits.value[buyKey(row)] ?? { count: 1, price: Math.max(1, row.sell) }
+  return buyEdits.value[buyKey(row)] ?? { count: 1, price: Math.max(1, row.reference) }
 }
 
 function setBuyEdit(row: BuyCandidate, field: 'count' | 'price', e: Event) {
@@ -468,12 +481,13 @@ onMounted(async () => {
 // ------------------------------------------------------------------ 上架
 function onEquipPicked(item: Item) {
   pendingEquip.value = item
-  equipPrice.value = Math.max(1, item.sellPriceMax || 1)
+  const suggested = item.referencePrice || item.sellPriceMax || 1
+  equipPrice.value = Math.max(1, Math.min(suggested, marketCfg.maxPrice))
   equipPickOpen.value = false
 }
 
 function editOf(row: StackRow) {
-  return stackEdits.value[row.key] ?? { count: row.have, price: Math.max(1, row.sell) }
+  return stackEdits.value[row.key] ?? { count: row.have, price: Math.max(1, row.reference) }
 }
 
 function setEdit(row: StackRow, field: 'count' | 'price', e: Event) {
@@ -614,7 +628,7 @@ async function cancel(listing: MarketListing) {
         <div v-if="pendingEquip" class="flex flex-wrap items-center gap-2 text-xs">
           <ItemIcon :base-id="pendingEquip.baseId" :rarity="pendingEquip.rarity" :size="24" />
           <span class="text-ink-200">{{ pendingEquip.name }}</span>
-          <span class="text-ink-500">系统回收 {{ pendingEquip.sellPriceMin }}~{{ pendingEquip.sellPriceMax }}</span>
+          <span class="text-ink-500">参考价 {{ formatNumber(pendingEquip.referencePrice) }} · 回收 {{ pendingEquip.sellPriceMin }}~{{ pendingEquip.sellPriceMax }}</span>
           <label class="ml-auto flex items-center gap-1 text-ink-400">
             单价
             <input
@@ -656,7 +670,7 @@ async function cancel(listing: MarketListing) {
         >
           <ItemIcon :base-id="row.itemId" variant="plain" :size="20" />
           <span class="text-ink-200">{{ row.name }}</span>
-          <span class="text-ink-500">持有 {{ formatNumber(row.have) }} · 回收 {{ row.sell }}</span>
+          <span class="text-ink-500">持有 {{ formatNumber(row.have) }} · 参考价 {{ formatNumber(row.reference) }} · 回收 {{ row.sell }}</span>
           <label class="ml-auto flex items-center gap-1 text-ink-400">
             数量
             <input
@@ -926,9 +940,9 @@ async function cancel(listing: MarketListing) {
                 </div>
                 <TermBadges v-if="l.equipment?.terms?.length" class="mt-1" :terms="l.equipment.terms" />
                 <p class="mt-1 text-xs text-ink-500">
-                  卖家 {{ l.sellerNickname ?? '—' }} · 系统回收 {{ l.referencePrice }}
+                  卖家 {{ l.sellerNickname ?? '—' }} · 参考价 {{ formatNumber(l.referencePrice) }}
                   <template v-if="l.referencePrice > 0 && l.unitPrice > l.referencePrice">
-                    （高于回收价 {{ ((l.unitPrice / l.referencePrice - 1) * 100).toFixed(0) }}%）
+                    （高于参考价 {{ ((l.unitPrice / l.referencePrice - 1) * 100).toFixed(0) }}%）
                   </template>
                 </p>
               </div>
@@ -1092,7 +1106,7 @@ async function cancel(listing: MarketListing) {
           >
             <ItemIcon :base-id="row.itemId" variant="plain" :size="20" />
             <span class="text-ink-200">{{ row.name }}</span>
-            <span class="text-ink-500">回收 {{ row.sell }}</span>
+            <span class="text-ink-500">参考价 {{ formatNumber(row.reference) }}</span>
             <label class="ml-auto flex items-center gap-1 text-ink-400">
               数量
               <input
