@@ -352,7 +352,7 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
           <span v-for="(row, idx) in talentWeightRows" :key="row.rarity">
             <span :class="rarityClass(row.rarity)">{{ rarityName(row.rarity) }}</span> {{ fmtWeight(row.weight) }}<span
               v-if="idx < talentWeightRows.length - 1"
-              class="text-ink-600"
+              class="text-ink-400"
             >
               /
             </span>
@@ -421,7 +421,7 @@ const eggChancePct = computed(() => `${(data.eggHeroes.eggChance * 100).toFixed(
           <p v-if="!canAfford" class="text-[11px] text-rose-300">
             金币不足，还差 {{ formatNumber(shortfall) }} 金币
           </p>
-          <p class="text-[10px] text-ink-600">
+          <p class="text-[10px] text-ink-400">
             招募费用 = 基础费用 × 资质系数 × (1 + 当前英雄等级 / 10)
             <InfoTip :title="recruitInfo(candidate).title">
               <p v-for="(line, i) in recruitInfo(candidate).lines" :key="i">{{ line }}</p>

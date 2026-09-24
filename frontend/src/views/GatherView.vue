@@ -357,7 +357,7 @@ async function toggle() {
               >
                 <ItemIcon :base-id="y.itemId" variant="plain" :size="16" />
                 {{ y.name }}
-                <span class="text-ink-600">{{ y.pct.toFixed(y.pct < 1 ? 1 : 0) }}%</span>
+                <span class="text-ink-400">{{ y.pct.toFixed(y.pct < 1 ? 1 : 0) }}%</span>
               </span>
             </div>
           </div>

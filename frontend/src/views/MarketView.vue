@@ -687,7 +687,7 @@ async function cancel(listing: MarketListing) {
             上架
           </button>
         </div>
-        <p v-if="!stackRows.length" class="py-4 text-center text-xs text-ink-600">
+        <p v-if="!stackRows.length" class="py-4 text-center text-xs text-ink-400">
           暂无可上架的{{ stackTabLabel }}。
         </p>
       </div>
@@ -776,7 +776,7 @@ async function cancel(listing: MarketListing) {
             </button>
           </div>
         </div>
-        <p v-else class="py-6 text-center text-xs text-ink-600">暂无在售寄售。</p>
+        <p v-else class="py-6 text-center text-xs text-ink-400">暂无在售寄售。</p>
 
         <details class="text-xs">
           <summary class="cursor-pointer text-ink-400">已结束记录（{{ mineClosed.length }}）</summary>
@@ -824,7 +824,7 @@ async function cancel(listing: MarketListing) {
               </button>
             </div>
           </div>
-          <p v-else class="mt-2 text-center text-xs text-ink-600">暂无进行中的收购。</p>
+          <p v-else class="mt-2 text-center text-xs text-ink-400">暂无进行中的收购。</p>
 
           <details v-if="myBuyClosed.length" class="mt-2 text-xs">
             <summary class="cursor-pointer text-ink-400">收购记录（{{ myBuyClosed.length }}）</summary>
@@ -851,7 +851,7 @@ async function cancel(listing: MarketListing) {
           发布收购会按「单价 × 数量」全额托管金币；卖家可分批卖出，未成交部分在下架 / 到期时退还。
         </p>
         <p v-if="loading" class="py-8 text-center text-xs text-ink-500">加载中…</p>
-        <p v-else-if="!buyOrders.length" class="py-10 text-center text-xs text-ink-600">
+        <p v-else-if="!buyOrders.length" class="py-10 text-center text-xs text-ink-400">
           暂无收购单，点击「发布收购」成为第一个买家。
         </p>
         <div v-else class="space-y-2">
@@ -867,7 +867,7 @@ async function cancel(listing: MarketListing) {
             <span class="text-ink-500">剩余 {{ formatNumber(o.remaining) }} / {{ formatNumber(o.quantity) }}</span>
             <span class="text-ink-500">买家 {{ o.buyerNickname }}</span>
             <span class="text-ink-500">{{ expireText(o.expiresAt) }}</span>
-            <span v-if="ownedCount(o.kind, o.itemKey) < 1" class="text-ink-600">（你没有该物品）</span>
+            <span v-if="ownedCount(o.kind, o.itemKey) < 1" class="text-ink-400">（你没有该物品）</span>
             <button
               class="ml-auto rounded bg-amber-500 px-3 py-1 font-medium text-ink-950 transition hover:bg-amber-400 disabled:opacity-50"
               :disabled="busy || ownedCount(o.kind, o.itemKey) < 1"
@@ -901,7 +901,7 @@ async function cancel(listing: MarketListing) {
       <!-- 市场列表 -->
       <div v-else>
         <p v-if="loading" class="py-8 text-center text-xs text-ink-500">加载中…</p>
-        <p v-else-if="!listings.length" class="py-10 text-center text-xs text-ink-600">暂无寄售，点击「我要上架」成为第一个卖家。</p>
+        <p v-else-if="!listings.length" class="py-10 text-center text-xs text-ink-400">暂无寄售，点击「我要上架」成为第一个卖家。</p>
 
         <!-- 卡片视图 -->
         <div v-else-if="view === 'card'" class="space-y-2">
@@ -1121,7 +1121,7 @@ async function cancel(listing: MarketListing) {
               发布
             </button>
           </div>
-          <p v-if="!buyCandidates.length" class="py-4 text-center text-ink-600">
+          <p v-if="!buyCandidates.length" class="py-4 text-center text-ink-400">
             没有匹配的{{ buyTabLabel }}。
           </p>
         </div>

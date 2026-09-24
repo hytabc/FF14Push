@@ -126,7 +126,7 @@ async function unequipDohdol(slot: string) {
                       </p>
                     </div>
                   </template>
-                  <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择装备</p>
+                  <p v-else class="mt-1 text-xs text-ink-400">空 — 点击选择装备</p>
                 </div>
               </div>
             </button>
@@ -174,7 +174,7 @@ async function unequipDohdol(slot: string) {
                     </div>
                     <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
                   </template>
-                  <p v-else class="mt-1 text-xs text-ink-600">空 — 点击选择</p>
+                  <p v-else class="mt-1 text-xs text-ink-400">空 — 点击选择</p>
                 </div>
               </div>
             </button>

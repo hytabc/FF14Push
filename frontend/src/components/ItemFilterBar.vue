@@ -130,7 +130,7 @@ function reset() {
           class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
           @input="setLevel('levelMin', ($event.target as HTMLInputElement).value)"
         />
-        <span class="text-ink-600">-</span>
+        <span class="text-ink-400">-</span>
         <input
           :value="modelValue.levelMax"
           type="number"
@@ -196,7 +196,7 @@ function reset() {
         >
           {{ { common: '普通', rare: '稀有', ancient: '太古' }[q] }}
         </button>
-        <span class="text-ink-600">副属性或词条品质命中任一</span>
+        <span class="text-ink-400">副属性或词条品质命中任一</span>
       </div>
 
       <div v-if="options.bonuses.length" class="flex flex-wrap items-center gap-1.5">

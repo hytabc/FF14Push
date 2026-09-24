@@ -267,7 +267,7 @@ async function draw(chestId: string, count: number) {
           class="rounded-md border px-3 py-1.5 text-xs transition"
           :class="
             !isUnlocked(b.level)
-              ? 'cursor-not-allowed border-ink-700 text-ink-600'
+              ? 'cursor-not-allowed border-ink-700 text-ink-400'
               : band === b.level
                 ? 'border-amber-400 bg-amber-400/15 text-amber-200'
                 : 'border-ink-600 text-ink-300 hover:border-ink-400'

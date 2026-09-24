@@ -240,7 +240,7 @@ function pickHero(hero: Hero) {
             <span v-if="plot.index === nextLockedIndex" class="font-mono text-amber-300">
               {{ formatNumber(farm?.expansionCost ?? 0) }}
             </span>
-            <span v-else class="text-ink-600">（需先解锁前一片）</span>
+            <span v-else class="text-ink-400">（需先解锁前一片）</span>
           </p>
           <button
             v-if="plot.index === nextLockedIndex"
@@ -288,7 +288,7 @@ function pickHero(hero: Hero) {
             :class="
               progress(plot)?.ready
                 ? 'bg-amber-500 text-ink-950 hover:bg-amber-400'
-                : 'cursor-not-allowed bg-ink-800 text-ink-600'
+                : 'cursor-not-allowed bg-ink-800 text-ink-400'
             "
             :disabled="busy || !progress(plot)?.ready"
             @click="harvest(plot)"
@@ -314,7 +314,7 @@ function pickHero(hero: Hero) {
             <p class="text-ink-100">{{ seed.name }}</p>
             <p class="text-[11px] text-ink-400">{{ seed.desc }}</p>
           </div>
-          <span class="font-mono" :class="seed.count > 0 ? 'text-amber-300' : 'text-ink-600'">×{{ seed.count }}</span>
+          <span class="font-mono" :class="seed.count > 0 ? 'text-amber-300' : 'text-ink-400'">×{{ seed.count }}</span>
         </div>
       </div>
     </section>

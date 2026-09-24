@@ -209,7 +209,7 @@ async function merge(entry: MateriaStockEntry) {
                   :class="
                     nextIndex(slotsById[slot.id]) === socket.index
                       ? 'bg-amber-500 text-ink-950 hover:bg-amber-400'
-                      : 'cursor-not-allowed bg-ink-800 text-ink-600'
+                      : 'cursor-not-allowed bg-ink-800 text-ink-400'
                   "
                   :disabled="busy || nextIndex(slotsById[slot.id]) !== socket.index"
                   @click="openPicker(slotsById[slot.id])"
@@ -219,7 +219,7 @@ async function merge(entry: MateriaStockEntry) {
               </template>
             </div>
           </div>
-          <p class="mt-1 text-[10px] text-ink-600">孔位按顺序镶嵌（第 1 孔 → 第 5 孔），已镶嵌的孔位可随时取出。</p>
+          <p class="mt-1 text-[10px] text-ink-400">孔位按顺序镶嵌（第 1 孔 → 第 5 孔），已镶嵌的孔位可随时取出。</p>
         </div>
       </div>
     </section>
@@ -277,7 +277,7 @@ async function merge(entry: MateriaStockEntry) {
             <p class="truncate text-ink-200">{{ entry.name }}</p>
             <p class="text-ink-500">{{ statLabel(entry.stat, entry.statName) }} +{{ entry.value }}</p>
           </div>
-          <span class="font-mono" :class="entry.count > 0 ? 'text-amber-300' : 'text-ink-600'">
+          <span class="font-mono" :class="entry.count > 0 ? 'text-amber-300' : 'text-ink-400'">
             {{ entry.count }}
           </span>
         </div>

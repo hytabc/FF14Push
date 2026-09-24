@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import data from '@shared/schema'
 import ItemIcon from '@/components/ItemIcon.vue'
 import SearchSelect, { type SearchOption } from '@/components/SearchSelect.vue'
 import { useVisibleLimit } from '@/composables/useVisibleLimit'
+import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, JobRole, RarityId, TermQuality } from '@/game/types'
+import { conditionsFor } from '@/game/weather'
 import { RARITY_ORDER, TERM_CATEGORY_OPTIONS, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termCategoryName, termQualityClass, termQualityName } from '@/utils/format'
+import {
+  fishAvailability,
+  isFishCatchable,
+  type FishAvailability,
+  type FishAvailabilityContext,
+} from '@/utils/fishAvailability'
 import {
   applyFishFilters,
   createFishFilters,
@@ -31,6 +39,7 @@ import { fishRarity } from '@/utils/icons'
 type Entry = Record<string, any>
 
 const toast = useToastStore()
+const game = useGameStore()
 
 const category = ref<'equipment' | 'monster' | 'material' | 'fish' | 'term'>('equipment')
 const entries = ref<Entry[]>([])
@@ -57,8 +66,13 @@ const termCategory = ref<string>('all')
 const termType = ref<'all' | 'buff' | 'debuff'>('all')
 const termQualities = ref<Set<TermQuality>>(new Set())
 
-/** 鱼获图鉴专属筛选：钓场 / 种类 / 品质 / 天气 / 时段 / 直觉前置 / 尺寸区间。 */
+/** 鱼获图鉴专属筛选：钓场 / 种类 / 品质 / 天气 / 时段 / 直觉前置 / 尺寸区间 / 只看当前可钓。 */
 const fishFilters = ref<FishFilterState>(createFishFilters())
+
+/** 复算当前天气 / 艾欧泽亚时间的节拍：天气时段 1400s、ET 时段约 8.75 现实分钟才变，30s 足够。 */
+const AVAILABILITY_TICK_MS = 30_000
+const nowMs = ref(Date.now())
+let availabilityTimer = 0
 
 const EQUIP_CATEGORY_ORDER = ['weapon', 'armor', 'accessory'] as const
 const DEDICATED_CATEGORY_ORDER = ['doh_tool', 'doh_gear', 'dol_tool', 'dol_gear'] as const
@@ -287,6 +301,46 @@ const fishTimeOfDayOptions = computed(() =>
     .map((id) => ({ id, label: TOD_NAME[id] ?? id })),
 )
 
+// ---------------- 当前可钓（天气 / 时段命中 + 该钓场对玩家可钓） ----------------
+
+/** 各钓场的等级要求（静态，来自 fish.json）。 */
+const FISH_REGION_LEVEL_REQ: Record<number, number> = Object.fromEntries(
+  data.fish.regions.map((r) => [r.regionId, r.levelReq]),
+)
+
+/** 与钓鱼页同一规则：状态未加载时乐观把地区 1 视为已解锁。 */
+function isFishRegionUnlocked(regionId: number): boolean {
+  const entry = game.state?.regionProgress?.[String(regionId)]
+  return entry ? entry.unlocked : regionId === 1
+}
+
+/** 玩家进度未加载（未登录）时不做可钓标记 —— 无法判断解锁与等级。 */
+const availabilityReady = computed(() => Boolean(game.state))
+
+const dolLevel = computed(() => game.state?.dohdol?.progress?.dol?.level ?? 1)
+
+const fishAvailabilityCtx = computed<FishAvailabilityContext>(() => ({
+  unlockedRegions: new Set(
+    data.fish.regions.map((r) => r.regionId).filter((id) => isFishRegionUnlocked(id)),
+  ),
+  dolLevel: dolLevel.value,
+  regionLevelReq: FISH_REGION_LEVEL_REQ,
+  nowMs: nowMs.value,
+}))
+
+/** 卡片悬停说明：讲清判定依据。`gate_closed`（条件本就不满足）不做标记，因此没有说明。 */
+function availabilityTitle(entry: Entry, status: FishAvailability): string {
+  if (status === 'catchable') {
+    const cond = conditionsFor(entry.regionId, nowMs.value)
+    return `当前可钓：${entry.regionName} · ${cond.weatherName} · ${cond.timeOfDayName}`
+  }
+  if (status === 'level_locked') {
+    return `采集等级不足：该钓场需要 Lv.${FISH_REGION_LEVEL_REQ[entry.regionId] ?? 1}，当前 Lv.${dolLevel.value}`
+  }
+  if (status === 'region_locked') return '该钓场尚未解锁'
+  return ''
+}
+
 /** 天气 / 时间门槛文案。 */
 function gateText(entry: Entry): string {
   const parts: string[] = []
@@ -332,7 +386,14 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  // 30s 节拍：让「当前可钓」随天气 / ET 变化自动刷新（开销可忽略，且远快于条件本身的变化周期）。
+  availabilityTimer = window.setInterval(() => (nowMs.value = Date.now()), AVAILABILITY_TICK_MS)
+  void load()
+})
+onUnmounted(() => {
+  if (availabilityTimer) window.clearInterval(availabilityTimer)
+})
 watch(category, () => {
   resetEquipFilters()
   resetTermFilters()
@@ -390,7 +451,9 @@ const filtered = computed(() => {
       list = list.filter((e) => picked.some((q) => e.qualities?.[q]?.unlocked))
     }
   }
-  if (category.value === 'fish') list = applyFishFilters(list, fishFilters.value)
+  if (category.value === 'fish') {
+    list = applyFishFilters(list, fishFilters.value, (entry) => isFishCatchable(entry, fishAvailabilityCtx.value))
+  }
   return list
 })
 
@@ -399,6 +462,32 @@ const filtered = computed(() => {
  * 首批只渲染 60 条，其余由「显示更多」按批追加；筛选变化会自动回到首批。
  */
 const { visible, remaining, showMore } = useVisibleLimit(filtered, 60)
+
+/**
+ * 当前列表里每条鱼的可钓状态与悬停说明：每条只算一次（避免模板里重复求值），
+ * 进度未加载（未登录）时返回空表 —— 不做标记。
+ */
+const fishStatusById = computed(() => {
+  const map = new Map<string, { status: FishAvailability; title: string }>()
+  if (!availabilityReady.value) return map
+  const ctx = fishAvailabilityCtx.value
+  for (const entry of visible.value) {
+    if (typeof entry.fishId !== 'string') continue
+    const status = fishAvailability(entry, ctx)
+    map.set(entry.fishId, { status, title: availabilityTitle(entry, status) })
+  }
+  return map
+})
+
+/** 某条鱼的可钓状态；无法判定时返回 null（不标记）。 */
+function statusOf(entry: Entry): FishAvailability | null {
+  return fishStatusById.value.get(entry.fishId)?.status ?? null
+}
+
+/** 某条鱼的悬停说明（条件不满足的鱼为空串，即无 tooltip）。 */
+function statusTitle(entry: Entry): string {
+  return fishStatusById.value.get(entry.fishId)?.title ?? ''
+}
 
 const progressRow = computed(() => {
   if (!progress.value) return null
@@ -489,7 +578,7 @@ function entryRarity(entry: Entry): RarityId {
               placeholder="最低"
               class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
             />
-            <span class="text-ink-600">-</span>
+            <span class="text-ink-400">-</span>
             <input
               v-model.number="equipLevelMax"
               type="number"
@@ -617,7 +706,7 @@ function entryRarity(entry: Entry): RarityId {
               placeholder="最小"
               class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
             />
-            <span class="text-ink-600">-</span>
+            <span class="text-ink-400">-</span>
             <input
               v-model.number="fishFilters.sizeMax"
               type="number"
@@ -626,7 +715,10 @@ function entryRarity(entry: Entry): RarityId {
               placeholder="最大"
               class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
             />
-            <span class="text-ink-600">cm</span>
+            <span class="text-ink-400">cm</span>
+          </label>
+          <label v-if="availabilityReady" class="flex items-center gap-1 text-ink-400">
+            <input v-model="fishFilters.catchableOnly" type="checkbox" /> 只看当前可钓
           </label>
           <button
             v-if="fishFiltersActive"
@@ -664,13 +756,17 @@ function entryRarity(entry: Entry): RarityId {
           </button>
         </div>
 
-        <p class="text-[10px] text-ink-600">
+        <p class="text-[10px] text-ink-400">
           天气 / 时段为严格匹配：只显示把该条件列为要求的鱼（无门槛的鱼不在其中）；品质仅适用于普通鱼；尺寸按「可钓范围与输入区间有交集」判定。
+        </p>
+        <p v-if="availabilityReady" class="text-[10px] text-ink-400">
+          <b class="text-emerald-300">当前可钓</b> = 天气 / 时段条件已满足，且该钓场已解锁、采集等级达标（与是否已收集无关）；
+          <b class="text-amber-200">采集等级不足</b> 与 <b class="text-ink-400">地区未解锁</b> 分别标出原因；条件不满足的鱼不做标记。
         </p>
       </div>
     </section>
 
-    <p v-if="loading" class="py-10 text-center text-xs text-ink-600">加载中…</p>
+    <p v-if="loading" class="py-10 text-center text-xs text-ink-400">加载中…</p>
 
     <!-- 装备图鉴 -->
     <section v-else-if="category === 'equipment'" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -718,7 +814,7 @@ function entryRarity(entry: Entry): RarityId {
           <li v-for="attr in entry.baseAttrs" :key="attr.attr">
             <template v-if="entry.jobGroup === 'combat'">
               {{ baseAttrName(attr.attr) }} {{ Math.floor(attr.base * 0.8) }} ~ {{ Math.ceil(attr.base * 1.2) }}
-              <span class="text-ink-600">（基准 {{ Math.round(attr.base) }}，±20%）</span>
+              <span class="text-ink-400">（基准 {{ Math.round(attr.base) }}，±20%）</span>
             </template>
             <template v-else>{{ baseAttrName(attr.attr) }} +{{ attr.base }}</template>
           </li>
@@ -731,7 +827,7 @@ function entryRarity(entry: Entry): RarityId {
         <p v-if="!entry.unlocked" class="mt-2 text-[10px] text-amber-300">
           来源：{{ entry.sources?.join('、') }}
         </p>
-        <p v-else class="mt-2 text-[10px] text-ink-600">
+        <p v-else class="mt-2 text-[10px] text-ink-400">
           累计获得 {{ entry.totalCount }} 件 · 首次解锁 {{ entry.firstUnlockAt?.slice(0, 10) }}
         </p>
       </article>
@@ -777,7 +873,7 @@ function entryRarity(entry: Entry): RarityId {
         <p v-if="!entry.unlocked" class="mt-2 text-[10px] text-amber-300">
           出现地区：{{ entry.regionId ? `第 ${entry.regionId} 关` : '各地区' }}
         </p>
-        <p v-else class="mt-2 text-[10px] text-ink-600">
+        <p v-else class="mt-2 text-[10px] text-ink-400">
           累计击杀 {{ entry.killCount }} 次 · 首次击败 {{ entry.firstDefeatAt?.slice(0, 10) }}
         </p>
       </article>
@@ -817,7 +913,7 @@ function entryRarity(entry: Entry): RarityId {
         <p v-if="!entry.unlocked" class="mt-2 text-[10px] text-amber-300">
           来源：{{ entry.kind === 'half' ? '生产合成' : entry.common ? '各采集点通用产出' : `${regionName(entry.regionId)} 采集点` }}
         </p>
-        <p v-else class="mt-2 text-[10px] text-ink-600">
+        <p v-else class="mt-2 text-[10px] text-ink-400">
           累计获得 {{ entry.totalCount }} 个 · 首次获得 {{ entry.firstUnlockAt?.slice(0, 10) }}
         </p>
       </article>
@@ -829,7 +925,12 @@ function entryRarity(entry: Entry): RarityId {
         v-for="entry in visible"
         :key="entry.fishId"
         class="card gallery-cell p-3"
-        :class="entry.unlocked ? '' : 'opacity-55'"
+        :class="[
+          statusOf(entry) === 'catchable' ? 'ring-2 ring-emerald-400/70 bg-emerald-500/10' : '',
+          // 未收集的鱼默认压暗，但「当前可钓」的鱼要醒目 —— 与是否已收集无关。
+          entry.unlocked || statusOf(entry) === 'catchable' ? '' : 'opacity-55',
+        ]"
+        :title="statusTitle(entry)"
       >
         <div class="flex items-start justify-between gap-2">
           <div class="flex min-w-0 items-start gap-2">
@@ -857,6 +958,31 @@ function entryRarity(entry: Entry): RarityId {
           <span v-if="gateText(entry)" class="rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-sky-200">
             {{ gateText(entry) }}
           </span>
+          <!-- 当前可钓 / 不可钓的原因（只标在「天气 / 时段已命中」的鱼上） -->
+          <span
+            v-if="statusOf(entry) === 'catchable'"
+            class="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300"
+          >
+            当前可钓
+          </span>
+          <span
+            v-if="statusOf(entry) === 'catchable' && entry.kind !== 'normal'"
+            class="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] text-sky-200"
+          >
+            需捕鱼人之识
+          </span>
+          <span
+            v-if="statusOf(entry) === 'level_locked'"
+            class="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
+          >
+            采集等级不足（需 Lv.{{ FISH_REGION_LEVEL_REQ[entry.regionId] ?? 1 }}）
+          </span>
+          <span
+            v-if="statusOf(entry) === 'region_locked'"
+            class="rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-ink-400"
+          >
+            地区未解锁
+          </span>
         </div>
 
         <p class="mt-2 text-[10px] text-ink-500">
@@ -873,7 +999,7 @@ function entryRarity(entry: Entry): RarityId {
           钓场：{{ entry.regionName }}
           <span v-if="entry.kind !== 'normal'">（需先钓齐前置开启「{{ entry.buffName || '捕鱼人之识' }}」）</span>
         </p>
-        <p v-else class="mt-2 text-[10px] text-ink-600">
+        <p v-else class="mt-2 text-[10px] text-ink-400">
           累计钓起 {{ entry.count }} 条 · 最大 {{ entry.maxSize }} cm · 首次 {{ entry.firstCaughtAt?.slice(0, 10) }}
         </p>
       </article>
@@ -929,7 +1055,7 @@ function entryRarity(entry: Entry): RarityId {
       </article>
     </section>
 
-    <p v-if="!loading && !filtered.length" class="py-10 text-center text-xs text-ink-600">
+    <p v-if="!loading && !filtered.length" class="py-10 text-center text-xs text-ink-400">
       没有符合条件的条目。
     </p>
 
@@ -942,10 +1068,10 @@ function entryRarity(entry: Entry): RarityId {
       显示更多（剩余 {{ remaining }} 条）
     </button>
 
-    <p class="text-center text-[10px] text-ink-600">
+    <p class="text-center text-[10px] text-ink-400">
       图鉴完成度仅提供称号、头像框与徽章展示，不提供金币或宝箱奖励。
     </p>
-    <p class="text-center text-[10px] text-ink-700">
+    <p class="text-center text-[10px] text-ink-400">
       当前总完成度：装备 {{ progress?.equipment.unlocked ?? 0 }}/{{ progress?.equipment.total ?? 0 }} ·
       怪物 {{ progress?.monster.unlocked ?? 0 }}/{{ progress?.monster.total ?? 0 }} ·
       材料 {{ progress?.material.unlocked ?? 0 }}/{{ progress?.material.total ?? 0 }} ·

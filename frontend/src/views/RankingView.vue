@@ -332,7 +332,7 @@ function pickDungeon(id: string) {
               <td class="hidden px-3 py-2 text-right text-ink-400 sm:table-cell">{{ pane.board === 'coop' ? '阵容' : '查看' }}</td>
             </tr>
             <tr v-if="!pane.entries.length && !loading">
-              <td colspan="6" class="px-3 py-10 text-center text-ink-600">暂无数据</td>
+              <td colspan="6" class="px-3 py-10 text-center text-ink-400">暂无数据</td>
             </tr>
           </tbody>
         </table>

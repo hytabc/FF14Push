@@ -279,7 +279,7 @@ const powerTip = computed(() => statExplain('power', statCtx.value))
               />
               <button
                 v-else
-                class="rounded-lg border border-dashed border-ink-700 px-3 py-2 text-left text-[11px] text-ink-600 transition hover:border-white/40"
+                class="rounded-lg border border-dashed border-ink-700 px-3 py-2 text-left text-[11px] text-ink-400 transition hover:border-white/40"
                 @click="goEquipment"
               >
                 {{ slot.name }}：空 — 前往装备页
@@ -323,7 +323,7 @@ const powerTip = computed(() => statExplain('power', statCtx.value))
                     </div>
                     <TermBadges class="mt-1" :terms="dohdolLoadout[slot.id]!.terms" />
                   </template>
-                  <p v-else class="mt-1 text-xs text-ink-600">空</p>
+                  <p v-else class="mt-1 text-xs text-ink-400">空</p>
                 </div>
               </div>
             </button>

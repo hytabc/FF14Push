@@ -235,7 +235,7 @@ function rewardExhausted(raid: RaidListEntry): boolean {
         </p>
       </button>
 
-      <p v-if="!loading && !raids.length" class="col-span-full py-10 text-center text-xs text-ink-600">
+      <p v-if="!loading && !raids.length" class="col-span-full py-10 text-center text-xs text-ink-400">
         暂无副本。
       </p>
     </section>
@@ -359,7 +359,7 @@ function rewardExhausted(raid: RaidListEntry): boolean {
             <p v-for="entry in [...game.battleLog].reverse()" :key="entry.id" :class="logTone[entry.tone]">
               {{ entry.text }}
             </p>
-            <p v-if="!game.battleLog.length" class="text-ink-600">尚无战斗记录</p>
+            <p v-if="!game.battleLog.length" class="text-ink-400">尚无战斗记录</p>
           </div>
         </section>
       </div>

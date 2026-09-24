@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   applyFishFilters,
@@ -162,6 +162,34 @@ describe('applyFishFilters', () => {
     const f = { ...createFishFilters(), regionId: 1, kind: 'emperor' as const }
     expect(applyFishFilters(ENTRIES, f)).toEqual([])
   })
+
+  describe('只看当前可钓', () => {
+    it('开关关闭时不调用可钓判定，结果不变', () => {
+      const isCatchable = vi.fn(() => false)
+      const result = applyFishFilters(ENTRIES, createFishFilters(), isCatchable)
+      expect(result).toHaveLength(ENTRIES.length)
+      expect(isCatchable).not.toHaveBeenCalled()
+    })
+
+    it('开关打开时按注入的判定过滤', () => {
+      const catchable = new Set(['河鲈', '雷鸣鱼'])
+      const f = { ...createFishFilters(), catchableOnly: true }
+      const result = applyFishFilters(ENTRIES, f, (e) => catchable.has(e.name))
+      expect(names(result)).toEqual(['河鲈', '雷鸣鱼'])
+    })
+
+    it('未注入判定时开关不生效（避免调用方漏传导致空列表）', () => {
+      const f = { ...createFishFilters(), catchableOnly: true }
+      expect(applyFishFilters(ENTRIES, f)).toHaveLength(ENTRIES.length)
+    })
+
+    it('与其它维度取交集', () => {
+      const f = { ...createFishFilters(), catchableOnly: true, kind: 'normal' as const }
+      const result = applyFishFilters(ENTRIES, f, (e) => e.regionId === 1)
+      // 地区 1 的普通鱼（旧鱼王是 king，被 kind 维度排除）
+      expect(names(result)).toEqual(['河鲈', '珊瑚蝶鱼', '银鳞鲳', '雷鸣鱼', '夜光鱼'])
+    })
+  })
 })
 
 describe('hasFishFilters', () => {
@@ -178,6 +206,7 @@ describe('hasFishFilters', () => {
     ['requires', { requires: 'has' as const }],
     ['sizeMin', { sizeMin: 50 }],
     ['sizeMax', { sizeMax: 50 }],
+    ['catchableOnly', { catchableOnly: true }],
   ])('设置 %s 后为 true', (_label, patch) => {
     expect(hasFishFilters({ ...createFishFilters(), ...patch })).toBe(true)
   })

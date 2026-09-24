@@ -33,6 +33,8 @@ export interface FishFilterState {
   sizeMin: number | ''
   /** 尺寸上限（cm），'' 表示不限。 */
   sizeMax: number | ''
+  /** 只看此刻就能钓起的鱼（判定由调用方注入，见 `applyFishFilters` 的第三个参数）。 */
+  catchableOnly: boolean
 }
 
 export function createFishFilters(): FishFilterState {
@@ -45,6 +47,7 @@ export function createFishFilters(): FishFilterState {
     requires: 'all',
     sizeMin: '',
     sizeMax: '',
+    catchableOnly: false,
   }
 }
 
@@ -58,7 +61,8 @@ export function hasFishFilters(f: FishFilterState): boolean {
     f.timeOfDay.size > 0 ||
     f.requires !== 'all' ||
     f.sizeMin !== '' ||
-    f.sizeMax !== ''
+    f.sizeMax !== '' ||
+    f.catchableOnly
   )
 }
 
@@ -86,8 +90,14 @@ function matchesStrictGate(values: unknown, picked: Set<string>): boolean {
  * - 尺寸：按**区间相交**判定。输入 `[min, max]` 时保留「可钓尺寸范围与该区间有交集」的鱼，
  *   因此「只看能钓到 ≥ min cm 的鱼」符合直觉，而不是要求整段范围被包含。
  * - 尺寸字段缺失时不参与该维度判定（不因此被排除）。
+ * - `catchableOnly`：由调用方通过 `isCatchable` 注入「此刻是否可钓」的判定（本模块不依赖
+ *   天气 / 玩家进度，保持可独立单测）；不传该谓词时此开关不生效。
  */
-export function applyFishFilters<T extends FishFilterEntry>(entries: T[], f: FishFilterState): T[] {
+export function applyFishFilters<T extends FishFilterEntry>(
+  entries: T[],
+  f: FishFilterState,
+  isCatchable?: (entry: T) => boolean,
+): T[] {
   const sizeMin = typeof f.sizeMin === 'number' ? f.sizeMin : null
   const sizeMax = typeof f.sizeMax === 'number' ? f.sizeMax : null
 
@@ -99,6 +109,7 @@ export function applyFishFilters<T extends FishFilterEntry>(entries: T[], f: Fis
     if (!matchesStrictGate(entry.timeOfDay, f.timeOfDay)) return false
     if (f.requires === 'has' && !hasRequires(entry)) return false
     if (f.requires === 'none' && hasRequires(entry)) return false
+    if (f.catchableOnly && isCatchable && !isCatchable(entry)) return false
 
     const lo = typeof entry.sizeMin === 'number' ? entry.sizeMin : null
     const hi = typeof entry.sizeMax === 'number' ? entry.sizeMax : null

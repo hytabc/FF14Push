@@ -228,7 +228,7 @@ async function toggle() {
           <span :class="kindClass(s.kind)">{{ kindLabel(s.kind) }}：{{ s.name }}</span>
           <span class="text-ink-400">{{ (s.intuition.chance * 100).toFixed(3) }}%</span>
           <span v-if="specialGate(s)" class="text-sky-300">{{ specialGate(s) }}</span>
-          <span class="text-ink-600">前置 {{ specialRequires(s) }}</span>
+          <span class="text-ink-400">前置 {{ specialRequires(s) }}</span>
         </div>
       </div>
     </section>

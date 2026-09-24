@@ -385,7 +385,7 @@ const logTone: Record<string, string> = {
             <p v-for="entry in [...treasure.log].reverse()" :key="entry.id" :class="logTone[entry.tone]">
               {{ entry.text }}
             </p>
-            <p v-if="!treasure.log.length" class="text-ink-600">尚无战斗记录</p>
+            <p v-if="!treasure.log.length" class="text-ink-400">尚无战斗记录</p>
           </div>
         </section>
       </div>

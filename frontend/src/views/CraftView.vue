@@ -106,7 +106,7 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
           {{ cat.name }}
         </button>
       </div>
-      <p class="mt-2 text-[11px] text-ink-600">
+      <p class="mt-2 text-[11px] text-ink-400">
         可用大类：{{ categories.map((c) => ({ weapon: '武器', armor: '防具', accessory: '饰品' })[c as 'weapon']).join(' / ') }}
       </p>
       <p class="mt-1 text-[11px] text-ink-500">
@@ -124,7 +124,7 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
         >
           <p class="text-[10px] text-ink-400">{{ rarityName(rarity) }}</p>
           <p class="font-mono text-lg" :class="rarityClass(rarity)">{{ counts[rarity] }}</p>
-          <p class="text-[10px] text-ink-600">可合成 {{ Math.floor(counts[rarity] / required) }}</p>
+          <p class="text-[10px] text-ink-400">可合成 {{ Math.floor(counts[rarity] / required) }}</p>
         </div>
       </div>
     </section>
@@ -138,8 +138,8 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
         </span>
       </div>
 
-      <p v-if="loading" class="py-6 text-center text-xs text-ink-600">计算中…</p>
-      <p v-else-if="!hasSteps" class="py-6 text-center text-xs text-ink-600">
+      <p v-if="loading" class="py-6 text-center text-xs text-ink-400">计算中…</p>
+      <p v-else-if="!hasSteps" class="py-6 text-center text-xs text-ink-400">
         当前没有足够的同类装备可合成（每级需要 {{ required }} 件）。
       </p>
 
@@ -182,7 +182,7 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
         }}
       </button>
 
-      <p class="mt-3 text-[11px] text-ink-600">
+      <p class="mt-3 text-[11px] text-ink-400">
         合成手续费：{{ data.crafting.routes.map((r) => `${rarityName(r.from)}→${rarityName(r.to)} ${formatNumber(r.fee)}`).join(' · ') }}
       </p>
     </section>
@@ -195,7 +195,7 @@ const hasSteps = computed(() => (plan.value?.steps ?? []).some((s) => s.crafts >
           获得 <b class="font-mono text-emerald-300">{{ result.produced.length }}</b> 件
         </div>
 
-        <p v-if="!result.produced.length" class="py-6 text-center text-xs text-ink-600">
+        <p v-if="!result.produced.length" class="py-6 text-center text-xs text-ink-400">
           本次没有产出装备。
         </p>
 

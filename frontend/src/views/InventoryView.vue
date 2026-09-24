@@ -356,7 +356,7 @@ async function batchSell() {
         @equip="equipItem"
         @filter-tag="toggleTagFilter"
       />
-      <p v-if="!pageItems.length" class="col-span-full py-10 text-center text-xs text-ink-600">
+      <p v-if="!pageItems.length" class="col-span-full py-10 text-center text-xs text-ink-400">
         {{ tab === 'dohdol' ? '没有未装备的生产 / 采集专用装备。' : '背包是空的，去「抽箱」页面获取装备吧。' }}
       </p>
     </section>

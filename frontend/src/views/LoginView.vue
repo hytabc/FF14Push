@@ -86,7 +86,7 @@ async function submit() {
           </button>
         </form>
 
-        <p class="mt-4 text-center text-[11px] text-ink-600">
+        <p class="mt-4 text-center text-[11px] text-ink-400">
           注册即免费获得 1 名均衡型初始英雄
         </p>
       </div>

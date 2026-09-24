@@ -162,7 +162,7 @@ function isEquipped(item: Item): boolean {
         显示更多（剩余 {{ remaining }} 件）
       </button>
 
-      <p v-if="!filtered.length" class="py-8 text-center text-xs text-ink-600">
+      <p v-if="!filtered.length" class="py-8 text-center text-xs text-ink-400">
         没有符合条件的装备。
       </p>
     </div>

@@ -366,7 +366,7 @@ function dodgeInfo() {
             特殊技能：{{ sim.monster.skills.map((s) => s.name).join('、') }}
           </div>
         </div>
-        <p v-else class="mt-3 text-[11px] text-ink-600">怪物正在靠近…</p>
+        <p v-else class="mt-3 text-[11px] text-ink-400">怪物正在靠近…</p>
 
         <div class="mt-3 h-3 overflow-hidden rounded-full bg-ink-800">
           <div class="h-full rounded-full bg-rose-500 transition-all" :style="{ width: `${sim?.monsterHpPct ?? 0}%` }" />
@@ -377,7 +377,7 @@ function dodgeInfo() {
           <div class="absolute inset-0 flex items-end justify-center gap-6 pb-2">
             <BattleFloatLayer />
           </div>
-          <p class="absolute left-2 top-2 text-[10px] text-ink-600">伤害浮动演示</p>
+          <p class="absolute left-2 top-2 text-[10px] text-ink-400">伤害浮动演示</p>
         </div>
       </section>
     </div>
@@ -397,7 +397,7 @@ function dodgeInfo() {
           :style="{ width: `${signature.charge}%` }"
         />
       </div>
-      <p class="mt-2 text-[10px] text-ink-600">
+      <p class="mt-2 text-[10px] text-ink-400">
         战斗中充能、满槽自动释放（不占 GCD / 不耗魔力）；纯时间约 {{ signature.chargeSeconds }}s。
       </p>
     </section>
@@ -415,7 +415,7 @@ function dodgeInfo() {
           <p class="mt-0.5 text-[10px] text-ink-400">
             {{ skill.potency > 0 ? `${skill.potency}% 威力` : '辅助' }} · MP {{ skill.mpCost }}
           </p>
-          <p class="text-[10px] text-ink-600">
+          <p class="text-[10px] text-ink-400">
             CD {{ skill.cd }}s
             <span v-if="skillStates[skill.id]?.remaining > 0" class="text-amber-300">
               · 剩 {{ skillStates[skill.id].remaining.toFixed(1) }}s
@@ -437,13 +437,13 @@ function dodgeInfo() {
     <section class="card p-4">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold text-white">战斗日志</h3>
-        <span class="text-[11px] text-ink-600">刷新频率 ≤ 1 秒</span>
+        <span class="text-[11px] text-ink-400">刷新频率 ≤ 1 秒</span>
       </div>
       <div class="mt-3 h-56 overflow-y-auto rounded-lg border border-ink-800 bg-ink-950/60 p-3 font-mono text-[11px] leading-relaxed">
         <p v-for="entry in [...game.battleLog].reverse()" :key="entry.id" :class="logTone[entry.tone]">
           {{ entry.text }}
         </p>
-        <p v-if="!game.battleLog.length" class="text-ink-600">尚无战斗记录</p>
+        <p v-if="!game.battleLog.length" class="text-ink-400">尚无战斗记录</p>
       </div>
     </section>
 

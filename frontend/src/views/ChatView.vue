@@ -212,7 +212,7 @@ onUnmounted(() => {
           <div class="flex flex-wrap items-baseline gap-1.5 text-xs">
             <span class="font-semibold text-amber-200">{{ msg.nickname }}</span>
             <span class="rounded bg-amber-500/20 px-1 text-[10px] text-amber-200">管理员</span>
-            <time class="ml-auto text-[10px] text-ink-600">{{ timeOf(msg.createdAt) }}</time>
+            <time class="ml-auto text-[10px] text-ink-400">{{ timeOf(msg.createdAt) }}</time>
           </div>
           <p class="mt-0.5 break-words whitespace-pre-wrap text-sm text-amber-50">{{ msg.text }}</p>
         </li>
@@ -257,7 +257,7 @@ onUnmounted(() => {
             >
               管理员
             </span>
-            <time class="ml-auto text-[10px] text-ink-600">{{ timeOf(msg.createdAt) }}</time>
+            <time class="ml-auto text-[10px] text-ink-400">{{ timeOf(msg.createdAt) }}</time>
           </div>
           <p class="mt-0.5 break-words whitespace-pre-wrap text-sm text-ink-200">
             {{ msg.text }}
@@ -274,7 +274,7 @@ onUnmounted(() => {
           placeholder="说点什么…（仅文本）"
           :disabled="sending"
         />
-        <span class="w-14 text-right text-[10px] text-ink-600">{{ text.length }}/{{ MAX_LEN }}</span>
+        <span class="w-14 text-right text-[10px] text-ink-400">{{ text.length }}/{{ MAX_LEN }}</span>
         <button
           type="submit"
           class="rounded-md bg-amber-500 px-4 py-2 text-xs font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"

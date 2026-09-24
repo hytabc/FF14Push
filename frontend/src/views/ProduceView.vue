@@ -265,7 +265,7 @@ function expandToSequence(r: RecipeView) {
         <span v-for="(row, idx) in craftWeightRows" :key="row.rarity">
           <span :class="rarityClass(row.rarity)">{{ rarityName(row.rarity) }}</span> {{ fmtWeight(row.weight) }}<span
             v-if="idx < craftWeightRows.length - 1"
-            class="text-ink-600"
+            class="text-ink-400"
           >
             /
           </span>
@@ -315,7 +315,7 @@ function expandToSequence(r: RecipeView) {
             placeholder="最低"
             class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
           >
-          <span class="text-ink-600">-</span>
+          <span class="text-ink-400">-</span>
           <input
             v-model.number="levelMax"
             type="number"

@@ -82,7 +82,7 @@ const eliteBasePct = computed(() => (data.monsters.eliteBaseChance * 100).toFixe
       </p>
     </section>
 
-    <p v-if="loading" class="py-10 text-center text-xs text-ink-600">加载中…</p>
+    <p v-if="loading" class="py-10 text-center text-xs text-ink-400">加载中…</p>
 
     <section v-for="chapter in chapters" :key="chapter.id" class="space-y-2">
       <h3 class="text-sm font-semibold text-amber-200">第 {{ chapter.id }} 篇章 · {{ chapter.name }}</h3>

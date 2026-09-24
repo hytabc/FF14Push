@@ -171,7 +171,7 @@ async function toggleBan(user: AdminUser) {
               </td>
             </tr>
             <tr v-if="!users.length && !loading">
-              <td colspan="6" class="px-3 py-10 text-center text-ink-600">没有匹配的用户</td>
+              <td colspan="6" class="px-3 py-10 text-center text-ink-400">没有匹配的用户</td>
             </tr>
           </tbody>
         </table>

@@ -143,7 +143,7 @@ function close() {
           <span class="truncate text-ink-200">{{ change.name }}</span>
           <span class="shrink-0 font-mono" :class="dirClass(change.direction)">
             <span class="text-ink-300">{{ change.before == null ? '—' : fmt(change.before) }}</span>
-            <span class="mx-1 text-ink-600">→</span>
+            <span class="mx-1 text-ink-400">→</span>
             <span>{{ change.after == null ? '—' : fmt(change.after) }}</span>
             <span v-if="change.delta != null && change.delta !== 0" class="ml-1.5">
               （{{ change.delta > 0 ? '+' : '' }}{{ fmt(change.delta) }}）

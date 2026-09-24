@@ -117,7 +117,7 @@ watch(
               />
               <div
                 v-else
-                class="rounded-lg border border-dashed border-ink-700 px-3 py-2 text-[11px] text-ink-600"
+                class="rounded-lg border border-dashed border-ink-700 px-3 py-2 text-[11px] text-ink-400"
               >
                 {{ slot.name }}：空
               </div>
@@ -163,7 +163,7 @@ watch(
                     </div>
                     <TermBadges class="mt-1" :terms="profile.dohdolLoadout[slot.id]!.terms" />
                   </template>
-                  <p v-else class="mt-1 text-xs text-ink-600">空</p>
+                  <p v-else class="mt-1 text-xs text-ink-400">空</p>
                 </div>
               </div>
             </div>
