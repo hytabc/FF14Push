@@ -74,7 +74,7 @@ from app.services.raid_util import (
     raid_penalty,
 )
 from app.services.slots_util import possible_slots
-from app.services.stats import compute_stats, convert_three_attrs
+from app.services.stats import compute_stats, compute_stats_with_breakdown, convert_three_attrs
 from app.services.validator import validate_report
 from app.services.valuation import (
     attr_factor,
@@ -116,6 +116,48 @@ class TestThreeAttributes:
     def test_low_level_tier(self) -> None:
         crit_rate, _, _, _ = convert_three_attrs(10, 50, 0, 0)
         assert crit_rate == pytest.approx(5.0)
+
+
+class TestStatsBreakdown:
+    """面板属性拆解：前端「如何计算」的代入值必须与结算同源。"""
+
+    def test_breakdown_rebuilds_panel_values(self) -> None:
+        hero = FakeHero(level=60, attr_bias="str", strength=120, agility=90, intellect=70)
+        item = FakeItem(
+            base_attrs=[{"attr": "hp", "value": 500.0}, {"attr": "attack", "value": 300.0}],
+            sub_attrs=[
+                {"attr": "str", "value": 80.0, "type": "flat"},
+                {"attr": "crit", "value": 600.0, "type": "flat"},
+            ],
+            terms=[{"id": "hpResonance", "stat": "maxHpPct", "value": 20.0, "type": "buff"}],
+        )
+        stats, breakdown = compute_stats_with_breakdown(hero, [item])
+
+        for attr in ("str", "dex", "int", "vit"):
+            assert breakdown["core"]["total"][attr] == pytest.approx(
+                breakdown["core"]["hero"][attr] + breakdown["core"]["equip"][attr]
+            )
+
+        mods = breakdown["termMods"]
+        rebuilt_hp = (breakdown["panelBase"]["maxHp"] + breakdown["equipFlat"]["hp"]) * (
+            1 + mods.get("maxHpPct", 0.0) / 100
+        )
+        assert rebuilt_hp == pytest.approx(stats.max_hp, abs=0.02)
+
+        rebuilt_atk = (breakdown["panelBase"]["attack"] + breakdown["equipFlat"]["attack"]) * (
+            1 + (mods.get("attackPct", 0.0) + mods.get("berserkPct", 0.0)) / 100
+        ) + breakdown["core"]["total"]["vit"] * mods.get("vitToAttackPct", 0.0) / 100
+        assert rebuilt_atk == pytest.approx(stats.attack, abs=0.02)
+
+    def test_breakdown_does_not_change_values(self) -> None:
+        """两个入口对同一输入必须给出完全一致的面板（拆解不改变结算）。"""
+        hero = FakeHero(level=33, attr_bias="dex", strength=40, agility=88, intellect=20)
+        items = [
+            FakeItem(sub_attrs=[{"attr": "crit", "value": 300.0, "type": "flat"}]),
+            FakeItem(base_attrs=[{"attr": "hp", "value": 120.0}]),
+        ]
+        plain = compute_stats(hero, items).to_dict()
+        assert plain == compute_stats_with_breakdown(hero, items)[0].to_dict()
 
 
 class TestHeroStats:

@@ -20,6 +20,7 @@ from app.models import (
     User,
 )
 from app.schemas.game import ChangeNicknameRequest, ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse
+from app.services import devices
 from app.services.admin import admin_username, is_admin
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.friends import ensure_friend_code, generate_friend_code
@@ -115,6 +116,15 @@ async def register(payload: RegisterRequest, db: DbSession, request: Request) ->
     await guard_rate(db, "register_ip_hour", ip, limits.register_per_ip_per_hour, 3600)
     await guard_rate(db, "register_ip_day", ip, limits.register_per_ip_per_day, 86400)
 
+    # 反多开：同一设备最多注册 N 个账号（1 大号 + 1 小号）。设备标识来自前端设备指纹请求头，
+    # 缺失时不启用该上限（浏览器前端始终携带；此处不与 IP 限流叠加）。
+    device_id = devices.device_id_from_request(request)
+    if len(await devices.accounts_on_device(db, device_id)) >= devices.max_accounts_per_device():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"同一设备最多注册 {devices.max_accounts_per_device()} 个账号（1 个大号 + 1 个小号）",
+        )
+
     # 管理员账号名保留，避免被普通玩家占用（否则启动同步会与之冲突）
     if payload.username.strip() == admin_username():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该用户名为保留的管理员账号")
@@ -133,6 +143,10 @@ async def register(payload: RegisterRequest, db: DbSession, request: Request) ->
     )
     db.add(user)
     await db.flush()
+    # 反多开：记录注册设备与 IP（关联账号判定的数据源）。
+    user.reg_ip = ip
+    user.last_ip = ip
+    await devices.record_device(db, user.id, device_id, ip)
     await _bootstrap_new_user(db, user)
     await db.commit()
     return TokenResponse(accessToken=create_access_token(user.id))
@@ -158,6 +172,12 @@ async def login(payload: LoginRequest, db: DbSession, request: Request) -> Token
     # 封号：拒绝发放令牌，只回传机器码（前端静默拦截，不渲染提示）。
     if user.banned:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BANNED_DETAIL)
+    # 反多开：记录登录设备与最近 IP（关联判定数据源）。刻意不在登录处硬拦，避免锁死存量多开账号。
+    user.last_ip = client_ip(request)
+    await devices.record_device(
+        db, user.id, devices.device_id_from_request(request), user.last_ip
+    )
+    await db.commit()
     return TokenResponse(accessToken=create_access_token(user.id))
 
 

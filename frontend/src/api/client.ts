@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+import { getDeviceId } from '@/utils/device'
+
 const baseURL = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000/api/v1'
 
 export const TOKEN_KEY = 'eorzea.token'
@@ -10,10 +12,15 @@ export const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
+  config.headers = config.headers ?? {}
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
-    config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`
+  }
+  // 反多开：随每个请求携带设备指纹（注册 / 登录 / 心跳据此登记与判定）。
+  const deviceId = getDeviceId()
+  if (deviceId) {
+    config.headers['X-Device-Id'] = deviceId
   }
   return config
 })

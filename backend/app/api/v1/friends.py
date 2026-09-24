@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request
 from app.core.deps import CurrentUser, DbSession, client_ip, guard_rate
 from app.models.base import utcnow
 from app.schemas.game import FriendByCodeRequest, FriendTargetRequest, FriendTransferRequest
-from app.services import friends
+from app.services import devices, friends
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -19,9 +19,14 @@ async def overview(db: DbSession, user: CurrentUser) -> dict:
 
 
 @router.get("/heartbeat")
-async def heartbeat(db: DbSession, user: CurrentUser) -> dict:
+async def heartbeat(request: Request, db: DbSession, user: CurrentUser) -> dict:
     """在线心跳：用 GET 以免触发写锁（远征中同样保持在线）。"""
     user.last_seen_at = utcnow()
+    # 反多开：心跳顺带刷新最近 IP 与设备登记（数据源，不触发任何拦截）。
+    user.last_ip = client_ip(request)
+    await devices.record_device(
+        db, user.id, devices.device_id_from_request(request), user.last_ip
+    )
     await db.commit()
     return {
         "serverTime": utcnow().isoformat(),

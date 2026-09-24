@@ -26,6 +26,12 @@
     "maxAmount": 2000000000,
     "dailyLimit": 2000000000
   },
+  "antiAlt": {
+    "$comment": "反多开：同一设备（浏览器指纹）最多注册的账号数（1 大号 + 1 小号）；关联账号（同设备 / 同 IP）之间的额度上限——好友转账为每日（双向累计），交易板为单笔上限（寄售另有 pair 24h 累计）。检测与处置见 services/devices.py（边界见 AGENT.md）。",
+    "maxAccountsPerDevice": 2,
+    "transferDailyLimit": 1000000,
+    "marketDailyLimit": 1000000
+  },
   "refine": {
     "$comment": "重造：随机基础属性浮动值与副属性，并重掷/浮动词条；保留品阶/类型/等级需求",
     "$commentMode": "mode=random：彻底随机（现价）——基础属性、副属性与词条全部重新洗牌，等同重新获得该装备；mode=basedOnCurrent：基于当前（价格 × basedOnCurrentCostMultiplier）——属性与词条都在现有值附近独立浮动，可升可降，夹在合法区间内；已有太古词条数不减少。",

@@ -1,6 +1,6 @@
 """ORM 模型导出。"""
 
-from app.models.account import Hero, HeroSkillStat, User
+from app.models.account import Hero, HeroSkillStat, User, UserDevice
 from app.models.base import Base, JsonType, TimestampMixin, utcnow
 from app.models.chat import KIND_ANNOUNCEMENT, KIND_NORMAL, ChatMessage, ChatTicket
 from app.models.dohdol import (
@@ -37,6 +37,7 @@ __all__ = [
     "TimestampMixin",
     "utcnow",
     "User",
+    "UserDevice",
     "Hero",
     "HeroSkillStat",
     "Item",

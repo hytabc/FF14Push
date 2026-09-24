@@ -61,6 +61,7 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 - 普通挂机不提供离线收益。联机「离线合作/克隆体」是独立机制，不等于为普通挂机新增离线回补；团队战斗由 worker 推进，worker 中断也不补算离线时间。
 - 装备归属账号，英雄穿戴状态与账号背包需要保持一致；切换、解雇及多英雄操作应检查 `roster.py`、相关模型与事务逻辑，避免装备或资产重复。
 - 好友金币转账同为服务端权威：`services/friends.py` 按 id 升序双行锁两方账号，校验好友关系 / 余额 / 单笔上下限 / 每日累计额度后再结算，手续费按 `floor(amount × feePct)` 销毁（净额不为 0 增长来源），流水写入 `coin_transfers`。
+- **反多开（防小号刷金币）**：账号关联判定 = 设备指纹 **或** IP。设备指纹由前端 `frontend/src/utils/device.ts` 从浏览器信号派生（同一台机器的不同浏览器 / 无痕得到同一标识），随每个请求以请求头 `X-Device-Id` 发送；IP 取 `users.reg_ip` / `users.last_ip` 与 `user_devices.first_ip` / `last_ip`，比较前过滤 `unknown` / 回环 / `testclient` 等哨兵值（见 `services/devices.py`）。**同一设备最多注册 `economy.json:antiAlt.maxAccountsPerDevice`（默认 2 = 1 大号 + 1 小号）个账号，仅在注册处按设备硬拦**；登录 / 心跳只登记设备与最近 IP、不拦截（避免锁死存量多开账号），未携带 `X-Device-Id` 时不启用该上限。**关联账号（同设备 / 同 IP）**之间的好友转账按 pair 双向 24h 累计受 `antiAlt.transferDailyLimit` 限制，交易板寄售成交受单笔 + pair 24h 累计（`antiAlt.marketDailyLimit`）限制，收购单成交只受单笔上限（`MarketBuyOrder` 不记录卖家、无逐笔成交归属）。数据表 `user_devices`（迁移 `u7a9c1e3b5d7`）。改判定或额度时同步回归 `tests/test_anti_alt.py` 与 `services/devices.py`。
 - 怪物、精英不直接掉落装备；主要通过抽箱获取，另有 BOSS 宝箱奖励。
 - 普攻（`ADVENTURER_SKILL`，零耗蓝兜底）威力由 `combat.json:basicAttackPotency` 指定（当前 50%，低于技能威力），前后端同源：前端 `combat.ts`、后端 `combat_model.BASIC_ATTACK_POTENCY`。改这个值会同时改变整体 DPS，进而影响怪物按「命中次数」的标定与 `core.spec.ts` 的击杀手感测试。
 - 地区关底 BOSS 有单次命中伤害上限 `bosses.json:maxHitDamagePct`（当前 20% 最大生命），在 `battle.ts:capBossHit` 结算，用于防止开局爆发 / 暴击大招秒杀 BOSS；仅地区 BOSS 生效（高难与联机不走此上限），且客户端做上限比服务端理论模型更保守，不影响上报校验。

@@ -21,6 +21,14 @@ def test_transfer_fee_and_bounds() -> None:
     assert int(transfer["dailyLimit"]) >= int(transfer["maxAmount"])
 
 
+def test_anti_alt_bounds() -> None:
+    """反多开：同设备账号上限与关联账号额度有效，且不与单笔下限 / 单价下限冲突。"""
+    cfg = CONFIG.economy["antiAlt"]
+    assert int(cfg["maxAccountsPerDevice"]) >= 1
+    assert int(cfg["transferDailyLimit"]) >= int(CONFIG.economy["transfer"]["minAmount"])
+    assert int(cfg["marketDailyLimit"]) >= int(CONFIG.economy["market"]["minPrice"])
+
+
 def test_rarity_probabilities_sum_to_one() -> None:
     for tier in ("normal", "advanced", "boss"):
         total = sum(CONFIG.rarities[r]["boxChance"][tier] for r in CONFIG.rarity_order)

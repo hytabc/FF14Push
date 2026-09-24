@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CoinTransfer, Friendship, Hero, User
 from app.models.base import utcnow
 from app.models.friends import STATUS_ACCEPTED, STATUS_PENDING
+from app.services import devices
 from app.services.game_config import CONFIG
 from app.services.roster import lock_user
 
@@ -283,6 +284,26 @@ async def remaining_today(db: AsyncSession, user_id: int) -> int:
     return max(0, daily_limit() - await spent_today(db, user_id))
 
 
+async def spent_between(db: AsyncSession, a: int, b: int) -> int:
+    """两个账号之间最近 24 小时的双向转账总额（按 amount 计）。
+
+    反多开：关联账号（同设备 / 同 IP）的转账额度按 pair 双向累计，抑制 A→B→A 往返洗钱。
+    """
+    since = utcnow() - timedelta(hours=24)
+    total = (
+        await db.execute(
+            select(func.coalesce(func.sum(CoinTransfer.amount), 0)).where(
+                CoinTransfer.created_at >= since,
+                or_(
+                    (CoinTransfer.from_user_id == a) & (CoinTransfer.to_user_id == b),
+                    (CoinTransfer.from_user_id == b) & (CoinTransfer.to_user_id == a),
+                ),
+            )
+        )
+    ).scalar_one()
+    return int(total or 0)
+
+
 async def overview_payload(db: AsyncSession, user: User) -> dict[str, Any]:
     """`GET /friends` 的完整响应：刷新自己在线状态后返回好友 / 申请与转账配置。"""
     await ensure_friend_code(db, user)
@@ -334,6 +355,16 @@ async def transfer_gold(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"超出今日转账额度，今日剩余 {remaining} 金币"
         )
 
+    # 反多开：同设备 / 同 IP 的关联账号之间，转账额度按 pair 双向累计下调。
+    if await devices.are_linked(db, sender.id, recipient.id):
+        cap = devices.linked_transfer_daily_limit()
+        pair_spent = await spent_between(db, sender.id, recipient.id)
+        if pair_spent + amount > cap:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"关联账号（同设备 / 同 IP）之间每日转账额度为 {cap} 金币",
+            )
+
     fee = fee_of(amount)
     net = amount - fee
     sender.gold = int(sender.gold) - amount
@@ -347,6 +378,7 @@ async def transfer_gold(
             fee=fee,
             net=net,
             from_ip=ip,
+            to_ip=recipient.last_ip,
         )
     )
     await db.commit()

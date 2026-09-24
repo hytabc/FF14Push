@@ -28,6 +28,9 @@ class User(Base, TimestampMixin):
     friend_code: Mapped[str | None] = mapped_column(sa.String(12), unique=True, index=True, nullable=True)
     # 最近活跃时间：好友在线状态依据（前端心跳刷新）。在线 = now - last_seen_at < 阈值。
     last_seen_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    # 反多开：注册 IP 与最近请求 IP。与 `user_devices` 一起判定「同一人」的多个账号（见 services/devices.py）。
+    reg_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    last_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
     # 地区战斗难度等级（0 = 当前各地区数值）。battle_difficulty 为当前选择，battle_difficulty_max 为已解锁上限。
     # 见 services/difficulty.py 与 shared/data/combat.json:difficulty。
     battle_difficulty: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
@@ -83,3 +86,23 @@ class HeroSkillStat(Base):
     cast_count: Mapped[int] = mapped_column(sa.BigInteger, default=0)
 
     hero: Mapped[Hero] = relationship(back_populates="skill_stats")
+
+
+class UserDevice(Base, TimestampMixin):
+    """账号 ↔ 设备指纹（浏览器指纹）关联。反多开依据：同一设备最多注册 N 个账号，
+    关联账号之间的转账 / 交易板额度另有限制（见 services/devices.py）。"""
+
+    __tablename__ = "user_devices"
+    __table_args__ = (
+        sa.UniqueConstraint("user_id", "device_id", name="uq_user_device"),
+        sa.Index("ix_user_devices_device", "device_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    device_id: Mapped[str] = mapped_column(sa.String(64))
+    # 该账号在此设备上首次 / 最近出现的 IP（用于 IP 维度的关联判定）
+    first_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    last_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)

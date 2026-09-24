@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import data from '@shared/schema'
 
-import { chestLuckExplain, craftRarityExplain, equipEffectExplain } from './explanations'
-import type { ChestRarityLuck, CraftOdds, RarityId } from './types'
+import { chestLuckExplain, craftRarityExplain, equipEffectExplain, statExplain, type StatKey } from './explanations'
+import type { ChestRarityLuck, CraftOdds, HeroStats, RarityId, StatBreakdown } from './types'
 
 function fakeCraft(): CraftOdds {
   const odds = Object.fromEntries(data.rarities.order.map((r) => [r, 0])) as Record<RarityId, number>
@@ -88,5 +88,72 @@ describe('equipEffectExplain', () => {
 
   it('returns null for stats without an extended mechanic', () => {
     expect(equipEffectExplain('attackPct')).toBeNull()
+  })
+})
+
+const STAT_KEYS: StatKey[] = [
+  'maxHp', 'maxMp', 'hpRegen', 'mpRegen', 'attack', 'magicAttack', 'physDef', 'magicDef',
+  'critValue', 'dhValue', 'detValue', 'critRate', 'critDamage', 'dhRate', 'detBonus',
+  'dodge', 'attackSpeed', 'haste', 'hitRate', 'lifesteal', 'tenacity', 'power',
+]
+
+const fakeBreakdown: StatBreakdown = {
+  level: 60,
+  bias: 'str',
+  mainAttr: 'str',
+  jobId: 'WAR',
+  jobMatch: true,
+  growthCoef: 1.1,
+  biasRates: { str: 1.15, dex: 0.5, int: 0.5, vit: 1 },
+  jobMatchBonusPct: 15,
+  core: {
+    hero: { str: 120, dex: 90, int: 70, vit: 0 },
+    equip: { str: 92, dex: 0, int: 0, vit: 0 },
+    total: { str: 212, dex: 90, int: 70, vit: 0 },
+  },
+  panelBase: {
+    maxHp: 2960, maxMp: 248, hpRegen: 1, mpRegen: 11, attack: 212, magicAttack: 84,
+    physDef: 106, magicDef: 21, dodgePct: 4.5, attackSpeedPct: 9, critRatePct: 5, hitRatePct: 3.6,
+  },
+  levelGrowth: { maxHp: 1000, maxMp: 40, attack: 60, mpRegen: 1, dodgePct: 0.5, attackSpeedPct: 0.9 },
+  caps: { dodgePct: 30, attackSpeedPct: 50, critRatePct: 100, hitRatePct: 20 },
+  equipFlat: { hp: 500, attack: 300, magicAttack: 0, physDef: 0, magicDef: 0 },
+  subs: { regen: 0, dodge: 0, sks: 0, acc: 0, sps: 0, lifesteal: 0, tenacity: 0, crit: 600, dh: 0, det: 0 },
+  termMods: { maxHpPct: 20 },
+}
+
+const fakeHeroStats = {
+  level: 60, jobId: 'WAR', mainAttr: 'str',
+  maxHp: 4152, maxMp: 248, hpRegen: 1, mpRegen: 11,
+  attack: 512, magicAttack: 84, physDef: 106, magicDef: 21,
+  dodgePct: 4.5, attackSpeedPct: 9, hitRatePct: 3.6, hastePct: 0, lifestealPct: 0, tenacityPct: 0,
+  critValue: 600, dhValue: 0, detValue: 0,
+  critRatePct: 6.8, critDamagePct: 140, dhRatePct: 0, detBonusPct: 0,
+  termMods: { maxHpPct: 20 },
+} as unknown as HeroStats
+
+describe('statExplain', () => {
+  const ctx = { breakdown: fakeBreakdown, stats: fakeHeroStats, hero: { level: 60, agility: 90 } }
+
+  it('每个面板属性都有「作用 + 计算」说明', () => {
+    for (const key of STAT_KEYS) {
+      const e = statExplain(key, ctx)
+      expect(e.title, key).toBeTruthy()
+      expect(e.usage, key).toBeTruthy()
+      expect(e.lines.length, key).toBeGreaterThan(1)
+    }
+  })
+
+  it('生命值说明代入拆解数值并得出面板值', () => {
+    const text = statExplain('maxHp', ctx).lines.join('\n')
+    expect(text).toContain('212') // 力量核心属性总量
+    expect(text).toContain('500') // 装备生命
+    expect(text).toContain('4152') // 最终面板值
+  })
+
+  it('缺少拆解数据时降级为公式且不抛错', () => {
+    const e = statExplain('maxHp', { stats: fakeHeroStats, hero: { level: 1, agility: 0 } })
+    expect(e.usage).toBeTruthy()
+    expect(e.lines.join('\n')).toContain('未就绪')
   })
 })

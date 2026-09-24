@@ -361,6 +361,42 @@ export interface HeroStats {
   termMods: Record<string, number>
 }
 
+/**
+ * 面板属性拆解（`/game/state.statBreakdown`）：由后端 `compute_stats_with_breakdown` 下发，
+ * 记录该英雄面板属性的中间聚合量，供「如何计算」说明代入真实数值。
+ */
+export interface StatBreakdown {
+  level: number
+  bias: string
+  mainAttr: string
+  jobId: string
+  jobMatch: boolean
+  /** 资质成长系数（talents.growthCoef）。 */
+  growthCoef: number
+  /** 装备三维入核心属性的折算率（已含职业匹配加成）。 */
+  biasRates: Record<string, number>
+  /** 职业主属性匹配时装备主属性的额外加成（%）。 */
+  jobMatchBonusPct: number
+  /** 三维：英雄自身 / 装备折算后 / 合计。 */
+  core: {
+    hero: Record<string, number>
+    equip: Record<string, number>
+    total: Record<string, number>
+  }
+  /** 「base + Σ(coef × 核心属性总量) + 等级成长」后的裸面板值（含 cap，未叠加装备/词条）。 */
+  panelBase: Record<string, number>
+  /** panelBase 中来自等级成长的部分。 */
+  levelGrowth: Record<string, number>
+  /** 各属性上限（heroes.json 的 cap）。 */
+  caps: Record<string, number>
+  /** 装备直接提供的基础属性：hp / attack / magicAttack / physDef / magicDef。 */
+  equipFlat: Record<string, number>
+  /** 装备 + 魔晶石副属性合计：regen/dodge/sks/acc/sps/lifesteal/tenacity/crit/dh/det。 */
+  subs: Record<string, number>
+  /** 聚合词条修正（与 HeroStats.termMods 同源）。 */
+  termMods: Record<string, number>
+}
+
 export interface Hero {
   id: number | null
   name: string
@@ -616,6 +652,8 @@ export interface GameState {
   hero: Hero
   power: number
   powerAudit?: { version: string; groups: Record<string, number>; contributions: Record<string, { raw: number; effective: number; contribution: number }> }
+  /** 当前英雄的面板属性拆解（用于「如何计算」说明）。 */
+  statBreakdown?: StatBreakdown
   expToNext: number
   recruitCost: number
   loadout: Partial<Record<SlotId, Item>>

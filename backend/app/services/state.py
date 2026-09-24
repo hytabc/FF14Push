@@ -32,7 +32,7 @@ from app.services.progression import exp_to_next, highest_hero_level
 from app.services.recruiting import initial_hero, recruit_cost, with_recruit_cost
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
 from app.services.serialization import hero_to_dict, item_to_dict, loadout, tag_to_dict
-from app.services.stats import compute_stats
+from app.services.stats import compute_stats, compute_stats_with_breakdown
 from app.services.qualification import region_access
 from app.services.balance import power_audit
 from app.services.valuation import hero_power, sell_price_range
@@ -67,7 +67,7 @@ async def build_game_state(
         hero = _placeholder_hero(user.id)
 
     socket_mods = await materia_socket_mods(db, user.id)
-    stats = compute_stats(hero, items, socket_mods)
+    stats, stat_breakdown = compute_stats_with_breakdown(hero, items, socket_mods)
     difficulty = active_difficulty(user)
 
     progress_rows = (
@@ -146,6 +146,7 @@ async def build_game_state(
         "hero": hero_to_dict(hero, stats),
         "power": hero_power(stats),
         "powerAudit": power_audit(stats),
+        "statBreakdown": stat_breakdown,
         "expToNext": exp_to_next(hero.level),
         "catchUpExpBonusPct": 100 if hero.level < await highest_hero_level(db, user.id) else 0,
         "recruitCost": recruit_cost(hero.talent, hero.level),

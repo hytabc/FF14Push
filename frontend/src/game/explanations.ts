@@ -1,7 +1,15 @@
 import data from '@shared/schema'
 import type { GatherNodeDef } from '@shared/schema'
 
-import type { ChestRarityLuck, CraftOdds, CraftOddsSource, RarityId } from '@/game/types'
+import type {
+  ChestRarityLuck,
+  CraftOdds,
+  CraftOddsSource,
+  GameState,
+  HeroStats,
+  RarityId,
+  StatBreakdown,
+} from '@/game/types'
 
 /**
  * 「概率 / 数值如何计算」的说明文案。
@@ -11,6 +19,8 @@ import type { ChestRarityLuck, CraftOdds, CraftOddsSource, RarityId } from '@/ga
  */
 export interface Explain {
   title: string
+  /** 该属性的作用（一句话），面板说明气泡的「作用」段。 */
+  usage?: string
   lines: string[]
 }
 
@@ -478,4 +488,274 @@ export function equipEffectExplain(stat: string): Explain | null {
       '依据：前端 core/battle.ts 与后端 combat_model.py 同源结算。',
     ],
   }
+}
+
+// ------------------------------------------------- 英雄面板属性：逐属性「如何计算 + 作用」
+
+/** 面板属性 key（对应英雄页「面板属性」中的一行）。 */
+export type StatKey =
+  | 'maxHp'
+  | 'maxMp'
+  | 'hpRegen'
+  | 'mpRegen'
+  | 'attack'
+  | 'magicAttack'
+  | 'physDef'
+  | 'magicDef'
+  | 'critValue'
+  | 'dhValue'
+  | 'detValue'
+  | 'critRate'
+  | 'critDamage'
+  | 'dhRate'
+  | 'detBonus'
+  | 'dodge'
+  | 'attackSpeed'
+  | 'haste'
+  | 'hitRate'
+  | 'lifesteal'
+  | 'tenacity'
+  | 'power'
+
+/** `statExplain` 的上下文：拆解来自 `/game/state.statBreakdown`。 */
+export interface StatExplainContext {
+  breakdown?: StatBreakdown | null
+  stats?: HeroStats | null
+  hero?: { level?: number; agility?: number } | null
+  powerAudit?: GameState['powerAudit']
+}
+
+const ATTR_LABEL: Record<string, string> = { str: '力量', dex: '敏捷', int: '智力', vit: '体力' }
+
+/** base + Σ(coef × 核心属性总量)：有拆解时代入真实数值，否则退化为公式模板。 */
+function coreFormula(coef: Record<string, number>, base: number, core: Record<string, number> | null): string {
+  const terms = Object.entries(coef)
+    .filter(([, c]) => c !== 0)
+    .map(([a, c]) => (core ? `${num(c)} × ${ATTR_LABEL[a] ?? a} ${num(core[a] ?? 0)}` : `${num(c)} × ${ATTR_LABEL[a] ?? a}`))
+  return [base ? num(base) : '', ...terms].filter(Boolean).join(' + ') || '0'
+}
+
+/** 按职业主属性过滤系数（镜像后端 `_resolve_coef`：byJobMainAttr 时只保留主属性项）。 */
+function resolveCoef(coef: Record<string, number>, mainAttr: string | null, byJob: boolean): Record<string, number> {
+  if (!byJob || !mainAttr) return { ...coef }
+  const out: Record<string, number> = {}
+  for (const [k, v] of Object.entries(coef)) if (k === mainAttr) out[k] = v
+  return out
+}
+
+/** 词条加成段：`攻击 +12% + 狂暴 +5%`；无则返回空串。 */
+function modsText(mods: Record<string, number>, entries: Array<[string, string]>): string {
+  return entries
+    .filter(([stat]) => (mods[stat] ?? 0) !== 0)
+    .map(([stat, label]) => `${label} +${num(mods[stat] ?? 0, 1)}%`)
+    .join('、')
+}
+
+const RATE_USAGE: Record<string, string> = {
+  critRate: '命中时触发暴击的概率。',
+  critDamage: '暴击时造成的伤害倍率。',
+  dhRate: '命中时触发直击的概率（直击伤害固定 ×1.25）。',
+  detBonus: '对所有伤害的恒定乘算增伤，无概率判定。',
+  dodge: '概率完全规避来袭攻击，使其不造成伤害。',
+  attackSpeed: '提高普攻出手频率（也缩短技能公共冷却）。',
+  haste: '缩短技能的实际冷却时间。',
+  hitRate: '降低攻击被目标闪避（Miss）的概率。',
+}
+
+const LIFESTEAL_USAGE = '造成伤害时按比例回复自身生命。'
+const TENACITY_USAGE = '按比例减少自身受到的伤害。'
+
+function rateExplainFor(key: StatKey, level: number, agility: number, stats: HeroStats | null): Explain | null {
+  const crit = stats?.critValue ?? 0
+  const dh = stats?.dhValue ?? 0
+  const det = stats?.detValue ?? 0
+  switch (key) {
+    case 'critRate':
+      return threeAttrExplain('critRate', level, crit)
+    case 'critDamage':
+      return threeAttrExplain('critDamage', level, crit)
+    case 'dhRate':
+      return threeAttrExplain('dhRate', level, dh)
+    case 'detBonus':
+      return threeAttrExplain('detBonus', level, det)
+    case 'dodge':
+      return dodgeExplain(agility, stats?.dodgePct ?? 0)
+    case 'attackSpeed':
+      return heroRateExplain('attackSpeed', agility, stats?.attackSpeedPct ?? 0)
+    case 'haste':
+      return heroRateExplain('haste', agility, stats?.hastePct ?? 0)
+    case 'hitRate':
+      return heroRateExplain('hit', agility, stats?.hitRatePct ?? 0)
+    default:
+      return null
+  }
+}
+
+/**
+ * 面板属性「作用 + 如何计算」。数值一律取自后端下发的 `statBreakdown`（与结算同源），
+ * 公式结构取自 `shared/data/heroes.json` / `combat.json`（镜像 `services/stats.py::compute_stats`）。
+ */
+export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
+  const b = ctx.breakdown ?? null
+  const s = ctx.stats ?? null
+  const hero = ctx.hero ?? null
+  const attrs = (data.heroes as any).attributes as Record<string, any>
+  const level = b?.level ?? hero?.level ?? 1
+  const agility = hero?.agility ?? 0
+  const core = b?.core.total ?? null
+  const lg = b?.levelGrowth ?? {}
+  const ef = b?.equipFlat ?? {}
+  const subs = b?.subs ?? {}
+  const mods = b?.termMods ?? s?.termMods ?? {}
+  const mainAttr = b?.mainAttr ?? s?.mainAttr ?? null
+  const note = b ? null : '（拆解数据未就绪，数值以面板为准）'
+
+  const finish = (title: string, usage: string, lines: string[]): Explain => ({
+    title,
+    usage,
+    lines: [...lines.filter(Boolean), ...(note ? [note] : [])],
+  })
+
+  const rate = rateExplainFor(key, level, agility, s)
+  if (rate) {
+    return {
+      ...rate,
+      usage: RATE_USAGE[key],
+      lines: [...rate.lines, ...(note ? [note] : [])],
+    }
+  }
+
+  // 三属性原始值（暴击 / 直击 / 信念）：装备副属性 → 词条 → 主属性联动。
+  const link = (data.combat as any).primaryLink?.[b?.bias ?? ''] ?? {}
+  if (key === 'critValue' || key === 'dhValue' || key === 'detValue') {
+    const map = {
+      critValue: { sub: subs.crit, stat: 'critStatPct', label: '暴击', linkKey: 'crit', field: 'critValue', value: s?.critValue },
+      dhValue: { sub: subs.dh, stat: 'dhStatPct', label: '直击', linkKey: 'dh', field: 'dhValue', value: s?.dhValue },
+      detValue: { sub: subs.det, stat: 'detStatPct', label: '信念', linkKey: 'det', field: 'detValue', value: s?.detValue },
+    }[key]
+    const lines = [`装备 / 魔晶石「${map.label}」副属性 ${num(map.sub ?? 0)}`]
+    if (mods[map.stat]) lines.push(`× (1 + ${map.label}值加成 ${num(mods[map.stat], 1)}%)`)
+    if (link[map.linkKey]) lines.push(`× (1 + 主属性联动 ${num(link[map.linkKey] * 100, 1)}%)`)
+    if (key === 'detValue' && mods.critToDetPct)
+      lines.push(`+ 暴击转化：暴击值 ${num(s?.critValue ?? 0)} × ${num(mods.critToDetPct, 1)}%`)
+    lines.push(`= ${num(map.value ?? 0)}`)
+    const usage = {
+      critValue: '换算暴击率与暴击伤害的原始值（越高越好）。',
+      dhValue: '换算直击率的原始值（直击伤害固定 ×1.25）。',
+      detValue: '换算全伤害恒定增伤的原始值。',
+    }[key]
+    return finish(`${map.label}值如何计算`, usage, lines)
+  }
+
+  if (key === 'maxHp') {
+    const spec = attrs.maxHp
+    return finish('生命值如何计算', '承受伤害的耐久度，归零即阵亡。', [
+      `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
+      lg.maxHp ? `等级成长 +${num(lg.maxHp)}（每级按自身三维 × 资质系数 ${num(b?.growthCoef ?? 0, 2)}）` : '',
+      ef.hp ? `装备生命 +${num(ef.hp)}` : '',
+      `生命加成词条：${modsText(mods, [['maxHpPct', '生命']]) || '无'}`,
+      `= ${num(s?.maxHp ?? 0)}`,
+    ])
+  }
+
+  if (key === 'maxMp') {
+    const spec = attrs.maxMp
+    return finish('魔法值如何计算', '释放技能的消耗资源；不足时只能普攻（普攻会回复少量魔法值）。', [
+      `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
+      lg.maxMp ? `等级成长 +${num(lg.maxMp)}` : '',
+      `魔法加成词条：${modsText(mods, [['maxMpPct', '魔法']]) || '无'}`,
+      `= ${num(s?.maxMp ?? 0)}`,
+    ])
+  }
+
+  if (key === 'hpRegen') {
+    const spec = attrs.hpRegen
+    return finish('生命回复如何计算', '每秒自动回复的生命值。', [
+      `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
+      `装备 / 魔晶石回复 +${num(subs.regen ?? 0)}`,
+      mods.hpRegenPct ? `× (1 + 回复加成 ${num(mods.hpRegenPct, 1)}%)` : '',
+      `= ${num(s?.hpRegen ?? 0)} / 秒`,
+    ])
+  }
+
+  if (key === 'mpRegen') {
+    const spec = attrs.mpRegen
+    return finish('魔力回复如何计算', '每秒自动回复的魔法值（技能续航的基础）。', [
+      `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
+      lg.mpRegen ? `等级成长 +${num(lg.mpRegen)}` : '',
+      mods.mpRegenPct ? `× (1 + 回复加成 ${num(mods.mpRegenPct, 1)}%)，最低 0` : '',
+      `= ${num(s?.mpRegen ?? 0)} / 秒`,
+    ])
+  }
+
+  if (key === 'attack') {
+    const spec = attrs.attack
+    const coef = resolveCoef(spec.coef, mainAttr, Boolean(spec.byJobMainAttr))
+    return finish('物理攻击如何计算', '物理职业普攻与技能的基础伤害来源。', [
+      `面板基础 = ${coreFormula(coef, Number(spec.base ?? 0), core)}（仅计入职业主属性 ${ATTR_LABEL[mainAttr ?? ''] ?? '—'}）`,
+      lg.attack ? `等级成长 +${num(lg.attack)}` : '',
+      ef.attack ? `装备攻击 +${num(ef.attack)}` : '',
+      `攻击加成词条：${modsText(mods, [['attackPct', '攻击'], ['berserkPct', '狂暴']]) || '无'}`,
+      mods.vitToAttackPct ? `+ 体力转化：体力 ${num(core?.vit ?? 0)} × ${num(mods.vitToAttackPct, 1)}%` : '',
+      `= ${num(s?.attack ?? 0)}`,
+    ])
+  }
+
+  if (key === 'magicAttack') {
+    const spec = attrs.magicAttack
+    return finish('魔法攻击如何计算', '智力系职业普攻与技能的基础伤害来源。', [
+      `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
+      lg.magicAttack ? `等级成长 +${num(lg.magicAttack)}` : '',
+      ef.magicAttack ? `装备魔攻 +${num(ef.magicAttack)}` : '',
+      `× (1 + 攻击词条 ${num((mods.attackPct ?? 0) + (mods.berserkPct ?? 0), 1)}%)` +
+        (mods.magicAttackPct ? ` × (1 + 魔攻词条 ${num(mods.magicAttackPct, 1)}%)` : ''),
+      `= ${num(s?.magicAttack ?? 0)}`,
+    ])
+  }
+
+  if (key === 'physDef') {
+    const spec = attrs.physDef
+    return finish('物理防御如何计算', '按比例减少受到的物理伤害。', [
+      `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
+      ef.physDef ? `装备物防 +${num(ef.physDef)}` : '',
+      `物防加成词条：${modsText(mods, [['physDefPct', '物防']]) || '无'}`,
+      `= ${num(s?.physDef ?? 0)}`,
+    ])
+  }
+
+  if (key === 'magicDef') {
+    const spec = attrs.magicDef
+    return finish('魔法防御如何计算', '按比例减少受到的魔法伤害。', [
+      `面板基础 = ${coreFormula(spec.coef, Number(spec.base ?? 0), core)}`,
+      ef.magicDef ? `装备魔防 +${num(ef.magicDef)}` : '',
+      `魔防加成词条：${modsText(mods, [['magicDefPct', '魔防']]) || '无'}`,
+      `= ${num(s?.magicDef ?? 0)}`,
+    ])
+  }
+
+  if (key === 'lifesteal') {
+    return finish('吸血如何计算', LIFESTEAL_USAGE, [
+      `装备 / 魔晶石「吸血」 ${num(subs.lifesteal ?? 0, 1)}%`,
+      `+ 吸血词条 ${num(mods.lifestealPct ?? 0, 1)}%，无基础值`,
+      `= ${num(s?.lifestealPct ?? 0, 1)}%`,
+    ])
+  }
+
+  if (key === 'tenacity') {
+    return finish('坚韧如何计算', TENACITY_USAGE, [
+      `装备 / 魔晶石「坚韧」 ${num(subs.tenacity ?? 0, 1)}%`,
+      `+ 守护词条 ${num(mods.guardPct ?? 0, 1)}%，无基础值`,
+      `= ${num(s?.tenacityPct ?? 0, 1)}%`,
+    ])
+  }
+
+  // key === 'power'
+  const audit = ctx.powerAudit
+  const groups = audit?.groups ?? { offense: 0, defense: 0, sustain: 0 }
+  return finish('战力如何计算', '综合衡量英雄强度的分项加权分（进攻 / 防御 / 续航）。', [
+    '战力 = Σ(各属性「软上限递减」后的有效值 × 权重)，分进攻 / 防御 / 续航三组求和。',
+    '有效值 = 上限 × (1 − e^(−原始值 / 上限))：数值越高，边际收益越低。',
+    '时长与重复次数类效果不计入战力。',
+    `当前：进攻 ${Math.floor(groups.offense ?? 0)} + 防御 ${Math.floor(groups.defense ?? 0)} + 续航 ${Math.floor(groups.sustain ?? 0)}`,
+  ])
 }

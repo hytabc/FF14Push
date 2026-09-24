@@ -2561,3 +2561,21 @@ class TestBattleDifficulty:
         # 编码 value = 难度 × 1000 + 地区 → 1×1000+20 > 0×1000+40
         assert mine["value"] == 1 * 1000 + 20
         assert entries == sorted(entries, key=lambda e: e["value"], reverse=True)
+
+
+async def test_game_state_includes_stat_breakdown(auth_client) -> None:
+    """英雄页「面板属性」的「如何计算」依赖 /game/state 的 statBreakdown（与结算同源）。"""
+    state = (await auth_client.get(f"{API}/game/state")).json()
+    breakdown = state["statBreakdown"]
+    stats = state["hero"]["stats"]
+    assert breakdown["level"] == state["hero"]["level"]
+    assert breakdown["mainAttr"] == stats["mainAttr"]
+    for attr in ("str", "dex", "int", "vit"):
+        assert abs(
+            breakdown["core"]["total"][attr]
+            - (breakdown["core"]["hero"][attr] + breakdown["core"]["equip"][attr])
+        ) < 0.02
+    rebuilt_hp = (breakdown["panelBase"]["maxHp"] + breakdown["equipFlat"]["hp"]) * (
+        1 + breakdown["termMods"].get("maxHpPct", 0) / 100
+    )
+    assert abs(rebuilt_hp - stats["maxHp"]) < 0.05

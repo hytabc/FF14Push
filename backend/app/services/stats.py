@@ -1,6 +1,7 @@
 """英雄面板属性计算。
 
-对应前端 `src/game/core/attributes.ts`，两端必须保持一致。
+展示口径见前端 `frontend/src/game/explanations.ts`：它用 `compute_stats_with_breakdown`
+下发的拆解拼出「如何计算」说明，两端必须保持一致。
 """
 
 from __future__ import annotations
@@ -166,10 +167,15 @@ def hero_items(items: Iterable[Any], hero_id: int | None) -> list[Any]:
     return [i for i in items if getattr(i, "equipped_hero_id", None) in (None, hero_id)]
 
 
-def compute_stats(
+def _compute(
     hero: Any, items: Iterable[Any], socket_mods: dict[str, float] | None = None
-) -> HeroStats:
-    """计算英雄最终面板属性。`socket_mods` 为账号级魔晶石镶嵌加成。"""
+) -> tuple[HeroStats, dict[str, Any]]:
+    """计算英雄最终面板属性，并顺带产出「面板属性拆解」。
+
+    拆解只记录计算过程中的中间聚合量（三维折算、面板裸值、等级成长、装备/魔晶石来源、
+    词条），供前端「英雄 → 面板属性」逐属性展示「如何计算」；不参与任何结算。
+    `socket_mods` 为账号级魔晶石镶嵌加成。
+    """
     items = hero_items(items, getattr(hero, "id", None))
     agg = aggregate_equipment(items, socket_mods)
     level = int(hero.level)
@@ -188,18 +194,25 @@ def compute_stats(
         "vit": 0.0,
     }
 
-    equip_core: dict[str, float] = {}
-    for attr, value in agg.core_attrs.items():
+    # 装备三维入核心属性的折算率（含主属性/职业匹配加成），拆解与计算共用同一份。
+    bias_rates: dict[str, float] = {}
+    for attr in ("str", "dex", "int", "vit"):
         rate = _bias_rate(bias, attr)
         if job_match and attr == main_attr:
             rate *= 1.0 + float(CONFIG.heroes["jobMatchBonus"]["equipMainAttrPct"])
-        equip_core[attr] = value * rate
+        bias_rates[attr] = rate
+
+    equip_core: dict[str, float] = {}
+    for attr, value in agg.core_attrs.items():
+        equip_core[attr] = value * bias_rates.get(attr, 1.0)
 
     total_core = {a: hero_core.get(a, 0.0) + equip_core.get(a, 0.0) for a in ("str", "dex", "int", "vit")}
 
     attr_cfg: dict[str, Any] = CONFIG.heroes["attributes"]
     level_cfg: dict[str, Any] = CONFIG.heroes["levelUpGain"]
     panel: dict[str, float] = {}
+    # 各属性中来自「等级成长」的部分（拆解用）。
+    level_growth: dict[str, float] = {}
 
     for name, spec in attr_cfg.items():
         by_job = bool(spec.get("byJobMainAttr"))
@@ -213,12 +226,18 @@ def compute_stats(
             per_level = base_ref * float(gain_cfg.get("basePct", 0)) + sum(
                 c * hero_core.get(a, 0.0) for a, c in gain_coef.items()
             )
-            value += per_level * (level - 1) * gc
+            growth = per_level * (level - 1) * gc
+            value += growth
+            level_growth[name] = growth
 
         cap = spec.get("cap")
         if cap is not None:
             value = min(value, float(cap))
         panel[name] = value
+
+    # 「base + Σ(coef × 核心属性总量) + 等级成长」后的裸面板值（含 cap），
+    # 尚未叠加装备平铺属性 / 副属性 / 词条——拆解里作为公式的基础项。
+    panel_base = dict(panel)
 
     # 装备直接提供的基础属性
     panel["maxHp"] += agg.base_attrs.get("hp", 0.0)
@@ -274,7 +293,38 @@ def compute_stats(
     if mods.get("dhConvertPct"):
         dh_rate += crit_rate * mods["dhConvertPct"] / 100.0
 
-    return HeroStats(
+    breakdown: dict[str, Any] = {
+        "level": level,
+        "bias": bias,
+        "mainAttr": main_attr,
+        "jobId": job_id,
+        "jobMatch": job_match,
+        "growthCoef": round(gc, 4),
+        "biasRates": {a: round(r, 4) for a, r in bias_rates.items()},
+        "jobMatchBonusPct": round(float(CONFIG.heroes["jobMatchBonus"]["equipMainAttrPct"]) * 100, 2),
+        "core": {
+            "hero": {a: round(hero_core.get(a, 0.0), 2) for a in ("str", "dex", "int", "vit")},
+            "equip": {a: round(equip_core.get(a, 0.0), 2) for a in ("str", "dex", "int", "vit")},
+            "total": {a: round(total_core.get(a, 0.0), 2) for a in ("str", "dex", "int", "vit")},
+        },
+        "panelBase": {k: round(v, 2) for k, v in panel_base.items()},
+        "levelGrowth": {k: round(v, 2) for k, v in level_growth.items()},
+        "caps": {name: float(spec["cap"]) for name, spec in attr_cfg.items() if spec.get("cap") is not None},
+        "equipFlat": {
+            "hp": round(agg.base_attrs.get("hp", 0.0), 2),
+            "attack": round(agg.base_attrs.get("attack", 0.0), 2),
+            "magicAttack": round(agg.base_attrs.get("magicAttack", 0.0), 2),
+            "physDef": round(agg.base_attrs.get("physDef", 0.0), 2),
+            "magicDef": round(agg.base_attrs.get("magicDef", 0.0), 2),
+        },
+        "subs": {
+            k: round(sub.get(k, 0.0), 2)
+            for k in ("regen", "dodge", "sks", "acc", "sps", "lifesteal", "tenacity", "crit", "dh", "det")
+        },
+        "termMods": {k: round(v, 3) for k, v in mods.items()},
+    }
+
+    stats = HeroStats(
         level=level,
         job_id=job_id,
         main_attr=main_attr,
@@ -302,6 +352,22 @@ def compute_stats(
         term_mods=dict(mods),
         egg_id=getattr(hero, "egg_id", None),
     )
+
+    return stats, breakdown
+
+
+def compute_stats(
+    hero: Any, items: Iterable[Any], socket_mods: dict[str, float] | None = None
+) -> HeroStats:
+    """计算英雄最终面板属性。`socket_mods` 为账号级魔晶石镶嵌加成。"""
+    return _compute(hero, items, socket_mods)[0]
+
+
+def compute_stats_with_breakdown(
+    hero: Any, items: Iterable[Any], socket_mods: dict[str, float] | None = None
+) -> tuple[HeroStats, dict[str, Any]]:
+    """同 `compute_stats`，额外返回面板属性拆解（见 `_compute`）。"""
+    return _compute(hero, items, socket_mods)
 
 
 def three_attr_tier(level: int) -> dict[str, Any]:

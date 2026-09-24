@@ -421,7 +421,7 @@ async def cancel_buy_order(
 
 @router.post("/buy-orders/fill")
 async def fill_buy_order(
-    payload: BuyOrderFillRequest, request: Request, db: DbSession, user: CurrentUser
+    payload: BuyOrderFillRequest, db: DbSession, user: CurrentUser
 ) -> dict:
     """卖给收购单：按 count 部分 / 全部成交。"""
     await guard_rate(db, "market_fill", str(user.id), 60, 60, "出售过于频繁，请稍后再试")
@@ -438,4 +438,4 @@ async def fill_buy_order(
     if market.is_expired(row):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该收购单已过期")
 
-    return await market.fill_buy_order(db, user, row, payload.count, client_ip(request))
+    return await market.fill_buy_order(db, user, row, payload.count)

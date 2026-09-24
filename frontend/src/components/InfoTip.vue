@@ -57,7 +57,7 @@ onBeforeUnmount(() => {
       <div v-if="open" class="fixed inset-0 z-[79]" @click="open = false" />
       <div
         v-if="open"
-        class="fixed z-[80] space-y-1 rounded-lg border border-ink-600 bg-ink-900 p-3 text-[11px] leading-relaxed text-ink-300 shadow-xl"
+        class="fixed z-[80] max-h-[60vh] space-y-1 overflow-y-auto overscroll-contain rounded-lg border border-ink-600 bg-ink-900 p-3 text-[11px] leading-relaxed text-ink-300 shadow-xl"
         :style="{ top: `${pos.top}px`, left: `${pos.left}px`, width: `${pos.width}px` }"
       >
         <p v-if="title" class="text-xs font-semibold text-ink-100">{{ title }}</p>

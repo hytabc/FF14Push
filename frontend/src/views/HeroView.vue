@@ -3,14 +3,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import data from '@shared/schema'
-import InfoTip from '@/components/InfoTip.vue'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import JobFigure from '@/components/JobFigure.vue'
 import JobIcon from '@/components/JobIcon.vue'
+import StatTip from '@/components/StatTip.vue'
 import TermBadges from '@/components/TermBadges.vue'
 import { eggSkillSet } from '@/game/core/egg'
-import { dodgeExplain, heroRateExplain, threeAttrExplain } from '@/game/explanations'
+import { statExplain, type Explain, type StatKey } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { attrName, attrRangeLabel, formatPercent, jobName, rarityBg, rarityClass, rarityName, skillEffectLabel } from '@/utils/format'
 import { dohdolSlotGroups, equipmentSlotGroups } from '@/utils/slots'
@@ -85,30 +85,55 @@ function castShare(skillId: string) {
   return ((game.state?.skillStats[skillId] ?? 0) / totalCasts.value) * 100
 }
 
-// 概率 / 面板速率的「如何计算」说明（数值取自当前面板，公式镜像后端）
-const heroLevel = computed(() => hero.value?.level ?? 1)
-const heroAgility = computed(() => hero.value?.agility ?? 0)
-function critRateInfo() {
-  return threeAttrExplain('critRate', heroLevel.value, stats.value?.critValue ?? 0)
+// 面板属性：逐属性「作用 + 如何计算」（数值取自后端下发的 statBreakdown，与结算同源）
+const statCtx = computed(() => ({
+  breakdown: game.state?.statBreakdown ?? null,
+  stats: stats.value,
+  hero: hero.value ? { level: hero.value.level, agility: hero.value.agility } : null,
+  powerAudit: game.state?.powerAudit,
+}))
+
+interface StatRow {
+  key: StatKey
+  label: string
+  value: string
+  tone?: string
+  tip: Explain
 }
-function critDamageInfo() {
-  return threeAttrExplain('critDamage', heroLevel.value, stats.value?.critValue ?? 0)
-}
-function dhRateInfo() {
-  return threeAttrExplain('dhRate', heroLevel.value, stats.value?.dhValue ?? 0)
-}
-function detBonusInfo() {
-  return threeAttrExplain('detBonus', heroLevel.value, stats.value?.detValue ?? 0)
-}
-function dodgeInfo() {
-  return dodgeExplain(heroAgility.value, stats.value?.dodgePct ?? 0)
-}
-function attackSpeedInfo() {
-  return heroRateExplain('attackSpeed', heroAgility.value, stats.value?.attackSpeedPct ?? 0)
-}
-function hasteInfo() {
-  return heroRateExplain('haste', heroAgility.value, stats.value?.hastePct ?? 0)
-}
+
+const statRows = computed<StatRow[]>(() => {
+  const s = stats.value
+  const ctx = statCtx.value
+  const int = (v?: number) => String(Math.round(v ?? 0))
+  const dec = (v?: number) => (Number.isInteger(v ?? 0) ? String(v ?? 0) : (v ?? 0).toFixed(1))
+  const pctOf = (v?: number, digits = 1) => formatPercent(v ?? 0, digits)
+  const rows: Array<Omit<StatRow, 'tip'>> = [
+    { key: 'maxHp', label: '生命值', value: int(s?.maxHp) },
+    { key: 'maxMp', label: '魔法值', value: int(s?.maxMp) },
+    { key: 'hpRegen', label: '生命回复', value: dec(s?.hpRegen) },
+    { key: 'mpRegen', label: '魔力回复', value: dec(s?.mpRegen) },
+    { key: 'attack', label: '物理攻击', value: int(s?.attack) },
+    { key: 'magicAttack', label: '魔法攻击', value: int(s?.magicAttack) },
+    { key: 'physDef', label: '物理防御', value: int(s?.physDef) },
+    { key: 'magicDef', label: '魔法防御', value: int(s?.magicDef) },
+    { key: 'critValue', label: '暴击值', value: int(s?.critValue) },
+    { key: 'dhValue', label: '直击值', value: int(s?.dhValue) },
+    { key: 'detValue', label: '信念值', value: int(s?.detValue) },
+    { key: 'critRate', label: '暴击率', value: pctOf(s?.critRatePct), tone: 'text-sky-300' },
+    { key: 'critDamage', label: '暴击伤害', value: pctOf(s?.critDamagePct, 0), tone: 'text-sky-300' },
+    { key: 'dhRate', label: '直击率', value: pctOf(s?.dhRatePct), tone: 'text-sky-300' },
+    { key: 'detBonus', label: '信念增伤', value: pctOf(s?.detBonusPct), tone: 'text-sky-300' },
+    { key: 'dodge', label: '闪避', value: pctOf(s?.dodgePct) },
+    { key: 'attackSpeed', label: '攻击速度', value: pctOf(s?.attackSpeedPct) },
+    { key: 'haste', label: '技能急速', value: pctOf(s?.hastePct) },
+    { key: 'hitRate', label: '命中率', value: pctOf(s?.hitRatePct) },
+    { key: 'lifesteal', label: '吸血', value: pctOf(s?.lifestealPct) },
+    { key: 'tenacity', label: '坚韧', value: pctOf(s?.tenacityPct) },
+  ]
+  return rows.map((row) => ({ ...row, tip: statExplain(row.key, ctx) }))
+})
+
+const powerTip = computed(() => statExplain('power', statCtx.value))
 </script>
 
 <template>
@@ -189,28 +214,18 @@ function hasteInfo() {
         <div class="w-full sm:w-64">
           <h3 class="text-xs font-semibold text-ink-300">面板属性</h3>
           <dl class="mt-2 space-y-1 text-[11px]">
-            <div v-for="row in [
-              ['生命值', stats?.maxHp, ''],
-              ['魔法值', stats?.maxMp, ''],
-              ['物理攻击', stats?.attack, ''],
-              ['魔法攻击', stats?.magicAttack, ''],
-              ['物理防御', stats?.physDef, ''],
-              ['魔法防御', stats?.magicDef, ''],
-              ['暴击值', stats?.critValue, ''],
-              ['直击值', stats?.dhValue, ''],
-              ['信念值', stats?.detValue, ''],
-            ]" :key="String(row[0])" class="flex justify-between">
-              <dt class="text-ink-400">{{ row[0] }}</dt>
-              <dd class="font-mono text-ink-200">{{ Math.round(Number(row[1] ?? 0)) }}</dd>
+            <div v-for="row in statRows" :key="row.key" class="flex justify-between">
+              <dt class="text-ink-400">{{ row.label }}</dt>
+              <dd class="flex items-center font-mono" :class="row.tone ?? 'text-ink-200'">
+                {{ row.value }}<StatTip :explain="row.tip" />
+              </dd>
             </div>
-            <div class="flex justify-between"><dt class="text-ink-400">暴击率</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.critRatePct ?? 0) }}<InfoTip :title="critRateInfo().title"><p v-for="(line, i) in critRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">暴击伤害</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.critDamagePct ?? 0, 0) }}<InfoTip :title="critDamageInfo().title"><p v-for="(line, i) in critDamageInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">直击率</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.dhRatePct ?? 0) }}<InfoTip :title="dhRateInfo().title"><p v-for="(line, i) in dhRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">信念增伤</dt><dd class="flex items-center font-mono text-sky-300">{{ formatPercent(stats?.detBonusPct ?? 0) }}<InfoTip :title="detBonusInfo().title"><p v-for="(line, i) in detBonusInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">闪避</dt><dd class="flex items-center font-mono text-ink-200">{{ formatPercent(stats?.dodgePct ?? 0) }}<InfoTip :title="dodgeInfo().title"><p v-for="(line, i) in dodgeInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">攻击速度</dt><dd class="flex items-center font-mono text-ink-200">{{ formatPercent(stats?.attackSpeedPct ?? 0) }}<InfoTip :title="attackSpeedInfo().title"><p v-for="(line, i) in attackSpeedInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">技能急速</dt><dd class="flex items-center font-mono text-ink-200">{{ formatPercent(stats?.hastePct ?? 0) }}<InfoTip :title="hasteInfo().title"><p v-for="(line, i) in hasteInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">战力</dt><dd class="font-mono text-amber-300">{{ game.state?.power }}</dd></div>
+            <div class="flex justify-between">
+              <dt class="text-ink-400">战力</dt>
+              <dd class="flex items-center font-mono text-amber-300">
+                {{ game.state?.power }}<StatTip :explain="powerTip" />
+              </dd>
+            </div>
             <div v-if="game.state?.powerAudit" class="space-y-1 text-xs">
               <p>进攻 {{ Math.floor(game.state.powerAudit.groups.offense ?? 0) }} · 防御 {{ Math.floor(game.state.powerAudit.groups.defense ?? 0) }} · 续航 {{ Math.floor(game.state.powerAudit.groups.sustain ?? 0) }}</p>
               <details><summary>属性贡献 · {{ game.state.powerAudit.version }}</summary>

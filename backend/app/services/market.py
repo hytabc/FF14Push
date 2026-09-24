@@ -4,7 +4,9 @@
 - 上架即把物品从卖家背包 / 库存迁出（装备删除行 + 保存快照；堆叠扣减数量），进入托管。
 - 成交：买家扣全款，卖家得 `total - fee`（fee = floor(total × feePct)，金币直接销毁回收）。
 - 未售出到期（listingDays 天）自动退回卖家。
-- 卖家 / 买家同一 IP 的成交写入审计日志（可疑洗钱行为留痕，不拦截）。
+- 反多开：卖家 / 买家判定为关联账号（同设备 / 同 IP，见 services/devices.py）时，成交额受
+  `economy.json:antiAlt.marketDailyLimit` 限制——寄售为单笔上限 + 该 pair 24h 累计上限，
+  收购单为单笔上限，并写入审计日志留痕。
 - 收购单（求购）：发布者托管 `unit_price × quantity` 金币，卖家手动按剩余数量部分成交
   （卖家得 `amount - fee`），未成交部分在下架 / 到期时退还。仅支持堆叠物，不做自动撮合。
 """
@@ -15,7 +17,7 @@ from datetime import timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, DohDolProgress, Item, MarketBuyOrder, MarketListing, User
@@ -28,7 +30,7 @@ from app.models.market import (
     STATUS_FILLED,
     STATUS_SOLD,
 )
-from app.services import dohdol_util
+from app.services import devices, dohdol_util
 from app.services.codex import unlock_equipment, unlock_terms
 from app.services.game_config import CONFIG
 from app.services.progression import highest_hero_level
@@ -346,6 +348,24 @@ async def list_stack(
 
 
 # ------------------------------------------------------------------ 成交 / 下架
+async def sold_volume_between(db: AsyncSession, a: int, b: int) -> int:
+    """两个账号之间最近 24 小时在寄售市场成交的总额（按 sold_price 计，双向累计）。"""
+    since = utcnow() - timedelta(hours=24)
+    total = (
+        await db.execute(
+            select(func.coalesce(func.sum(MarketListing.sold_price), 0)).where(
+                MarketListing.status == STATUS_SOLD,
+                MarketListing.closed_at >= since,
+                or_(
+                    (MarketListing.seller_id == a) & (MarketListing.buyer_id == b),
+                    (MarketListing.seller_id == b) & (MarketListing.buyer_id == a),
+                ),
+            )
+        )
+    ).scalar_one()
+    return int(total or 0)
+
+
 async def buy_listing(
     db: AsyncSession, buyer: User, row: MarketListing, ip: str | None
 ) -> dict[str, Any]:
@@ -363,6 +383,17 @@ async def buy_listing(
     if int(buyer.gold) < total:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="金币不足")
 
+    # 反多开：关联账号（同设备 / 同 IP）之间的成交额受限——单笔上限 + 该 pair 24h 累计上限。
+    linked = await devices.are_linked(db, buyer.id, seller.id)
+    if linked:
+        cap = devices.linked_market_daily_limit()
+        volume = await sold_volume_between(db, buyer.id, seller.id)
+        if total > cap or volume + total > cap:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"关联账号（同设备 / 同 IP）之间交易板成交额度为 {cap} 金币（每笔 / 每日累计）",
+            )
+
     fee = fee_of(total)
     buyer.gold = int(buyer.gold) - total
     seller.gold = int(seller.gold) + (total - fee)
@@ -376,11 +407,11 @@ async def buy_listing(
     row.buyer_ip = ip
     row.closed_at = utcnow()
 
-    if ip and row.seller_ip and ip == row.seller_ip:
+    if linked:
         db.add(
             AuditLog(
                 user_id=buyer.id,
-                reason="market_same_ip",
+                reason="market_linked",
                 payload={"listingId": row.id, "sellerId": row.seller_id, "price": total},
                 rejected=False,
             )
@@ -517,7 +548,7 @@ async def create_buy_order(
 
 
 async def fill_buy_order(
-    db: AsyncSession, seller: User, order: MarketBuyOrder, count: int, ip: str | None
+    db: AsyncSession, seller: User, order: MarketBuyOrder, count: int
 ) -> dict[str, Any]:
     """卖给收购单：按 count 部分 / 全部成交，卖家得 amount - fee（买家金币已托管）。"""
     if order.buyer_id == seller.id:
@@ -534,12 +565,23 @@ async def fill_buy_order(
     if remaining <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该收购单已完成")
     filled_count = min(int(count), remaining)
+    amount = int(order.unit_price) * filled_count
+
+    # 反多开：关联账号（同设备 / 同 IP）之间的收购单成交额受单笔上限限制（收购单无逐笔成交归属，故不做 pair 累计）。
+    linked = await devices.are_linked(db, seller.id, order.buyer_id)
+    if linked:
+        cap = devices.linked_market_daily_limit()
+        if amount > cap:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"关联账号（同设备 / 同 IP）之间交易板单笔成交额度为 {cap} 金币",
+            )
+
     if not await dohdol_util.stack_consume(
         db, seller.id, order.kind, order.item_key, filled_count
     ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="数量不足")
 
-    amount = int(order.unit_price) * filled_count
     fee = fee_of(amount)
     seller.gold = int(seller.gold) + (amount - fee)
     await dohdol_util.stack_add(db, buyer.id, order.kind, order.item_key, filled_count)
@@ -549,11 +591,11 @@ async def fill_buy_order(
         order.status = STATUS_FILLED
         order.closed_at = utcnow()
 
-    if ip and order.buyer_ip and ip == order.buyer_ip:
+    if linked:
         db.add(
             AuditLog(
                 user_id=seller.id,
-                reason="market_same_ip",
+                reason="market_linked",
                 payload={"buyOrderId": order.id, "buyerId": order.buyer_id, "price": amount},
                 rejected=False,
             )
