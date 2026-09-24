@@ -4,10 +4,18 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '@/api'
 import data from '@shared/schema'
 import ItemIcon from '@/components/ItemIcon.vue'
+import SearchSelect, { type SearchOption } from '@/components/SearchSelect.vue'
 import { useVisibleLimit } from '@/composables/useVisibleLimit'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, JobRole, RarityId, TermQuality } from '@/game/types'
 import { RARITY_ORDER, TERM_CATEGORY_OPTIONS, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termCategoryName, termQualityClass, termQualityName } from '@/utils/format'
+import {
+  applyFishFilters,
+  createFishFilters,
+  hasFishFilters,
+  presentFishValues,
+  type FishFilterState,
+} from '@/utils/fishFilters'
 import {
   EQUIP_GROUP_LABEL,
   ROLE_LABELS,
@@ -48,6 +56,9 @@ const termSource = ref<'all' | 'combat' | 'production'>('all')
 const termCategory = ref<string>('all')
 const termType = ref<'all' | 'buff' | 'debuff'>('all')
 const termQualities = ref<Set<TermQuality>>(new Set())
+
+/** 鱼获图鉴专属筛选：钓场 / 种类 / 品质 / 天气 / 时段 / 直觉前置 / 尺寸区间。 */
+const fishFilters = ref<FishFilterState>(createFishFilters())
 
 const EQUIP_CATEGORY_ORDER = ['weapon', 'armor', 'accessory'] as const
 const DEDICATED_CATEGORY_ORDER = ['doh_tool', 'doh_gear', 'dol_tool', 'dol_gear'] as const
@@ -185,6 +196,25 @@ function toggleTermQuality(q: TermQuality) {
   termQualities.value = toggleSet(termQualities.value, q) as Set<TermQuality>
 }
 
+/** 鱼获筛选：整体替换状态（含 Set），保证响应式与「重置」判定都简单可靠。 */
+function patchFishFilters(patch: Partial<FishFilterState>) {
+  fishFilters.value = { ...fishFilters.value, ...patch }
+}
+
+function toggleFishWeather(id: string) {
+  patchFishFilters({ weather: toggleSet(fishFilters.value.weather, id) })
+}
+
+function toggleFishTimeOfDay(id: string) {
+  patchFishFilters({ timeOfDay: toggleSet(fishFilters.value.timeOfDay, id) })
+}
+
+const fishFiltersActive = computed(() => hasFishFilters(fishFilters.value))
+
+function resetFishFilters() {
+  fishFilters.value = createFishFilters()
+}
+
 const TABS = [
   { id: 'equipment', label: '装备图鉴' },
   { id: 'monster', label: '怪物图鉴' },
@@ -210,6 +240,52 @@ const WEATHER_NAME: Record<string, string> = Object.fromEntries(
   data.weather.types.map((t) => [t.id, t.name]),
 )
 const TOD_NAME: Record<string, string> = data.weather.timeOfDayNames
+
+/** 鱼获条目里实际出现过的取值：筛选选项只列出有内容的项，避免一堆必然空结果的选择。 */
+const fishPresent = computed(() => presentFishValues(entries.value))
+
+/** 钓场共 40 个，用可搜索选择而非原生下拉（可直接输入名称过滤）。 */
+const fishRegionOptions = computed<SearchOption[]>(() => [
+  { value: 'all', label: '全部钓场' },
+  ...data.regions.regions
+    .filter((r) => fishPresent.value.regions.has(r.id))
+    .map((r) => ({ value: String(r.id), label: r.name })),
+])
+
+/** SearchSelect 以字符串为值，这里与 `regionId: number | 'all'` 互转。 */
+const fishRegionValue = computed({
+  get: () => String(fishFilters.value.regionId),
+  set: (value: string) => {
+    patchFishFilters({ regionId: !value || value === 'all' ? 'all' : Number(value) })
+  },
+})
+
+const fishKindOptions = computed(() => [
+  { id: 'all' as const, label: '全部种类' },
+  ...Object.entries(FISH_KIND_LABEL)
+    .filter(([id]) => fishPresent.value.kinds.has(id))
+    .map(([id, label]) => ({ id: id as FishFilterState['kind'], label })),
+])
+
+const fishRarityOptions = computed(() => [
+  { id: 'all' as const, label: '全部品质' },
+  ...Object.entries(FISH_RARITY_LABEL)
+    .filter(([id]) => fishPresent.value.rarities.has(id))
+    .map(([id, label]) => ({ id: id as FishFilterState['rarity'], label })),
+])
+
+/** 天气 / 时段保持配置顺序（与钓鱼页展示一致），只列出实际出现过的。 */
+const fishWeatherOptions = computed(() =>
+  data.weather.types
+    .filter((t) => fishPresent.value.weather.has(t.id))
+    .map((t) => ({ id: t.id, label: t.name })),
+)
+
+const fishTimeOfDayOptions = computed(() =>
+  (['dawn', 'day', 'dusk', 'night'] as const)
+    .filter((id) => fishPresent.value.timeOfDay.has(id))
+    .map((id) => ({ id, label: TOD_NAME[id] ?? id })),
+)
 
 /** 天气 / 时间门槛文案。 */
 function gateText(entry: Entry): string {
@@ -260,6 +336,7 @@ onMounted(load)
 watch(category, () => {
   resetEquipFilters()
   resetTermFilters()
+  resetFishFilters()
   showEquipAdvanced.value = false
   void load()
 })
@@ -313,6 +390,7 @@ const filtered = computed(() => {
       list = list.filter((e) => picked.some((q) => e.qualities?.[q]?.unlocked))
     }
   }
+  if (category.value === 'fish') list = applyFishFilters(list, fishFilters.value)
   return list
 })
 
@@ -499,6 +577,96 @@ function entryRarity(entry: Entry): RarityId {
           重置
         </button>
         <span class="ml-auto text-ink-500">共 {{ filtered.length }} 条</span>
+      </div>
+
+      <div v-if="category === 'fish'" class="mt-3 space-y-2 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <SearchSelect
+            v-model="fishRegionValue"
+            :options="fishRegionOptions"
+            placeholder="搜索钓场…"
+            empty-text="无匹配钓场"
+          />
+          <select
+            v-model="fishFilters.kind"
+            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          >
+            <option v-for="opt in fishKindOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <select
+            v-model="fishFilters.rarity"
+            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          >
+            <option v-for="opt in fishRarityOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <select
+            v-model="fishFilters.requires"
+            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+          >
+            <option value="all">前置不限</option>
+            <option value="has">需直觉前置</option>
+            <option value="none">无需前置</option>
+          </select>
+          <label class="flex items-center gap-1 text-ink-400">
+            尺寸
+            <input
+              v-model.number="fishFilters.sizeMin"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="最小"
+              class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+            />
+            <span class="text-ink-600">-</span>
+            <input
+              v-model.number="fishFilters.sizeMax"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="最大"
+              class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+            />
+            <span class="text-ink-600">cm</span>
+          </label>
+          <button
+            v-if="fishFiltersActive"
+            class="rounded bg-ink-800 px-2.5 py-1.5 text-ink-300 transition hover:bg-ink-700"
+            @click="resetFishFilters"
+          >
+            重置
+          </button>
+          <span class="ml-auto text-ink-500">共 {{ filtered.length }} 条</span>
+        </div>
+
+        <div v-if="fishWeatherOptions.length" class="flex flex-wrap items-center gap-1.5">
+          <span class="shrink-0 text-ink-400">天气：</span>
+          <button
+            v-for="opt in fishWeatherOptions"
+            :key="opt.id"
+            class="rounded-full border px-2.5 py-1 transition"
+            :class="fishFilters.weather.has(opt.id) ? 'border-amber-400 bg-amber-500/20 text-amber-200' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
+            @click="toggleFishWeather(opt.id)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <div v-if="fishTimeOfDayOptions.length" class="flex flex-wrap items-center gap-1.5">
+          <span class="shrink-0 text-ink-400">时段：</span>
+          <button
+            v-for="opt in fishTimeOfDayOptions"
+            :key="opt.id"
+            class="rounded-full border px-2.5 py-1 transition"
+            :class="fishFilters.timeOfDay.has(opt.id) ? 'border-amber-400 bg-amber-500/20 text-amber-200' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
+            @click="toggleFishTimeOfDay(opt.id)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <p class="text-[10px] text-ink-600">
+          天气 / 时段为严格匹配：只显示把该条件列为要求的鱼（无门槛的鱼不在其中）；品质仅适用于普通鱼；尺寸按「可钓范围与输入区间有交集」判定。
+        </p>
       </div>
     </section>
 
