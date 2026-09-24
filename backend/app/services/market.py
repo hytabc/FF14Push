@@ -5,6 +5,8 @@
 - 成交：买家扣全款，卖家得 `total - fee`（fee = floor(total × feePct)，金币直接销毁回收）。
 - 未售出到期（listingDays 天）自动退回卖家。
 - 卖家 / 买家同一 IP 的成交写入审计日志（可疑洗钱行为留痕，不拦截）。
+- 收购单（求购）：发布者托管 `unit_price × quantity` 金币，卖家手动按剩余数量部分成交
+  （卖家得 `amount - fee`），未成交部分在下架 / 到期时退还。仅支持堆叠物，不做自动撮合。
 """
 
 from __future__ import annotations
@@ -13,16 +15,17 @@ from datetime import timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, DohDolProgress, Item, MarketListing, User
+from app.models import AuditLog, DohDolProgress, Item, MarketBuyOrder, MarketListing, User
 from app.models.base import utcnow
 from app.models.market import (
     LISTING_KIND_EQUIPMENT,
     STATUS_ACTIVE,
     STATUS_CANCELLED,
     STATUS_EXPIRED,
+    STATUS_FILLED,
     STATUS_SOLD,
 )
 from app.services import dohdol_util
@@ -419,6 +422,187 @@ async def expire_listings(db: AsyncSession, limit: int = 50) -> int:
         return 0
     for row in rows:
         await _return_escrow(db, row)
+        row.status = STATUS_EXPIRED
+        row.closed_at = now
+    await db.commit()
+    return len(rows)
+
+
+# ------------------------------------------------------------------ 收购单（求购）
+def max_active_buy_orders() -> int:
+    return int(_cfg()["maxActiveBuyOrders"])
+
+
+async def count_active_buy_orders(db: AsyncSession, user_id: int) -> int:
+    return int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(MarketBuyOrder)
+                .where(MarketBuyOrder.buyer_id == user_id, MarketBuyOrder.status == STATUS_ACTIVE)
+            )
+        ).scalar_one()
+    )
+
+
+def _new_buy_order(**kwargs: Any) -> MarketBuyOrder:
+    now = utcnow()
+    return MarketBuyOrder(
+        status=STATUS_ACTIVE,
+        created_at=now,
+        expires_at=now + timedelta(days=listing_days()),
+        **kwargs,
+    )
+
+
+def buy_order_to_dict(row: MarketBuyOrder, buyer_nickname: str | None = None) -> dict[str, Any]:
+    quantity = int(row.quantity)
+    filled = int(row.filled or 0)
+    remaining = max(0, quantity - filled)
+    return {
+        "id": row.id,
+        "kind": row.kind,
+        "itemKey": row.item_key,
+        "name": row.name,
+        "quantity": quantity,
+        "filled": filled,
+        "remaining": remaining,
+        "unitPrice": int(row.unit_price),
+        "totalPrice": int(row.unit_price) * quantity,
+        "remainingPrice": int(row.unit_price) * remaining,
+        "referencePrice": int(row.reference_price or 0),
+        "status": row.status,
+        "buyerId": row.buyer_id,
+        "buyerNickname": buyer_nickname,
+        "createdAt": row.created_at.isoformat() if row.created_at else None,
+        "expiresAt": row.expires_at.isoformat() if row.expires_at else None,
+        "closedAt": row.closed_at.isoformat() if row.closed_at else None,
+    }
+
+
+async def create_buy_order(
+    db: AsyncSession,
+    buyer: User,
+    kind: str,
+    item_id: str,
+    quantity: int,
+    unit_price: int,
+    ip: str | None,
+) -> MarketBuyOrder:
+    """发布收购单：按 quantity 全额托管金币（unit_price × quantity）。"""
+    if await count_active_buy_orders(db, buyer.id) >= max_active_buy_orders():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"进行中的收购单已达上限（{max_active_buy_orders()}）",
+        )
+    total = int(unit_price) * int(quantity)
+    if int(buyer.gold) < total:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需托管 {total}"
+        )
+    buyer.gold = int(buyer.gold) - total
+    order = _new_buy_order(
+        buyer_id=buyer.id,
+        kind=kind,
+        item_key=item_id,
+        name=dohdol_util.material_name(item_id),
+        quantity=int(quantity),
+        filled=0,
+        unit_price=int(unit_price),
+        reference_price=reference_price_of(kind, item_id),
+        buyer_ip=ip,
+    )
+    db.add(order)
+    return order
+
+
+async def fill_buy_order(
+    db: AsyncSession, seller: User, order: MarketBuyOrder, count: int, ip: str | None
+) -> dict[str, Any]:
+    """卖给收购单：按 count 部分 / 全部成交，卖家得 amount - fee（买家金币已托管）。"""
+    if order.buyer_id == seller.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="不能卖给自己发布的收购单"
+        )
+
+    # 加锁顺序与 buy_listing 一致：当前用户（deps 已锁）→ 收购单行（端点已锁）→ 对手方买家。
+    buyer = await lock_user(db, order.buyer_id)
+    if buyer is None or buyer.banned:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="买家当前不可交易")
+
+    remaining = int(order.quantity) - int(order.filled or 0)
+    if remaining <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该收购单已完成")
+    filled_count = min(int(count), remaining)
+    if not await dohdol_util.stack_consume(
+        db, seller.id, order.kind, order.item_key, filled_count
+    ):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="数量不足")
+
+    amount = int(order.unit_price) * filled_count
+    fee = fee_of(amount)
+    seller.gold = int(seller.gold) + (amount - fee)
+    await dohdol_util.stack_add(db, buyer.id, order.kind, order.item_key, filled_count)
+
+    order.filled = int(order.filled or 0) + filled_count
+    if int(order.filled) >= int(order.quantity):
+        order.status = STATUS_FILLED
+        order.closed_at = utcnow()
+
+    if ip and order.buyer_ip and ip == order.buyer_ip:
+        db.add(
+            AuditLog(
+                user_id=seller.id,
+                reason="market_same_ip",
+                payload={"buyOrderId": order.id, "buyerId": order.buyer_id, "price": amount},
+                rejected=False,
+            )
+        )
+
+    await db.commit()
+    return {
+        "gold": int(seller.gold),
+        "count": filled_count,
+        "total": amount,
+        "fee": fee,
+        "remaining": max(0, int(order.quantity) - int(order.filled)),
+        "status": order.status,
+    }
+
+
+async def cancel_buy_order(db: AsyncSession, buyer: User, order: MarketBuyOrder) -> int:
+    """下架收购单：退还未成交部分的托管金币。"""
+    if order.buyer_id != buyer.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="只能取消自己的收购单")
+    refund = int(order.unit_price) * max(0, int(order.quantity) - int(order.filled or 0))
+    if refund:
+        buyer.gold = int(buyer.gold) + refund
+    order.status = STATUS_CANCELLED
+    order.closed_at = utcnow()
+    await db.commit()
+    return refund
+
+
+async def expire_buy_orders(db: AsyncSession, limit: int = 50) -> int:
+    """把已到期的收购单退还未成交部分的托管金币。批量有界，配合浏览 / 我的收购惰性触发。"""
+    now = utcnow()
+    rows = (
+        await db.execute(
+            select(MarketBuyOrder)
+            .where(MarketBuyOrder.status == STATUS_ACTIVE, MarketBuyOrder.expires_at < now)
+            .order_by(MarketBuyOrder.id)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+    ).scalars().all()
+    if not rows:
+        return 0
+    for row in rows:
+        refund = int(row.unit_price) * max(0, int(row.quantity) - int(row.filled or 0))
+        if refund:
+            buyer = await lock_user(db, row.buyer_id)
+            if buyer is not None:
+                buyer.gold = int(buyer.gold) + refund
         row.status = STATUS_EXPIRED
         row.closed_at = now
     await db.commit()

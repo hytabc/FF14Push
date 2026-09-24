@@ -164,8 +164,19 @@ export class BattleSimulator {
 
   phase: Phase = 'idle'
   killCount = 0
-  heroHp = 0
+  /** 生命值以整数结算：存活时至少保留 1 点，0 表示阵亡。 */
+  private heroHpValue = 0
   heroMp = 0
+
+  get heroHp(): number {
+    return this.heroHpValue
+  }
+
+  set heroHp(value: number) {
+    // 治疗 / 回复会产生小数生命值，而 UI 以整数展示（Math.round）。这里统一向下取整并
+    // 保证存活时至少 1 点，避免出现「显示 0 但未死亡且仍可战斗」的浮点残值。
+    this.heroHpValue = value > 0 ? Math.max(1, Math.floor(value)) : Math.floor(value)
+  }
   mechanismFailures: string[] = []
   shield = 0
   /** 彩蛋技能「免疫」剩余次数：命中时优先消耗。 */

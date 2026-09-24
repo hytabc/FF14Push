@@ -6,10 +6,16 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from app.models import DohDolProgress, Hero, Item, MarketListing, StackItem, User
+from app.models import DohDolProgress, Hero, Item, MarketBuyOrder, MarketListing, StackItem, User
 from app.models.base import utcnow
-from app.models.market import STATUS_ACTIVE, STATUS_EXPIRED, STATUS_SOLD
-from app.services import market
+from app.models.market import (
+    STATUS_ACTIVE,
+    STATUS_CANCELLED,
+    STATUS_EXPIRED,
+    STATUS_FILLED,
+    STATUS_SOLD,
+)
+from app.services import dohdol_util, market
 from app.services.game_config import CONFIG
 
 API = "/api/v1"
@@ -503,3 +509,284 @@ async def test_listings_expose_purchase_level_requirement(client, session_factor
     body = (await client.get(f"{API}/market/listings")).json()
     equip = next(row for row in body["listings"] if row["kind"] == "equipment")
     assert equip["levelMet"] is True
+
+
+# ------------------------------------------------------------------ 魔晶石 / 种子交易
+async def test_materia_listing_and_buy(client, session_factory):
+    """魔晶石可在交易板上架 / 购买（此前被 schema 与 sellable_kind 双重拦截）。"""
+    token_a = await _register(client, "mkt_m_a")
+    uid_a = await _user_id(session_factory, "mkt_m_a")
+    await _seed_stack(session_factory, uid_a, "materia", "m_crit_1", 5)
+    _auth(client, token_a)
+
+    resp = await client.post(
+        f"{API}/market/list",
+        json={
+            "entries": [
+                {
+                    "type": "stack",
+                    "stackKind": "materia",
+                    "stackItemId": "m_crit_1",
+                    "count": 3,
+                    "unitPrice": 200,
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    listing = resp.json()["listings"][0]
+    assert listing["kind"] == "materia" and listing["quantity"] == 3
+    assert listing["referencePrice"] == dohdol_util.sell_price("materia", "m_crit_1")
+    assert listing["referencePrice"] > 0  # 魔晶石有系统回收价
+
+    token_b = await _register(client, "mkt_m_b")
+    uid_b = await _user_id(session_factory, "mkt_m_b")
+    await _set_gold(session_factory, uid_b, 5000)
+    _auth(client, token_b)
+
+    # 可按魔晶石分类浏览到
+    browse = (await client.get(f"{API}/market/listings", params={"kind": "materia"})).json()
+    assert any(row["id"] == listing["id"] for row in browse["listings"])
+
+    assert (
+        await client.post(f"{API}/market/buy", json={"listingId": listing["id"]})
+    ).status_code == 200
+    async with session_factory() as db:
+        buyer = (
+            await db.execute(
+                select(StackItem).where(
+                    StackItem.user_id == uid_b,
+                    StackItem.kind == "materia",
+                    StackItem.item_id == "m_crit_1",
+                )
+            )
+        ).scalar_one()
+        assert int(buyer.count) == 3
+        seller = (
+            await db.execute(
+                select(StackItem).where(
+                    StackItem.user_id == uid_a,
+                    StackItem.kind == "materia",
+                    StackItem.item_id == "m_crit_1",
+                )
+            )
+        ).scalar_one()
+        assert int(seller.count) == 2
+
+
+async def test_seed_listing_and_buy(client, session_factory):
+    """种子可在交易板上架：系统回收价为 0，但玩家间仍可按自定价格交易。"""
+    token_a = await _register(client, "mkt_seed_a")
+    uid_a = await _user_id(session_factory, "mkt_seed_a")
+    await _seed_stack(session_factory, uid_a, "seed", "seed_gold", 4)
+    _auth(client, token_a)
+
+    resp = await client.post(
+        f"{API}/market/list",
+        json={
+            "entries": [
+                {
+                    "type": "stack",
+                    "stackKind": "seed",
+                    "stackItemId": "seed_gold",
+                    "count": 2,
+                    "unitPrice": 5000,
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    listing = resp.json()["listings"][0]
+    assert listing["kind"] == "seed" and listing["quantity"] == 2
+    assert listing["referencePrice"] == 0
+
+    token_b = await _register(client, "mkt_seed_b")
+    uid_b = await _user_id(session_factory, "mkt_seed_b")
+    await _set_gold(session_factory, uid_b, 50_000)
+    _auth(client, token_b)
+    assert (
+        await client.post(f"{API}/market/buy", json={"listingId": listing["id"]})
+    ).status_code == 200
+    async with session_factory() as db:
+        row = (
+            await db.execute(
+                select(StackItem).where(
+                    StackItem.user_id == uid_b,
+                    StackItem.kind == "seed",
+                    StackItem.item_id == "seed_gold",
+                )
+            )
+        ).scalar_one()
+        assert int(row.count) == 2
+
+
+# ------------------------------------------------------------------ 收购单（求购）
+async def test_buy_order_escrows_and_partial_fill(client, session_factory):
+    """收购单：发布全额托管金币 → 卖家部分成交（得 amount - fee）→ 补满后自动完成。"""
+    token_b = await _register(client, "mkt_bo_buyer")
+    uid_b = await _user_id(session_factory, "mkt_bo_buyer")
+    await _set_gold(session_factory, uid_b, 10_000)
+    _auth(client, token_b)
+
+    resp = await client.post(
+        f"{API}/market/buy-orders",
+        json={"kind": "material", "itemId": "g_ore", "quantity": 4, "unitPrice": 100},
+    )
+    assert resp.status_code == 200, resp.text
+    order_id = resp.json()["order"]["id"]
+    assert resp.json()["order"]["remaining"] == 4
+    assert resp.json()["gold"] == 9600  # 4 × 100 全额托管
+
+    token_s = await _register(client, "mkt_bo_seller")
+    uid_s = await _user_id(session_factory, "mkt_bo_seller")
+    await _seed_stack(session_factory, uid_s, "material", "g_ore", 5)
+    await _set_gold(session_factory, uid_s, 0)
+    _auth(client, token_s)
+
+    fee = market.fee_of(200)
+    fill = (
+        await client.post(f"{API}/market/buy-orders/fill", json={"orderId": order_id, "count": 2})
+    ).json()
+    assert fill["count"] == 2 and fill["total"] == 200 and fill["fee"] == fee
+    assert fill["gold"] == 200 - fee
+    assert fill["remaining"] == 2 and fill["status"] == STATUS_ACTIVE
+
+    # 超出剩余量的部分被截断到剩余量，正好补满 → 完成
+    fill2 = (
+        await client.post(f"{API}/market/buy-orders/fill", json={"orderId": order_id, "count": 99})
+    ).json()
+    assert fill2["count"] == 2 and fill2["remaining"] == 0
+    assert fill2["status"] == STATUS_FILLED
+
+    async with session_factory() as db:
+        buyer = (
+            await db.execute(
+                select(StackItem).where(
+                    StackItem.user_id == uid_b,
+                    StackItem.kind == "material",
+                    StackItem.item_id == "g_ore",
+                )
+            )
+        ).scalar_one()
+        assert int(buyer.count) == 4
+        seller = (
+            await db.execute(
+                select(StackItem).where(
+                    StackItem.user_id == uid_s,
+                    StackItem.kind == "material",
+                    StackItem.item_id == "g_ore",
+                )
+            )
+        ).scalar_one()
+        assert int(seller.count) == 1
+        row = (
+            await db.execute(select(MarketBuyOrder).where(MarketBuyOrder.id == order_id))
+        ).scalar_one()
+        assert row.status == STATUS_FILLED and int(row.filled) == 4
+
+
+async def test_buy_order_cancel_refunds_unfilled(client, session_factory):
+    """取消收购单只退还未成交部分的托管金币。"""
+    token_b = await _register(client, "mkt_bo_cancel")
+    uid_b = await _user_id(session_factory, "mkt_bo_cancel")
+    await _set_gold(session_factory, uid_b, 10_000)
+    _auth(client, token_b)
+    order_id = (
+        await client.post(
+            f"{API}/market/buy-orders",
+            json={"kind": "material", "itemId": "g_ore", "quantity": 4, "unitPrice": 100},
+        )
+    ).json()["order"]["id"]
+
+    token_s = await _register(client, "mkt_bo_cancel_s")
+    uid_s = await _user_id(session_factory, "mkt_bo_cancel_s")
+    await _seed_stack(session_factory, uid_s, "material", "g_ore", 1)
+    _auth(client, token_s)
+    assert (
+        await client.post(f"{API}/market/buy-orders/fill", json={"orderId": order_id, "count": 1})
+    ).status_code == 200
+
+    _auth(client, token_b)
+    cancel = await client.post(f"{API}/market/buy-orders/cancel", json={"orderId": order_id})
+    assert cancel.status_code == 200, cancel.text
+    assert cancel.json()["refund"] == 300  # 托管 400，已成交 100
+    assert cancel.json()["gold"] == 10_000 - 400 + 300
+
+    mine = (await client.get(f"{API}/market/buy-orders/mine")).json()
+    assert all(order["id"] != order_id for order in mine["active"])
+    closed = next(order for order in mine["closed"] if order["id"] == order_id)
+    assert closed["status"] == STATUS_CANCELLED and closed["filled"] == 1
+
+
+async def test_buy_order_expiry_refunds_unfilled(client, session_factory):
+    """到期收购单在浏览时惰性过期，并退还未成交部分的托管金币。"""
+    token_b = await _register(client, "mkt_bo_exp")
+    uid_b = await _user_id(session_factory, "mkt_bo_exp")
+    await _set_gold(session_factory, uid_b, 10_000)
+    _auth(client, token_b)
+    order_id = (
+        await client.post(
+            f"{API}/market/buy-orders",
+            json={"kind": "material", "itemId": "g_ore", "quantity": 4, "unitPrice": 100},
+        )
+    ).json()["order"]["id"]
+
+    async with session_factory() as db:
+        row = (
+            await db.execute(select(MarketBuyOrder).where(MarketBuyOrder.id == order_id))
+        ).scalar_one()
+        row.expires_at = utcnow() - timedelta(seconds=1)
+        await db.commit()
+
+    assert (await client.get(f"{API}/market/buy-orders")).status_code == 200
+
+    async with session_factory() as db:
+        row = (
+            await db.execute(select(MarketBuyOrder).where(MarketBuyOrder.id == order_id))
+        ).scalar_one()
+        assert row.status == STATUS_EXPIRED
+    state = (await client.get(f"{API}/game/state")).json()
+    assert state["user"]["gold"] == 10_000  # 全额退还
+
+
+async def test_buy_order_rejects_self_and_insufficient_stock(client, session_factory):
+    """收购单反作弊与边界：不能自卖自单、库存不足、类型不匹配、托管金币不足。"""
+    token_b = await _register(client, "mkt_bo_self")
+    uid_b = await _user_id(session_factory, "mkt_bo_self")
+    await _set_gold(session_factory, uid_b, 10_000)
+    _auth(client, token_b)
+    order_id = (
+        await client.post(
+            f"{API}/market/buy-orders",
+            json={"kind": "material", "itemId": "g_ore", "quantity": 2, "unitPrice": 100},
+        )
+    ).json()["order"]["id"]
+
+    # 不能卖给自己发布的收购单
+    await _seed_stack(session_factory, uid_b, "material", "g_ore", 2)
+    assert (
+        await client.post(f"{API}/market/buy-orders/fill", json={"orderId": order_id, "count": 1})
+    ).status_code == 400
+
+    # 他人库存不足
+    token_s = await _register(client, "mkt_bo_low")
+    _auth(client, token_s)
+    assert (
+        await client.post(f"{API}/market/buy-orders/fill", json={"orderId": order_id, "count": 1})
+    ).status_code == 400
+
+    # 物品类型与声明不符
+    assert (
+        await client.post(
+            f"{API}/market/buy-orders",
+            json={"kind": "seed", "itemId": "g_ore", "quantity": 1, "unitPrice": 10},
+        )
+    ).status_code == 400
+
+    # 托管金币不足
+    assert (
+        await client.post(
+            f"{API}/market/buy-orders",
+            json={"kind": "material", "itemId": "g_ore", "quantity": 9999, "unitPrice": 100},
+        )
+    ).status_code == 400

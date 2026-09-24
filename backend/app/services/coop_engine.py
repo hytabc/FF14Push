@@ -61,9 +61,11 @@ def damage_hero(state,hero,amount,source):
     amount=max(0,amount)*(1-min(.8,reduction))
     absorbed=min(hero['shield'],amount);hero['shield']-=absorbed;amount-=absorbed
     hero['damageTaken']+=min(hero['hp'],amount)
-    hero['hp']=max(0,hero['hp']-amount)
+    # 生命值以整数结算：伤害后向下取整，避免残留 (0,1) 区间的小数生命值让英雄
+    # 「显示 0 血却仍存活并战斗」。存活即至少 1 点，0 表示阵亡。
+    hero['hp']=float(max(0,int(hero['hp']-amount)))
     hero['minHpRatio']=min(hero['minHpRatio'],hero['hp']/hero['snapshot']['stats']['max_hp'])
-    if hero['hp']==0:
+    if hero['hp']<=0:
         hero['deadUntil']=state['elapsedMs']+state['rules']['reviveSeconds']*1000
         hero['deaths']+=1; hero['shield']=0;hero['buffs']=[];hero['dots']=[]
         event(state,'death',hero['snapshot']['name']+'倒下了',slot=hero['slot'],source=source)

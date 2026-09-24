@@ -356,6 +356,23 @@ describe('装备词条扩展机制', () => {
     expect(sim.phase).toBe('mob')
     expect(sim.heroHp).toBeCloseTo(30, 0)
   })
+
+  it('存活英雄生命值恒为整数且 ≥ 1，不会出现「显示 0 血却仍可战斗」', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ level: 60, maxHp: 5000, hpRegen: 7.5, attack: 30, physDef: 20 }),
+      regionId: 20,
+      killsRequired: 5,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    for (let i = 0; i < 1500; i += 1) {
+      sim.tick(0.1)
+      if (sim.phase === 'dead') continue
+      expect(Number.isInteger(sim.heroHp)).toBe(true)
+      expect(sim.heroHp).toBeGreaterThanOrEqual(1)
+    }
+  })
 })
 
 describe('战斗模拟器', () => {
@@ -812,7 +829,8 @@ describe('普通副本多维软惩罚', () => {
     sim.heroHp=1;sim.heroMp=0
     const engine=sim as unknown as {applyEffects(s:unknown):void;bossSkillInterval(s:unknown):number;cast(s:unknown):void;tickBasicAttack():void}
     engine.applyEffects({name:'测试治疗',effects:[{type:'heal',value:.1},{type:'shield',value:.1},{type:'mpRestore',value:.1}]})
-    expect(sim.heroHp).toBeCloseTo(1+Math.floor(sim.stats.maxHp*.1)*.75)
+    // 生命值以整数结算：治疗量按 .75 削弱后向下取整（33 ≈ 44×.75）。
+    expect(sim.heroHp).toBe(Math.floor(1+Math.floor(sim.stats.maxHp*.1)*.75))
     expect(sim.shield).toBe(Math.floor(sim.stats.maxHp*.1*.75))
     expect(sim.heroMp).toBe(Math.floor(sim.stats.maxMp*.1*.8))
     expect(engine.bossSkillInterval({skillInterval:6})).toBeCloseTo(4.8)

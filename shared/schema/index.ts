@@ -704,6 +704,8 @@ export const gameData = {
     heartbeatSeconds: number
     disconnectSeconds: number
     leaseSeconds: number
+    /** 讨伐周期长度（秒）：唯一的结算单位；周期内可反复讨伐，周期到时才换轮结算。 */
+    periodSeconds: number
     /** 阶段：按剩余血量占比自动进入，血量越低防御越厚、技能威力越高。 */
     phases: Array<{
       id: number
@@ -724,7 +726,13 @@ export const gameData = {
       skillPool: Array<{ id: string; name: string; effect: string; desc: string } & Record<string, unknown>>
     }
     rules: { heroSlots: number; levelRequirement: number; fullPowerLevel: number; weaknessFloor: number }
-    reward: { minDamage: number; rankItems: Record<string, number>; defaultItems: number }
+    reward: {
+      minDamage: number
+      /** 档位：按周期累计伤害取最高达标档的件数。 */
+      tiers: Array<{ minDamage: number; items: number }>
+      /** 名次加成：仅前 10 名（键为名次字符串）。 */
+      rankBonus: Record<string, number>
+    }
   },
   weaponFamilies: baseItemsDataRaw.weaponFamilies,
   baseItemTiers: baseItemsDataRaw.tiers,
@@ -810,6 +818,8 @@ export const gameData = {
       feePct: number
       listingDays: number
       maxActiveListings: number
+      /** 单账号同时可挂的收购单上限（求购堆叠物，托管金币）。 */
+      maxActiveBuyOrders: number
       maxStackQuantityPerListing: number
       minPrice: number
       maxPrice: number

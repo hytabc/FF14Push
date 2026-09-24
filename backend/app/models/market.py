@@ -2,6 +2,10 @@
 
 上架即从卖家背包 / 库存扣除进入托管，整单买断成交，成交价抽取手续费（金币回收）。
 未售出到期自动退回卖家。归属账号（`user_id`），与装备 / 堆叠库存一致。
+
+收购单（`MarketBuyOrder`）：发布者托管 `unit_price × quantity` 金币求购某堆叠物；
+卖家手动按剩余数量部分成交，成交额同样抽手续费，未成交部分在下架 / 到期时退还。
+仅支持堆叠物，不做自动撮合。
 """
 
 from __future__ import annotations
@@ -13,7 +17,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, JsonType, utcnow
 
-# kind 取值：装备用 "equipment"，堆叠物沿用 StackItem 的 kind（material | potion | food）。
+# kind 取值：装备用 "equipment"，堆叠物沿用 StackItem 的 kind
+# （material | potion | food | materia | seed）。
 LISTING_KIND_EQUIPMENT = "equipment"
 
 # status 取值
@@ -21,6 +26,7 @@ STATUS_ACTIVE = "active"
 STATUS_SOLD = "sold"
 STATUS_CANCELLED = "cancelled"
 STATUS_EXPIRED = "expired"
+STATUS_FILLED = "filled"
 
 
 class MarketListing(Base):
@@ -58,6 +64,43 @@ class MarketListing(Base):
     sold_price: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     fee: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     seller_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    buyer_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    closed_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+
+
+class MarketBuyOrder(Base):
+    """收购单（求购）：托管金币求购某堆叠物，卖家手动部分成交。仅支持堆叠物。"""
+
+    __tablename__ = "market_buy_orders"
+    __table_args__ = (
+        sa.Index("ix_market_buy_orders_status_kind_price", "status", "kind", "unit_price"),
+        sa.Index("ix_market_buy_orders_buyer_status", "buyer_id", "status"),
+        sa.Index("ix_market_buy_orders_status_expires", "status", "expires_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 发布收购单的买家（金币托管方）
+    buyer_id: Mapped[int] = mapped_column(
+        sa.ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # material | potion | food | materia | seed
+    kind: Mapped[str] = mapped_column(sa.String(16), index=True)
+    # 堆叠物 id
+    item_key: Mapped[str] = mapped_column(sa.String(48), index=True)
+    name: Mapped[str] = mapped_column(sa.String(64))
+    # 求购总数 / 已成交数（remaining = quantity - filled）
+    quantity: Mapped[int] = mapped_column(sa.Integer, default=1)
+    filled: Mapped[int] = mapped_column(sa.Integer, default=0)
+    # 买家愿意支付的单价（发布时按 quantity 全额托管）
+    unit_price: Mapped[int] = mapped_column(sa.BigInteger)
+    # 发布时的系统回收价（参考值，仅供 UI 提示，不参与结算）
+    reference_price: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    status: Mapped[str] = mapped_column(sa.String(16), default=STATUS_ACTIVE, index=True)
+    # 发布者 IP：与卖家 IP 相同则写审计留痕（与寄售同款反作弊）
     buyer_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), default=utcnow, nullable=False

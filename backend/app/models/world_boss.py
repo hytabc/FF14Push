@@ -1,11 +1,12 @@
 """世界BOSS 持久化状态。
 
-- `WorldBoss`：全局单行（id=1），持有共享血量 / 周期 / 刷新时间。
+- `WorldBoss`：全局单行（id=1），持有共享血量 / 讨伐周期（cycle）/ 周期结束时间 / 本周期击杀数。
 - `WorldBossSession`：每个玩家当前周期的战斗会话（8 英雄 state JSON，租约推进）。
-- `WorldBossContribution`：每账号每周期一行，总伤害（持久，榜单真相，不随版本更新清除）。
-- `WorldBossReward`：每账号每周期一行，击杀结算幂等领取。
+- `WorldBossContribution`：每账号每周期一行，累计伤害（持久，榜单真相，不随版本更新清除）。
+- `WorldBossReward`：每账号每周期一行，周期结算幂等领取。
 - `WorldBossTicket`：WebSocket 一次性 ticket（照抄 CoopTicket）。
 
+结算单位是「讨伐周期」：周期内 BOSS 可被反复击杀（cycle 不变），周期到时 cycle+1 并结算。
 JSON 值整体替换、不原地修改；时间统一用 epoch 浮点（与 multiplayer 一致，避免方言差异）。
 """
 
@@ -35,6 +36,9 @@ class WorldBoss(Base):
     status: Mapped[str] = mapped_column(sa.String(16), default=STATUS_ALIVE, index=True)
     killed_at: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     respawn_at: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
+    # 讨伐周期：period_ends_at 为当前周期结束时间（epoch 秒），kills 为本周期已击杀次数。
+    period_ends_at: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
+    kills: Mapped[int] = mapped_column(default=0)
     last_kill_by: Mapped[int | None] = mapped_column(nullable=True)
     config: Mapped[dict] = mapped_column(JsonType)
     updated_at: Mapped[float] = mapped_column(sa.Float, default=0)

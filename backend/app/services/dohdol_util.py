@@ -118,7 +118,7 @@ def sell_price(kind: str, item_id: str) -> int:
 
 
 def sellable_kind(item_id: str) -> str | None:
-    """按物品 id 推断其堆叠种类（potion / food / material / materia），未知或不可出售返回 None。"""
+    """按物品 id 推断其堆叠种类（potion / food / material / materia / seed），未知返回 None。"""
     spec = consumable_def(item_id)
     if spec is not None:
         return str(spec["kind"])
@@ -126,6 +126,8 @@ def sellable_kind(item_id: str) -> str | None:
         return STACK_MATERIAL
     if item_id in CONFIG.materia_by_id:
         return STACK_MATERIA
+    if item_id in CONFIG.seed_by_id:
+        return STACK_SEED
     return None
 
 

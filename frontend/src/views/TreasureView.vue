@@ -6,6 +6,7 @@ import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import TreasureWheel from '@/components/TreasureWheel.vue'
 import type { TreasureReward } from '@/game/types'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -17,7 +18,8 @@ const toast = useToastStore()
 const treasure = useTreasureStore()
 
 const chestPhase = ref<'idle' | 'spinning' | 'result'>('idle')
-let revealTimer = 0
+/** 交给转盘展示落点的本层奖励。 */
+const wheelRewards = ref<TreasureReward[]>([])
 
 const config = computed(() => treasure.config)
 const run = computed(() => treasure.run)
@@ -69,6 +71,33 @@ const floorRows = computed(() => {
   })
 })
 
+/** 本层可产出的物品：作为转盘的干扰项候选池（与后端 open_chest 的候选池同源）。 */
+const wheelPool = computed<TreasureReward[]>(() => {
+  const cfg = config.value
+  const floor = Math.max(1, run.value?.floor ?? 1)
+  const pool: TreasureReward[] = [{ kind: 'gold' }, { kind: 'exp' }]
+  if (!cfg) return pool
+
+  const range = cfg.materiaLevelByFloor[floor - 1] ?? [1, 1]
+  for (const type of data.materia.types) {
+    for (let level = Number(range[0]); level <= Number(range[1]); level += 1) {
+      const id = `m_${type.id}_${level}`
+      const def = data.materiaById[id]
+      if (def) pool.push({ kind: 'materia', itemId: id, name: def.name })
+    }
+  }
+  const tier = Number(cfg.potionTierByFloor[floor - 1] ?? 1)
+  for (const item of data.consumables.items) {
+    if (item.kind === 'potion' && item.id.endsWith(String(tier))) {
+      pool.push({ kind: 'potion', itemId: item.id, name: item.name })
+    }
+  }
+  for (const seed of data.farm.seeds) {
+    pool.push({ kind: 'seed', itemId: seed.id, name: seed.name })
+  }
+  return pool
+})
+
 const endedReasonText = computed(() => {
   switch (run.value?.endedReason) {
     case 'wrong_door':
@@ -100,32 +129,41 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (revealTimer) window.clearTimeout(revealTimer)
   // 离开页面只停本地循环：副本状态留在服务端，回来可继续（开始其它活动才会结束）。
   treasure.leave()
 })
 
-async function start() {
+/** 重置开箱动画状态（开始 / 换层 / 放弃时调用）。 */
+function resetChestPhase() {
   chestPhase.value = 'idle'
+  wheelRewards.value = []
+}
+
+async function start() {
+  resetChestPhase()
   await treasure.start()
 }
 
 async function openChest() {
   chestPhase.value = 'spinning'
+  wheelRewards.value = []
   await treasure.openChest()
-  if (revealTimer) window.clearTimeout(revealTimer)
-  revealTimer = window.setTimeout(() => {
-    chestPhase.value = 'result'
-  }, 1500)
+  wheelRewards.value = treasure.chest?.rewards ?? []
+  // 没有奖励（猜错清空等）时无需转盘，直接出结果。
+  if (!wheelRewards.value.length) chestPhase.value = 'result'
+}
+
+function onWheelDone() {
+  chestPhase.value = 'result'
 }
 
 async function chooseDoor(index: number) {
-  chestPhase.value = 'idle'
+  resetChestPhase()
   await treasure.chooseDoor(index)
 }
 
 async function abandon() {
-  chestPhase.value = 'idle'
+  resetChestPhase()
   await treasure.abandon()
   toast.push('已放弃本次挖宝', 'info')
 }
@@ -402,7 +440,7 @@ const logTone: Record<string, string> = {
         <!-- 开箱 -->
         <div v-else-if="!run?.chestOpened" class="space-y-2">
           <h3 class="text-sm font-semibold text-white">第 {{ run?.floor }} 层宝箱</h3>
-          <p class="text-[11px] text-ink-400">点击开启宝箱（老虎机罗盘），奖励立即入账。</p>
+          <p class="text-[11px] text-ink-400">点击开启宝箱（转盘），奖励立即入账。</p>
           <button
             class="rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-amber-400 disabled:opacity-50"
             :disabled="treasure.busy"
@@ -414,10 +452,13 @@ const logTone: Record<string, string> = {
 
         <!-- 开箱结果 + 选门 -->
         <template v-else>
-          <div v-if="chestPhase === 'spinning'" class="flex flex-col items-center gap-3 py-8">
-            <div class="text-5xl animate-spin">🎡</div>
-            <p class="text-xs text-ink-400">老虎机罗盘转动中…</p>
-          </div>
+          <TreasureWheel
+            v-if="chestPhase === 'spinning'"
+            :rewards="wheelRewards"
+            :pool="wheelPool"
+            :floor="treasure.chest?.floor ?? 0"
+            @done="onWheelDone"
+          />
 
           <div v-else class="space-y-3">
             <h3 class="text-sm font-semibold text-white">

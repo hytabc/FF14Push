@@ -1,15 +1,16 @@
 {
   "$comment": "世界BOSS：全服共享血量，所有在线玩家各自上阵最多 8 名英雄同时削弱同一血量。服务端权威模拟（worldboss_worker 按 tickMs 推进），客户端只渲染。来源：需求「世界BOSS」。",
-  "$commentCycle": "按击杀周期结算：BOSS 被击杀后进入 respawnSeconds 刷新 CD，到点由后端刷新循环重置血量并 cycle+1，开启新周期。历史贡献/奖励行永久保留，不随版本更新清除。",
+  "$commentCycle": "按「讨伐周期」结算（periodSeconds，唯一结算单位）：周期内 BOSS 被击杀后只进入 respawnSeconds 的短暂休整，到点满血重生、cycle 不变，可反复讨伐；周期到时无论 BOSS 存亡都重置满血并 cycle+1，开启新周期。历史贡献/奖励行永久保留，不随版本更新清除。",
   "$commentSkills": "BOSS 技能池：≥20 个不同技能，每隔 skillIntervalSeconds 固定间隔随机抽取一个释放；技能结算与 BOSS 普攻完全独立（普攻按 attackIntervalSeconds 单独计时）。效果类型：nuke/aoe/dot/debuff/charge/enrage/shield。",
   "$commentLevel": "参战等级下限 levelRequirement；80~99 级英雄输出/治疗按线性削弱，满级 fullPowerLevel 不再削弱。",
   "$commentPhases": "阶段：按 BOSS 剩余血量占比自动进入。minHpRatio 为该阶段的血量占比下限（含），phase_for_ratio 取满足 ratio ≥ minHpRatio 的最高阶段。血量越低防御越厚（英雄输出按 1/defenseMultiplier 折算）、技能威力越高（技能威力 ×skillPotencyMultiplier；不影响普攻）。",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "tickMs": 100,
   "publishMs": 500,
   "heartbeatSeconds": 5,
   "disconnectSeconds": 15,
   "leaseSeconds": 2,
+  "periodSeconds": 18000,
   "phases": [
     { "id": 1, "name": "第一阶段", "minHpRatio": 0.6, "defenseMultiplier": 1.0, "skillPotencyMultiplier": 1.0 },
     { "id": 2, "name": "第二阶段", "minHpRatio": 0.3, "defenseMultiplier": 2.0, "skillPotencyMultiplier": 1.5 },
@@ -21,7 +22,7 @@
     "maxHp": 2000000000,
     "attack": 20000,
     "attackIntervalSeconds": 3,
-    "respawnSeconds": 18000,
+    "respawnSeconds": 60,
     "reviveSeconds": 10,
     "skillIntervalSeconds": 6,
     "skillPool": [
@@ -58,20 +59,26 @@
     "weaknessFloor": 0.1
   },
   "reward": {
-    "$comment": "击杀结算奖励：仅总伤害 ≥ minDamage 者进入榜单并按名次发放「绝境龙神」系列；未列名次取 defaultItems。",
+    "$comment": "周期结算奖励 = 档位(tiers，按周期累计伤害取最高达标档) + 名次加成(rankBonus，仅前 10 名)；仅周期累计伤害 ≥ minDamage 者进入榜单并参与奖励。",
     "minDamage": 5000000,
-    "rankItems": {
-      "1": 20,
-      "2": 18,
-      "3": 15,
-      "4": 12,
-      "5": 10,
-      "6": 8,
-      "7": 6,
-      "8": 5,
-      "9": 4,
-      "10": 3
-    },
-    "defaultItems": 1
+    "tiers": [
+      { "minDamage": 5000000, "items": 1 },
+      { "minDamage": 50000000, "items": 2 },
+      { "minDamage": 200000000, "items": 4 },
+      { "minDamage": 600000000, "items": 7 },
+      { "minDamage": 1500000000, "items": 10 }
+    ],
+    "rankBonus": {
+      "1": 10,
+      "2": 9,
+      "3": 8,
+      "4": 7,
+      "5": 6,
+      "6": 5,
+      "7": 4,
+      "8": 3,
+      "9": 2,
+      "10": 1
+    }
   }
 }

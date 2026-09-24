@@ -14,7 +14,7 @@ from app.models.dohdol import (
 from app.models.equipment import ChestPity, ChestUnlock, Item, ItemTag
 from app.models.farm import FarmPlot
 from app.models.friends import STATUS_ACCEPTED, STATUS_PENDING, CoinTransfer, Friendship
-from app.models.market import MarketListing
+from app.models.market import MarketBuyOrder, MarketListing
 from app.models.materia import MateriaSocket
 from app.models.progress import (
     AutoSellSetting,
@@ -42,6 +42,7 @@ __all__ = [
     "Item",
     "ItemTag",
     "MarketListing",
+    "MarketBuyOrder",
     "Friendship",
     "CoinTransfer",
     "ChatMessage",

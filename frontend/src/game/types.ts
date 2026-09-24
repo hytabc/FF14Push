@@ -823,9 +823,44 @@ export interface MarketListing {
 export interface MarketListEntry {
   type: 'equipment' | 'stack'
   itemId?: number
-  stackKind?: 'material' | 'potion' | 'food'
+  stackKind?: 'material' | 'potion' | 'food' | 'materia' | 'seed'
   stackItemId?: string
   count?: number
+  unitPrice: number
+}
+
+/** 一条收购单（求购）：托管金币求购某堆叠物，卖家手动部分成交。 */
+export interface MarketBuyOrder {
+  id: number
+  /** material | potion | food | materia | seed */
+  kind: string
+  itemKey: string
+  name: string
+  /** 求购总数 / 已成交数 / 剩余数。 */
+  quantity: number
+  filled: number
+  remaining: number
+  unitPrice: number
+  /** 求购总数对应的托管金币。 */
+  totalPrice: number
+  /** 剩余部分对应的托管金币。 */
+  remainingPrice: number
+  /** 发布时的系统回收价（参考）。 */
+  referencePrice: number
+  /** active | filled | cancelled | expired */
+  status: string
+  buyerId: number
+  buyerNickname: string | null
+  createdAt: string | null
+  expiresAt: string | null
+  closedAt: string | null
+}
+
+/** 发布收购单请求体。 */
+export interface BuyOrderCreateEntry {
+  kind: 'material' | 'potion' | 'food' | 'materia' | 'seed'
+  itemId: string
+  quantity: number
   unitPrice: number
 }
 

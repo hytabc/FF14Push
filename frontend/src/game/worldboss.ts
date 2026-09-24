@@ -26,6 +26,12 @@ export interface WorldBossBoss {
   status: 'alive' | 'dead'
   killedAt: number | null
   respawnAt: number | null
+  /** 讨伐周期长度（秒）：周期内可反复讨伐，周期到时才换轮结算。 */
+  periodSeconds: number
+  /** 当前周期结束时间（服务端 epoch 秒）。 */
+  periodEndsAt: number | null
+  /** 本周期已击杀次数。 */
+  kills: number
   reviveSeconds: number
   skillIntervalSeconds: number
   /** 当前阶段（由全服剩余血量占比决定）。 */
@@ -78,6 +84,12 @@ export interface WorldBossLeaderboardEntry {
   username: string
   damage: number
   items: number
+  /** 档位序号（1-based，0 表示未达档）。 */
+  tier: number
+  /** 档位件数（按周期累计伤害）。 */
+  tierItems: number
+  /** 名次加成件数（仅前 10 名）。 */
+  rankBonus: number
   /** 该玩家本周期各英雄的伤害与占比（点击榜单行展开查看）。 */
   heroes: WorldBossHeroDamage[]
 }
@@ -99,10 +111,17 @@ export interface WorldBossRules {
   weaknessFloor: number
 }
 
+export interface WorldBossRewardTier {
+  minDamage: number
+  items: number
+}
+
 export interface WorldBossRewardConfig {
   minDamage: number
-  rankItems: Record<string, number>
-  defaultItems: number
+  /** 档位：按周期累计伤害取最高达标档的件数（保底来源）。 */
+  tiers: WorldBossRewardTier[]
+  /** 名次加成：仅前 10 名（键为名次字符串）。 */
+  rankBonus: Record<string, number>
 }
 
 export interface WorldBossState {
@@ -121,6 +140,9 @@ export interface WorldBossReceipt {
   cycle: number
   rank: number
   items: number
+  tier: number
+  tierItems: number
+  rankBonus: number
   damage: number
   grants: { items: Item[]; autoSold: Item[]; autoGold: number }
   gold: number
@@ -135,6 +157,24 @@ export function reviveIn(deadUntil: number, elapsedMs: number): number {
 export function respawnIn(respawnAt: number | null, nowSeconds = Date.now() / 1000): number {
   if (!respawnAt) return 0
   return Math.max(0, Math.ceil(respawnAt - nowSeconds))
+}
+
+/** 讨伐周期剩余秒数（periodEndsAt 为服务端 epoch 秒）。 */
+export function periodIn(periodEndsAt: number | null, nowSeconds = Date.now() / 1000): number {
+  if (!periodEndsAt) return 0
+  return Math.max(0, Math.ceil(periodEndsAt - nowSeconds))
+}
+
+/** 周期累计伤害命中的最高档位（未达任何档返回 null，与服务端 tier_for_damage 同源）。 */
+export function rewardTier(damage: number, tiers: WorldBossRewardTier[]): WorldBossRewardTier | null {
+  let hit: WorldBossRewardTier | null = null
+  for (const tier of tiers) if (damage >= tier.minDamage) hit = tier
+  return hit
+}
+
+/** 下一档（用于「距下一档还差多少」提示）；已是顶档返回 null。 */
+export function nextRewardTier(damage: number, tiers: WorldBossRewardTier[]): WorldBossRewardTier | null {
+  return tiers.find((tier) => damage < tier.minDamage) ?? null
 }
 
 /** 按剩余血量占比取阶段（与服务端 `phase_for_ratio` 同源）：满足 ratio ≥ minHpRatio 的最高阶段。 */

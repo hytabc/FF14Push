@@ -1,11 +1,12 @@
-"""世界BOSS：全局共享血量、周期刷新、总伤害榜与击杀结算奖励。
+"""世界BOSS：全局共享血量、讨伐周期结算、总伤害榜与档位奖励。
 
 设计要点：
-- 全局单行 `WorldBoss(id=1)` 持有共享血量与周期；所有玩家共用同一血量。
+- 全局单行 `WorldBoss(id=1)` 持有共享血量与「讨伐周期」（cycle）；所有玩家共用同一血量。
 - 每个玩家一行 `WorldBossSession`（8 英雄 state），由 `worldboss_worker` 按租约推进；
   推进期间输出伤害既写入会话累计，也累加进 `WorldBossContribution`（榜单真相，持久不重置）。
-- 击杀按「周期」结算：BOSS 血量归零 → status=dead、respawn_at=now+respawnSeconds；
-  到期由 `respawn_due_bosses` 刷新并 cycle+1，开启新周期。贡献 / 奖励行永久保留。
+- **结算单位是「讨伐周期」**：周期内 BOSS 血量归零只是进入 respawnSeconds 的短暂休整，
+  到点满血重生、cycle 不变，玩家会话不中断、可反复讨伐；只有周期到时（period_ends_at）
+  才 cycle+1 并结算上一周期。奖励 = 档位（周期累计伤害）+ 名次加成，贡献 / 奖励行永久保留。
 """
 
 from __future__ import annotations
@@ -49,6 +50,16 @@ def reward_config() -> dict:
     return WORLD_BOSS["reward"]
 
 
+def period_seconds() -> int:
+    """讨伐周期长度（秒）：唯一的结算单位。"""
+    return int(WORLD_BOSS.get("periodSeconds", 18000))
+
+
+def respawn_seconds() -> int:
+    """周期内被击杀后的短暂休整（秒），到点满血重生且 cycle 不变。"""
+    return int(boss_config()["respawnSeconds"])
+
+
 def phases() -> list[dict]:
     return list(WORLD_BOSS.get("phases") or [])
 
@@ -83,6 +94,7 @@ async def ensure_world_boss(db: AsyncSession) -> WorldBoss:
     if boss is not None:
         return boss
     cfg = boss_config()
+    now = time.time()
     boss = WorldBoss(
         id=BOSS_ID,
         boss_key=str(cfg["id"]),
@@ -94,19 +106,62 @@ async def ensure_world_boss(db: AsyncSession) -> WorldBoss:
         status=STATUS_ALIVE,
         killed_at=None,
         respawn_at=None,
+        period_ends_at=now + period_seconds(),
+        kills=0,
         last_kill_by=None,
         config=deepcopy(WORLD_BOSS),
-        updated_at=time.time(),
+        updated_at=now,
     )
     db.add(boss)
     await db.commit()
     return boss
 
 
-async def respawn_due_bosses(db: AsyncSession, now: float | None = None) -> bool:
-    """刷新到期的 BOSS：满血、status=alive、cycle+1（新周期）。条件 UPDATE，多 worker 安全。"""
+async def roll_world_boss(db: AsyncSession, now: float | None = None) -> bool:
+    """按服务端时钟推进全局 BOSS 的时间状态（多 worker 安全）。
+
+    三件事，均为条件 UPDATE，同一行只会被一个 worker 生效：
+    1. **周期换轮**：`period_ends_at` 到期 → 满血、status=alive、cycle+1、kills=0，
+       并结束上一周期全部会话（上一周期进入「已结算可领取」）。
+    2. **补周期时间**：老行 / 首次 `period_ends_at IS NULL` → 以当前时间开一轮。
+    3. **周期内短休整复活**：被击杀后 respawnSeconds 到期 → 满血、status=alive，**cycle 不变**。
+    """
     now = time.time() if now is None else now
-    result = await db.execute(
+    period = period_seconds()
+    changed = False
+
+    # 1) 周期换轮（无论 BOSS 存亡都强制重置）。
+    rolled = await db.execute(
+        update(WorldBoss)
+        .where(WorldBoss.period_ends_at.isnot(None), WorldBoss.period_ends_at <= now)
+        .values(
+            cycle=WorldBoss.cycle + 1,
+            status=STATUS_ALIVE,
+            hp=WorldBoss.max_hp,
+            kills=0,
+            killed_at=None,
+            respawn_at=None,
+            period_ends_at=now + period,
+            updated_at=now,
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if rolled.rowcount:
+        changed = True
+        new_cycle = await db.scalar(select(WorldBoss.cycle).where(WorldBoss.id == BOSS_ID))
+        if new_cycle is not None:
+            await end_cycle_sessions(db, int(new_cycle) - 1)
+
+    # 2) 补周期结束时间（老行 / 首次）。
+    await db.execute(
+        update(WorldBoss)
+        .where(WorldBoss.period_ends_at.is_(None))
+        .values(period_ends_at=now + period, updated_at=now)
+        .execution_options(synchronize_session=False)
+    )
+
+    # 3) 周期内短休整复活（cycle 不变，可反复讨伐）。
+    revived = await db.execute(
         update(WorldBoss)
         .where(
             WorldBoss.status == STATUS_DEAD,
@@ -116,26 +171,29 @@ async def respawn_due_bosses(db: AsyncSession, now: float | None = None) -> bool
         .values(
             status=STATUS_ALIVE,
             hp=WorldBoss.max_hp,
-            cycle=WorldBoss.cycle + 1,
             killed_at=None,
             respawn_at=None,
             updated_at=now,
         )
+        .execution_options(synchronize_session=False)
     )
-    return bool(result.rowcount)
+    return changed or bool(revived.rowcount)
 
 
 async def kill_boss_if_depleted(db: AsyncSession, now: float) -> bool:
-    """血量归零则由先到者结算：标记死亡 + 刷新时间，并结束该周期全部会话。"""
+    """血量归零则由先到者记录：进入短暂休整（kills+1、cycle 不变），**不结束会话**。
+
+    周期内玩家可继续讨伐下一个化身；只有 `roll_world_boss` 的周期换轮才结束会话。
+    """
     boss = await db.get(WorldBoss, BOSS_ID)
     if boss is None or boss.status != STATUS_ALIVE or int(boss.hp) > 0:
         return False
     boss.status = STATUS_DEAD
     boss.killed_at = now
-    boss.respawn_at = now + int(boss_config()["respawnSeconds"])
+    boss.respawn_at = now + respawn_seconds()
     boss.hp = 0
+    boss.kills = int(boss.kills or 0) + 1
     boss.updated_at = now
-    await end_cycle_sessions(db, boss.cycle)
     return True
 
 
@@ -268,11 +326,46 @@ def hero_breakdown(row: dict) -> list[dict]:
     return heroes
 
 
-def items_for_rank(rank: int) -> int:
-    """名次 → 奖励件数（配置化递减曲线，未列名次取 defaultItems）。"""
-    cfg = reward_config()
-    table = cfg.get("rankItems") or {}
-    return int(table.get(str(rank), cfg.get("defaultItems", 1)))
+def reward_tiers() -> list[dict]:
+    return list(reward_config().get("tiers") or [])
+
+
+def rank_bonus_table() -> dict:
+    return reward_config().get("rankBonus") or {}
+
+
+def tier_for_damage(damage: int) -> tuple[int, int]:
+    """周期累计伤害命中的最高档位：返回 (档位序号 1-based，0 表示未达任何档, 件数)。"""
+    index, items = 0, 0
+    for i, tier in enumerate(reward_tiers(), start=1):
+        if int(damage) >= int(tier["minDamage"]):
+            index, items = i, int(tier["items"])
+    return index, items
+
+
+def rank_bonus_items(rank: int) -> int:
+    """名次加成件数（仅前 10 名，其余 0）。"""
+    return int(rank_bonus_table().get(str(rank), 0))
+
+
+def reward_items(rank: int, damage: int) -> int:
+    """周期奖励件数 = 档位（累计伤害）+ 名次加成（仅前 10 名）；未达门槛为 0。"""
+    if int(damage) < int(reward_config()["minDamage"]):
+        return 0
+    return tier_for_damage(damage)[1] + rank_bonus_items(rank)
+
+
+def _reward_view(rank: int, damage: int) -> dict:
+    if int(damage) < int(reward_config()["minDamage"]):
+        return {"items": 0, "tier": 0, "tierItems": 0, "rankBonus": 0}
+    tier, tier_items_value = tier_for_damage(damage)
+    bonus = rank_bonus_items(rank)
+    return {
+        "items": tier_items_value + bonus,
+        "tier": tier,
+        "tierItems": tier_items_value,
+        "rankBonus": bonus,
+    }
 
 
 def _qualified(rows: list[dict]) -> list[dict]:
@@ -293,7 +386,7 @@ async def leaderboard_view(
             "nickname": row["nickname"],
             "username": row["username"],
             "damage": row["damage"],
-            "items": items_for_rank(offset + index + 1),
+            **_reward_view(offset + index + 1, row["damage"]),
             "heroes": hero_breakdown(row),
         }
         for index, row in enumerate(rows[offset : offset + page_size])
@@ -308,7 +401,7 @@ async def leaderboard_view(
                     "nickname": row["nickname"],
                     "username": row["username"],
                     "damage": row["damage"],
-                    "items": items_for_rank(index + 1),
+                    **_reward_view(index + 1, row["damage"]),
                     "heroes": hero_breakdown(row),
                 }
                 break
@@ -324,7 +417,11 @@ async def leaderboard_view(
 
 
 async def _settled_cycles(db: AsyncSession, user_id: int, boss: WorldBoss) -> list[int]:
-    """该账号已达到门槛、且已结算（BOSS 已被击杀）的周期号，升序。"""
+    """该账号已达到门槛、且已结算的周期号，升序。
+
+    结算单位是「讨伐周期」：只有已换轮（`cycle < 当前 cycle`）的周期才可领取；
+    周期内 BOSS 是否被击杀与结算无关。
+    """
     contributions = (
         await db.scalars(
             select(WorldBossContribution).where(WorldBossContribution.user_id == user_id)
@@ -333,12 +430,7 @@ async def _settled_cycles(db: AsyncSession, user_id: int, boss: WorldBoss) -> li
     if not contributions:
         return []
     threshold = int(reward_config()["minDamage"])
-    ended = boss.status == STATUS_DEAD
-    return sorted(
-        c.cycle
-        for c in contributions
-        if int(c.damage) >= threshold and (c.cycle < boss.cycle or (c.cycle == boss.cycle and ended))
-    )
+    return sorted(c.cycle for c in contributions if int(c.damage) >= threshold and c.cycle < boss.cycle)
 
 
 async def latest_settled_cycle(db: AsyncSession, user_id: int, boss: WorldBoss) -> int | None:
@@ -383,7 +475,7 @@ async def claim_reward(db: AsyncSession, user_id: int, cycle: int | None = None)
     if existing is not None:
         return existing.receipt
 
-    ended = target_cycle < boss.cycle or (target_cycle == boss.cycle and boss.status == STATUS_DEAD)
+    ended = target_cycle < boss.cycle
     if not ended:
         raise HTTPException(409, "本轮尚未结算，无法领取")
 
@@ -401,14 +493,18 @@ async def claim_reward(db: AsyncSession, user_id: int, cycle: int | None = None)
     if rank <= 0:
         raise HTTPException(409, "本轮未进入奖励榜单")
 
-    count = items_for_rank(rank)
+    count = reward_items(rank, int(contribution.damage))
     generated = [generate_exclusive_item() for _ in range(max(0, count))]
     grants = await grant_generated_items(db, user, generated, f"worldBoss:{target_cycle}") if generated else {"items": [], "autoSold": [], "autoGold": 0}
 
+    reward_view = _reward_view(rank, int(contribution.damage))
     receipt = {
         "cycle": target_cycle,
         "rank": rank,
         "items": count,
+        "tier": reward_view["tier"],
+        "tierItems": reward_view["tierItems"],
+        "rankBonus": reward_view["rankBonus"],
         "damage": int(contribution.damage),
         "grants": grants,
         "gold": int(user.gold),

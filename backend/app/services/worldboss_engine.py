@@ -160,7 +160,9 @@ def damage_hero(state: dict, hero: dict, amount: float, source: str) -> None:
     value = max(0.0, float(amount)) * (1.0 - min(0.8, reduction))
     max_hp = hero["snapshot"]["stats"]["max_hp"]
     hero["damageTaken"] += min(hero["hp"], value)
-    hero["hp"] = max(0.0, hero["hp"] - value)
+    # 生命值以整数结算：伤害后向下取整，避免残留 (0,1) 区间的小数生命值让英雄
+    # 「显示 0 血却仍存活并战斗」。存活即至少 1 点，0 表示阵亡。
+    hero["hp"] = float(max(0, int(hero["hp"] - value)))
     hero["minHpRatio"] = min(hero["minHpRatio"], hero["hp"] / max_hp)
     if hero["hp"] <= 0:
         hero["deadUntil"] = state["elapsedMs"] + state["reviveSeconds"] * 1000

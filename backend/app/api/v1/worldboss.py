@@ -19,7 +19,6 @@ from app.core.deps import CurrentUser, DbSession
 from app.models import Hero, User
 from app.models.world_boss import (
     SESSION_RUNNING,
-    STATUS_ALIVE,
     WorldBoss,
     WorldBossContribution,
     WorldBossSession,
@@ -36,6 +35,7 @@ from app.services.world_boss import (
     hero_slots,
     leaderboard_view,
     level_multiplier,
+    period_seconds,
     phase_for_ratio,
     phases,
     reward_config,
@@ -68,6 +68,10 @@ def boss_public(boss: WorldBoss | None) -> dict | None:
         "status": boss.status,
         "killedAt": boss.killed_at,
         "respawnAt": boss.respawn_at,
+        # 讨伐周期：结算单位是周期而非单次击杀；周期内击杀只进入短暂休整。
+        "periodSeconds": period_seconds(),
+        "periodEndsAt": boss.period_ends_at,
+        "kills": int(boss.kills or 0),
         "reviveSeconds": int(cfg["reviveSeconds"]),
         "skillIntervalSeconds": int(cfg["skillIntervalSeconds"]),
         # 阶段由全服剩余血量占比决定（P2/P3 防御更厚、技能威力更高）。
@@ -126,8 +130,6 @@ async def leaderboard(db: DbSession, user: CurrentUser, page: int = 1) -> dict:
 @router.post("/enter")
 async def enter(payload: EnterRequest, db: DbSession, user: CurrentUser) -> dict:
     boss = await db.get(WorldBoss, BOSS_ID) or await ensure_world_boss(db)
-    if boss.status != STATUS_ALIVE:
-        raise HTTPException(409, "世界BOSS 已被击杀，等待刷新")
 
     await lock_user(db, user.id)
     # 世界BOSS 与远征 / 其他活跃互斥：先清掉自己旧的会话，再检查是否处于团队战斗。

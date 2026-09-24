@@ -10,9 +10,11 @@
   },
   "market": {
     "$comment": "玩家间交易板：上架即从背包/库存扣除进入托管，整单买断成交，成交价抽取手续费（feePct，金币直接销毁回收），未售出到期自动退回卖家。价格完全由玩家自定，仅以 minPrice/maxPrice 做边界保护。",
+    "$commentBuyOrder": "收购单（求购）：发布者托管 unitPrice × quantity 金币求购某堆叠物，卖家手动按剩余数量部分成交（成交额同抽 feePct），未成交部分在下架/到期时退还。仅支持堆叠物，不做自动撮合；复用 listingDays / minPrice / maxPrice / maxStackQuantityPerListing。",
     "feePct": 0.10,
     "listingDays": 7,
     "maxActiveListings": 20,
+    "maxActiveBuyOrders": 20,
     "maxStackQuantityPerListing": 9999,
     "minPrice": 1,
     "maxPrice": 2000000000

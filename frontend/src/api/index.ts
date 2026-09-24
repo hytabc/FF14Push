@@ -636,6 +636,68 @@ export const api = {
     return (await http.post<{ gold: number; message: string }>('/market/cancel', { listingId })).data
   },
 
+  /** 浏览他人发布的收购单。 */
+  async marketBuyOrders(
+    params: { kind?: string; sort?: string; page?: number; pageSize?: number } = {},
+  ) {
+    return (
+      await http.get<{
+        orders: import('@/game/types').MarketBuyOrder[]
+        total: number
+        page: number
+        pageSize: number
+        feePct: number
+        listingDays: number
+        maxActiveBuyOrders: number
+      }>('/market/buy-orders', { params })
+    ).data
+  },
+
+  async marketBuyOrdersMine() {
+    return (
+      await http.get<{
+        active: import('@/game/types').MarketBuyOrder[]
+        closed: import('@/game/types').MarketBuyOrder[]
+        activeCount: number
+        maxActiveBuyOrders: number
+        feePct: number
+      }>('/market/buy-orders/mine')
+    ).data
+  },
+
+  /** 发布收购单：托管 unitPrice × quantity 金币。 */
+  async marketBuyOrderCreate(entry: import('@/game/types').BuyOrderCreateEntry) {
+    return (
+      await http.post<{ gold: number; order: import('@/game/types').MarketBuyOrder }>(
+        '/market/buy-orders',
+        entry,
+      )
+    ).data
+  },
+
+  async marketBuyOrderCancel(orderId: number) {
+    return (
+      await http.post<{ gold: number; refund: number; message: string }>(
+        '/market/buy-orders/cancel',
+        { orderId },
+      )
+    ).data
+  },
+
+  /** 卖给收购单：按 count 部分 / 全部成交。 */
+  async marketBuyOrderFill(orderId: number, count: number) {
+    return (
+      await http.post<{
+        gold: number
+        count: number
+        total: number
+        fee: number
+        remaining: number
+        status: string
+      }>('/market/buy-orders/fill', { orderId, count })
+    ).data
+  },
+
   // ---------------------------------------------------------------- 挖宝
   async treasureState() {
     return (

@@ -10,14 +10,17 @@ import Modal from '@/components/Modal.vue'
 import TermBadges from '@/components/TermBadges.vue'
 import { api } from '@/api'
 import { marketFeeExplain } from '@/game/explanations'
-import type { Item, MarketListing } from '@/game/types'
+import type { Item, MarketBuyOrder, MarketListing, MaterialStackItem } from '@/game/types'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import { RARITY_ORDER, attrName, baseAttrName, formatNumber, rarityName } from '@/utils/format'
 
-type Tab = 'all' | 'equipment' | 'material' | 'consumable' | 'mine'
+type Tab = 'all' | 'equipment' | 'wanted' | 'material' | 'consumable' | 'materia' | 'seed' | 'mine'
 type ViewMode = 'card' | 'list' | 'grid'
+/** 可上架 / 可求购的堆叠物种类（与后端 StackKind 对齐）。 */
+type StackKind = 'material' | 'potion' | 'food' | 'materia' | 'seed'
+type StackTab = 'material' | 'consumable' | 'materia' | 'seed'
 
 const PAGE_SIZE = 20
 const VIEW_KEY = 'eorzea.marketView'
@@ -25,8 +28,11 @@ const VIEW_KEY = 'eorzea.marketView'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'all', label: '全部' },
   { id: 'equipment', label: '装备' },
+  { id: 'wanted', label: '收购' },
   { id: 'material', label: '素材' },
   { id: 'consumable', label: '消耗品' },
+  { id: 'materia', label: '魔晶石' },
+  { id: 'seed', label: '种子' },
   { id: 'mine', label: '我的寄售' },
 ]
 
@@ -70,9 +76,22 @@ const loading = ref(false)
 const mineActive = ref<MarketListing[]>([])
 const mineClosed = ref<MarketListing[]>([])
 
+// 收购单（求购）
+const buyOrders = ref<MarketBuyOrder[]>([])
+const buyTotal = ref(0)
+const maxActiveBuyOrders = ref(marketCfg.maxActiveBuyOrders)
+const myBuyActive = ref<MarketBuyOrder[]>([])
+const myBuyClosed = ref<MarketBuyOrder[]>([])
+const buyOrderOpen = ref(false)
+const buyTab = ref<StackTab>('material')
+const buySearch = ref('')
+const buyEdits = ref<Record<string, { count: number; price: number }>>({})
+const fillTarget = ref<MarketBuyOrder | null>(null)
+const fillCount = ref(1)
+
 const listingOpen = ref(false)
 const equipPickOpen = ref(false)
-const equipmentTab = ref<'material' | 'consumable'>('material')
+const equipmentTab = ref<StackTab>('material')
 const busy = ref(false)
 
 // 上架装备：选中一件后填写单价
@@ -82,7 +101,7 @@ const equipPrice = ref(1)
 // 上架堆叠物：每个物品一行，键 = kind:itemId
 interface StackRow {
   key: string
-  kind: 'material' | 'potion' | 'food'
+  kind: StackKind
   itemId: string
   name: string
   have: number
@@ -97,28 +116,201 @@ const feeExplain = marketFeeExplain()
 
 const listableItems = computed<Item[]>(() => game.items.filter((i) => !i.equippedSlot))
 
-const materialRows = computed<StackRow[]>(() =>
-  (dohdol.state?.materials ?? []).map((m) => ({
-    key: `material:${m.itemId}`,
-    kind: 'material' as const,
-    itemId: m.itemId,
-    name: m.name,
-    have: m.count,
-    sell: m.sell ?? 0,
-  })),
-)
-const consumableRows = computed<StackRow[]>(() =>
-  (dohdol.state?.consumables ?? []).map((m) => ({
+function toStackRows(items: MaterialStackItem[] | undefined): StackRow[] {
+  return (items ?? []).map((m) => ({
     key: `${m.kind}:${m.itemId}`,
-    kind: m.kind as 'potion' | 'food',
+    kind: m.kind as StackKind,
     itemId: m.itemId,
     name: m.name,
     have: m.count,
     sell: m.sell ?? 0,
-  })),
+  }))
+}
+
+const materialRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.materials))
+const consumableRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.consumables))
+const materiaRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.materia))
+const seedRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.seeds))
+
+/** 当前上架子页签对应的可上架行。 */
+const stackRows = computed<StackRow[]>(() => {
+  switch (equipmentTab.value) {
+    case 'consumable':
+      return consumableRows.value
+    case 'materia':
+      return materiaRows.value
+    case 'seed':
+      return seedRows.value
+    default:
+      return materialRows.value
+  }
+})
+
+const kindParam = computed(() =>
+  tab.value === 'mine' || tab.value === 'wanted' ? 'all' : tab.value,
 )
 
-const kindParam = computed(() => (tab.value === 'mine' ? 'all' : tab.value))
+const STACK_TABS: { id: StackTab; label: string }[] = [
+  { id: 'material', label: '素材' },
+  { id: 'consumable', label: '消耗品' },
+  { id: 'materia', label: '魔晶石' },
+  { id: 'seed', label: '种子' },
+]
+
+const stackTabLabel = computed(
+  () => STACK_TABS.find((t) => t.id === equipmentTab.value)?.label ?? '堆叠物',
+)
+
+// ------------------------------------------------------------------ 收购单（求购）
+/** 可求购的堆叠物目录（来自共享配置，与后端 material_def / sellable_kind 同源，不是我的库存）。 */
+interface BuyCandidate {
+  kind: StackKind
+  itemId: string
+  name: string
+  sell: number
+}
+
+const buyCatalog = computed<BuyCandidate[]>(() => [
+  ...Object.values(data.materialById).map((m) => ({
+    kind: 'material' as const,
+    itemId: m.id,
+    name: m.name,
+    sell: m.sell ?? 0,
+  })),
+  ...data.consumables.items.map((c) => ({
+    kind: c.kind as StackKind,
+    itemId: c.id,
+    name: c.name,
+    sell: c.sell ?? 0,
+  })),
+  ...Object.values(data.materiaById).map((m) => ({
+    kind: 'materia' as const,
+    itemId: m.id,
+    name: m.name,
+    sell: m.sell,
+  })),
+  ...data.farm.seeds.map((s) => ({
+    kind: 'seed' as const,
+    itemId: s.id,
+    name: s.name,
+    sell: s.sell,
+  })),
+])
+
+const buyTabLabel = computed(() => STACK_TABS.find((t) => t.id === buyTab.value)?.label ?? '堆叠物')
+
+/** 当前子页签 + 搜索词下的求购候选。 */
+const buyCandidates = computed<BuyCandidate[]>(() => {
+  const kinds = buyTab.value === 'consumable' ? ['potion', 'food'] : [buyTab.value]
+  const needle = buySearch.value.trim().toLowerCase()
+  return buyCatalog.value
+    .filter((c) => kinds.includes(c.kind))
+    .filter((c) => !needle || c.name.toLowerCase().includes(needle))
+})
+
+function buyKey(row: BuyCandidate): string {
+  return `${row.kind}:${row.itemId}`
+}
+
+function buyEditOf(row: BuyCandidate) {
+  return buyEdits.value[buyKey(row)] ?? { count: 1, price: Math.max(1, row.sell) }
+}
+
+function setBuyEdit(row: BuyCandidate, field: 'count' | 'price', e: Event) {
+  const raw = Number((e.target as HTMLInputElement).value)
+  const value = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0
+  buyEdits.value = { ...buyEdits.value, [buyKey(row)]: { ...buyEditOf(row), [field]: value } }
+}
+
+/** 我在该堆叠物上的持有量（「卖给 TA」的数量上限）。 */
+function ownedCount(kind: string, itemId: string): number {
+  const list =
+    kind === 'material'
+      ? dohdol.state?.materials
+      : kind === 'materia'
+        ? dohdol.state?.materia
+        : kind === 'seed'
+          ? dohdol.state?.seeds
+          : dohdol.state?.consumables
+  return list?.find((m) => m.itemId === itemId)?.count ?? 0
+}
+
+async function submitBuyOrder(row: BuyCandidate) {
+  const edit = buyEditOf(row)
+  if (busy.value) return
+  if (edit.count < 1) {
+    toast.push('求购数量至少为 1', 'error')
+    return
+  }
+  if (edit.price < marketCfg.minPrice) {
+    toast.push(`单价不能低于 ${marketCfg.minPrice}`, 'error')
+    return
+  }
+  busy.value = true
+  try {
+    await api.marketBuyOrderCreate({
+      kind: row.kind,
+      itemId: row.itemId,
+      quantity: edit.count,
+      unitPrice: edit.price,
+    })
+    toast.push(
+      `已发布收购：${row.name} ×${edit.count}（托管 ${formatNumber(edit.count * edit.price)} 金币）`,
+      'success',
+    )
+    delete buyEdits.value[buyKey(row)]
+    buyEdits.value = { ...buyEdits.value }
+    buyOrderOpen.value = false
+    await refreshState()
+    await refresh()
+  } catch (err) {
+    toast.push(err instanceof Error ? err.message : '发布收购失败', 'error')
+  } finally {
+    busy.value = false
+  }
+}
+
+function openFill(order: MarketBuyOrder) {
+  fillTarget.value = order
+  fillCount.value = Math.max(1, Math.min(order.remaining, ownedCount(order.kind, order.itemKey)))
+}
+
+async function confirmFill() {
+  const order = fillTarget.value
+  if (!order || busy.value) return
+  const count = Math.max(1, Math.floor(fillCount.value))
+  busy.value = true
+  try {
+    const res = await api.marketBuyOrderFill(order.id, count)
+    toast.push(
+      `卖出 ${order.name} ×${res.count}，实收 ${formatNumber(res.total - res.fee)} 金币` +
+        (res.status === 'filled' ? '（收购单已完成）' : ''),
+      'success',
+    )
+    fillTarget.value = null
+    await refreshState()
+    await refresh()
+  } catch (err) {
+    toast.push(err instanceof Error ? err.message : '出售失败', 'error')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function cancelBuyOrder(order: MarketBuyOrder) {
+  if (busy.value) return
+  busy.value = true
+  try {
+    const res = await api.marketBuyOrderCancel(order.id)
+    toast.push(`已取消收购，退还 ${formatNumber(res.refund)} 金币`, 'info')
+    await refreshState()
+    await refresh()
+  } catch (err) {
+    toast.push(err instanceof Error ? err.message : '取消收购失败', 'error')
+  } finally {
+    busy.value = false
+  }
+}
 
 function setView(v: ViewMode) {
   view.value = v
@@ -128,6 +320,8 @@ function setView(v: ViewMode) {
 function kindLabel(kind: string): string {
   if (kind === 'equipment') return '装备'
   if (kind === 'material') return '素材'
+  if (kind === 'materia') return '魔晶石'
+  if (kind === 'seed') return '种子'
   return '消耗品'
 }
 
@@ -206,6 +400,7 @@ async function loadMine() {
     mineClosed.value = res.closed
     feePct.value = res.feePct
     maxActiveListings.value = res.maxActiveListings
+    await loadMyBuyOrders()
   } catch (err) {
     toast.push(err instanceof Error ? err.message : '加载我的寄售失败', 'error')
   } finally {
@@ -213,21 +408,55 @@ async function loadMine() {
   }
 }
 
+async function loadBuyOrders() {
+  loading.value = true
+  try {
+    const res = await api.marketBuyOrders({
+      kind: kindParam.value,
+      sort: sort.value,
+      page: page.value,
+      pageSize: PAGE_SIZE,
+    })
+    buyOrders.value = res.orders
+    buyTotal.value = res.total
+    feePct.value = res.feePct
+    listingDays.value = res.listingDays
+    maxActiveBuyOrders.value = res.maxActiveBuyOrders
+  } catch (err) {
+    toast.push(err instanceof Error ? err.message : '加载收购单失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadMyBuyOrders() {
+  try {
+    const res = await api.marketBuyOrdersMine()
+    myBuyActive.value = res.active
+    myBuyClosed.value = res.closed
+    maxActiveBuyOrders.value = res.maxActiveBuyOrders
+  } catch (err) {
+    toast.push(err instanceof Error ? err.message : '加载我的收购失败', 'error')
+  }
+}
+
 async function refresh() {
   if (tab.value === 'mine') await loadMine()
+  else if (tab.value === 'wanted') await loadBuyOrders()
   else await loadListings()
 }
 
 let searchTimer: number | null = null
 watch([tab, sort, rarity, page], () => {
   if (tab.value === 'mine') void loadMine()
+  else if (tab.value === 'wanted') void loadBuyOrders()
   else void loadListings()
 })
 watch(q, () => {
   if (searchTimer !== null) window.clearTimeout(searchTimer)
   searchTimer = window.setTimeout(() => {
     page.value = 1
-    if (tab.value !== 'mine') void loadListings()
+    if (tab.value !== 'mine' && tab.value !== 'wanted') void loadListings()
   }, 300)
 })
 
@@ -406,27 +635,22 @@ async function cancel(listing: MarketListing) {
         <p v-else class="text-xs text-ink-500">选择一件未装备的物品上架。</p>
       </div>
 
-      <!-- 素材 / 消耗品 -->
+      <!-- 素材 / 消耗品 / 魔晶石 / 种子 -->
       <div class="space-y-2 rounded-lg border border-ink-700 p-3">
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <button
+            v-for="t in STACK_TABS"
+            :key="t.id"
             class="rounded px-2.5 py-1 text-xs transition"
-            :class="equipmentTab === 'material' ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
-            @click="equipmentTab = 'material'"
+            :class="equipmentTab === t.id ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
+            @click="equipmentTab = t.id"
           >
-            素材
-          </button>
-          <button
-            class="rounded px-2.5 py-1 text-xs transition"
-            :class="equipmentTab === 'consumable' ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
-            @click="equipmentTab = 'consumable'"
-          >
-            消耗品
+            {{ t.label }}
           </button>
         </div>
 
         <div
-          v-for="row in equipmentTab === 'material' ? materialRows : consumableRows"
+          v-for="row in stackRows"
           :key="row.key"
           class="flex flex-wrap items-center gap-2 border-t border-ink-800 py-2 text-xs first:border-t-0"
         >
@@ -463,8 +687,8 @@ async function cancel(listing: MarketListing) {
             上架
           </button>
         </div>
-        <p v-if="!(equipmentTab === 'material' ? materialRows : consumableRows).length" class="py-4 text-center text-xs text-ink-600">
-          暂无可上架的{{ equipmentTab === 'material' ? '素材' : '消耗品' }}。
+        <p v-if="!stackRows.length" class="py-4 text-center text-xs text-ink-600">
+          暂无可上架的{{ stackTabLabel }}。
         </p>
       </div>
     </section>
@@ -490,21 +714,23 @@ async function cancel(listing: MarketListing) {
 
       <!-- 筛选 -->
       <div v-if="tab !== 'mine'" class="flex flex-wrap items-center gap-2 text-xs">
-        <input
-          v-model="q"
-          type="text"
-          placeholder="按名称搜索"
-          class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-ink-100"
-        />
-        <select v-model="rarity" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
-          <option value="all">全部品阶</option>
-          <option v-for="r in RARITY_ORDER" :key="r" :value="r">{{ rarityName(r) }}</option>
-        </select>
+        <template v-if="tab !== 'wanted'">
+          <input
+            v-model="q"
+            type="text"
+            placeholder="按名称搜索"
+            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-ink-100"
+          />
+          <select v-model="rarity" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+            <option value="all">全部品阶</option>
+            <option v-for="r in RARITY_ORDER" :key="r" :value="r">{{ rarityName(r) }}</option>
+          </select>
+        </template>
         <select v-model="sort" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
           <option v-for="s in SORTS" :key="s.id" :value="s.id">{{ s.label }}</option>
         </select>
 
-        <div class="ml-auto flex gap-0.5 rounded-lg bg-ink-800 p-0.5">
+        <div v-if="tab !== 'wanted'" class="ml-auto flex gap-0.5 rounded-lg bg-ink-800 p-0.5">
           <button
             v-for="v in VIEWS"
             :key="v.id"
@@ -515,6 +741,13 @@ async function cancel(listing: MarketListing) {
             {{ v.label }}
           </button>
         </div>
+        <button
+          v-else
+          class="ml-auto rounded bg-amber-500 px-3 py-1.5 font-medium text-ink-950 transition hover:bg-amber-400"
+          @click="buyOrderOpen = true"
+        >
+          发布收购
+        </button>
       </div>
 
       <!-- 我的寄售 -->
@@ -564,6 +797,105 @@ async function cancel(listing: MarketListing) {
             </div>
           </div>
         </details>
+
+        <!-- 我的收购（求购） -->
+        <div class="border-t border-ink-800 pt-3">
+          <p class="text-xs text-ink-400">
+            我的收购 {{ myBuyActive.length }} / {{ maxActiveBuyOrders }} 单
+          </p>
+          <div v-if="myBuyActive.length" class="mt-2 space-y-2">
+            <div
+              v-for="o in myBuyActive"
+              :key="o.id"
+              class="flex flex-wrap items-center gap-2 rounded-lg border border-ink-700 p-2 text-xs"
+            >
+              <ItemIcon :base-id="o.itemKey" :size="24" variant="plain" />
+              <span class="text-ink-100">{{ o.name }}</span>
+              <span class="text-amber-300">{{ formatNumber(o.unitPrice) }} / 件</span>
+              <span class="text-ink-500">剩余 {{ formatNumber(o.remaining) }} / {{ formatNumber(o.quantity) }}</span>
+              <span class="text-ink-500">托管 {{ formatNumber(o.remainingPrice) }}</span>
+              <span class="text-ink-500">{{ expireText(o.expiresAt) }}</span>
+              <button
+                class="ml-auto rounded border border-rose-500/40 px-2 py-1 text-rose-300 transition hover:bg-rose-500/10 disabled:opacity-50"
+                :disabled="busy"
+                @click="cancelBuyOrder(o)"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+          <p v-else class="mt-2 text-center text-xs text-ink-600">暂无进行中的收购。</p>
+
+          <details v-if="myBuyClosed.length" class="mt-2 text-xs">
+            <summary class="cursor-pointer text-ink-400">收购记录（{{ myBuyClosed.length }}）</summary>
+            <div class="mt-2 space-y-1">
+              <div v-for="o in myBuyClosed" :key="o.id" class="flex flex-wrap items-center gap-2 text-ink-500">
+                <span>{{ o.name }}</span>
+                <span>{{ formatNumber(o.unitPrice) }} / 件</span>
+                <span>已成交 {{ formatNumber(o.filled) }} / {{ formatNumber(o.quantity) }}</span>
+                <span
+                  class="rounded px-1.5 py-0.5"
+                  :class="o.status === 'filled' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-ink-700 text-ink-300'"
+                >
+                  {{ o.status === 'filled' ? '已完成' : o.status === 'expired' ? '已过期' : '已取消' }}
+                </span>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- 收购单（求购） -->
+      <div v-else-if="tab === 'wanted'" class="space-y-3">
+        <p class="text-xs text-ink-400">
+          发布收购会按「单价 × 数量」全额托管金币；卖家可分批卖出，未成交部分在下架 / 到期时退还。
+        </p>
+        <p v-if="loading" class="py-8 text-center text-xs text-ink-500">加载中…</p>
+        <p v-else-if="!buyOrders.length" class="py-10 text-center text-xs text-ink-600">
+          暂无收购单，点击「发布收购」成为第一个买家。
+        </p>
+        <div v-else class="space-y-2">
+          <div
+            v-for="o in buyOrders"
+            :key="o.id"
+            class="flex flex-wrap items-center gap-2 rounded-lg border border-ink-700 p-2 text-xs"
+          >
+            <ItemIcon :base-id="o.itemKey" :size="24" variant="plain" />
+            <span class="text-ink-100">{{ o.name }}</span>
+            <span class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">{{ kindLabel(o.kind) }}</span>
+            <span class="text-amber-300">{{ formatNumber(o.unitPrice) }} / 件</span>
+            <span class="text-ink-500">剩余 {{ formatNumber(o.remaining) }} / {{ formatNumber(o.quantity) }}</span>
+            <span class="text-ink-500">买家 {{ o.buyerNickname }}</span>
+            <span class="text-ink-500">{{ expireText(o.expiresAt) }}</span>
+            <span v-if="ownedCount(o.kind, o.itemKey) < 1" class="text-ink-600">（你没有该物品）</span>
+            <button
+              class="ml-auto rounded bg-amber-500 px-3 py-1 font-medium text-ink-950 transition hover:bg-amber-400 disabled:opacity-50"
+              :disabled="busy || ownedCount(o.kind, o.itemKey) < 1"
+              @click="openFill(o)"
+            >
+              卖给 TA
+            </button>
+          </div>
+        </div>
+        <div v-if="buyTotal > PAGE_SIZE" class="flex items-center justify-center gap-2 text-xs">
+          <button
+            class="rounded border border-ink-600 px-2 py-1 text-ink-200 transition hover:border-amber-400 disabled:opacity-50"
+            :disabled="page <= 1"
+            @click="page -= 1"
+          >
+            上一页
+          </button>
+          <span class="text-ink-400">
+            {{ page }} / {{ Math.max(1, Math.ceil(buyTotal / PAGE_SIZE)) }}
+          </span>
+          <button
+            class="rounded border border-ink-600 px-2 py-1 text-ink-200 transition hover:border-amber-400 disabled:opacity-50"
+            :disabled="page * PAGE_SIZE >= buyTotal"
+            @click="page += 1"
+          >
+            下一页
+          </button>
+        </div>
       </div>
 
       <!-- 市场列表 -->
@@ -725,6 +1057,135 @@ async function cancel(listing: MarketListing) {
           @click="confirmBuy"
         >
           确认购买
+        </button>
+      </template>
+    </Modal>
+
+    <!-- 发布收购 -->
+    <Modal :open="buyOrderOpen" title="发布收购（托管金币）" max-width="max-w-2xl" @close="buyOrderOpen = false">
+      <div class="space-y-3 text-xs">
+        <p class="text-ink-400">
+          按「单价 × 数量」全额托管金币；卖家可分批卖出，未成交部分在下架 / 到期时自动退还。
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            v-for="t in STACK_TABS"
+            :key="t.id"
+            class="rounded px-2.5 py-1 transition"
+            :class="buyTab === t.id ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
+            @click="buyTab = t.id"
+          >
+            {{ t.label }}
+          </button>
+          <input
+            v-model="buySearch"
+            type="text"
+            placeholder="按名称搜索"
+            class="ml-auto rounded border border-ink-600 bg-ink-900 px-2 py-1 text-ink-100"
+          />
+        </div>
+        <div class="max-h-[50vh] overflow-y-auto pr-1">
+          <div
+            v-for="row in buyCandidates"
+            :key="buyKey(row)"
+            class="flex flex-wrap items-center gap-2 border-t border-ink-800 py-2 first:border-t-0"
+          >
+            <ItemIcon :base-id="row.itemId" variant="plain" :size="20" />
+            <span class="text-ink-200">{{ row.name }}</span>
+            <span class="text-ink-500">回收 {{ row.sell }}</span>
+            <label class="ml-auto flex items-center gap-1 text-ink-400">
+              数量
+              <input
+                type="number"
+                min="1"
+                class="w-20 rounded border border-ink-600 bg-ink-900 px-2 py-1 text-right text-ink-100"
+                :value="buyEditOf(row).count"
+                @input="setBuyEdit(row, 'count', $event)"
+              />
+            </label>
+            <label class="flex items-center gap-1 text-ink-400">
+              单价
+              <input
+                type="number"
+                min="1"
+                class="w-20 rounded border border-ink-600 bg-ink-900 px-2 py-1 text-right text-ink-100"
+                :value="buyEditOf(row).price"
+                @input="setBuyEdit(row, 'price', $event)"
+              />
+            </label>
+            <button
+              class="rounded bg-amber-500 px-3 py-1 font-medium text-ink-950 transition hover:bg-amber-400 disabled:opacity-50"
+              :disabled="busy"
+              @click="submitBuyOrder(row)"
+            >
+              发布
+            </button>
+          </div>
+          <p v-if="!buyCandidates.length" class="py-4 text-center text-ink-600">
+            没有匹配的{{ buyTabLabel }}。
+          </p>
+        </div>
+        <p class="text-[10px] text-ink-500">当前持有 {{ formatNumber(game.gold) }} 金币</p>
+      </div>
+    </Modal>
+
+    <!-- 卖给收购单 -->
+    <Modal :open="fillTarget !== null" title="卖给收购单" @close="fillTarget = null">
+      <div v-if="fillTarget" class="space-y-3 text-sm">
+        <div class="flex items-center gap-3">
+          <ItemIcon :base-id="fillTarget.itemKey" :size="40" variant="plain" />
+          <div>
+            <p class="text-ink-100">{{ fillTarget.name }}</p>
+            <p class="text-xs text-ink-500">
+              买家 {{ fillTarget.buyerNickname ?? '—' }} · {{ kindLabel(fillTarget.kind) }}
+            </p>
+          </div>
+        </div>
+        <div class="space-y-1 rounded-lg bg-ink-800/60 p-3 text-xs">
+          <div class="flex justify-between text-ink-300">
+            <span>单价</span>
+            <span>{{ formatNumber(fillTarget.unitPrice) }} 金币</span>
+          </div>
+          <div class="flex justify-between text-ink-300">
+            <span>收购单剩余</span>
+            <span>{{ formatNumber(fillTarget.remaining) }} 件</span>
+          </div>
+          <div class="flex justify-between text-ink-300">
+            <span>我的持有</span>
+            <span>{{ formatNumber(ownedCount(fillTarget.kind, fillTarget.itemKey)) }} 件</span>
+          </div>
+          <div class="flex justify-between text-ink-400">
+            <span>手续费（{{ (feePct * 100).toFixed(0) }}%）</span>
+            <span>{{ formatNumber(feeOf(fillTarget.unitPrice * fillCount)) }}</span>
+          </div>
+          <div class="flex justify-between text-ink-100">
+            <span>你将实收</span>
+            <span class="text-amber-300">
+              {{ formatNumber(netOf(fillTarget.unitPrice * fillCount)) }} 金币
+            </span>
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-ink-400">
+          卖出数量
+          <input
+            v-model.number="fillCount"
+            type="number"
+            min="1"
+            :max="Math.min(fillTarget.remaining, ownedCount(fillTarget.kind, fillTarget.itemKey))"
+            class="w-24 rounded border border-ink-600 bg-ink-900 px-2 py-1 text-right text-ink-100"
+          />
+        </label>
+      </div>
+      <template #footer>
+        <button class="rounded border border-ink-600 px-3 py-1.5 text-xs text-ink-300" @click="fillTarget = null">
+          取消
+        </button>
+        <button
+          class="rounded bg-amber-500 px-3 py-1.5 text-xs font-medium text-ink-950 transition hover:bg-amber-400 disabled:opacity-50"
+          :disabled="busy || fillCount < 1"
+          @click="confirmFill"
+        >
+          确认卖出
         </button>
       </template>
     </Modal>

@@ -447,12 +447,13 @@ def test_exclusive_items_stronger_than_same_level_gear() -> None:
 
 
 def test_world_boss_config() -> None:
-    """世界BOSS 数值：20 亿血量、攻击 20000、5 小时刷新、≥20 技能、8 席、80 级门槛。"""
+    """世界BOSS 数值：20 亿血量、攻击 20000、5h 讨伐周期、周期内短休整、≥20 技能、8 席、80 级门槛。"""
     wb = CONFIG.worldboss
     boss = wb["boss"]
+    assert int(wb["periodSeconds"]) == 5 * 3600, "讨伐周期沿用 5h 锚点"
     assert int(boss["maxHp"]) == 2_000_000_000
     assert int(boss["attack"]) == 20000
-    assert int(boss["respawnSeconds"]) == 5 * 3600
+    assert 0 < int(boss["respawnSeconds"]) <= 300, "周期内击杀后应是短暂休整，而非 5h CD"
     pool = boss["skillPool"]
     assert len(pool) >= 20
     assert len({s["id"] for s in pool}) == len(pool), "BOSS 技能 id 必须唯一"
@@ -466,8 +467,13 @@ def test_world_boss_config() -> None:
     assert 0 < float(rules["weaknessFloor"]) < 1
     reward = wb["reward"]
     assert int(reward["minDamage"]) == 5_000_000
-    assert int(reward["rankItems"]["1"]) == 20
-    assert int(reward["defaultItems"]) == 1
+    tiers = reward["tiers"]
+    assert [int(t["minDamage"]) for t in tiers] == sorted(int(t["minDamage"]) for t in tiers), "档位必须升序"
+    assert int(tiers[0]["minDamage"]) == 5_000_000, "首档 = 保底门槛"
+    assert [int(t["items"]) for t in tiers] == sorted(int(t["items"]) for t in tiers), "档位件数应随伤害递增"
+    assert int(reward["rankBonus"]["1"]) == 10, "第 1 名名次加成"
+    # 强者第 1 名打满顶档 = 顶档件数 + 名次加成 = 20（与原上限一致）
+    assert int(tiers[-1]["items"]) + int(reward["rankBonus"]["1"]) == 20
 
 
 def test_world_boss_phases_escalate() -> None:

@@ -1,8 +1,9 @@
 """世界BOSS 推进进程：`python -m app.worldboss_worker`。
 
 多个 worker 通过 PostgreSQL 行租约（FOR UPDATE SKIP LOCKED）安全共享推进。
-每次 tick 在单个事务内：刷新到期 BOSS → 逐会话按服务端时钟推进 → 汇总伤害原子递减
-全局血量 → 累加各账号贡献 → 血量归零则结算死亡并结束本周期会话。
+每次 tick 在单个事务内：推进全局时间（周期换轮 / 周期内短休整复活）→ 逐会话按服务端时钟
+推进 → 汇总伤害原子递减全局血量 → 累加各账号贡献 → 血量归零则进入短暂休整（cycle 不变，
+会话不结束，可继续讨伐下一个化身）。
 """
 
 import asyncio
@@ -26,7 +27,7 @@ from app.services.world_boss import (
     add_contribution,
     ensure_world_boss,
     kill_boss_if_depleted,
-    respawn_due_bosses,
+    roll_world_boss,
 )
 from app.services.worldboss_engine import advance
 
@@ -65,7 +66,7 @@ def hero_deltas(state: dict) -> tuple[dict[str, int], dict[str, dict]]:
 async def tick_worldboss(session_factory=SessionLocal, worker_id: str = "worker", now: float | None = None) -> int:
     now = time.time() if now is None else now
     async with session_factory() as db:
-        await respawn_due_bosses(db, now)
+        await roll_world_boss(db, now)
         boss = await db.get(WorldBoss, BOSS_ID)
         if boss is None:
             boss = await ensure_world_boss(db)

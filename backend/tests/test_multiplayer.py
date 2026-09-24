@@ -73,6 +73,15 @@ def test_revive_weakness_refresh_and_wipe_priority():
     step(state,d,CFG);assert state['status']=='failed' and state['reason']=='全员倒下'
 
 
+def test_damage_never_leaves_sub_one_hp():
+    """小数伤害不应让英雄残留 (0,1) 生命值——否则会出现「显示 0 血却仍可战斗」。"""
+    d=DUNGEONS['extreme_1'];state=new_battle(d,reference_seats(d),'solo',CFG);h=state['heroes'][0]
+    h['hp']=100.0
+    damage_hero(state,h,99.5,'test')
+    assert h['hp']==0
+    assert h['deadUntil']>state['elapsedMs'] and h['deaths']==1
+
+
 def test_manual_mechanic_ownership_and_failure():
     d=DUNGEONS['extreme_1'];seats=reference_seats(d)
     for s in seats:s['snapshot']['strategy']='manual'

@@ -251,12 +251,16 @@ class SellStackRequest(BaseModel):
 
 
 # --------------------------------------------------------------- 市场交易板
+# 可上架 / 可求购的堆叠物种类（与 dohdol_util.STACK_* 对齐）。
+StackKind = Literal["material", "potion", "food", "materia", "seed"]
+
+
 class MarketListEntry(BaseModel):
     """上架条目：装备（type=equipment，itemId 为装备行 id）或堆叠物（type=stack）。"""
 
     type: Literal["equipment", "stack"]
     itemId: int | None = None
-    stackKind: Literal["material", "potion", "food"] | None = None
+    stackKind: StackKind | None = None
     stackItemId: str | None = Field(default=None, max_length=48)
     count: int = Field(default=1, ge=1)
     unitPrice: int = Field(ge=1)
@@ -272,6 +276,26 @@ class MarketBuyRequest(BaseModel):
 
 class MarketCancelRequest(BaseModel):
     listingId: int
+
+
+class BuyOrderCreateRequest(BaseModel):
+    """发布收购单：托管 unitPrice × quantity 金币求购某堆叠物。"""
+
+    kind: StackKind
+    itemId: str = Field(min_length=1, max_length=48)
+    quantity: int = Field(ge=1)
+    unitPrice: int = Field(ge=1)
+
+
+class BuyOrderCancelRequest(BaseModel):
+    orderId: int
+
+
+class BuyOrderFillRequest(BaseModel):
+    """卖给收购单：按 count 部分/全部成交。"""
+
+    orderId: int
+    count: int = Field(ge=1)
 
 
 # --------------------------------------------------------------- 好友系统

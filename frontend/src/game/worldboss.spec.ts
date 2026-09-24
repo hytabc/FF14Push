@@ -2,19 +2,38 @@ import { describe, expect, it } from 'vitest'
 
 import data from '@shared/schema'
 
-import { phaseForRatio, respawnIn, reviveIn, weaknessHint, type WorldBossRules } from './worldboss'
+import {
+  nextRewardTier,
+  periodIn,
+  phaseForRatio,
+  respawnIn,
+  rewardTier,
+  reviveIn,
+  weaknessHint,
+  type WorldBossRewardTier,
+  type WorldBossRules,
+} from './worldboss'
 
 const RULES: WorldBossRules = { heroSlots: 8, levelRequirement: 80, fullPowerLevel: 100, weaknessFloor: 0.1 }
+const TIERS: WorldBossRewardTier[] = [
+  { minDamage: 5_000_000, items: 1 },
+  { minDamage: 50_000_000, items: 2 },
+  { minDamage: 200_000_000, items: 4 },
+]
 
 describe('世界BOSS 前端辅助', () => {
-  it('共享配置暴露世界BOSS 数值（20 亿血量 / 20000 攻击 / ≥20 技能 / 8 席 / P1-P3）', () => {
+  it('共享配置暴露世界BOSS 数值（20 亿血量 / 20000 攻击 / 5h 周期 / 短休整 / ≥20 技能 / 8 席 / P1-P3）', () => {
     const wb = data.worldboss
     expect(wb.boss.maxHp).toBe(2_000_000_000)
     expect(wb.boss.attack).toBe(20000)
-    expect(wb.boss.respawnSeconds).toBe(5 * 3600)
+    expect(wb.periodSeconds).toBe(5 * 3600)
+    expect(wb.boss.respawnSeconds).toBeLessThanOrEqual(300)
     expect(wb.boss.skillPool.length).toBeGreaterThanOrEqual(20)
     expect(wb.rules.heroSlots).toBe(8)
     expect(wb.phases.map((p) => p.id)).toEqual([1, 2, 3])
+    // 奖励 = 档位 + 名次加成：首档即保底门槛，第 1 名加成拉满到原上限 20
+    expect(wb.reward.tiers[0].minDamage).toBe(wb.reward.minDamage)
+    expect(wb.reward.tiers[wb.reward.tiers.length - 1].items + wb.reward.rankBonus['1']).toBe(20)
   })
 
   it('阶段按血量占比递增：血量越低防御与技能威力越高', () => {
@@ -55,5 +74,22 @@ describe('世界BOSS 前端辅助', () => {
     expect(weaknessHint(100, RULES)).toBe('满级：无削弱')
     expect(weaknessHint(80, RULES)).toContain('×0.10')
     expect(weaknessHint(90, RULES)).toContain('×0.55')
+  })
+
+  it('讨伐周期倒计时按服务端 epoch 秒计算，不为负', () => {
+    expect(periodIn(1_000, 400)).toBe(600)
+    expect(periodIn(1_000, 1_000)).toBe(0)
+    expect(periodIn(1_000, 2_000)).toBe(0)
+    expect(periodIn(null)).toBe(0)
+  })
+
+  it('档位取最高达标档、未达档为 null；下一档用于「还差多少」提示', () => {
+    expect(rewardTier(4_999_999, TIERS)).toBeNull()
+    expect(rewardTier(5_000_000, TIERS)?.items).toBe(1)
+    expect(rewardTier(199_999_999, TIERS)?.items).toBe(2)
+    expect(rewardTier(999_999_999, TIERS)?.items).toBe(4)
+    expect(nextRewardTier(0, TIERS)?.minDamage).toBe(5_000_000)
+    expect(nextRewardTier(5_000_000, TIERS)?.minDamage).toBe(50_000_000)
+    expect(nextRewardTier(200_000_000, TIERS)).toBeNull()
   })
 })

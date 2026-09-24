@@ -16,14 +16,14 @@ from app.core.database import SessionLocal, engine
 from app.models import Base
 from app.services.admin import ensure_admin_user
 from app.services.ranking import refresh_all_rankings
-from app.services.world_boss import ensure_world_boss, respawn_due_bosses
+from app.services.world_boss import ensure_world_boss, roll_world_boss
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("eorzea")
 
 settings = get_settings()
 RANKING_REFRESH_SECONDS = 300  # PRD 排行榜 2.4：每 5 分钟刷新一次
-WORLD_BOSS_RESPAWN_SECONDS = 30  # 世界BOSS 刷新轮询间隔（实际刷新由 respawnSeconds 决定）
+WORLD_BOSS_RESPAWN_SECONDS = 30  # 世界BOSS 全局时间轮询间隔（换轮 / 短休整复活由 periodSeconds / respawnSeconds 决定）
 
 
 async def _ranking_loop() -> None:
@@ -38,12 +38,12 @@ async def _ranking_loop() -> None:
 
 
 async def _worldboss_loop() -> None:
-    """世界BOSS 刷新：读取到期且已死亡的 BOSS，重置血量并开启新周期。"""
+    """世界BOSS 全局时间兜底：周期换轮与周期内短休整复活（worker 已在推进，这里仅作备份）。"""
     while True:
         await asyncio.sleep(WORLD_BOSS_RESPAWN_SECONDS)
         try:
             async with SessionLocal() as db:
-                if await respawn_due_bosses(db):
+                if await roll_world_boss(db):
                     await db.commit()
         except Exception:  # noqa: BLE001
             logger.exception("世界BOSS 刷新失败")

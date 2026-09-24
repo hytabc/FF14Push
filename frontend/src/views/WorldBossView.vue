@@ -11,7 +11,10 @@ import { useToastStore } from '@/stores/toast'
 import { jobName, formatNumber } from '@/utils/format'
 import {
   mergeEvents,
+  nextRewardTier,
+  periodIn,
   respawnIn,
+  rewardTier,
   reviveIn,
   weaknessHint,
   type WorldBossLeaderboard,
@@ -62,6 +65,41 @@ const respawnLeft = computed(() => {
 })
 /** 血条上的阶段分界（P2/P3 进入点）。 */
 const phaseMarks = computed(() => (state.value?.phases ?? []).filter((p) => p.minHpRatio > 0))
+/** 讨伐周期剩余秒数（每秒随 tick 刷新）。 */
+const periodLeft = computed(() => {
+  void tick.value
+  return boss.value ? periodIn(boss.value.periodEndsAt, Date.now() / 1000) : 0
+})
+const rewardTiers = computed(() => state.value?.reward.tiers ?? [])
+/** 名次加成表（按名次升序，用于说明文案）。 */
+const rankBonusList = computed(() => {
+  const table = state.value?.reward.rankBonus ?? {}
+  return Object.keys(table)
+    .map((key) => ({ rank: Number(key), items: table[key] }))
+    .sort((a, b) => a.rank - b.rank)
+})
+/** 我的周期档位进度（档位只看个人累计伤害，与他人无关）。 */
+const myProgress = computed(() => {
+  const damage = state.value?.myDamage ?? 0
+  const tiers = rewardTiers.value
+  const next = nextRewardTier(damage, tiers)
+  return {
+    damage,
+    items: rewardTier(damage, tiers)?.items ?? 0,
+    nextDamage: next?.minDamage ?? null,
+    remaining: next ? Math.max(0, next.minDamage - damage) : 0,
+  }
+})
+
+/** 秒数 → 人类可读时长（用于周期倒计时）。 */
+function durationText(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  if (hours) return `${hours} 小时 ${minutes} 分`
+  if (minutes) return `${minutes} 分 ${total % 60} 秒`
+  return `${total} 秒`
+}
 
 async function act(fn: () => Promise<unknown>) {
   busy.value = true
@@ -199,13 +237,16 @@ onUnmounted(() => {
         <p class="text-xs uppercase tracking-widest text-ink-400">全服共享血量 · 世界BOSS</p>
         <h1 class="text-xl font-bold text-amber-200">{{ boss?.name ?? '世界BOSS' }}</h1>
       </div>
-      <span v-if="boss" class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-300">第 {{ boss.cycle }} 轮</span>
+      <span v-if="boss" class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-300">第 {{ boss.cycle }} 周期</span>
+      <span v-if="boss" class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-300">
+        本周期已讨伐 {{ boss.kills }} 次 · 剩余 {{ durationText(periodLeft) }}
+      </span>
       <span
         v-if="boss"
         class="rounded px-2 py-1 text-xs"
-        :class="boss.status === 'alive' ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/20 text-rose-200'"
+        :class="boss.status === 'alive' ? 'bg-emerald-500/20 text-emerald-200' : 'bg-amber-500/20 text-amber-200'"
       >
-        {{ boss.status === 'alive' ? '讨伐中' : `已击杀 · ${respawnLeft}s 后刷新` }}
+        {{ boss.status === 'alive' ? '讨伐中' : `休整中 · ${respawnLeft}s 后重生` }}
       </span>
     </header>
 
@@ -257,18 +298,45 @@ onUnmounted(() => {
           </div>
         </section>
 
+        <!-- 我的周期进度（档位只看个人累计伤害，与他人无关） -->
+        <section class="panel space-y-2">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class="font-semibold">我的本周期进度</h2>
+            <span class="text-xs text-ink-400">周期剩余 {{ durationText(periodLeft) }}</span>
+          </div>
+          <p class="text-sm text-ink-300">
+            本周期累计伤害 <span class="font-mono text-amber-200">{{ formatNumber(myProgress.damage) }}</span>
+            <template v-if="myProgress.items">
+              · 当前档位 <span class="text-amber-200">{{ myProgress.items }} 件</span>
+            </template>
+            <template v-else>
+              · <span class="text-ink-400">未达保底门槛 {{ formatNumber(leaderboard?.minDamage ?? 0) }}</span>
+            </template>
+          </p>
+          <p v-if="myProgress.nextDamage" class="text-xs text-ink-400">
+            距下一档（累计 {{ formatNumber(myProgress.nextDamage) }}）还差 {{ formatNumber(myProgress.remaining) }}
+          </p>
+          <p v-else-if="myProgress.items" class="text-xs text-emerald-300">已达最高档位。</p>
+        </section>
+
         <!-- 上阵 / 战斗 -->
         <section v-if="!session" class="panel space-y-3">
           <div class="flex items-center justify-between">
             <h2 class="font-semibold">上阵英雄（最多 {{ rules.heroSlots }} 名 · 需 Lv.{{ rules.levelRequirement }} 以上）</h2>
             <button
               class="rounded bg-amber-500/90 px-3 py-1.5 text-sm font-semibold text-ink-950 disabled:opacity-40"
-              :disabled="busy || !selected.length || boss?.status !== 'alive'"
+              :disabled="busy || !selected.length"
               @click="enter"
             >
               进入战场（{{ selected.length }}）
             </button>
           </div>
+          <p v-if="boss && boss.status !== 'alive'" class="text-xs text-amber-300">
+            BOSS 正在重整旗鼓，{{ respawnLeft }} 秒后重生；此刻进场后会自动开战。
+          </p>
+          <p class="text-xs text-ink-400">
+            本周期内 BOSS 可反复讨伐；奖励只看你自己的周期累计伤害，别人打得再快也不影响你的奖励。
+          </p>
           <p class="text-xs text-ink-400">
             {{ rules.levelRequirement }}–{{ rules.fullPowerLevel - 1 }} 级英雄会被严重削弱，达到 Lv.{{ rules.fullPowerLevel }} 才不受影响。
           </p>
@@ -344,9 +412,9 @@ onUnmounted(() => {
 
         <!-- 结算领取 -->
         <section v-if="state?.unclaimedCycle" class="panel space-y-2">
-          <h2 class="font-semibold text-amber-200">本轮已结算（第 {{ state.unclaimedCycle }} 轮）</h2>
+          <h2 class="font-semibold text-amber-200">上周期已结算（第 {{ state.unclaimedCycle }} 周期）</h2>
           <p class="text-sm text-ink-300">
-            你的本轮总伤害 {{ formatNumber(state.myDamage) }}，按名次发放「绝境龙神」系列装备。
+            你的周期累计伤害 {{ formatNumber(state.myDamage) }}，可按「档位 + 名次加成」领取「绝境龙神」系列装备。
           </p>
           <button
             class="rounded bg-amber-500/90 px-3 py-1.5 text-sm font-semibold text-ink-950 disabled:opacity-40"
@@ -356,7 +424,7 @@ onUnmounted(() => {
             {{ receipt ? '已领取' : '领取奖励' }}
           </button>
           <p v-if="receipt" class="text-sm text-emerald-200">
-            第 {{ receipt.rank }} 名 · 获得 {{ receipt.items }} 件绝境龙神装备
+            第 {{ receipt.rank }} 名 · 档位 {{ receipt.tierItems }} 件 + 名次加成 {{ receipt.rankBonus }} 件 = {{ receipt.items }} 件绝境龙神装备
           </p>
           <ul v-if="receipt" class="max-h-40 space-y-0.5 overflow-auto text-xs text-ink-300">
             <li v-for="it in receipt.grants.items" :key="it.id">{{ it.name }}（{{ it.rarity }}）</li>
@@ -364,15 +432,15 @@ onUnmounted(() => {
         </section>
       </div>
 
-      <!-- 侧边：实时总伤害榜 -->
+      <!-- 侧边：本周期伤害榜 -->
       <aside class="space-y-3">
         <section class="panel space-y-2">
           <div class="flex items-baseline justify-between">
-            <h2 class="font-semibold">总伤害榜</h2>
-            <span class="text-xs text-ink-400">第 {{ leaderboard?.cycle ?? boss?.cycle ?? 1 }} 轮</span>
+            <h2 class="font-semibold">本周期伤害榜</h2>
+            <span class="text-xs text-ink-400">第 {{ leaderboard?.cycle ?? boss?.cycle ?? 1 }} 周期</span>
           </div>
           <p class="text-xs text-ink-400">
-            伤害 ≥ {{ formatNumber(leaderboard?.minDamage ?? 0) }} 才能入榜；第 1 名 20 件，名次越低件数越少。
+            周期累计伤害 ≥ {{ formatNumber(leaderboard?.minDamage ?? 0) }} 才能入榜；件数 = 档位（累计伤害）+ 名次加成。
           </p>
           <p class="text-xs text-ink-500">点击任一行可展开查看该玩家各英雄的伤害与占比。</p>
           <ol class="space-y-1 text-sm">
@@ -399,13 +467,26 @@ onUnmounted(() => {
             <button type="button" class="ml-2 underline decoration-dotted" @click="detail = leaderboard!.me">查看分英雄伤害</button>
           </p>
           <p v-else class="border-t border-ink-700 pt-2 text-xs text-ink-400">
-            我本轮累计 {{ formatNumber(state?.myDamage ?? 0) }}，未达入榜门槛。
+            我本周期累计 {{ formatNumber(state?.myDamage ?? 0) }}，未达入榜门槛。
           </p>
         </section>
 
         <section class="panel space-y-1 text-xs text-ink-400">
           <h2 class="text-sm font-semibold text-ink-200">奖励说明</h2>
-          <p>第 1 名 20 件 → 第 10 名 1 件，第 10 名及以后每名 1 件（需总伤害达标）。</p>
+          <p>
+            按「讨伐周期」结算（每 {{ durationText(boss?.periodSeconds ?? 0) }} 一轮）：周期内 BOSS 可反复击杀，
+            奖励只看你自己的周期累计伤害 —— 别人打得再快也不影响你的奖励。
+          </p>
+          <p>件数 = 档位（周期累计伤害）+ 名次加成（仅前 10 名）。</p>
+          <ul class="space-y-0.5">
+            <li v-for="(tier, i) in rewardTiers" :key="tier.minDamage">
+              第 {{ i + 1 }} 档：累计伤害 ≥ {{ formatNumber(tier.minDamage) }} → {{ tier.items }} 件
+            </li>
+          </ul>
+          <p>
+            名次加成：<span v-for="(row, i) in rankBonusList" :key="row.rank">{{ i ? ' · ' : ''
+              }}第 {{ row.rank }} 名 +{{ row.items }}</span>
+          </p>
           <p>「绝境龙神」固定红色品质 / 100 级，仅世界BOSS 掉落；可重造 / 附魔但代价远高于其他装备。</p>
         </section>
       </aside>
@@ -419,8 +500,8 @@ onUnmounted(() => {
     >
       <div v-if="detail" class="space-y-3 text-sm">
         <p class="text-ink-300">
-          本轮总伤害 <span class="font-mono text-amber-200">{{ formatNumber(detail.damage) }}</span>
-          · 预计奖励 ×{{ detail.items }}
+          本周期累计伤害 <span class="font-mono text-amber-200">{{ formatNumber(detail.damage) }}</span>
+          · 预计奖励 ×{{ detail.items }}（档位 {{ detail.tierItems }} + 名次加成 {{ detail.rankBonus }}）
         </p>
 
         <!-- 占比堆叠条 -->
