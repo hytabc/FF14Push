@@ -80,6 +80,18 @@ services:
         condition: service_healthy
     networks: [eorzea]
 
+  worldboss-worker:
+    image: eorzea-backend:latest
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "app.worldboss_worker"]
+    environment: *backend-environment
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [eorzea]
+
   frontend:
     build:
       context: .

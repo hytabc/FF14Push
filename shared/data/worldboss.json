@@ -1,0 +1,77 @@
+{
+  "$comment": "世界BOSS：全服共享血量，所有在线玩家各自上阵最多 8 名英雄同时削弱同一血量。服务端权威模拟（worldboss_worker 按 tickMs 推进），客户端只渲染。来源：需求「世界BOSS」。",
+  "$commentCycle": "按击杀周期结算：BOSS 被击杀后进入 respawnSeconds 刷新 CD，到点由后端刷新循环重置血量并 cycle+1，开启新周期。历史贡献/奖励行永久保留，不随版本更新清除。",
+  "$commentSkills": "BOSS 技能池：≥20 个不同技能，每隔 skillIntervalSeconds 固定间隔随机抽取一个释放；技能结算与 BOSS 普攻完全独立（普攻按 attackIntervalSeconds 单独计时）。效果类型：nuke/aoe/dot/debuff/charge/enrage/shield。",
+  "$commentLevel": "参战等级下限 levelRequirement；80~99 级英雄输出/治疗按线性削弱，满级 fullPowerLevel 不再削弱。",
+  "$commentPhases": "阶段：按 BOSS 剩余血量占比自动进入。minHpRatio 为该阶段的血量占比下限（含），phase_for_ratio 取满足 ratio ≥ minHpRatio 的最高阶段。血量越低防御越厚（英雄输出按 1/defenseMultiplier 折算）、技能威力越高（技能威力 ×skillPotencyMultiplier；不影响普攻）。",
+  "version": "1.1.0",
+  "tickMs": 100,
+  "publishMs": 500,
+  "heartbeatSeconds": 5,
+  "disconnectSeconds": 15,
+  "leaseSeconds": 2,
+  "phases": [
+    { "id": 1, "name": "第一阶段", "minHpRatio": 0.6, "defenseMultiplier": 1.0, "skillPotencyMultiplier": 1.0 },
+    { "id": 2, "name": "第二阶段", "minHpRatio": 0.3, "defenseMultiplier": 2.0, "skillPotencyMultiplier": 1.5 },
+    { "id": 3, "name": "第三阶段", "minHpRatio": 0.0, "defenseMultiplier": 3.0, "skillPotencyMultiplier": 2.0 }
+  ],
+  "boss": {
+    "id": "golden_bahamut",
+    "name": "黄金巴哈姆特",
+    "maxHp": 2000000000,
+    "attack": 20000,
+    "attackIntervalSeconds": 3,
+    "respawnSeconds": 18000,
+    "reviveSeconds": 10,
+    "skillIntervalSeconds": 6,
+    "skillPool": [
+      { "id": "annihilation", "name": "湮灭", "effect": "nuke", "potency": 400, "desc": "造成 400% 攻击力的高威力伤害" },
+      { "id": "rendingSlash", "name": "裂空斩", "effect": "nuke", "potency": 300, "desc": "造成 300% 攻击力的物理伤害" },
+      { "id": "thunderFang", "name": "雷牙", "effect": "nuke", "potency": 250, "damageType": "magical", "desc": "造成 250% 攻击力的魔法伤害" },
+      { "id": "goldenImpact", "name": "黄金冲击", "effect": "nuke", "potency": 350, "desc": "造成 350% 攻击力的物理伤害" },
+      { "id": "flareBreath", "name": "百万核爆", "effect": "aoe", "potency": 260, "desc": "对全体英雄造成 260% 攻击力的范围伤害" },
+      { "id": "elementalBurst", "name": "元素爆发", "effect": "aoe", "potency": 220, "desc": "对全体英雄造成 220% 攻击力的范围伤害" },
+      { "id": "earthShock", "name": "大地震颤", "effect": "aoe", "potency": 200, "desc": "对全体英雄造成 200% 攻击力的范围伤害" },
+      { "id": "starRing", "name": "星环崩坏", "effect": "aoe", "potency": 240, "desc": "对全体英雄造成 240% 攻击力的范围伤害" },
+      { "id": "goldenVerdict", "name": "黄金判决", "effect": "aoe", "potency": 280, "damageType": "magical", "desc": "对全体英雄造成 280% 攻击力的魔法范围伤害" },
+      { "id": "dragonBreath", "name": "龙炎吐息", "effect": "dot", "potency": 200, "duration": 6, "desc": "6 秒内对全体英雄造成共 200% 攻击力的持续伤害" },
+      { "id": "venomMist", "name": "腐蚀毒雾", "effect": "dot", "potency": 160, "duration": 8, "desc": "8 秒内对全体英雄造成共 160% 攻击力的持续伤害" },
+      { "id": "dragonGodWrath", "name": "龙神之怒", "effect": "dot", "potency": 240, "duration": 6, "desc": "6 秒内对全体英雄造成共 240% 攻击力的持续伤害" },
+      { "id": "moltenGold", "name": "熔金灼烧", "effect": "dot", "potency": 180, "duration": 10, "desc": "10 秒内对全体英雄造成共 180% 攻击力的持续伤害" },
+      { "id": "frostbind", "name": "霜缚", "effect": "debuff", "potency": 150, "attackSpeedDebuff": 0.25, "duration": 6, "desc": "造成 150% 攻击力伤害并使英雄攻速 −25%（6 秒）" },
+      { "id": "gravityWell", "name": "重力场", "effect": "debuff", "potency": 120, "attackSpeedDebuff": 0.3, "duration": 5, "desc": "造成 120% 攻击力伤害并使英雄攻速 −30%（5 秒）" },
+      { "id": "goldenShackle", "name": "黄金枷锁", "effect": "debuff", "potency": 170, "attackSpeedDebuff": 0.2, "duration": 8, "desc": "造成 170% 攻击力伤害并使英雄攻速 −20%（8 秒）" },
+      { "id": "savageCharge", "name": "狂暴冲锋", "effect": "charge", "chargeSeconds": 2, "potency": 260, "desc": "蓄力 2 秒后造成 260% 攻击力的伤害" },
+      { "id": "bahamutFlare", "name": "巴哈姆特烈焰", "effect": "charge", "chargeSeconds": 3, "potency": 320, "desc": "蓄力 3 秒后造成 320% 攻击力的伤害" },
+      { "id": "teraflare", "name": "百万龙焰", "effect": "charge", "chargeSeconds": 3, "potency": 420, "desc": "蓄力 3 秒后造成 420% 攻击力的高额伤害" },
+      { "id": "warCry", "name": "战吼", "effect": "enrage", "attackBuff": 0.4, "duration": 10, "desc": "自身攻击力 +40%，持续 10 秒" },
+      { "id": "goldenAwe", "name": "黄金威压", "effect": "enrage", "attackBuff": 0.5, "duration": 8, "desc": "自身攻击力 +50%，持续 8 秒" },
+      { "id": "bulwark", "name": "坚壁", "effect": "shield", "damageReduce": 0.4, "duration": 6, "desc": "自身获得 40% 减伤，持续 6 秒" },
+      { "id": "ironWall", "name": "铁壁", "effect": "shield", "damageReduce": 0.3, "duration": 8, "desc": "自身获得 30% 减伤，持续 8 秒" },
+      { "id": "dragonScale", "name": "龙鳞护盾", "effect": "shield", "damageReduce": 0.5, "duration": 5, "desc": "自身获得 50% 减伤，持续 5 秒" }
+    ]
+  },
+  "rules": {
+    "heroSlots": 8,
+    "levelRequirement": 80,
+    "fullPowerLevel": 100,
+    "weaknessFloor": 0.1
+  },
+  "reward": {
+    "$comment": "击杀结算奖励：仅总伤害 ≥ minDamage 者进入榜单并按名次发放「绝境龙神」系列；未列名次取 defaultItems。",
+    "minDamage": 5000000,
+    "rankItems": {
+      "1": 20,
+      "2": 18,
+      "3": 15,
+      "4": 12,
+      "5": 10,
+      "6": 8,
+      "7": 6,
+      "8": 5,
+      "9": 4,
+      "10": 3
+    },
+    "defaultItems": 1
+  }
+}

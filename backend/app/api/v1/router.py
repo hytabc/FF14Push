@@ -47,6 +47,6 @@ api_router.include_router(raid.router)
 api_router.include_router(dohdol.router)
 api_router.include_router(admin.router)
 
-from app.api.v1 import heroes, registrations, pvp, coop
-for module in (heroes, registrations, pvp, coop):
+from app.api.v1 import heroes, registrations, pvp, coop, worldboss
+for module in (heroes, registrations, pvp, coop, worldboss):
     api_router.include_router(module.router)

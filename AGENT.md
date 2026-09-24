@@ -11,6 +11,7 @@
 - 远征通关记录与「远征榜」已实现：`coop_worker` 在通关瞬间把时长与全席位分角色战斗信息写入 `coop_records`（每个真实参战账号一行）；排行榜页「远征榜」按副本实时聚合（不走 5 分钟缓存），展示最快通关时长与阵容。
 - 好友系统已实现：账号有唯一「好友码」（`users.friend_code`，注册 / 迁移生成），凭码申请 + 对方同意后成为好友；好友列表展示在线状态（`users.last_seen_at` + 前端心跳，45s 内视为在线）。好友间可金币转账，手续费 `economy.json:transfer.feePct`（默认 10%）从转账额扣除后销毁，另有单笔上下限与每日累计上限（见 `services/friends.py`）。
 - 聊天室已实现：单一公开大厅，登录后可看可发，实名展示 `昵称#登录账号`（同排行榜；**管理员只显示「管理员」+ 徽章，`services/chat.serialize` 不回显也不下发其登录账号**）。仅文本（单条 ≤200 字），**不保留聊天记录**——服务端只保留最近 10 分钟消息（`services/chat.py:RETENTION_SECONDS`），窗口外历史永不返回、发言时清理过期行；发言限频 20 条/60 秒（`guard_rate`）。实时推送为 WebSocket `/api/v1/chat/ws`（短时效一次性 ticket 鉴权，`services/chat.issue_ticket/consume_ticket`），广播沿用 `api/v1/coop.py` 的「各连接按游标轮询 DB」模式，天然多 worker 安全。管理员可在聊天室发公告（`POST /chat/announce`，高亮、不受发言限频）。**公告是「不保留记录」的例外**：长期保留、置顶于聊天室顶部，不参与滚动窗口的读取与清理（`services/chat.announcements/new_announcements`，按 id 倒序最新在前）。表：`chat_messages`、`chat_tickets`（迁移 `o1a2b3c4d5e7`）。
+- 世界BOSS 已实现：全服共享血量的 BOSS「黄金巴哈姆特」（初始 **20 亿**血量、第一阶段攻击力 20000、击杀后 5 小时刷新）。所有在线玩家各自上阵最多 8 名英雄同时削弱同一血量；由独立进程 `worldboss_worker` 服务端权威推进（`services/worldboss_engine.py`，100ms tick，BOSS 普攻对全体存活英雄、技能按固定间隔随机独立释放，英雄各自独立死亡/复活），前端只渲染 WebSocket 快照。**阶段（P1→P2→P3）**按全服剩余血量占比自动进入（`worldboss.json:phases`：≤60% 进 P2、≤30% 进 P3）：血量越低 **BOSS 防御越厚**（英雄输出按 `1/defenseMultiplier` 折算）、**技能威力越高**（`skillPotencyMultiplier`，不影响普攻）；阶段由 worker 每批推进前把全局血量占比写入 `state.bossHpRatio`。场地要求英雄 80 级以上，80–99 级输出/治疗被线性削弱（满级解除）。按**击杀周期**结算：每轮结束按「总伤害榜」名次发「绝境龙神」系列（第 1 名 20 件，递减至第 10 名 1 件；入榜门槛总伤害 ≥ 500 万）。**榜单行可点击展开**查看该玩家本周期各英雄的伤害与占比（贡献按 `heroId` 累加增量，跨多次上阵不重复计数）。**世界BOSS 血量、周期与总伤害榜不随版本更新重置**（贡献/奖励行永久保留）。「绝境龙神」固定红色（神话）品质、100 级，仅世界BOSS 掉落（不可抽奖/打造/合成），可重造/附魔但成本 ×`economy.json:exclusiveCostMultiplier`（远高于其他装备）。数据表 `world_bosses` / `world_boss_sessions` / `world_boss_contributions` / `world_boss_rewards` / `world_boss_tickets`（迁移 `p2b4d6f8a0c2`），配置见 `shared/data/worldboss.json`、`shared/data/exclusive-equipment.json`。
 - 界面及项目文档主要使用中文，新增内容保持已有命名和文案风格。
 
 ## 阅读顺序与事实来源
@@ -108,7 +109,7 @@ cd backend
 
 ## 数据库升级与部署
 
-- 当前 `docker-compose.yml` 有四个服务：`db`、`backend`、`coop-worker`、`frontend`。worker 使用后端镜像但独立运行，缺少它时团队战斗不会正常推进。
+- 当前 `docker-compose.yml` 有五个服务：`db`、`backend`、`coop-worker`、`worldboss-worker`、`frontend`。worker 使用后端镜像但独立运行：缺少 `coop-worker` 时团队战斗不会推进，缺少 `worldboss-worker` 时世界BOSS 不会推进（血量不下降）。`scripts/dev.sh` 会一并启动两个 worker。
 - PostgreSQL 使用 Alembic：在正确数据库环境下，从 `backend` 执行 `.venv/bin/alembic upgrade head`。生产容器入口会先执行迁移，再启动 API；`AUTO_CREATE_TABLES=false`。
 - `AUTO_CREATE_TABLES=true` 只能确保表存在，不能替代已有表的结构迁移。
 - 对于联机 DLC 之前由 `create_all` 建立的本地 SQLite，已有专用 `backend/app/migrate_local.py`：停止 API/worker，在 `backend` 目录、正确 `DATABASE_URL` 下运行 `.venv/bin/python -m app.migrate_local`。它会创建 `.before-dlc` 备份；不要把该脚本当成所有未来升级的通用迁移器。

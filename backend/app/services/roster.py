@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, update
 from app.models import User, Hero, Item, BattleSession, RaidSession, ActivitySession
 from app.models.multiplayer import CoopMember, CoopRoom
+from app.models.world_boss import SESSION_RUNNING, WorldBossSession
 
 async def lock_user(db, user_id):
     return await db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
@@ -13,6 +14,11 @@ async def require_idle_team(db, user_id):
         CoopMember.user_id == user_id, CoopRoom.status == 'running').limit(1))
     if active:
         raise HTTPException(409, '团队战斗进行中，英雄和装备已锁定')
+    # 世界BOSS 同样是服务端权威战斗：进行中锁定英雄与装备，与远征互斥。
+    boss_active = await db.scalar(select(WorldBossSession.id).where(
+        WorldBossSession.user_id == user_id, WorldBossSession.status == SESSION_RUNNING).limit(1))
+    if boss_active:
+        raise HTTPException(409, '世界BOSS 战斗进行中，英雄和装备已锁定')
 
 async def stop_activities(db, user_id):
     now = datetime.now(timezone.utc)

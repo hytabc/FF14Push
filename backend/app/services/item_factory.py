@@ -561,6 +561,27 @@ def generate_by_rarity(
     return item
 
 
+# 绝境龙神：固定红色（神话）品质。
+EXCLUSIVE_RARITY = str(CONFIG.raw.get("exclusiveEquipment", {}).get("fixedRarity", "mythic"))
+
+
+def pick_exclusive_base(rng: random.Random, category: str | None = None) -> BaseItem:
+    """在绝境龙神系列（世界BOSS 专属）中随机挑一件，可限定大类。"""
+    candidates = [b for b in CONFIG.exclusive_items if category is None or b.category == category]
+    if not candidates:
+        raise ValueError(f"绝境龙神系列缺少大类: {category}")
+    return rng.choice(candidates)
+
+
+def generate_exclusive_item(
+    rng: random.Random | None = None, category: str | None = None
+) -> dict[str, Any]:
+    """生成一件「绝境龙神」：固定红色（神话）品质、固定 100 级；仅世界BOSS 掉落。"""
+    rng = rng or random.Random()
+    base = pick_exclusive_base(rng, category)
+    return generate_by_rarity(base.category, base.level_req, EXCLUSIVE_RARITY, rng=rng, base_id=base.id)
+
+
 def regenerate_attrs(
     item: Any, rng: random.Random | None = None, mode: str = "random"
 ) -> dict[str, Any]:

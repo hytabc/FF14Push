@@ -8,6 +8,8 @@ import subAttributesJson from '../data/sub-attributes.json'
 import termsJson from '../data/terms.json'
 import jobsJson from '../data/jobs.json'
 import baseItemsJson from '../data/base-items.json'
+import exclusiveEquipmentJson from '../data/exclusive-equipment.json'
+import worldbossJson from '../data/worldboss.json'
 import monstersJson from '../data/monsters.json'
 import bossesJson from '../data/bosses.json'
 import regionsJson from '../data/regions.json'
@@ -181,6 +183,8 @@ export interface BaseItem {
   subAttrPool: AttrId[]
   /** 变体 id（同档多套底材）。空串表示「基础型」，沿用 w_/a_/c_ 前缀 + 族 + 档位的旧 id。 */
   variantId?: string
+  /** 世界BOSS 专属系列（绝境龙神）：不进入抽箱/合成/生产候选池，仅世界BOSS 掉落。 */
+  exclusive?: boolean
 }
 
 export interface MonsterTemplate {
@@ -518,9 +522,11 @@ export const ATTR_NAMES: Record<string, string> = Object.fromEntries(
   subAttrData.attributes.map((a) => [a.id, a.name]),
 )
 
-/** 展开底材：武器/防具/饰品族 × 档位 × 变体（minTier ≤ 档位） */
-export function expandBaseItems(): BaseItem[] {
-  const d = baseItemsDataRaw
+/** 展开底材：武器/防具/饰品族 × 档位 × 变体（minTier ≤ 档位）。exclusive=true 时标记为世界BOSS 专属系列。 */
+export function expandBaseItems(
+  d: typeof baseItemsDataRaw = baseItemsDataRaw,
+  exclusive = false,
+): BaseItem[] {
   const jobMainAttr = new Map(jobsData.jobs.map((j) => [j.id, j.mainAttr]))
   const weaponVariants = d.variants?.weapon ?? [BASE_VARIANT]
   const armorVariants = d.variants?.armor ?? [BASE_VARIANT]
@@ -599,10 +605,14 @@ export function expandBaseItems(): BaseItem[] {
     }
   }
 
-  return out
+  return exclusive ? out.map((item) => ({ ...item, exclusive: true })) : out
 }
 
 const baseItems = expandBaseItems()
+const exclusiveItems = expandBaseItems(
+  exclusiveEquipmentJson as unknown as typeof baseItemsDataRaw,
+  true,
+)
 
 const materialList: MaterialDef[] = [
   ...(materialsJson as unknown as { materials: MaterialDef[] }).materials,
@@ -630,7 +640,39 @@ export const gameData = {
   jobs: jobsData,
   jobById: Object.fromEntries(jobsData.jobs.map((j) => [j.id, j])) as Record<string, JobDef>,
   baseItems,
-  baseItemById: Object.fromEntries(baseItems.map((b) => [b.id, b])) as Record<string, BaseItem>,
+  baseItemById: Object.fromEntries([...baseItems, ...exclusiveItems].map((b) => [b.id, b])) as Record<string, BaseItem>,
+  /** 世界BOSS 专属系列（绝境龙神）：不进入抽箱/合成/生产候选池。 */
+  exclusiveItems,
+  exclusiveItemById: Object.fromEntries(exclusiveItems.map((b) => [b.id, b])) as Record<string, BaseItem>,
+  worldboss: worldbossJson as unknown as {
+    version: string
+    tickMs: number
+    publishMs: number
+    heartbeatSeconds: number
+    disconnectSeconds: number
+    leaseSeconds: number
+    /** 阶段：按剩余血量占比自动进入，血量越低防御越厚、技能威力越高。 */
+    phases: Array<{
+      id: number
+      name: string
+      minHpRatio: number
+      defenseMultiplier: number
+      skillPotencyMultiplier: number
+    }>
+    boss: {
+      id: string
+      name: string
+      maxHp: number
+      attack: number
+      attackIntervalSeconds: number
+      respawnSeconds: number
+      reviveSeconds: number
+      skillIntervalSeconds: number
+      skillPool: Array<{ id: string; name: string; effect: string; desc: string } & Record<string, unknown>>
+    }
+    rules: { heroSlots: number; levelRequirement: number; fullPowerLevel: number; weaknessFloor: number }
+    reward: { minDamage: number; rankItems: Record<string, number>; defaultItems: number }
+  },
   weaponFamilies: baseItemsDataRaw.weaponFamilies,
   baseItemTiers: baseItemsDataRaw.tiers,
   baseAttrFloat: baseItemsDataRaw.baseAttrFloat,

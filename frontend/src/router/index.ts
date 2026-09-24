@@ -7,6 +7,7 @@ const router = createRouter({
   routes: [
     { path: '/roster', component: () => import('@/views/RosterView.vue') },
     { path: '/coop', component: () => import('@/views/CoopView.vue') },
+    { path: '/worldboss', component: () => import('@/views/WorldBossView.vue') },
     { path: '/arena', component: () => import('@/views/ArenaView.vue') },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
     { path: '/', name: 'main', component: () => import('@/views/MainView.vue') },

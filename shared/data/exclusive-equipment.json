@@ -1,0 +1,70 @@
+{
+  "$comment": "绝境龙神系列：世界BOSS 专属掉落，固定红色（神话）品质、固定 100 级。不可抽奖 / 不可打造合成，仅世界BOSS 掉落；可重造 / 附魔但代价远高于其他装备（见 economy.json:exclusiveCostMultiplier）。",
+  "$commentStructure": "结构复用 base-items.json 的「族 × 档位 × 变体」展开规则（由加载器 expand 为 BaseItem，标记 exclusive=true），但只有单一档位（index 9）。加载器把它并入 base_item_by_id 供属性/序列化/图鉴使用，但不并入 base_items，因此抽箱 / 合成 / 生产的候选池天然不包含它。",
+  "$commentAnchors": "锚定数值取 base-items.json 终末档（Lv.100）的约 1.4 倍，故同等级下主属性上限、副属性上限均优于其他装备。",
+  "$commentCount": "武器每职业 1 种（21）+ 防具每部位 2 种（5×2=10）+ 饰品每部位 2 种（4×2=8，戒指展开 ring1/ring2）= 共 39 件。",
+  "tierIndex": 9,
+  "tierName": "绝境龙神",
+  "fixedRarity": "mythic",
+  "levelReq": 100,
+  "tiers": [
+    { "index": 9, "name": "绝境龙神", "levelReq": 100, "weaponAttack": 1764, "defense": 427, "hp": 3500, "mainAttr": 39, "subAttrScale": 1.474 }
+  ],
+  "subAttrPools": {
+    "physical": ["str", "dex", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
+    "magical": ["int", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
+    "armor": ["str", "dex", "int", "vit", "crit", "dh", "det", "sks", "sps", "acc", "tenacity"],
+    "accessory": ["str", "dex", "int", "vit", "crit", "dh", "det", "sks", "sps", "lifesteal", "dodge", "acc"]
+  },
+  "variants": {
+    "weapon": [
+      { "id": "", "name": "", "minTier": 0, "pool": [], "subAttrScale": 1.0 }
+    ],
+    "armor": [
+      { "id": "atk", "name": "强攻", "minTier": 0, "pool": ["str", "dex", "int", "vit", "crit", "dh", "det"], "subAttrScale": 1.0 },
+      { "id": "def", "name": "守护", "minTier": 0, "pool": ["vit", "str", "tenacity", "regen", "dodge", "crit"], "subAttrScale": 1.0 }
+    ],
+    "accessory": [
+      { "id": "atk", "name": "强攻", "minTier": 0, "pool": ["str", "dex", "int", "crit", "dh", "det", "acc", "sps", "lifesteal"], "subAttrScale": 1.0 },
+      { "id": "def", "name": "守护", "minTier": 0, "baseAttr": "vit", "pool": ["vit", "tenacity", "regen", "dodge", "crit", "det"], "subAttrScale": 1.0 }
+    ]
+  },
+  "baseAttrFloat": 0.20,
+  "subAttrFloat": 0.20,
+  "weaponFamilies": [
+    { "weaponType": "sword_shield", "jobId": "PLD", "suffix": "长剑", "pool": "physical" },
+    { "weaponType": "axe", "jobId": "WAR", "suffix": "战斧", "pool": "physical" },
+    { "weaponType": "greatsword", "jobId": "DRK", "suffix": "大剑", "pool": "physical" },
+    { "weaponType": "gunblade", "jobId": "GNB", "suffix": "枪刃", "pool": "physical" },
+    { "weaponType": "staff", "jobId": "WHM", "suffix": "法杖", "pool": "magical" },
+    { "weaponType": "book", "jobId": "SCH", "suffix": "魔导书", "pool": "magical" },
+    { "weaponType": "globe", "jobId": "AST", "suffix": "天球仪", "pool": "magical" },
+    { "weaponType": "noulith", "jobId": "SGE", "suffix": "蛇刺剑", "pool": "magical" },
+    { "weaponType": "fist", "jobId": "MNK", "suffix": "拳套", "pool": "physical" },
+    { "weaponType": "lance", "jobId": "DRG", "suffix": "长枪", "pool": "physical" },
+    { "weaponType": "dualDagger", "jobId": "NIN", "suffix": "双剑", "pool": "physical" },
+    { "weaponType": "katana", "jobId": "SAM", "suffix": "武士刀", "pool": "physical" },
+    { "weaponType": "scythe", "jobId": "RPR", "suffix": "镰刀", "pool": "physical" },
+    { "weaponType": "twinblade", "jobId": "VPR", "suffix": "双刃剑", "pool": "physical" },
+    { "weaponType": "bow", "jobId": "BRD", "suffix": "弓", "pool": "physical" },
+    { "weaponType": "gun", "jobId": "MCH", "suffix": "火枪", "pool": "physical" },
+    { "weaponType": "chakram", "jobId": "DNC", "suffix": "轮刃", "pool": "physical" },
+    { "weaponType": "rod", "jobId": "BLM", "suffix": "咒杖", "pool": "magical" },
+    { "weaponType": "grimoire", "jobId": "SMN", "suffix": "魔典", "pool": "magical" },
+    { "weaponType": "rapier", "jobId": "RDM", "suffix": "刺剑", "pool": "magical" },
+    { "weaponType": "brush", "jobId": "PCT", "suffix": "画笔", "pool": "magical" }
+  ],
+  "armorFamilies": [
+    { "slot": "head", "suffix": "头盔", "baseAttrs": [{ "attr": "physDef", "ratio": 1.0 }, { "attr": "magicDef", "ratio": 0.7 }] },
+    { "slot": "body", "suffix": "铠甲", "baseAttrs": [{ "attr": "physDef", "ratio": 1.4 }, { "attr": "magicDef", "ratio": 1.0 }, { "attr": "hp", "ratio": 1.0 }] },
+    { "slot": "hands", "suffix": "手甲", "baseAttrs": [{ "attr": "physDef", "ratio": 0.8 }, { "attr": "magicDef", "ratio": 0.6 }] },
+    { "slot": "legs", "suffix": "护腿", "baseAttrs": [{ "attr": "physDef", "ratio": 1.2 }, { "attr": "magicDef", "ratio": 0.85 }, { "attr": "hp", "ratio": 0.8 }] },
+    { "slot": "feet", "suffix": "战靴", "baseAttrs": [{ "attr": "physDef", "ratio": 0.8 }, { "attr": "magicDef", "ratio": 0.6 }] }
+  ],
+  "accessoryFamilies": [
+    { "slot": "necklace", "suffix": "项链", "baseAttr": "int", "pool": "accessory" },
+    { "slot": "earring", "suffix": "耳环", "baseAttr": "vit", "pool": "accessory" },
+    { "slot": "bracelet", "suffix": "手镯", "baseAttr": "dex", "pool": "accessory" },
+    { "slot": "ring", "suffix": "戒指", "baseAttr": "str", "pool": "accessory" }
+  ]
+}

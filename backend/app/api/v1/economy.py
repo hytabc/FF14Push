@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
 from app.models import Item
 from app.schemas.game import CraftRequest, EnchantRequest, RefineRequest
-from app.services.economy import REQUIRED, build_craft_plan, enchant_cost, refine_cost
+from app.services.economy import REQUIRED, build_craft_plan, enchant_cost, is_exclusive_base, refine_cost
 from app.services.grants import insert_items
 from app.services.item_factory import generate_item, regenerate_attrs, roll_terms_for_enchant
 from app.services.serialization import item_to_dict
@@ -67,7 +67,12 @@ async def craft(
 
     # 可消耗池：未装备的同类装备（含新合成产物）。产出一律以「最差素材」为准：
     # 装备种类 / 等级取该组最低的一件，品质只有整组都是高品质时才保留。
-    pool: list[Item] = [i for i in items if i.category == payload.category and i.equipped_slot is None]
+    # 绝境龙神（世界BOSS 专属系列）不可打造：既不能作为素材，也不会被产出。
+    pool: list[Item] = [
+        i
+        for i in items
+        if i.category == payload.category and i.equipped_slot is None and not is_exclusive_base(i.base_id)
+    ]
 
     rng = random.Random()
     produced: list[dict] = []
@@ -133,6 +138,7 @@ async def refine(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
     _require_combat_item(item)
+    exclusive = is_exclusive_base(item.base_id)
 
     times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))
     before = item_to_dict(item, sell_price_range(item))
@@ -141,7 +147,7 @@ async def refine(
     spent = 0
     done = 0
     for _ in range(times):
-        cost = refine_cost(item.rarity, int(item.refine_count), payload.mode, item.level_req)
+        cost = refine_cost(item.rarity, int(item.refine_count), payload.mode, item.level_req, exclusive)
         if spent + cost > int(user.gold):
             break
         result = regenerate_attrs(item, rng, payload.mode)
@@ -153,7 +159,7 @@ async def refine(
         done += 1
 
     if done == 0:
-        need = refine_cost(item.rarity, int(item.refine_count), payload.mode, item.level_req)
+        need = refine_cost(item.rarity, int(item.refine_count), payload.mode, item.level_req, exclusive)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"金币不足，需要 {need}")
 
     user.gold = int(user.gold) - spent
@@ -177,13 +183,14 @@ async def enchant(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
     _require_combat_item(item)
+    exclusive = is_exclusive_base(item.base_id)
 
     rng = random.Random()
     before = item_to_dict(item, sell_price_range(item))
 
     if not payload.autoUntilRare:
         times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))
-        unit_cost = enchant_cost(item.rarity, payload.mode, item.level_req)
+        unit_cost = enchant_cost(item.rarity, payload.mode, item.level_req, exclusive)
         spent = 0
         done = 0
         for _ in range(times):
@@ -207,7 +214,7 @@ async def enchant(
         }
 
     # 自动附魔至稀有/太古：始终按彻底随机单价逐次结算
-    unit_cost = enchant_cost(item.rarity, "random", item.level_req)
+    unit_cost = enchant_cost(item.rarity, "random", item.level_req, exclusive)
     max_attempts = max(1, min(MAX_AUTO_ENCHANT_ATTEMPTS, int(payload.maxAttempts)))
     affordable = int(user.gold) // unit_cost
     if affordable < 1:

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -34,6 +34,9 @@ class BaseItem:
     weapon_type: str | None = None
     job_id: str | None = None
     variant_id: str = ""
+    # 世界BOSS 专属系列（绝境龙神）：并入 base_item_by_id 供属性/序列化/图鉴使用，
+    # 但不并入 base_items，故抽箱/合成/生产的候选池天然不含它。
+    exclusive: bool = False
 
 
 @dataclass
@@ -68,6 +71,9 @@ class GameConfig:
     titles: dict[str, Any]
     base_items: list[BaseItem]
     base_item_by_id: dict[str, BaseItem]
+    exclusive_items: list[BaseItem]
+    exclusive_item_by_id: dict[str, BaseItem]
+    worldboss: dict[str, Any]
     base_item_tiers: list[dict[str, Any]]
     base_attr_float: float
     sub_attr_float: float
@@ -195,6 +201,8 @@ def load_game_data() -> GameConfig:
         "terms": _load("terms.json"),
         "jobs": _load("jobs.json"),
         "baseItems": _load("base-items.json"),
+        "exclusiveEquipment": _load("exclusive-equipment.json"),
+        "worldboss": _load("worldboss.json"),
         "monsters": _load("monsters.json"),
         "bosses": _load("bosses.json"),
         "regions": _load("regions.json"),
@@ -225,6 +233,13 @@ def load_game_data() -> GameConfig:
 
     base_items_data = raw["baseItems"]
     base_items = _expand_base_items(base_items_data, job_main_attr)
+
+    # 绝境龙神系列：复用同一套「族 × 档位 × 变体」展开，标记 exclusive。
+    # 单独特化出来，不并入 base_items（否则会污染抽箱/合成/生产候选池）。
+    exclusive_items = [
+        replace(item, exclusive=True)
+        for item in _expand_base_items(raw["exclusiveEquipment"], job_main_attr)
+    ]
 
     attributes = raw["subAttributes"]["attributes"]
     terms = raw["terms"]
@@ -280,7 +295,10 @@ def load_game_data() -> GameConfig:
         consumable_by_id={c["id"]: c for c in raw["consumables"]["items"]},
         titles=raw["titles"],
         base_items=base_items,
-        base_item_by_id={b.id: b for b in base_items},
+        base_item_by_id={b.id: b for b in (*base_items, *exclusive_items)},
+        exclusive_items=exclusive_items,
+        exclusive_item_by_id={b.id: b for b in exclusive_items},
+        worldboss=raw["worldboss"],
         base_item_tiers=base_items_data["tiers"],
         base_attr_float=base_items_data["baseAttrFloat"],
         sub_attr_float=base_items_data["subAttrFloat"],

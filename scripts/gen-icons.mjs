@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA_FILE = join(ROOT, 'shared/data/base-items.json')
+const EXCLUSIVE_FILE = join(ROOT, 'shared/data/exclusive-equipment.json')
 const MATERIALS_FILE = join(ROOT, 'shared/data/materials.json')
 const DOHDOL_EQUIP_FILE = join(ROOT, 'shared/data/dohdol-equipment.json')
 const FISH_FILE = join(ROOT, 'shared/data/fish.json')
@@ -872,6 +873,24 @@ const ORNAMENTS = [
   ], // 8 终末：终焉之印
 ]
 
+/** 绝境龙神（世界BOSS 专属系列）：龙金 + 赤红识别色（不随档位变化）。 */
+const EXCLUSIVE_PALETTE = {
+  m: [0xf0, 0xc0, 0x40],
+  d: [0xb0, 0x7a, 0x10],
+  l: [0xff, 0xf0, 0xa0],
+  g: [0xff, 0xf2, 0xc0],
+  a: [0xe0, 0x40, 0x40],
+}
+
+/** 绝境龙神装饰戳（5×5）：龙鳞王冠。 */
+const EXCLUSIVE_ORNAMENT = ['a.g.a', '.glg.', 'ggggg', '.glg.', 'a.g.a']
+
+/** 绝境龙神变体角标（3×3）：key = 变体 id。 */
+const EXCLUSIVE_MARKS = {
+  atk: ['.a.', 'aaa', '.a.'],
+  def: ['aaa', '.a.', 'aaa'],
+}
+
 /**
  * 职能识别色：战斗装备变体的名称中段是 FF14 官方职能词缀（御敌/强袭/制敌/游击/精准/治愈/咏咒），
  * 图标据此染色 —— 同一职能无论武器 / 防具 / 饰品都取同一色，玩家一眼即可把图对上名字。
@@ -1398,6 +1417,37 @@ function expectedBaseCount(data) {
   )
 }
 
+/**
+ * 绝境龙神（世界BOSS 专属系列，exclusive-equipment.json）：单一档位，武器每职业 1 件、
+ * 防具/饰品每部位 2 件（强攻 / 守护）。全部使用龙金调色板 + 龙鳞王冠装饰，
+ * 变体以角标区分 —— 39 件各有独立 PNG。
+ * id 规则与 shared/schema 的 expandBaseItems 保持一致（族 × 档位 × 变体）。
+ */
+function listExclusiveItems(json) {
+  const items = []
+  const variants = json.variants ?? {}
+  const tier = json.tiers[0].index
+  const push = (id, shape, variantId) =>
+    items.push({
+      id,
+      shape,
+      palette: EXCLUSIVE_PALETTE,
+      ornament: EXCLUSIVE_ORNAMENT,
+      variantMark: variantId ? EXCLUSIVE_MARKS[variantId] ?? null : null,
+    })
+  const suffix = (v) => (v.id ? `_${v.id}` : '')
+  for (const fam of json.weaponFamilies) {
+    for (const v of variants.weapon ?? [{}]) push(`w_${fam.weaponType}${suffix(v)}_${tier}`, fam.weaponType, v.id)
+  }
+  for (const fam of json.armorFamilies) {
+    for (const v of variants.armor ?? [{}]) push(`a_${fam.slot}${suffix(v)}_${tier}`, fam.slot, v.id)
+  }
+  for (const fam of json.accessoryFamilies) {
+    for (const v of variants.accessory ?? [{}]) push(`c_${fam.slot}${suffix(v)}_${tier}`, fam.slot, v.id)
+  }
+  return items
+}
+
 /** 采集材料 + 半成品（materials.json） */
 function listMaterials(materialsJson) {
   return materialsJson.materials.map((m) => {
@@ -1463,6 +1513,7 @@ function listConsumables(consumablesJson) {
 
 function main() {
   const data = JSON.parse(readFileSync(DATA_FILE, 'utf8'))
+  const exclusiveJson = JSON.parse(readFileSync(EXCLUSIVE_FILE, 'utf8'))
   const materialsJson = JSON.parse(readFileSync(MATERIALS_FILE, 'utf8'))
   const dohdolEquipJson = JSON.parse(readFileSync(DOHDOL_EQUIP_FILE, 'utf8'))
   const fishJson = JSON.parse(readFileSync(FISH_FILE, 'utf8'))
@@ -1474,6 +1525,7 @@ function main() {
   const tiers = data.tiers.length
 
   const baseItems = listBaseItems(data)
+  const exclusiveItems = listExclusiveItems(exclusiveJson)
   const materials = listMaterials(materialsJson)
   const dohdolItems = listDohdolItems(dohdolEquipJson)
   const fish = listFish(fishJson)
@@ -1484,7 +1536,7 @@ function main() {
     throw new Error(`底材数量不符：期望 ${expectedBase}，实际 ${baseItems.length}`)
   }
 
-  const items = [...baseItems, ...materials, ...dohdolItems, ...fish, ...consumables]
+  const items = [...baseItems, ...exclusiveItems, ...materials, ...dohdolItems, ...fish, ...consumables]
 
   mkdirSync(OUT_DIR, { recursive: true })
 
@@ -1522,7 +1574,7 @@ function main() {
   if (pruned) console.log(`[gen-icons] 清理陈旧图标 ${pruned} 张`)
   console.log(
     `[gen-icons] 战斗装备 ${baseItems.length}（底形 ${weapons + armors + accessories} × 档位 ${tiers}）` +
-      ` + 材料/半成品 ${materials.length} + 专用装备 ${dohdolItems.length}` +
+      ` + 绝境龙神 ${exclusiveItems.length} + 材料/半成品 ${materials.length} + 专用装备 ${dohdolItems.length}` +
       ` + 鱼获 ${fish.length} + 药水食物 ${consumables.length}`,
   )
 }

@@ -88,6 +88,8 @@ export interface Item {
   jobId: string | null
   /** 制造装备恒为「高品质」：属性区间上移且必带太古词条。 */
   highQuality?: boolean
+  /** 世界BOSS 专属系列（绝境龙神）：仅世界BOSS 掉落，重造/附魔代价远高。 */
+  exclusive?: boolean
   /** 玩家给该装备贴的标签 id 列表。 */
   tagIds: number[]
   sellPriceMin: number

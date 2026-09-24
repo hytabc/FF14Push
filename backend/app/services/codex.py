@@ -153,6 +153,28 @@ def equipment_codex_entries() -> list[dict[str, Any]]:
                 "jobGroup": "doh" if item["kind"] == "doh" else "dol",
             }
         )
+
+    # 世界BOSS 专属系列（绝境龙神）：属于战斗装备（武器/防具/饰品），但仅世界BOSS 掉落、
+    # 固定红色品质 / 100 级；以 exclusive 标记与普通战斗底材区分。
+    for base in CONFIG.exclusive_items:
+        out.append(
+            {
+                "baseId": base.id,
+                "name": base.name,
+                "category": base.category,
+                "slot": base.slot,
+                "equipSlots": possible_slots(base),
+                "jobId": base.job_id,
+                "weaponType": base.weapon_type,
+                "levelReq": base.level_req,
+                "tierName": base.tier_name,
+                "baseAttrs": base.base_attrs,
+                "subAttrPool": base.sub_attr_pool,
+                "sources": ["worldBoss"],
+                "jobGroup": "combat",
+                "exclusive": True,
+            }
+        )
     return out
 
 

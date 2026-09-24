@@ -278,6 +278,47 @@ export const api = {
     return (await http.get<PlayerProfile>(`/ranking/players/${userId}`)).data
   },
 
+  // ---------------------------------------------------------------- 世界BOSS（全服共享血量）
+  async worldbossState() {
+    return (await http.get<import('@/game/worldboss').WorldBossState>('/worldboss/state')).data
+  },
+
+  async worldbossLeaderboard(page = 1) {
+    return (
+      await http.get<import('@/game/worldboss').WorldBossLeaderboard>('/worldboss/leaderboard', {
+        params: { page },
+      })
+    ).data
+  },
+
+  async worldbossEnter(heroIds: number[]) {
+    return (
+      await http.post<import('@/game/worldboss').WorldBossState>('/worldboss/enter', { heroIds })
+    ).data
+  },
+
+  async worldbossLeave() {
+    return (await http.post('/worldboss/leave', {})).data
+  },
+
+  async worldbossHeartbeat() {
+    return (await http.post('/worldboss/heartbeat', {})).data
+  },
+
+  async worldbossClaim(cycle?: number) {
+    return (
+      await http.post<import('@/game/worldboss').WorldBossReceipt>(
+        '/worldboss/claim',
+        {},
+        { params: cycle ? { cycle } : undefined },
+      )
+    ).data
+  },
+
+  async worldbossTicket() {
+    return (await http.post<{ ticket: string }>('/worldboss/ticket', {})).data
+  },
+
   // ---------------------------------------------------------------- 好友系统
   async friends() {
     return (await http.get<FriendsData>('/friends')).data

@@ -31,6 +31,7 @@ const NAV = [
   { to: '/fish', label: '钓鱼', icon: '🎣' },
   { to: '/roster', label: '名册', icon: '👥' },
   { to: '/coop', label: '远征', icon: '⚑' },
+  { to: '/worldboss', label: '世界BOSS', icon: '🐲' },
   { to: '/arena', label: '竞技场', icon: '⚔' },
   { to: '/hero', label: '英雄', icon: '🧙' },
   { to: '/region', label: '地区', icon: '🗺' },

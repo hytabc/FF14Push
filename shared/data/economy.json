@@ -60,6 +60,8 @@
     "ancient": 0.001
   },
   "debuffQualityEnabled": false,
+  "$commentExclusive": "绝境龙神（世界BOSS 专属系列）的重造 / 附魔成本倍率：远高于同品阶其他装备。",
+  "exclusiveCostMultiplier": 10,
   "power": {
     "$comment": "战力计算权重。来源：PRD 排行榜 2.2 / 新增三属性 8.2。攻击力是期望 DPS 的线性乘数，作为锚点 = 1.0；暴击/直击/信念按真实伤害模型的边际贡献标定（约等于攻击力，远低于旧值）；攻速/急速/闪避/命中/韧性等有硬上限（攻速 50%、闪避 30%、命中 20%）或用满即失效，权重取保守值。推导见 scripts/derive-power-weights.py（参考 Lv80 门槛装）。",
     "weights": {

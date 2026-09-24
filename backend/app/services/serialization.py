@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from app.services.economy import enchant_cost, refine_cost
+from app.services.economy import enchant_cost, is_exclusive_base, refine_cost
 from app.services.game_config import CONFIG
 from app.services.item_factory import base_attr_range, dohdol_base_attr_range, sub_attr_range
 from app.services.slots_util import possible_slots
@@ -29,6 +29,7 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
     base = CONFIG.base_item_by_id.get(item.base_id)
     # 生产/采集专用装备走独立注册表：底材不是 BaseItem，需要单独算取值区间。
     dohdol = CONFIG.dohdol_item_by_id.get(item.base_id) if base is None else None
+    exclusive = is_exclusive_base(item.base_id)
 
     def base_band(attr_id: str) -> tuple[float, float] | None:
         if base is not None:
@@ -61,13 +62,15 @@ def item_to_dict(item: Any, price_range: tuple[int, int] | None = None) -> dict[
         "refineCount": item.refine_count,
         "enchantCount": item.enchant_count,
         # 实付价：重造随重造次数递增、并随物品等级提高，前端直接显示这些值即可与服务端扣费一致
-        "refineCost": refine_cost(item.rarity, int(item.refine_count or 0), "random", item.level_req),
-        "enchantCost": enchant_cost(item.rarity, "random", item.level_req),
+        # 绝境龙神（世界BOSS 专属系列）的重造 / 附魔成本额外乘以 exclusiveCostMultiplier。
+        "refineCost": refine_cost(item.rarity, int(item.refine_count or 0), "random", item.level_req, exclusive),
+        "enchantCost": enchant_cost(item.rarity, "random", item.level_req, exclusive),
         # 「基于当前」模式（保底不降）的单价，供前端展示两种模式价格
         "refineCostBasedOnCurrent": refine_cost(
-            item.rarity, int(item.refine_count or 0), "basedOnCurrent", item.level_req
+            item.rarity, int(item.refine_count or 0), "basedOnCurrent", item.level_req, exclusive
         ),
-        "enchantCostBasedOnCurrent": enchant_cost(item.rarity, "basedOnCurrent", item.level_req),
+        "enchantCostBasedOnCurrent": enchant_cost(item.rarity, "basedOnCurrent", item.level_req, exclusive),
+        "exclusive": exclusive,
         "source": item.source,
         "weaponType": base.weapon_type if base else None,
         "jobId": base.job_id if base else None,

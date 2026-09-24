@@ -2020,8 +2020,10 @@ class TestCodexAndRanking:
     async def test_equipment_codex_closed_until_obtain(self, auth_client) -> None:
         resp = await auth_client.get(f"{API}/codex?category=equipment")
         body = resp.json()
-        assert body["progress"]["equipment"]["total"] == len(CONFIG.base_items) + len(
-            CONFIG.dohdol_equipment["items"]
+        assert body["progress"]["equipment"]["total"] == (
+            len(CONFIG.base_items)
+            + len(CONFIG.dohdol_equipment["items"])
+            + len(CONFIG.exclusive_items)
         )
         # 开局只有起始武器已解锁，其余（含更高品阶）保持剪影
         unlocked = [e for e in body["entries"] if e["unlocked"]]
@@ -2032,6 +2034,10 @@ class TestCodexAndRanking:
         body = (await auth_client.get(f"{API}/codex?category=equipment")).json()
         groups = {e["jobGroup"] for e in body["entries"]}
         assert {"combat", "doh", "dol"} <= groups
+        # 世界BOSS 专属系列：归入战斗装备，来源仅世界BOSS，且带 exclusive 标记
+        exclusive = [e for e in body["entries"] if e.get("exclusive")]
+        assert len(exclusive) == len(CONFIG.exclusive_items)
+        assert all(e["sources"] == ["worldBoss"] and e["jobGroup"] == "combat" for e in exclusive)
         # 专用装备条目不能带战斗专属字段
         dedicated = [e for e in body["entries"] if e["jobGroup"] in {"doh", "dol"}]
         assert dedicated

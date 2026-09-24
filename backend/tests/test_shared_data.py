@@ -411,3 +411,73 @@ def test_power_weights_cover_new_term_stats() -> None:
     }
     missing = sorted(new_stats - set(weights))
     assert not missing, f"缺少权重：{missing}"
+
+
+def test_exclusive_items_expanded_and_isolated() -> None:
+    """绝境龙神系列：39 件（21 武器 + 10 防具 + 8 饰品），固定 100 级、id 唯一，
+    且不进 base_items（抽箱 / 合成 / 生产候选池天然排除）。"""
+    items = CONFIG.exclusive_items
+    assert len(items) == 39
+    assert len({b.id for b in items}) == 39
+    assert sum(b.category == "weapon" for b in items) == 21
+    assert sum(b.category == "armor" for b in items) == 10
+    assert sum(b.category == "accessory" for b in items) == 8
+    for item in items:
+        assert item.exclusive is True, item.id
+        assert item.level_req == 100, item.id
+        assert item.base_attrs and item.sub_attr_pool, item.id
+        for entry in item.base_attrs:
+            assert entry["base"] > 0, item.id
+    # 与普通底材互不重合，且不在 base_items 池中
+    normal_ids = {b.id for b in CONFIG.base_items}
+    assert normal_ids.isdisjoint({b.id for b in items})
+    assert all(b.exclusive is False for b in CONFIG.base_items)
+    # base_item_by_id 合并了两者（供属性 / 序列化 / 图鉴使用）
+    assert set(CONFIG.base_item_by_id) == normal_ids | {b.id for b in items}
+
+
+def test_exclusive_items_stronger_than_same_level_gear() -> None:
+    """绝境龙神的主属性与副属性缩放均高于同等级（终末档）普通底材。"""
+    normal_100 = next(b for b in CONFIG.base_items if b.id == "w_sword_shield_8")
+    exclusive = next(b for b in CONFIG.exclusive_items if b.id == "w_sword_shield_9")
+    normal_main = float(normal_100.base_attrs[0]["base"])
+    exclusive_main = float(exclusive.base_attrs[0]["base"])
+    assert exclusive_main > normal_main
+    assert exclusive.sub_attr_scale > normal_100.sub_attr_scale
+
+
+def test_world_boss_config() -> None:
+    """世界BOSS 数值：20 亿血量、攻击 20000、5 小时刷新、≥20 技能、8 席、80 级门槛。"""
+    wb = CONFIG.worldboss
+    boss = wb["boss"]
+    assert int(boss["maxHp"]) == 2_000_000_000
+    assert int(boss["attack"]) == 20000
+    assert int(boss["respawnSeconds"]) == 5 * 3600
+    pool = boss["skillPool"]
+    assert len(pool) >= 20
+    assert len({s["id"] for s in pool}) == len(pool), "BOSS 技能 id 必须唯一"
+    for skill in pool:
+        assert skill["effect"] in ("nuke", "aoe", "dot", "debuff", "charge", "enrage", "shield"), skill["id"]
+        assert skill["desc"]
+    rules = wb["rules"]
+    assert int(rules["heroSlots"]) == 8
+    assert int(rules["levelRequirement"]) == 80
+    assert int(rules["fullPowerLevel"]) == 100
+    assert 0 < float(rules["weaknessFloor"]) < 1
+    reward = wb["reward"]
+    assert int(reward["minDamage"]) == 5_000_000
+    assert int(reward["rankItems"]["1"]) == 20
+    assert int(reward["defaultItems"]) == 1
+
+
+def test_world_boss_phases_escalate() -> None:
+    """P1→P2→P3 随血量下降：minHpRatio 递减、防御与技能威力单调递增，且覆盖到 0。"""
+    table = CONFIG.worldboss["phases"]
+    assert [p["id"] for p in table] == [1, 2, 3]
+    ratios = [float(p["minHpRatio"]) for p in table]
+    assert ratios == sorted(ratios, reverse=True)
+    assert ratios[-1] == 0.0, "最低阶段必须覆盖到 0 血量"
+    defense = [float(p["defenseMultiplier"]) for p in table]
+    potency = [float(p["skillPotencyMultiplier"]) for p in table]
+    assert defense == sorted(defense) and defense[0] == 1.0 and defense[-1] > defense[0]
+    assert potency == sorted(potency) and potency[0] == 1.0 and potency[-1] > potency[0]

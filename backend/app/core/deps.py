@@ -63,8 +63,8 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BANNED_DETAIL)
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         from app.services.roster import lock_user, require_idle_team
-        # Coop operations lock room then accounts; do not reverse that ordering here.
-        if "/coop" not in request.url.path:
+        # Coop / 世界BOSS 自行管理加锁与活跃互斥；不要在此处反转其锁顺序。
+        if not any(path in request.url.path for path in ("/coop", "/worldboss")):
             user = await lock_user(db, user.id)
             await require_idle_team(db, user.id)
     return user

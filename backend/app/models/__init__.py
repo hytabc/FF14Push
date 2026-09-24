@@ -72,3 +72,23 @@ __all__ = [
 
 from app.models.multiplayer import (HeroRegistration, CoopRoom, CoopMember, CoopSeat,
     CoopBattle, CoopCommand, CoopReward, CoopProgress, CoopRecord, PvpBattle, CoopTicket)
+
+from app.models.world_boss import (
+    STATUS_ALIVE,
+    STATUS_DEAD,
+    WorldBoss,
+    WorldBossContribution,
+    WorldBossReward,
+    WorldBossSession,
+    WorldBossTicket,
+)
+
+__all__ += [
+    "WorldBoss",
+    "WorldBossSession",
+    "WorldBossContribution",
+    "WorldBossReward",
+    "WorldBossTicket",
+    "STATUS_ALIVE",
+    "STATUS_DEAD",
+]

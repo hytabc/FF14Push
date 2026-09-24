@@ -82,6 +82,7 @@ function tagStyle(colorId: string) {
           <h3 class="truncate text-sm font-semibold" :class="rarityClass(item.rarity)">
             {{ item.name }}
             <span v-if="item.highQuality" class="rounded bg-amber-500/20 px-1 py-0.5 text-[10px] text-amber-200">高品质</span>
+            <span v-if="item.exclusive" class="rounded bg-rose-500/25 px-1 py-0.5 text-[10px] text-rose-200">绝境龙神</span>
           </h3>
           <p class="mt-0.5 text-[11px] text-ink-400">
             {{ rarityName(item.rarity) }} · {{ categoryName(item.category) }} ·

@@ -266,6 +266,12 @@ start_backend() {
     exec env DATABASE_URL="$DATABASE_URL" JWT_SECRET="$JWT_SECRET" .venv/bin/python -m app.coop_worker
   ) >"$LOG_DIR/coop-worker.log" 2>&1 &
   PIDS+=("$!")
+  info "启动世界BOSS 推进进程 (worldboss-worker)"
+  (
+    cd "$BACKEND_DIR"
+    exec env DATABASE_URL="$DATABASE_URL" JWT_SECRET="$JWT_SECRET" .venv/bin/python -m app.worldboss_worker
+  ) >"$LOG_DIR/worldboss-worker.log" 2>&1 &
+  PIDS+=("$!")
 }
 
 start_frontend() {
