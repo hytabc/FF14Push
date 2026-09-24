@@ -297,6 +297,76 @@ async def stack_consume(
     return True
 
 
+# ------------------------------------------------------------------ 堆叠库存（批量）
+async def stack_rows_map(db: AsyncSession, user_id: int, kind: str) -> dict[str, StackItem]:
+    """一次取回该账号某类堆叠库存的全部行（item_id → 行）。"""
+    rows = (
+        await db.execute(
+            select(StackItem).where(StackItem.user_id == user_id, StackItem.kind == kind)
+        )
+    ).scalars().all()
+    return {str(row.item_id): row for row in rows}
+
+
+def _positive(adds: dict[str, int] | None) -> dict[str, int]:
+    return {str(k): int(v) for k, v in (adds or {}).items() if int(v) > 0}
+
+
+async def stack_add_many(
+    db: AsyncSession, user_id: int, kind: str, adds: dict[str, int]
+) -> None:
+    """批量入库：一次查询 + 内存累加，避免挂机上报按项逐条 select（N+1）。
+
+    材料图鉴解锁同样批量处理；采集 / 钓鱼 / 生产结算都走这里。
+    """
+    pending = _positive(adds)
+    if not pending:
+        return
+    rows = await stack_rows_map(db, user_id, kind)
+    for item_id, count in pending.items():
+        row = rows.get(item_id)
+        if row is None:
+            row = StackItem(user_id=user_id, kind=kind, item_id=item_id, count=count)
+            db.add(row)
+            rows[item_id] = row
+        else:
+            row.count = int(row.count) + count
+    if kind == STACK_MATERIAL:
+        from app.services.codex import unlock_materials  # 局部导入避免循环依赖
+
+        unlockable: dict[str, int] = {}
+        for item_id, count in pending.items():
+            material = material_def(item_id)
+            if material and material.get("kind") in ("gather", "half"):
+                unlockable[item_id] = count
+        if unlockable:
+            await unlock_materials(db, user_id, unlockable)
+
+
+async def stack_consume_many(
+    db: AsyncSession, user_id: int, kind: str, consumes: dict[str, int]
+) -> bool:
+    """批量扣减库存：一次查询 + 内存更新。
+
+    语义与单项 `stack_consume` 一致——逐项判断，**任一项不足则该项不扣减**（其余照常），
+    返回是否全部扣减成功。生产制造的「材料节省 / 额外消耗」词条依赖这一逐项语义。
+    """
+    pending = _positive(consumes)
+    if not pending:
+        return True
+    rows = await stack_rows_map(db, user_id, kind)
+    ok = True
+    for item_id, count in pending.items():
+        row = rows.get(item_id)
+        if row is None or int(row.count) < count:
+            ok = False
+            continue
+        row.count = int(row.count) - count
+        if row.count <= 0:
+            await db.delete(row)
+    return ok
+
+
 # ------------------------------------------------------------------ 采集产出
 def roll_gather_yield(
     node: dict[str, Any], level: int, yield_bonus_pct: float, rng: random.Random

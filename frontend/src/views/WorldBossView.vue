@@ -227,10 +227,15 @@ async function heartbeat() {
   polling = true
   try {
     await api.worldbossHeartbeat()
-    const fresh = await api.worldbossState()
-    if (state.value && session.value && fresh.session && fresh.sequence < state.value.sequence) return
-    state.value = fresh
-    syncEventCursor()
+    // 状态已由 WebSocket 快照驱动：仅在 WS 未连通时用快照接口兜底，
+    // 避免每 5s 同时发心跳 + 全量状态两份请求。
+    const live = socket !== undefined && socket.readyState === WebSocket.OPEN
+    if (!live) {
+      const fresh = await api.worldbossState()
+      if (state.value && session.value && fresh.session && fresh.sequence < state.value.sequence) return
+      state.value = fresh
+      syncEventCursor()
+    }
     await connect()
   } catch (e) {
     error.value = toApiError(e).message

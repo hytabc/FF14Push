@@ -88,6 +88,15 @@ services:
       # 迁移由容器入口脚本执行，避免与 alembic 冲突
       AUTO_CREATE_TABLES: "false"
       BACKEND_PORT: "8000"
+      # 并发降载：uvicorn 工作进程数（单进程在大量挂机连接下 CPU 序列化明显）。
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+      # 数据库连接池（仅 PostgreSQL 生效）：默认 5+10 在并发挂机下会排队。
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      # 排行榜改由独立 ranking-worker 刷新（见下方服务），API 进程内不再跑。
+      RANKING_IN_API: "false"
+      # 响应体压缩（直连 API 时生效；nginx 侧已单独开启）。
+      GZIP_ENABLED: ${GZIP_ENABLED:-true}
     ports:
       # 默认只绑定本机；前端已通过 nginx 反向代理 /api，通常无需对外暴露。
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
@@ -112,6 +121,20 @@ services:
     image: eorzea-backend:latest
     restart: unless-stopped
     entrypoint: ["python", "-m", "app.worldboss_worker"]
+    environment: *backend-environment
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [eorzea]
+
+  ranking-worker:
+    # 排行榜缓存榜刷新：独立进程，避免全量重算（所有用户 + 装备 + 全表重写）与请求处理互相影响。
+    # 多实例由 PostgreSQL advisory lock 互斥（见 services/locks.py）。
+    image: eorzea-backend:latest
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "app.ranking_worker"]
     environment: *backend-environment
     healthcheck:
       disable: true

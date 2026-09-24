@@ -492,8 +492,16 @@ class TestDohdolSellBalance:
             assert gather < cap, f"档位 {band} 采集 {gather:.1f} 金币/秒，超过战斗下限的 30%（{cap:.1f}）"
             assert fish < cap, f"档位 {band} 渔获 {fish:.1f} 金币/秒，超过战斗下限的 30%（{cap:.1f}）"
 
+    # 鱼王/鱼皇出现概率已整体 ×2（见 scripts/gen-fish-data.py:KING_EMPEROR_CHANCE_MULT），
+    # 「鱼识常驻」最坏情形的期望收益上限随之放宽为战斗下限的 2 倍。
+    RARE_FISH_WORST_CASE_MULT = 2.0
+
     def test_fishing_income_including_rare_fish_stays_below_combat(self):
-        """把鱼王/鱼皇的期望收益也计入（鱼识常驻的最坏情形），避免调价后出现「只钓鱼卖鱼」的刷钱路线。"""
+        """把鱼王/鱼皇的期望收益也计入（鱼识常驻的最坏情形），避免调价后出现「只钓鱼卖鱼」的刷钱路线。
+
+        该模型假设鱼识全程常驻、每次抛竿都按满概率判定鱼王/鱼皇，现实中不可达（需钓齐计数型前置，
+        且 BUFF 不刷新、现已统一为 30s）；概率 ×2 后上限同步放宽为战斗下限的 2 倍。
+        """
         cast_seconds = float(CONFIG.fish["castSeconds"])
         for band in self.CHECKED_BANDS:
             region = CONFIG.fish_region_by_id[band]
@@ -507,9 +515,10 @@ class TestDohdolSellBalance:
                 + emperor_p * int(emperor["sell"])
             )
             total = per_cast / cast_seconds
-            cap = self._combat_gold_floor_per_sec(band)
+            cap = self._combat_gold_floor_per_sec(band) * self.RARE_FISH_WORST_CASE_MULT
             assert total < cap, (
-                f"档位 {band} 钓鱼（含鱼王/鱼皇）{total:.1f} 金币/秒，不应超过战斗下限 {cap:.1f}"
+                f"档位 {band} 钓鱼（含鱼王/鱼皇）{total:.1f} 金币/秒，不应超过战斗下限的 "
+                f"{self.RARE_FISH_WORST_CASE_MULT:.0f} 倍（{cap:.1f}）"
             )
 
     def test_half_good_conversion_is_bounded(self):
@@ -548,6 +557,32 @@ class TestGatherApi:
         data = rep.json()
         assert data["actions"] > 0
         assert data["gained"], "应有采集产出"
+
+    @pytest.mark.asyncio
+    async def test_egg_passive_gathers_extra_item(self, auth_client, session_factory, monkeypatch):
+        """彩蛋被动「黑奴」：命中时每次采集动作额外多获得一个（此处固定命中以便断言）。"""
+        from app.services import gathering
+
+        monkeypatch.setattr(gathering, "gather_extra_chance", lambda _egg_id: 1.0)
+
+        resp = await auth_client.post("/api/v1/gather/session/start", json={"jobId": "MIN", "regionId": 1})
+        assert resp.status_code == 200, resp.text
+        session_id = resp.json()["sessionId"]
+
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 20)
+            await db.commit()
+
+        rep = await auth_client.post("/api/v1/gather/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        body = rep.json()
+        assert body["gained"], "应有采集产出"
+        total = sum(entry["count"] for entry in body["gained"])
+        assert body["actions"] > 0
+        assert total >= 2 * body["actions"], "每次采集动作应额外多获得一个"
 
     @pytest.mark.asyncio
     async def test_activities_mutually_exclusive(self, auth_client, session_factory):

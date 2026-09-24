@@ -21,7 +21,11 @@ KIND_ANNOUNCEMENT = "announcement"
 
 class ChatMessage(Base, TimestampMixin):
     __tablename__ = "chat_messages"
-    __table_args__ = (sa.Index("ix_chat_messages_created_at", "created_at"),)
+    __table_args__ = (
+        sa.Index("ix_chat_messages_created_at", "created_at"),
+        # WS 广播按 (kind, id 游标) 增量读取普通发言 / 公告：复合索引避免 kind 过滤后回表排序。
+        sa.Index("ix_chat_messages_kind_id", "kind", "id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(

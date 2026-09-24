@@ -6,11 +6,13 @@ from app.services.balance import BALANCE, region_gate
 from app.services.stats import compute_stats
 
 
-async def region_access(db, user_id, hero, items, difficulty: int | None = None):
+async def region_access(db, user_id, hero, items, difficulty: int | None = None, socket_mods=None):
     """返回 {region_id: 缺失条件列表}（空列表 = 可进入）。
 
     传 difficulty 时只统计该难度的解锁/通关（战斗按难度隔离）；
     传 None 时跨全部难度统计（生活职业 / 采集钓鱼按历史最高进度解锁）。
+
+    已经算好账号级魔晶石加成（socket_mods）的调用方应当传入，避免重复查询。
     """
     query = select(RegionProgress).where(RegionProgress.user_id == user_id)
     if difficulty is not None:
@@ -21,7 +23,8 @@ async def region_access(db, user_id, hero, items, difficulty: int | None = None)
     from app.services.stats import hero_items
     from app.services.materia import socket_mods as materia_socket_mods
     items = hero_items(items, hero.id)
-    stats = compute_stats(hero, items, await materia_socket_mods(db, user_id))
+    mods = socket_mods if socket_mods is not None else await materia_socket_mods(db, user_id)
+    stats = compute_stats(hero, items, mods)
     return {int(r): region_gate(int(r), stats, items, cleared, int(r) in old) for r in BALANCE['regions']}
 
 

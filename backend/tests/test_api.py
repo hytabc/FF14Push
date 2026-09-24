@@ -1600,6 +1600,12 @@ class TestRaid:
         """服务端时间不足时，客户端虚报通关不能获得奖励。"""
         await self._gear_up(auth_client, session_factory, ancient=2)
         started = (await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})).json()
+        async with session_factory() as db:
+            # 固定服务端计时起点：否则测试机负载高时 start → report 的真实间隔可能超过
+            # minimumFightMs（≈438ms），这条「虚报」反而会被当成合法通关而随机失败。
+            session = await db.get(RaidSession, started["sessionId"])
+            session.started_at = datetime.now(timezone.utc) - timedelta(milliseconds=50)
+            await db.commit()
         resp = await auth_client.post(
             f"{API}/raid/session/report",
             json={

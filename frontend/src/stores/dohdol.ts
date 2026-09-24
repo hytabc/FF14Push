@@ -15,6 +15,15 @@ import { useToastStore } from '@/stores/toast'
 
 /** 最长轮询间隔；临近动作完成时提前结算，同时定期获取属性变化后的周期。 */
 const REPORT_MS = 1500
+/** 页面切到后台时的上报间隔：服务端按真实窗口结算（上限见 dohdol-levels.json），产出不变。 */
+const HIDDEN_REPORT_MS = 5000
+/** 全量状态刷新节流：产出 / 进度已由上报响应驱动界面，不必每次上报都拉 `/game/state`。 */
+const STATE_REFRESH_MS = 5000
+
+/** 页面是否处于后台（Node 测试环境没有 document，按「可见」处理以免误降频）。 */
+function isPageHidden(): boolean {
+  return typeof document !== 'undefined' && document.hidden
+}
 
 /** 生产 / 采集日志保留的最大条数，超出后裁掉最旧的（与战斗日志同策略）。 */
 const MAX_LOG = 120
@@ -70,6 +79,15 @@ export const useDohDolStore = defineStore('dohdol', () => {
   let lastTickMs = 0
   let nextActionAt = 0
   let logSeq = 0
+  /** 上次全量状态刷新时刻（节流用）。 */
+  let lastStateRefreshAt = 0
+
+  /** 按节流刷新全量状态；升级等关键变化传 force 立即刷新。 */
+  function refreshStateIfDue(force: boolean) {
+    if (!force && performance.now() - lastStateRefreshAt < STATE_REFRESH_MS) return
+    lastStateRefreshAt = performance.now()
+    void game.loadState({ force: true })
+  }
 
   function pushLog(text: string, tone: ActivityLogEntry['tone']) {
     logEntries.value.push({ id: ++logSeq, text, tone })
@@ -153,7 +171,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
       const now = performance.now()
       const delta = now - lastTickMs
       lastTickMs = now
-      progress.value = clock.advance(delta)
+      // 页面在后台时不推进本地插值（不影响服务端结算，回到前台会重新对齐）。
+      if (!isPageHidden()) progress.value = clock.advance(delta)
     }, 100)
   }
 
@@ -175,10 +194,15 @@ export const useDohDolStore = defineStore('dohdol', () => {
 
   function scheduleReport() {
     if (!isRunning.value) return
+    const due = nextActionAt - performance.now()
+    // 后台标签页拉长上报间隔（服务端按真实窗口结算，产出不变），降低持续请求量。
+    const interval = isPageHidden()
+      ? Math.min(HIDDEN_REPORT_MS, Math.max(2000, due))
+      : Math.min(REPORT_MS, due)
     timer = window.setTimeout(() => {
       timer = null
       void reportOnce()
-    }, Math.max(50, Math.min(REPORT_MS, nextActionAt - performance.now())))
+    }, Math.max(50, interval))
   }
 
   function stopLoop() {
@@ -199,6 +223,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
     busy.value = true
     // 序列：本步若已达标，则在状态刷新后切到下一步（见下方 completeStep）。
     let stepComplete: { done: number; target: number } | null = null
+    // 升级会让面板 / 门槛变化，需立即刷新全量状态（其余情况走节流）。
+    let leveledUp = false
     try {
       if (mode.value === 'gather') {
         const [r, rtt] = await timed(() => api.gatherReport(id))
@@ -215,6 +241,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
         for (const title of r.newTitles ?? []) {
           toast.push(`达成彩蛋称号「${titleName(title)}」`, 'success')
         }
+        if (r.level?.levelsGained > 0) leveledUp = true
         syncCycle(r.cycle, rtt)
         const step = currentSeqStep.value
         if (step?.kind === 'gather') {
@@ -232,9 +259,11 @@ export const useDohDolStore = defineStore('dohdol', () => {
         lastGained.value = r.materials
         targetCount.value = r.targetActions
         producedCount.value = r.producedTotal
+        if (r.level?.levelsGained > 0) leveledUp = true
         if (r.finished) {
           // 达到目标件数：服务端已结束会话，本地直接收尾（不再调用 stop 接口）。
           settle()
+          leveledUp = true
           stepComplete = { done: r.producedTotal, target: r.targetActions ?? r.producedTotal }
           if (!seqActive.value) toast.push(`制造完成，共 ${r.producedTotal} 件`, 'success')
         } else {
@@ -271,12 +300,14 @@ export const useDohDolStore = defineStore('dohdol', () => {
         if (r.caught.length) {
           sound.play(r.caught.some((f) => f.kind !== 'normal') ? 'fish.rare' : 'fish.catch')
         }
+        if (r.level?.levelsGained > 0) leveledUp = true
         syncCycle(r.cycle, rtt)
         for (const title of r.newTitles) {
           toast.push(`达成称号「${titleName(title)}」`, 'success')
         }
       }
-      await game.loadState()
+      // 产出 / 进度已由上报响应驱动界面；全量状态按 5s 节流，升级 / 生产完成时才立即刷新。
+      refreshStateIfDue(leveledUp)
       if (stepComplete) await completeStep(stepComplete.done, stepComplete.target)
     } catch {
       if (sessionId.value === id) await stop(true)
@@ -346,6 +377,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
     mode.value = 'idle'
     sessionId.value = null
     recipeId.value = null
+    // 下次会话的首次上报立即刷新全量状态（材料 / 库存已变化）。
+    lastStateRefreshAt = 0
   }
 
   async function stop(silent = false) {

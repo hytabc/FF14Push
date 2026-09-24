@@ -9,9 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import BANNED_DETAIL, decode_access_token
+from app.core.security import (
+    BANNED_DETAIL,
+    DEVICE_LIMIT_DETAIL,
+    SESSION_REPLACED_DETAIL,
+    decode_access_token,
+)
 from app.models import Hero, Item, User
-from app.services import ratelimit
+from app.services import devices, ratelimit
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
@@ -52,16 +57,24 @@ async def get_current_user(
     token = _extract_token(authorization)
     if token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少访问令牌")
-    user_id = decode_access_token(token)
-    if user_id is None:
+    decoded = decode_access_token(token)
+    if decoded is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="令牌无效或已过期")
+    user_id, epoch = decoded
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在")
     # 封号：令牌仍可能有效，因此每个已认证请求都要在这里拦截，实现「强制下线」。
     if user.banned:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BANNED_DETAIL)
+    # 单端登录：令牌携带的会话纪元与当前值不一致 → 已被其它端顶替（见 core/security.create_access_token）。
+    if devices.single_session_enabled() and epoch != int(user.session_epoch or 0):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=SESSION_REPLACED_DETAIL)
     if request.method not in ("GET", "HEAD", "OPTIONS"):
+        # 同一设备并发在线超限：暂停本账号的写请求（读请求与心跳放行，以便其他账号离线后自动恢复）。
+        # 账号管理类接口（登出 / 改密 / 改名）不受影响，避免被暂停后无法正常操作。
+        if devices.is_blocked(user) and "/auth/" not in request.url.path:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=DEVICE_LIMIT_DETAIL)
         from app.services.roster import lock_user, require_idle_team
         # Coop / 世界BOSS 自行管理加锁与活跃互斥；不要在此处反转其锁顺序。
         if not any(path in request.url.path for path in ("/coop", "/worldboss")):
@@ -113,12 +126,16 @@ async def get_optional_user(
     token = _extract_token(authorization)
     if token is None:
         return None
-    user_id = decode_access_token(token)
-    if user_id is None:
+    decoded = decode_access_token(token)
+    if decoded is None:
         return None
+    user_id, epoch = decoded
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     # 封号用户视同未登录：既不参与排行，也不会被回显「我的排名」。
     if user is None or user.banned:
+        return None
+    # 被单端登录顶替的令牌同样视同未登录。
+    if devices.single_session_enabled() and epoch != int(user.session_epoch or 0):
         return None
     return user
 

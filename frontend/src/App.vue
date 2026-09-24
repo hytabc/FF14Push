@@ -10,12 +10,16 @@ import TagDialog from '@/components/TagDialog.vue'
 import ToastStack from '@/components/ToastStack.vue'
 import TutorialOverlay from '@/components/TutorialOverlay.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useSoundStore } from '@/stores/sound'
+import { useTreasureStore } from '@/stores/treasure'
 
 const auth = useAuthStore()
 const game = useGameStore()
 const sound = useSoundStore()
+const dohdol = useDohDolStore()
+const treasure = useTreasureStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -66,13 +70,32 @@ watch(
   },
 )
 
+// 同一设备并发在线超限：立即停掉本账号全部后台循环；关闭其他账号后由心跳自动恢复。
+watch(
+  () => auth.deviceBlocked,
+  (blocked) => {
+    if (!blocked) return
+    void game.stopBattle(true)
+    void game.stopRaid(true)
+    void dohdol.stop(true)
+    treasure.leave()
+  },
+)
+
 /** 好友在线心跳：登录后在任意页面（含后台标签页可见时）定期上报，好友据此看到在线状态。 */
 const HEARTBEAT_MS = 20000
 let heartbeatTimer: number | undefined
 
 function heartbeat() {
   if (!auth.isLoggedIn || document.visibilityState !== 'visible') return
-  void api.friendHeartbeat().catch(() => {})
+  void api
+    .friendHeartbeat()
+    .then((res) => {
+      // 反多开：服务端按「同一设备并发在线」下发暂停状态，前端据此暂停 / 恢复本地循环。
+      auth.deviceBlocked = res.blocked
+      auth.deviceLimit = res.maxOnline
+    })
+    .catch(() => {})
 }
 
 /** 浏览器自动播放策略：必须在首个用户手势里解锁 AudioContext，之后音效才会出声。 */
@@ -152,6 +175,15 @@ async function logout() {
         </RouterLink>
       </nav>
     </header>
+
+    <!-- 反多开：同一设备并发在线超限时本账号被暂停，关闭其他账号后自动恢复 -->
+    <div
+      v-if="auth.deviceBlocked"
+      role="status"
+      class="border-b border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-200"
+    >
+      同一设备同时仅允许 {{ auth.deviceLimit || 1 }} 个账号在线，本账号已暂停；关闭其他账号后将自动恢复。
+    </div>
 
     <main class="tutorial-layout mx-auto w-full max-w-6xl flex-1 px-3 py-4">
       <div class="min-w-0"><RouterView /></div>

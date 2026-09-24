@@ -271,6 +271,8 @@ async def add_contribution(
     if hero_deltas:
         row.party = merge_party(row.party, hero_deltas, hero_meta or {})
     row.updated_at = now
+    # 伤害已变化：让进程内的榜单缓存立即失效（WS 广播下一次读取即为最新）。
+    invalidate_contribution_rows()
     return row
 
 
@@ -374,10 +376,50 @@ def _qualified(rows: list[dict]) -> list[dict]:
     return [row for row in rows if int(row["damage"]) >= threshold]
 
 
+# 本进程内的贡献行缓存：同一周期内数秒复用，避免每个 WS 连接 / 请求都全表扫贡献表。
+# 世界BOSS 的 WS 原实现「每连接每 5s」重算一次榜单（全表扫描 contribution + users），
+# 连接数一多就成为最大热点；这里把扫描降为「每进程每 TTL 一次」。
+_ROWS_CACHE: dict[int, tuple[float, list[dict]]] = {}
+_ROWS_CACHE_TTL_SECONDS = 4.0
+
+
+async def cached_contribution_rows(db: AsyncSession, cycle: int) -> list[dict]:
+    """带短 TTL 的贡献行读取（进程内缓存，多 worker 各自缓存但结果一致）。
+
+    仅供高频、允许数秒陈旧的读取路径使用（WS 广播的榜单）；HTTP 接口与测试请用
+    `contribution_rows`，否则刚写入的贡献会被缓存挡住（见 `leaderboard_view(use_cache=)`）。
+    """
+    cached = _ROWS_CACHE.get(int(cycle))
+    now = time.monotonic()
+    if cached is not None and now - cached[0] < _ROWS_CACHE_TTL_SECONDS:
+        return cached[1]
+    rows = await contribution_rows(db, cycle)
+    # 只保留当前周期，避免缓存无界增长（换轮后旧周期自然被淘汰）。
+    _ROWS_CACHE.clear()
+    _ROWS_CACHE[int(cycle)] = (now, rows)
+    return rows
+
+
+def invalidate_contribution_rows() -> None:
+    """贡献数据变更后失效缓存（伤害结算立即反映到下一次读取）。"""
+    _ROWS_CACHE.clear()
+
+
 async def leaderboard_view(
-    db: AsyncSession, cycle: int, user_id: int | None = None, page: int = 1, page_size: int = 50
+    db: AsyncSession,
+    cycle: int,
+    user_id: int | None = None,
+    page: int = 1,
+    page_size: int = 50,
+    *,
+    use_cache: bool = False,
 ) -> dict:
-    rows = _qualified(await contribution_rows(db, cycle))
+    rows = (
+        await cached_contribution_rows(db, cycle)
+        if use_cache
+        else await contribution_rows(db, cycle)
+    )
+    rows = _qualified(rows)
     offset = max(0, (page - 1) * page_size)
     entries = [
         {

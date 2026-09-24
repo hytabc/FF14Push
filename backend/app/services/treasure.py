@@ -19,6 +19,7 @@ from app.models import Hero, Item, TreasureRun, User
 from app.models.treasure import STATUS_CLEARED, STATUS_ENDED, STATUS_FIGHTING
 from app.services import consumables, dohdol_util, titles
 from app.services.difficulty import monster_exp_multiplier, monster_gold_multiplier
+from app.services.egg_heroes import treasure_gold_bonus
 from app.services.game_config import CONFIG
 from app.services.playtime import add_play_ms
 from app.services.progression import apply_exp, combat_exp
@@ -338,6 +339,8 @@ async def open_chest(
     difficulty = max(0, floor - 1)
     multiplier = float(run.multiplier or 0.0)
     rng = random.Random()
+    # 彩蛋被动「金主」：挖宝所有金币奖励 +value（含下底附赠），0.1 = +10%。
+    gold_factor = 1.0 + treasure_gold_bonus(hero.egg_id if hero is not None else None)
 
     gold_base = (
         roll_gold(source_region_id(), "boss", 0.0, rng)
@@ -360,7 +363,7 @@ async def open_chest(
         run.chest_opened = True
         completed = floor >= floors()
         if completed:
-            bonus_gold = int(_cfg()["finalBonusGold"])
+            bonus_gold = int(_cfg()["finalBonusGold"] * gold_factor)
             user.gold = int(user.gold) + bonus_gold
             rewards.append({"kind": "bonusGold", "amount": bonus_gold})
             run.status = STATUS_ENDED
@@ -388,7 +391,7 @@ async def open_chest(
     for _ in range(_entries_for_floor(floor)):
         kind = _pick_kind(rng)
         if kind == "gold":
-            amount = int(gold_unit * multiplier)
+            amount = int(gold_unit * multiplier * gold_factor)
             gold_total += amount
             rewards.append({"kind": "gold", "amount": amount})
         elif kind == "exp":
@@ -437,7 +440,7 @@ async def open_chest(
 
     # 通关第 5 层：额外赠送金币（「除了宝箱奖励，还附赠」，不受猜大小倍率影响）。
     if floor >= floors():
-        bonus_gold = int(_cfg()["finalBonusGold"])
+        bonus_gold = int(_cfg()["finalBonusGold"] * gold_factor)
         if bonus_gold:
             gold_total += bonus_gold
             rewards.append({"kind": "bonusGold", "amount": bonus_gold})

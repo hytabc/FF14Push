@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 
 import { getDeviceId } from '@/utils/device'
 
@@ -9,7 +9,12 @@ export const TOKEN_KEY = 'eorzea.token'
 export const http = axios.create({
   baseURL,
   timeout: 15000,
+  // 反多开：服务端签发的设备 Cookie 是 httpOnly，需允许跨端口 / 同源携带（JS 读不到）。
+  withCredentials: true,
 })
+
+/** 在途 GET 去重：多个页面 / store 同时首屏拉同一接口时只发一次网络请求。 */
+const inflightGets = new Map<string, Promise<AxiosResponse>>()
 
 http.interceptors.request.use((config) => {
   config.headers = config.headers ?? {}
@@ -22,13 +27,30 @@ http.interceptors.request.use((config) => {
   if (deviceId) {
     config.headers['X-Device-Id'] = deviceId
   }
+
+  if ((config.method ?? 'get').toLowerCase() === 'get') {
+    const key = `${config.url}::${JSON.stringify(config.params ?? {})}`
+    const pending = inflightGets.get(key)
+    if (pending) {
+      config.adapter = () => pending
+    } else {
+      const dispatch = axios.getAdapter(http.defaults.adapter)
+      config.adapter = (cfg) => {
+        const promise = dispatch(cfg)
+        inflightGets.set(key, promise)
+        return promise.finally(() => {
+          if (inflightGets.get(key) === promise) inflightGets.delete(key)
+        })
+      }
+    }
+  }
   return config
 })
 
 export interface ApiError {
   status: number
   message: string
-  /** 后端机器码（如封号 'banned'）；用于静默处理，不向用户展示任何文案。 */
+  /** 后端机器码（如封号 'banned' / 会话顶替 'session_replaced' / 设备超限 'device_limit'）。 */
   code?: string
 }
 
@@ -63,17 +85,32 @@ export function toApiError(error: unknown): ApiError {
   return { status: 0, message: error instanceof Error ? error.message : '未知错误' }
 }
 
-// 任意请求命中封号 → 通知上层静默下线（由 auth store 注册处理器）。
+// 机器码 → 处理器：封号静默下线；会话被顶替 / 设备并发超限由 auth store 接管。
 let bannedHandler: (() => void) | null = null
+let sessionReplacedHandler: (() => void) | null = null
+let deviceLimitHandler: (() => void) | null = null
 
 export function setBannedHandler(handler: () => void) {
   bannedHandler = handler
 }
 
+/** 同一账号在其它端登录（本端被顶替）→ 清理会话并提示重新登录。 */
+export function setSessionReplacedHandler(handler: () => void) {
+  sessionReplacedHandler = handler
+}
+
+/** 同一设备并发在线超限 → 暂停本账号活动（不弹错误，由心跳自动恢复）。 */
+export function setDeviceLimitHandler(handler: () => void) {
+  deviceLimitHandler = handler
+}
+
 http.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (isBannedError(error)) bannedHandler?.()
+    const code = axios.isAxiosError(error) ? detailCode(error.response?.data?.detail) : undefined
+    if (code === 'banned') bannedHandler?.()
+    else if (code === 'session_replaced') sessionReplacedHandler?.()
+    else if (code === 'device_limit') deviceLimitHandler?.()
     return Promise.reject(error)
   },
 )

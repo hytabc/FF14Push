@@ -42,6 +42,22 @@ class Settings(BaseSettings):
     # 启动时自动建表（本地开发用；生产应使用 alembic upgrade head）
     auto_create_tables: bool = True
 
+    # 响应体压缩：对超过 gzip_min_size 的响应启用 gzip（前端 nginx 已启用，直连 API 时由此覆盖）。
+    gzip_enabled: bool = True
+    gzip_min_size: int = 1024
+
+    # 设备 Cookie 是否只在 HTTPS 下发送。前端走 HTTPS 时置 true（默认 false 以兼容本地 http）。
+    cookie_secure: bool = False
+
+    # 数据库连接池（仅 PostgreSQL 生效；SQLite 忽略）：并发挂机依赖足够的连接数。
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_recycle: int = 1800
+    db_pool_timeout: int = 30
+
+    # 排行榜刷新是否在 API 进程内运行。多 worker 部署应置 false，改由 ranking-worker 独占执行。
+    ranking_in_api: bool = True
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

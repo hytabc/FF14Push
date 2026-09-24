@@ -177,6 +177,15 @@ async def report_produce(
     material_out: dict[str, int] = {}
     equipment_out: list[dict[str, Any]] = []
     output = recipe["output"]
+    # 结算改为「内存累加 + 循环后批量落库」：原实现对每件制造的每个输入 / 输出各发一次
+    # select，单次上报可达数百条查询（长时间挂机的写热点）。
+    consume_acc: dict[str, int] = {}
+    add_acc: dict[str, dict[str, int]] = {}
+
+    def queue_add(stack_kind: str, item_id: str, count: int) -> None:
+        bucket = add_acc.setdefault(stack_kind, {})
+        bucket[item_id] = bucket.get(item_id, 0) + count
+
     # 经验按每件实际产出累计：装备按其抽到的品阶加权，材料 / 半成品 / 消耗品恒为 1.0。
     # 额外产出（词条「多产」/ 彩蛋「生产专家」）只多给一件物品，不额外计入经验。
     xp_units = 0.0
@@ -188,9 +197,7 @@ async def report_produce(
                 continue
             if material_save < 0 and rng.random() * 100 < -material_save:
                 need += 1
-            await dohdol_util.stack_consume(
-                db, user.id, dohdol_util.STACK_MATERIAL, entry["itemId"], need
-            )
+            consume_acc[entry["itemId"]] = consume_acc.get(entry["itemId"], 0) + need
         # 产出件数：词条「多产 / 减产」+ 彩蛋被动「生产专家」
         produce_count = 1
         if extra_output > 0 and rng.random() * 100 < extra_output:
@@ -210,17 +217,21 @@ async def report_produce(
                 spec = dohdol_util.consumable_def(output["itemId"])
                 kind = spec["kind"] if spec else "potion"
                 count = int(output.get("count", 1)) * produce_count
-                await dohdol_util.stack_add(db, user.id, kind, output["itemId"], count)
+                queue_add(kind, output["itemId"], count)
                 material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
                 xp_units += 1.0
         else:
             if produce_count > 0:
                 count = int(output.get("count", 1)) * produce_count
-                await dohdol_util.stack_add(
-                    db, user.id, dohdol_util.STACK_MATERIAL, output["itemId"], count
-                )
+                queue_add(dohdol_util.STACK_MATERIAL, output["itemId"], count)
                 material_out[output["itemId"]] = material_out.get(output["itemId"], 0) + count
                 xp_units += 1.0
+
+    # 批量落库：材料扣减（逐项判断，与单项语义一致）+ 各类产出入库（含材料图鉴解锁）。
+    if consume_acc:
+        await dohdol_util.stack_consume_many(db, user.id, dohdol_util.STACK_MATERIAL, consume_acc)
+    for stack_kind, adds in add_acc.items():
+        await dohdol_util.stack_add_many(db, user.id, stack_kind, adds)
 
     if equipment_out:
         produced = await insert_items(db, user, equipment_out, source="craft")

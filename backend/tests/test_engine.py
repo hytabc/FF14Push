@@ -39,8 +39,10 @@ from app.services.combat_model import theoretical_dps
 from app.services.egg_heroes import (
     craft_extra_chance,
     exp_bonus_pct,
+    gather_extra_chance,
     normal_mob_potency100_bonus,
     skills_for,
+    treasure_gold_bonus,
 )
 from app.services.recruiting import (
     ancient_pity_count,
@@ -971,6 +973,8 @@ class TestEggHeroAdditions:
             "yazi": ("MCH", "dex"),
             "luojieaier": (None, "int"),
             "minglan": ("VPR", "dex"),
+            "niefeiersi": (None, "dex"),
+            "xututu": (None, "str"),
         }
         for hero_id, (job_id, bias) in expected.items():
             hero = by_id[hero_id]
@@ -994,6 +998,16 @@ class TestEggHeroAdditions:
         assert craft_extra_chance("luojieaier") == pytest.approx(0.25)
         assert craft_extra_chance("yazi") == 0.0
         assert craft_extra_chance(None) == 0.0
+
+    def test_gather_extra_chance(self) -> None:
+        assert gather_extra_chance("niefeiersi") == pytest.approx(0.25)
+        assert gather_extra_chance("xututu") == 0.0
+        assert gather_extra_chance(None) == 0.0
+
+    def test_treasure_gold_bonus(self) -> None:
+        assert treasure_gold_bonus("xututu") == pytest.approx(0.1)
+        assert treasure_gold_bonus("niefeiersi") == 0.0
+        assert treasure_gold_bonus(None) == 0.0
 
     def test_minglan_skill_bound_to_viper(self) -> None:
         result = skills_for("minglan", "VPR")

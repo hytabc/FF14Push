@@ -17,6 +17,8 @@ import { useToastStore } from './toast'
 
 const TICK_MS = 100
 const REPORT_MS = 1500
+/** `loadState` 的最小刷新间隔（毫秒）：突发调用会被合并为一次全量请求。 */
+const STATE_MIN_INTERVAL_MS = 400
 /** 单帧最多推进的模拟时间（毫秒），把后台补算分摊到多帧，避免卡住主线程。 */
 const MAX_FRAME_MS = 400
 /** 后台补算上限（毫秒）：页面存活期间按真实墙钟累计，切回前台后最多补齐这么多。 */
@@ -114,6 +116,10 @@ export const useGameStore = defineStore('game', () => {
   let generation = 0
   // 上一次成功上报的墙钟时间，用于上报真实窗口（空窗口不上报，固定值会失真）
   let lastReportAt = 0
+  // loadState 合并：在途请求、待补队列与上次刷新时刻
+  let stateInflight: Promise<void> | null = null
+  let statePending: { force: boolean } | null = null
+  let stateLastAt = 0
 
   const loggedIn = computed(() => auth.isLoggedIn)
   const hero = computed(() => state.value?.hero ?? null)
@@ -146,13 +152,15 @@ export const useGameStore = defineStore('game', () => {
     const err = toApiError(e)
     // 封号由全局响应拦截器静默处理（清空会话 → 空白页），此处不再弹任何提示。
     if (err.code === 'banned') return
+    // 会话被顶替 / 设备并发超限都由全局拦截器与心跳接管（清会话 / 暂停循环），不弹错误。
+    if (err.code === 'session_replaced' || err.code === 'device_limit') return
     lastError.value = err.message
     toast.push(err.message, 'error')
     if (err.status === 401) auth.logout()
   }
 
-  async function loadState() {
-    if (!auth.isLoggedIn) return
+  async function runState() {
+    stateLastAt = performance.now()
     loading.value = true
     try {
       state.value = await api.state()
@@ -163,9 +171,45 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * 拉取全量游戏状态（`/game/state` 是最重的读接口）。
+   *
+   * 突发调用会被**合并**：距上次刷新不足 `coalesceMs` 的调用共享同一次请求，
+   * 在途期间的调用记为「结束后补一次」，因此装备变更 / 抽箱 / 采集上报等
+   * 密集动作不会各发一次全量请求。关键路径（登录、装备变更）传 `{ force: true }` 立即生效。
+   */
+  function loadState(opts: { force?: boolean; coalesceMs?: number } = {}): Promise<void> {
+    if (!auth.isLoggedIn) return Promise.resolve()
+    const coalesce = Math.max(0, opts.coalesceMs ?? STATE_MIN_INTERVAL_MS)
+    const force = Boolean(opts.force)
+
+    if (stateInflight) {
+      if (!statePending || force) statePending = { force }
+      return stateInflight
+    }
+
+    const since = performance.now() - stateLastAt
+    const delay = force ? 0 : Math.max(0, coalesce - since)
+    stateInflight = new Promise<void>((resolve) => {
+      setTimeout(resolve, delay)
+    }).then(async () => {
+      await runState()
+      // 在途期间又来了请求：补一次，保证最终状态是最新的。
+      while (statePending) {
+        const next = statePending
+        statePending = null
+        if (next.force || performance.now() - stateLastAt >= STATE_MIN_INTERVAL_MS) {
+          await runState()
+        }
+      }
+      stateInflight = null
+    })
+    return stateInflight
+  }
+
   /** 装备变更后重新计算面板并同步给模拟器。 */
   async function refreshAfterGearChange() {
-    await loadState()
+    await loadState({ force: true })
     if (sim.value && state.value) {
       sim.value.updateStats(state.value.hero.stats)
     }
@@ -741,6 +785,9 @@ export const useGameStore = defineStore('game', () => {
     lastDraw.value = []
     loot.clear()
     lastReportAt = 0
+    stateInflight = null
+    statePending = null
+    stateLastAt = 0
   }
 
   return {

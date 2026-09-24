@@ -12,8 +12,9 @@ from typing import Any, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ActivitySession, Item, RegionProgress, User
+from app.models import ActivitySession, Hero, Item, RegionProgress, User
 from app.services import consumables, dohdol_util, titles
+from app.services.egg_heroes import gather_extra_chance
 from app.services.game_config import CONFIG
 from app.services.playtime import add_play_ms
 
@@ -116,6 +117,13 @@ async def report_gather(
     extra_action_pct = equip.get("gatherExtraActionPct", 0.0)
     double_pct = equip.get("gatherDoublePct", 0.0)
     rare_pct = equip.get("gatherRareChancePct", 0.0)
+    # 彩蛋被动「黑奴」：采集时有概率额外多获得一个主材料。
+    egg_extra_chance = 0.0
+    if user.active_hero_id is not None:
+        egg_id = (
+            await db.execute(select(Hero.egg_id).where(Hero.id == user.active_hero_id))
+        ).scalar_one_or_none()
+        egg_extra_chance = gather_extra_chance(egg_id)
 
     def one_action() -> list[tuple[str, int]]:
         """一次采集动作的产出（含「珍稀 / 满载」词条加成）。"""
@@ -125,6 +133,9 @@ async def report_gather(
             rolls.append((rolls[0][0], 1))
         elif rare_pct < 0 and len(rolls) > 1 and rng.random() * 100 < -rare_pct:
             rolls = rolls[1:]
+        # 黑奴（彩蛋被动）：概率额外多获得一个主材料
+        if egg_extra_chance > 0 and rolls and rng.random() < egg_extra_chance:
+            rolls.append((rolls[0][0], 1))
         # 满载 / 减产：概率产量翻倍 / 减半
         if double_pct > 0 and rng.random() * 100 < double_pct:
             rolls = [(m, c * 2) for m, c in rolls]
@@ -142,8 +153,8 @@ async def report_gather(
         if extra_action_pct > 0 and rng.random() * 100 < extra_action_pct:
             for material_id, count in one_action():
                 gained[material_id] = gained.get(material_id, 0) + count
-    for material_id, count in gained.items():
-        await dohdol_util.stack_add(db, user.id, dohdol_util.STACK_MATERIAL, material_id, count)
+    # 批量入库（含材料图鉴解锁）：一次查询 + 内存累加，避免按材料逐条 select。
+    await dohdol_util.stack_add_many(db, user.id, dohdol_util.STACK_MATERIAL, gained)
 
     # 经验来源：专用装备（固定加成 + 经验词条）与药水 / 食物的经验加成。
     xp_sources, bonus_pct = dohdol_util.combine_xp_sources(

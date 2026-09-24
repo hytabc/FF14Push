@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -28,6 +28,7 @@ from app.models import (
 )
 from app.models.multiplayer import CoopRecord
 from app.services.admin import is_admin
+from app.services.locks import release_advisory_lock, try_advisory_lock
 from app.services.materia import socket_mods_map
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
@@ -49,6 +50,20 @@ STAGE_REGION_BASE = 1000
 
 
 async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
+    """全量重算缓存榜（level / stage / power / gold / playtime）。
+
+    多 worker 场景下由 advisory lock 保证只有一个进程真正执行（见 services/locks.py）；
+    未拿到锁时直接返回 0 计数，调用方无需区分。
+    """
+    if not await try_advisory_lock(db, "eorzea:ranking_refresh"):
+        return {board: 0 for board in CACHED_BOARDS}
+    try:
+        return await _refresh_all_rankings(db)
+    finally:
+        await release_advisory_lock(db, "eorzea:ranking_refresh")
+
+
+async def _refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
     users = (
         await db.execute(select(User).options(selectinload(User.hero), selectinload(User.items)))
     ).scalars().all()
@@ -65,6 +80,7 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
     mods_map = await socket_mods_map(db, [int(u.id) for u in users])
 
     counts = {board: 0 for board in CACHED_BOARDS}
+    rows_to_insert: list[dict[str, Any]] = []
     for user in users:
         # 管理员与已封禁账号不参与排行榜（管理员另有「不创建英雄」双重保险）
         if is_admin(user) or user.banned:
@@ -96,9 +112,12 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
             _entry(user, hero, "playtime", _play_seconds(user), 0, extra),
         ]
         for entry in entries:
-            db.add(entry)
-            counts[entry.board] += 1
+            rows_to_insert.append(entry)
+            counts[entry["board"]] += 1
 
+    # 一次性 executemany 批量写入：原实现逐行 db.add + flush，用户量大时写放大明显。
+    if rows_to_insert:
+        await db.execute(insert(RankingEntry), rows_to_insert)
     await db.flush()
     return counts
 
@@ -470,7 +489,8 @@ def _entry(
     value: int,
     secondary: int,
     extra: dict[str, Any] | None = None,
-) -> RankingEntry:
+) -> dict[str, Any]:
+    """构造一行待写入 `rankings` 的列字典（供 executemany 批量插入）。"""
     payload = {
         "nickname": user.nickname,
         "level": hero.level,
@@ -490,14 +510,14 @@ def _entry(
                 "activeTitleId": extra.get("activeTitleId"),
             }
         )
-    return RankingEntry(
-        user_id=user.id,
-        board=board,
-        value=int(value),
-        secondary=int(secondary),
-        nickname=user.nickname,
-        payload=payload,
-    )
+    return {
+        "user_id": user.id,
+        "board": board,
+        "value": int(value),
+        "secondary": int(secondary),
+        "nickname": user.nickname,
+        "payload": payload,
+    }
 
 
 async def fetch_board(db: AsyncSession, board: str, page: int = 1, page_size: int = 100) -> list[dict[str, Any]]:

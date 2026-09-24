@@ -9,12 +9,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.database import SessionLocal, engine
 from app.models import Base
 from app.services.admin import ensure_admin_user
+from app.services.broadcast import hub
 from app.services.ranking import refresh_all_rankings
 from app.services.world_boss import ensure_world_boss, roll_world_boss
 
@@ -67,20 +69,32 @@ async def lifespan(app: FastAPI):
             await ensure_world_boss(db)
     except Exception:  # noqa: BLE001
         logger.exception("世界BOSS 初始化失败（不影响服务启动）")
-    ranking_task = asyncio.create_task(_ranking_loop())
+    ranking_tasks = []
+    # 多 worker 部署应设 RANKING_IN_API=false，改由独立进程 `python -m app.ranking_worker` 刷新
+    # （见 docker-compose 的 ranking-worker）。留在 API 内时由 advisory lock 保证只刷一次。
+    if settings.ranking_in_api:
+        ranking_tasks.append(asyncio.create_task(_ranking_loop()))
     worldboss_task = asyncio.create_task(_worldboss_loop())
     logger.info("艾欧泽亚放置录 后端已启动")
     try:
         yield
     finally:
-        for task in (ranking_task, worldboss_task):
+        for task in (*ranking_tasks, worldboss_task):
             task.cancel()
-        for task in (ranking_task, worldboss_task):
+        for task in (*ranking_tasks, worldboss_task):
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+        await hub.shutdown()
 
 
 app = FastAPI(title="艾欧泽亚放置录 API", version="0.1.0", lifespan=lifespan)
+
+# 响应体压缩：/game/state 等大响应在直连 API 时也走 gzip（nginx 已 gzip，但默认不压反代响应）。
+# 先加 GZip 再加 CORS，使 CORS 处于最外层，错误响应同样带上 CORS 头。
+if settings.gzip_enabled:
+    app.add_middleware(
+        GZipMiddleware, minimum_size=settings.gzip_min_size, compresslevel=6
+    )
 
 app.add_middleware(
     CORSMiddleware,

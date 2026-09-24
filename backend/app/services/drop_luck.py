@@ -56,10 +56,12 @@ async def chest_rarity_luck(
     user_id: int,
     hero: Any = None,
     items: Sequence[Any] | None = None,
+    cleared_count: int | None = None,
 ) -> tuple[float, list[dict[str, Any]]]:
     """抽箱品阶概率的 luck 系数与来源明细（与生产同源的归一化）。
 
     省略 hero / items 时装备品阶幸运与彩蛋来源记 0（如新手指引结算无英雄上下文）。
+    调用方若已算过「已通关地区数」可传入 `cleared_count`，避免重复的 count(distinct) 查询。
     """
     gear_mods = (
         aggregate_equipment(hero_items(items, getattr(hero, "id", None))).term_mods
@@ -67,7 +69,9 @@ async def chest_rarity_luck(
         else {}
     )
     values = {
-        "clearedRegions": float(await cleared_region_count(db, user_id)),
+        "clearedRegions": float(
+            await cleared_region_count(db, user_id) if cleared_count is None else cleared_count
+        ),
         "gearPct": float(gear_mods.get("chestRarityPct", 0.0)),
         "consumablePct": await consumables.chest_luck(db, user_id),
         "coopClears": await coop_clear_score(db, user_id),

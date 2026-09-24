@@ -1,6 +1,6 @@
 import asyncio,secrets,time
 from copy import deepcopy
-from typing import Literal
+from typing import Any, Literal
 from fastapi import APIRouter,HTTPException,WebSocket,WebSocketDisconnect
 from pydantic import BaseModel,Field
 from sqlalchemy import select,delete
@@ -8,6 +8,7 @@ from app.core.deps import CurrentUser,DbSession
 from app.core.database import SessionLocal
 from app.models import Hero,User
 from app.models.multiplayer import (CoopRoom,CoopMember,CoopSeat,CoopBattle,CoopCommand,CoopReward,CoopProgress,CoopTicket,HeroRegistration)
+from app.services.broadcast import MEMBER_CHECK_SECONDS, Producer, ProducerFactory, hub
 from app.services.roster import owned_hero,require_idle_team,lock_user,stop_activities
 from app.services.coop_snapshot import snapshot_hero
 from app.services.coop_rooms import room_member,lobby,invalidate_ready,validate_party,room_view
@@ -15,6 +16,9 @@ from app.services.coop_engine import new_battle,command
 from app.services.multiplayer_config import DUNGEONS,MULTIPLAYER
 
 router=APIRouter(prefix='/coop',tags=['coop'])
+# 房间 WS 轮询间隔与终止状态（与前端 CoopView 的 sequence 去重契约保持一致）。
+COOP_POLL_SECONDS=0.5
+COOP_TERMINAL_STATUSES=('cleared','failed','closed')
 class CreateRoom(BaseModel):
     dungeonId:str
     mode:Literal['solo','offline','online']
@@ -189,6 +193,31 @@ async def ticket(room_id:int,db:DbSession,user:CurrentUser):
     token=secrets.token_urlsafe(32);db.add(CoopTicket(token=token,user_id=user.id,room_id=room_id,expires_at=time.time()+30))
     await db.commit();return {'ticket':token}
 
+def _coop_producer_factory(room_id:int)->ProducerFactory:
+    """创建该房间的广播生产者（每个进程按房间只创建一次）。
+
+    原实现每个连接各自每 0.5s 查一次战斗 / 房间，连接数越多负载越高；改为每房间一个
+    生产者，读一次后分发给房间内全部连接（见 services/broadcast.py）。
+    """
+    def factory()->Producer:
+        state:dict[str,Any]={'sequence':-1,'event':0,'status':None}
+        async def producer()->dict|None:
+            async with SessionLocal() as db:
+                battle=await db.scalar(select(CoopBattle).where(CoopBattle.room_id==room_id))
+                room=await db.get(CoopRoom,room_id)
+            if battle is None:return None
+            status=room.status if room is not None else 'closed'
+            if int(battle.sequence)==state['sequence'] and status==state['status']:return None
+            snapshot=deepcopy(battle.state)
+            snapshot['events']=[e for e in snapshot.get('events',[]) if e.get('seq',0)>state['event']]
+            state['sequence']=int(battle.sequence)
+            state['event']=int(battle.state.get('eventSequence',0))
+            state['status']=status
+            return {'type':'update','sequence':int(battle.sequence),'state':snapshot,'battleId':battle.id,'status':status}
+        return producer
+    return factory
+
+
 @router.websocket('/ws')
 async def stream(ws:WebSocket):
     token=ws.query_params.get('ticket','')
@@ -199,20 +228,36 @@ async def stream(ws:WebSocket):
         user=await db.get(User,uid)
         if not user or user.banned:await ws.close(code=4403);return
         await db.delete(row);await db.commit()
-    await ws.accept();sequence=-1;event_sequence=0
+    await ws.accept()
+    # 先订阅再取快照：之后发布的增量按 sequence 去重，不漏帧（与前端契约一致）。
+    queue=await hub.subscribe(f'coop:{rid}',_coop_producer_factory(rid),COOP_POLL_SECONDS)
+    sequence=-1;event_sequence=0
     try:
+        async with SessionLocal() as db:
+            battle=await db.scalar(select(CoopBattle).where(CoopBattle.room_id==rid))
+            room=await db.get(CoopRoom,rid)
+        if battle is not None:
+            await ws.send_json({'type':'snapshot','sequence':int(battle.sequence),'state':deepcopy(battle.state),'battleId':battle.id})
+            sequence=int(battle.sequence);event_sequence=int(battle.state.get('eventSequence',0))
+        if room is None or room.status in COOP_TERMINAL_STATUSES:
+            await ws.close(code=1000);return
         while True:
-            async with SessionLocal() as db:
-                user=await db.get(User,uid)
+            try:
+                payload=await asyncio.wait_for(queue.get(),timeout=MEMBER_CHECK_SECONDS)
+            except asyncio.TimeoutError:
+                async with SessionLocal() as db:
+                    user=await db.get(User,uid)
                 if not user or user.banned:await ws.close(code=4403);return
-                room,_=await room_member(db,rid,uid)
-                battle=await db.scalar(select(CoopBattle).where(CoopBattle.room_id==rid))
-                if battle and sequence!=battle.sequence:
-                    state=deepcopy(battle.state)
-                    state['events']=[e for e in state['events'] if e['seq']>event_sequence]
-                    await ws.send_json({'type':'snapshot' if sequence<0 else 'update','sequence':battle.sequence,'state':state,'battleId':battle.id})
-                    event_sequence=battle.state['eventSequence'];sequence=battle.sequence
-                if room.status in ('cleared','failed','closed'):
-                    await ws.close(code=1000);return
-            await asyncio.sleep(.5)
+                continue
+            if payload.get('status') in COOP_TERMINAL_STATUSES:
+                await ws.close(code=1000);return
+            if int(payload['sequence'])<=sequence:continue
+            snapshot=payload['state']
+            new_events=[e for e in snapshot.get('events',[]) if e.get('seq',0)>event_sequence]
+            snapshot['events']=new_events
+            if new_events:event_sequence=max(int(e['seq']) for e in new_events)
+            await ws.send_json({'type':'update','sequence':int(payload['sequence']),'state':snapshot,'battleId':payload['battleId']})
+            sequence=int(payload['sequence'])
     except (WebSocketDisconnect,RuntimeError):return
+    finally:
+        await hub.unsubscribe(f'coop:{rid}',queue)

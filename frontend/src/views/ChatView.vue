@@ -164,7 +164,10 @@ async function announce() {
 onMounted(() => {
   void load()
   void connect()
-  reconnectTimer = window.setInterval(() => void connect(), RECONNECT_MS)
+  // 仅在页面可见时尝试重连：后台标签页不再空转取票 / 建连（实时推送本就无需轮询）。
+  reconnectTimer = window.setInterval(() => {
+    if (document.visibilityState === 'visible') void connect()
+  }, RECONNECT_MS)
 })
 
 onUnmounted(() => {

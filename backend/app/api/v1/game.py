@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.core.deps import CurrentItems, CurrentUser, DbSession, OptionalHero
+from app.core.deps import CurrentUser, DbSession, OptionalHero
 from app.services.game_config import CONFIG
 from app.services.state import build_game_state
 
@@ -12,9 +12,9 @@ router = APIRouter(tags=["game"])
 
 
 @router.get("/game/state")
-async def game_state(
-    db: DbSession, user: CurrentUser, hero: OptionalHero, items: CurrentItems
-) -> dict:
+async def game_state(db: DbSession, user: CurrentUser, hero: OptionalHero) -> dict:
+    # 注意：不要在此声明 `CurrentItems` —— build_game_state 需要**全部**装备（含背包），
+    # 依赖注入只加载当前英雄已装备的，声明了也用不上，反而每次请求白跑一次装备查询。
     return await build_game_state(db, user, hero)
 
 

@@ -27,8 +27,12 @@
     "dailyLimit": 2000000000
   },
   "antiAlt": {
-    "$comment": "反多开：同一设备（浏览器指纹）最多注册的账号数（1 大号 + 1 小号）；关联账号（同设备 / 同 IP）之间的额度上限——好友转账为每日（双向累计），交易板为单笔上限（寄售另有 pair 24h 累计）。检测与处置见 services/devices.py（边界见 AGENT.md）。",
+    "$comment": "反多开：同一设备（浏览器指纹）最多注册的账号数（1 大号 + 1 小号）；maxAccountsPerIp 为同一真实 IP 最多注册的账号数（堵「清 localStorage 换指纹」，<= 0 关闭）；maxOnlineAccountsPerDevice 为同一设备「同时在线」的账号数上限（按心跳窗口判定、先到先得，超出的账号被暂停非读请求，<= 0 关闭）；singleSessionPerAccount 开启后同一账号仅允许一个端在线（新登录顶掉旧端）；onlineLimitScope 为并发动线的关联口径（device 仅指纹 / device_or_ip 含同 IP，后者在 NAT 下易误伤）。关联账号（同设备 / 同 IP）之间的额度上限——好友转账为每日（双向累计），交易板为单笔上限（寄售另有 pair 24h 累计）。检测与处置见 services/devices.py（边界见 AGENT.md）。",
     "maxAccountsPerDevice": 2,
+    "maxAccountsPerIp": 5,
+    "maxOnlineAccountsPerDevice": 1,
+    "onlineLimitScope": "device",
+    "singleSessionPerAccount": true,
     "transferDailyLimit": 1000000,
     "marketDailyLimit": 1000000
   },

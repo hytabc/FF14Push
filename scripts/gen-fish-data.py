@@ -7,6 +7,9 @@
     并把 `prereqFishIds` / `insightSeconds` / `chance` 改写为统一的 `intuition` 结构。
   - 每个地区新增 2 条蓝鱼 + 1 条紫鱼（`normal`，`rarity: blue|purple`，可选天气/时间门槛）。
   - 新增 `kind: "legend"` 的困难鱼（含七彩家族链、镜中蝶等），天气/时间门槛 + 计数型前置。
+  - 平衡调整：所有「捕鱼人之识」BUFF 持续时间统一为 30s；鱼王 / 鱼皇出现概率 ×2。
+    该调整在生成阶段统一施加（`INSIGHT_DURATION_SEC` / `KING_EMPEROR_CHANCE_MULT`），
+    `fish-base.json` 仍冻结旧数值。
 
 运行：`python scripts/gen-fish-data.py`
 """
@@ -175,6 +178,12 @@ LEGENDS: dict[int, list[dict[str, Any]]] = {
 BLUE_WEIGHTS = (5, 3)
 PURPLE_WEIGHT = 2
 
+# ───────────────────────────── 平衡调整 ─────────────────────────────
+# 所有「捕鱼人之识」BUFF 的持续时间统一为 30s（原为 30~90s 的区间）。
+INSIGHT_DURATION_SEC = [30, 30]
+# 鱼王 / 鱼皇的出现概率提升至原来的 200%（困难鱼不受影响）。
+KING_EMPEROR_CHANCE_MULT = 2.0
+
 
 def _fish_stats(base_size: int, base_exp: int, base_sell: int, size_mul, exp_mul, sell_mul) -> dict[str, int]:
     return {
@@ -238,8 +247,8 @@ def build() -> dict[str, Any]:
                 "intuition": {
                     "name": insight_name,
                     "requires": [{"fishId": fid, "count": 1} for fid in old["prereqFishIds"]],
-                    "durationSec": list(old["insightSeconds"]),
-                    "chance": old["chance"],
+                    "durationSec": list(INSIGHT_DURATION_SEC),
+                    "chance": old["chance"] * KING_EMPEROR_CHANCE_MULT,
                 },
                 "sizeMin": old["sizeMin"], "sizeMax": old["sizeMax"],
                 "exp": old["exp"], "sell": old["sell"],
@@ -259,7 +268,7 @@ def build() -> dict[str, Any]:
                 "intuition": {
                     "name": f"{leg['name']}之识",
                     "requires": [{"fishId": fid, "count": cnt} for fid, cnt in leg["requires"]],
-                    "durationSec": list(leg["duration"]),
+                    "durationSec": list(INSIGHT_DURATION_SEC),
                     "chance": leg["chance"],
                 },
                 **stats,
@@ -294,7 +303,8 @@ def build() -> dict[str, Any]:
             "钓场。普通鱼分白/蓝/紫三档（rarity），可带天气(weather)/时间(timeOfDay)门槛；"
             "special: 鱼王/鱼皇(legacy)与困难鱼(legend)共用统一的 intuition 结构——"
             "每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。"
-            "旧 king/emperor 已迁入 specials[]，id 与数值保持不变。"
+            "旧 king/emperor 已迁入 specials[]，id 保持不变。"
+            "平衡调整：所有鱼识 BUFF 持续 30s；鱼王/鱼皇出现概率为原值的 200%。"
         ),
         "castSeconds": base["castSeconds"],
         "insightBuffName": insight_name,

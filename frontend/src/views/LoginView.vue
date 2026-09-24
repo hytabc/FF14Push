@@ -23,6 +23,7 @@ async function submit() {
       ? await auth.login(username.value, password.value)
       : await auth.register(username.value, password.value, nickname.value || undefined)
   if (!ok) return
+  auth.clearNotice()
   await game.loadState()
   void router.push((route.query.redirect as string) || '/')
 }
@@ -72,6 +73,10 @@ async function submit() {
             class="w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm outline-none focus:border-amber-400"
             placeholder="昵称（可选，排行榜展示用）"
           />
+
+          <p v-if="auth.notice" class="rounded bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            {{ auth.notice }}
+          </p>
 
           <p v-if="auth.error" class="rounded bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
             {{ auth.error }}

@@ -26,7 +26,7 @@ from app.models import (
     User,
 )
 from app.schemas.game import BattleReportRequest, BattleStartRequest, BattleStopRequest, DifficultyRequest
-from app.services.codex import unlock_monster
+from app.services.codex import unlock_monster, unlock_monsters
 from app.services.combat_model import effective_penalty, boss_stats, max_kills_in_seconds, resolve_job_skills
 from app.services import consumables
 from app.services.difficulty import (
@@ -245,26 +245,37 @@ async def report(
     level_info = apply_exp(hero, gained_exp)
 
     # 装备：怪物不掉落，仅能通过抽箱获取（BOSS 宝箱见 _settle_boss）
+    # 图鉴按击杀聚合后批量解锁：原实现每只怪一次 select，上报高频时会形成 N+1。
+    kill_counts: dict[str, int] = {}
     for kill in result.kills:
-        await unlock_monster(db, user.id, kill.monster_id)
+        kill_counts[kill.monster_id] = kill_counts.get(kill.monster_id, 0) + 1
+    await unlock_monsters(db, user.id, kill_counts)
 
-    # 技能使用统计
+    # 技能使用统计：一次取回本英雄已有的统计行，循环内内存累加（原实现每个技能一次 select）。
     valid_skills = {s["id"] for s in resolve_job_skills(stats)}
-    for cast in payload.skillCasts:
-        if cast.skillId not in valid_skills or cast.count <= 0:
-            continue
-        row = (
-            await db.execute(
-                select(HeroSkillStat).where(
-                    HeroSkillStat.hero_id == hero.id, HeroSkillStat.skill_id == cast.skillId
+    skill_casts = [
+        (cast.skillId, min(cast.count, 10000))
+        for cast in payload.skillCasts
+        if cast.skillId in valid_skills and cast.count > 0
+    ]
+    if skill_casts:
+        stat_rows = {
+            str(row.skill_id): row
+            for row in (
+                await db.execute(
+                    select(HeroSkillStat).where(HeroSkillStat.hero_id == hero.id)
                 )
-            )
-        ).scalar_one_or_none()
-        if row is None:
-            row = HeroSkillStat(hero_id=hero.id, job_id=stats.job_id, skill_id=cast.skillId, cast_count=0)
-            db.add(row)
-            await db.flush()
-        row.cast_count = int(row.cast_count) + min(cast.count, 10000)
+            ).scalars().all()
+        }
+        for skill_id, count in skill_casts:
+            row = stat_rows.get(skill_id)
+            if row is None:
+                row = HeroSkillStat(
+                    hero_id=hero.id, job_id=stats.job_id, skill_id=skill_id, cast_count=0
+                )
+                db.add(row)
+                stat_rows[skill_id] = row
+            row.cast_count = int(row.cast_count) + count
 
     # 击杀计数（服务端权威）
     required = kills_required(payload.regionId)

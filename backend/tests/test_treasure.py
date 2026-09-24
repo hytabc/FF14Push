@@ -325,6 +325,30 @@ async def test_other_activity_ends_run(auth_client, session_factory):
 
 
 @pytest.mark.asyncio
+async def test_egg_gold_bonus_applies_to_chest_gold(auth_client, session_factory, monkeypatch):
+    """彩蛋被动「金主」：挖宝金币奖励 +10%（含下底附赠）。"""
+    from app.services import treasure as treasure_svc
+
+    # 固定金币基数与奖励种类，让断言可复现。
+    monkeypatch.setattr(treasure_svc, "roll_gold", lambda *a, **k: 1000)
+    monkeypatch.setattr(treasure_svc, "_pick_kind", lambda _rng: "gold")
+
+    async def gold_gained(bonus: float) -> int:
+        monkeypatch.setattr(treasure_svc, "treasure_gold_bonus", lambda _egg_id: bonus)
+        run_id = await _start(auth_client, session_factory, gold=20_000_000)
+        _force_random(monkeypatch, 0.9)  # 不触发猜大小
+        await _clear(auth_client, session_factory, run_id)
+        body = (await _open(auth_client, run_id)).json()
+        assert body["rewards"] and all(r["kind"] == "gold" for r in body["rewards"])
+        return int(body["goldGained"])
+
+    baseline = await gold_gained(0.0)
+    boosted = await gold_gained(0.1)
+    assert baseline > 0
+    assert boosted == pytest.approx(baseline * 1.1, abs=2)
+
+
+@pytest.mark.asyncio
 async def test_cannot_touch_other_players_run(auth_client, session_factory):
     run_id = await _start(auth_client, session_factory)
     assert (

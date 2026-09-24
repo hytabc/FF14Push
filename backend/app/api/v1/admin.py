@@ -1,4 +1,4 @@
-"""管理员接口：协助用户找回密码。账号来自环境变量，见 `services/admin.py`。"""
+"""管理员接口：协助用户找回密码、封禁账号、查看在线玩家。账号来自环境变量，见 `services/admin.py`。"""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from app.models import Hero, User
 from app.models.base import utcnow
 from app.schemas.game import AdminBanRequest, AdminResetPasswordRequest
 from app.services.admin import admin_enabled, is_admin
+from app.services.admin_monitor import online_overview
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -107,3 +108,9 @@ async def set_ban(payload: AdminBanRequest, db: DbSession, _: User = AdminUser) 
         "banned": payload.banned,
         "message": f"已{'封禁' if payload.banned else '解封'}「{target.username}」",
     }
+
+
+@router.get("/online")
+async def online_players(db: DbSession, _: User = AdminUser) -> dict:
+    """当前在线玩家列表 + 按设备 / IP 的关联分组（反多开排查）。只读。"""
+    return await online_overview(db)

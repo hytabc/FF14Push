@@ -161,7 +161,9 @@ async def test_socket_mods_injected_into_stats(auth_client, session_factory):
 
 
 @pytest.mark.asyncio
-async def test_socket_mods_helper_sums_by_stat(auth_client, session_factory):
+async def test_socket_mods_helper_sums_by_stat(auth_client, session_factory, monkeypatch):
+    # 第 2 孔成功率仅 60%，不固定随机数时该断言会随机失败（同 test_full_slot_rejected 的做法）。
+    monkeypatch.setattr("app.services.materia.random.random", lambda: 0.0)  # 全部成功
     await _give(session_factory, "m_crit_1", 1)
     await _give(session_factory, "m_crit_3", 1)
     await _socket(auth_client, "legs", 0, "m_crit_1")

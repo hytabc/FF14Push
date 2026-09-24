@@ -34,9 +34,10 @@ done
 echo "[entrypoint] 执行数据库迁移"
 alembic upgrade head
 
-echo "[entrypoint] 启动 API：0.0.0.0:${PORT}"
+echo "[entrypoint] 启动 API：0.0.0.0:${PORT}（workers=${UVICORN_WORKERS:-2}）"
 exec uvicorn app.main:app \
   --host 0.0.0.0 \
   --port "${PORT}" \
+  --workers "${UVICORN_WORKERS:-2}" \
   --proxy-headers \
   --forwarded-allow-ips "*"

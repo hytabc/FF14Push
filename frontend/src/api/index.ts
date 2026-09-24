@@ -24,6 +24,45 @@ export interface KillPayload {
   exp: number
 }
 
+export interface AdminOnlineDevice {
+  deviceId: string
+  firstIp: string | null
+  lastIp: string | null
+  lastSeenSecondsAgo: number | null
+}
+
+export interface AdminOnlineAccount {
+  id: number
+  username: string
+  nickname: string
+  level: number | null
+  gold: number
+  banned: boolean
+  isAdmin: boolean
+  online: boolean
+  lastSeenSecondsAgo: number | null
+  regIp: string | null
+  lastIp: string | null
+  ips: string[]
+  devices: AdminOnlineDevice[]
+}
+
+export interface AdminOnlineGroup {
+  id: number
+  onlineCount: number
+  sharedDevices: { deviceId: string; accountIds: number[] }[]
+  sharedIps: { ip: string; accountIds: number[] }[]
+  accounts: AdminOnlineAccount[]
+}
+
+export interface AdminOnlineOverview {
+  serverTime: string
+  windowSeconds: number
+  onlineCount: number
+  totalAccounts: number
+  groups: AdminOnlineGroup[]
+}
+
 export const api = {
   async register(username: string, password: string, nickname?: string) {
     return (await http.post<{ accessToken: string }>('/auth/register', { username, password, nickname })).data
@@ -31,6 +70,11 @@ export const api = {
 
   async login(username: string, password: string) {
     return (await http.post<{ accessToken: string }>('/auth/login', { username, password })).data
+  },
+
+  /** 登出：服务端推进会话纪元，使本账号所有端的令牌立即失效。 */
+  async logout() {
+    return (await http.post<{ ok: boolean }>('/auth/logout')).data
   },
 
   async me() {
@@ -337,9 +381,14 @@ export const api = {
 
   async friendHeartbeat() {
     return (
-      await http.get<{ serverTime: string; heartbeatSeconds: number; onlineSeconds: number }>(
-        '/friends/heartbeat',
-      )
+      await http.get<{
+        serverTime: string
+        heartbeatSeconds: number
+        onlineSeconds: number
+        /** 同一设备并发在线超限时本账号被暂停（前端据此停掉战斗 / 采集循环）。 */
+        blocked: boolean
+        maxOnline: number
+      }>('/friends/heartbeat')
     ).data
   },
 
@@ -494,6 +543,11 @@ export const api = {
 
   async adminBanUser(userId: number, banned: boolean) {
     return (await http.post<{ ok: boolean; banned: boolean; message: string }>('/admin/ban', { userId, banned })).data
+  },
+
+  /** 在线玩家列表 + 按设备 / IP 的关联分组（反多开排查，仅管理员）。 */
+  async adminOnline() {
+    return (await http.get<AdminOnlineOverview>('/admin/online')).data
   },
 
   // ---------------------------------------------------------------- 生产 / 采集 DLC

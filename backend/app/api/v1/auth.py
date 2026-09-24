@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import select, update
 
 from app.core.config import get_settings
@@ -109,20 +109,30 @@ async def _bootstrap_new_user(db: DbSession, user: User) -> Hero:
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterRequest, db: DbSession, request: Request) -> TokenResponse:
+async def register(
+    payload: RegisterRequest, db: DbSession, request: Request, response: Response
+) -> TokenResponse:
     # 防多开：限制同一 IP 的建号频率与总量（每个新号都会立即获得可挂机的初始英雄）。
     limits = get_settings()
     ip = client_ip(request)
     await guard_rate(db, "register_ip_hour", ip, limits.register_per_ip_per_hour, 3600)
     await guard_rate(db, "register_ip_day", ip, limits.register_per_ip_per_day, 86400)
 
-    # 反多开：同一设备最多注册 N 个账号（1 大号 + 1 小号）。设备标识来自前端设备指纹请求头，
-    # 缺失时不启用该上限（浏览器前端始终携带；此处不与 IP 限流叠加）。
-    device_id = devices.device_id_from_request(request)
-    if len(await devices.accounts_on_device(db, device_id)) >= devices.max_accounts_per_device():
+    # 反多开：同一设备最多注册 N 个账号（1 大号 + 1 小号）。设备标识取「前端指纹请求头 ∪
+    # 服务端签发的设备 Cookie」，因此清 localStorage 换新指纹也绕不过该上限。
+    # 两者皆缺时不启用该上限（脚本 / 老客户端不误伤）。
+    device_ids = devices.device_ids_from_request(request)
+    if len(await devices.accounts_on_device(db, device_ids)) >= devices.max_accounts_per_device():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"同一设备最多注册 {devices.max_accounts_per_device()} 个账号（1 个大号 + 1 个小号）",
+        )
+    # 反多开：同一真实 IP 的注册上限，堵「清缓存换指纹」绕过设备上限。
+    ip_cap = devices.max_accounts_per_ip()
+    if ip_cap > 0 and devices.is_real_ip(ip) and len(await devices.accounts_on_ip(db, ip)) >= ip_cap:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"同一网络最多注册 {ip_cap} 个账号",
         )
 
     # 管理员账号名保留，避免被普通玩家占用（否则启动同步会与之冲突）
@@ -146,14 +156,18 @@ async def register(payload: RegisterRequest, db: DbSession, request: Request) ->
     # 反多开：记录注册设备与 IP（关联账号判定的数据源）。
     user.reg_ip = ip
     user.last_ip = ip
-    await devices.record_device(db, user.id, device_id, ip)
+    await devices.record_device(db, user.id, device_ids, ip)
     await _bootstrap_new_user(db, user)
     await db.commit()
-    return TokenResponse(accessToken=create_access_token(user.id))
+    # 反多开：把前端指纹写入服务端签名的 Cookie（后续请求优先采信它，清 localStorage 也换不掉）。
+    devices.issue_device_cookie(response, devices.header_device_id(request))
+    return TokenResponse(accessToken=create_access_token(user.id, int(user.session_epoch or 0)))
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, db: DbSession, request: Request) -> TokenResponse:
+async def login(
+    payload: LoginRequest, db: DbSession, request: Request, response: Response
+) -> TokenResponse:
     # 防撞库 / 防脚本批量登录：限制同一 IP 的尝试频率。
     limits = get_settings()
     await guard_rate(
@@ -172,13 +186,35 @@ async def login(payload: LoginRequest, db: DbSession, request: Request) -> Token
     # 封号：拒绝发放令牌，只回传机器码（前端静默拦截，不渲染提示）。
     if user.banned:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BANNED_DETAIL)
-    # 反多开：记录登录设备与最近 IP（关联判定数据源）。刻意不在登录处硬拦，避免锁死存量多开账号。
+
+    # 反多开：同一设备并发在线账号上限。本账号不在当前在线集合内且名额已满 → 拒绝登录。
+    device_ids = devices.device_ids_from_request(request)
+    online_cap = devices.max_online_per_device()
+    if online_cap > 0 and device_ids:
+        online = await devices.online_accounts_on_device(db, device_ids)
+        if user.id not in online and len(online) >= online_cap:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"同一设备同时最多在线 {online_cap} 个账号，请先关闭其他账号",
+            )
+
+    # 反多开：记录登录设备与最近 IP（关联判定数据源）。设备指纹不一致时不在此处硬拦，
+    # 避免锁死存量多开账号（注册上限与并发动线才是强制点）。
     user.last_ip = client_ip(request)
-    await devices.record_device(
-        db, user.id, devices.device_id_from_request(request), user.last_ip
-    )
+    await devices.record_device(db, user.id, device_ids, user.last_ip)
+    # 单端登录：推进会话纪元，旧令牌随即失效（见 core/deps.get_current_user）。
+    user.session_epoch = int(user.session_epoch or 0) + 1
     await db.commit()
-    return TokenResponse(accessToken=create_access_token(user.id))
+    devices.issue_device_cookie(response, devices.header_device_id(request))
+    return TokenResponse(accessToken=create_access_token(user.id, int(user.session_epoch)))
+
+
+@router.post("/logout")
+async def logout(db: DbSession, user: CurrentUser) -> dict:
+    """登出：推进会话纪元，使当前令牌（含其它端的同账号令牌）立即失效。"""
+    user.session_epoch = int(user.session_epoch or 0) + 1
+    await db.commit()
+    return {"ok": True}
 
 
 @router.post("/change-password")

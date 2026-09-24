@@ -74,7 +74,8 @@ async def build_game_state(
         await db.execute(select(RegionProgress).where(RegionProgress.user_id == user.id))
     ).scalars().all()
     # 生活职业 / 采集钓鱼按「跨难度历史进度」解锁；战斗列表走 /region（按当前难度隔离）。
-    access = await region_access(db,user.id,hero,items,None)
+    # 传入已算好的 socket_mods，避免 region_access 内部重复查询魔晶石加成。
+    access = await region_access(db, user.id, hero, items, None, socket_mods)
     by_region: dict[int, RegionProgress] = {}
     for row in progress_rows:
         current = by_region.get(row.region_id)
@@ -93,7 +94,10 @@ async def build_game_state(
     }
     # 通关地区数按「全难度去重」统计（周目制下不因切换难度回退），用于爆率与生产状态。
     cleared_count = await cleared_region_count(db, user.id)
-    chest_luck, chest_luck_sources = await chest_rarity_luck(db, user.id, hero, items)
+    # 复用上面的 cleared_count，避免 chest_rarity_luck 内部再跑一次 count(distinct)。
+    chest_luck, chest_luck_sources = await chest_rarity_luck(
+        db, user.id, hero, items, cleared_count
+    )
 
     pity_rows = (await db.execute(select(ChestPity).where(ChestPity.user_id == user.id))).scalars().all()
     pity = {

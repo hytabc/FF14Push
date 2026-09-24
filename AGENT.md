@@ -65,7 +65,21 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 - 普通挂机不提供离线收益。联机「离线合作/克隆体」是独立机制，不等于为普通挂机新增离线回补；团队战斗由 worker 推进，worker 中断也不补算离线时间。
 - 装备归属账号，英雄穿戴状态与账号背包需要保持一致；切换、解雇及多英雄操作应检查 `roster.py`、相关模型与事务逻辑，避免装备或资产重复。
 - 好友金币转账同为服务端权威：`services/friends.py` 按 id 升序双行锁两方账号，校验好友关系 / 余额 / 单笔上下限 / 每日累计额度后再结算，手续费按 `floor(amount × feePct)` 销毁（净额不为 0 增长来源），流水写入 `coin_transfers`。
-- **反多开（防小号刷金币）**：账号关联判定 = 设备指纹 **或** IP。设备指纹由前端 `frontend/src/utils/device.ts` 从浏览器信号派生（同一台机器的不同浏览器 / 无痕得到同一标识），随每个请求以请求头 `X-Device-Id` 发送；IP 取 `users.reg_ip` / `users.last_ip` 与 `user_devices.first_ip` / `last_ip`，比较前过滤 `unknown` / 回环 / `testclient` 等哨兵值（见 `services/devices.py`）。**同一设备最多注册 `economy.json:antiAlt.maxAccountsPerDevice`（默认 2 = 1 大号 + 1 小号）个账号，仅在注册处按设备硬拦**；登录 / 心跳只登记设备与最近 IP、不拦截（避免锁死存量多开账号），未携带 `X-Device-Id` 时不启用该上限。**关联账号（同设备 / 同 IP）**之间的好友转账按 pair 双向 24h 累计受 `antiAlt.transferDailyLimit` 限制，交易板寄售成交受单笔 + pair 24h 累计（`antiAlt.marketDailyLimit`）限制，收购单成交只受单笔上限（`MarketBuyOrder` 不记录卖家、无逐笔成交归属）。数据表 `user_devices`（迁移 `u7a9c1e3b5d7`）。改判定或额度时同步回归 `tests/test_anti_alt.py` 与 `services/devices.py`。
+- **反多开（防小号刷金币）**：账号关联判定 = 设备指纹 **或** IP。设备指纹由前端 `frontend/src/utils/device.ts` 从浏览器信号派生（同一台机器的不同浏览器 / 无痕得到同一标识），随每个请求以请求头 `X-Device-Id` 发送；IP 取 `users.reg_ip` / `users.last_ip` 与 `user_devices.first_ip` / `last_ip`，比较前过滤 `unknown` / 回环 / `testclient` 等哨兵值（见 `services/devices.py`）。数据表 `user_devices`（迁移 `u7a9c1e3b5d7`，并发动线字段见 `w9c1e3f5a7b9`）。
+  - **可强制（不依赖指纹不可伪造）的两条**：
+    - **同一账号单端登录**：登录时 `users.session_epoch += 1`，令牌内携带 `ep`；`core/deps.get_current_user` 比对不一致即 401 `{code:"session_replaced"}`（`POST /auth/logout` 亦推进纪元，使全端失效）。老令牌无 `ep` 视为 0，升级不踢存量会话。开关 `antiAlt.singleSessionPerAccount`。
+    - **同一设备并发在线上限**：`user_devices.last_seen_at` / `online_since` 记录心跳；心跳按**连续在线起始时间先到先得**重算，超出 `antiAlt.maxOnlineAccountsPerDevice`（默认 1）的账号被写入 `users.multi_online_blocked_at`，其**非 GET 请求**（含 `/auth/` 除外）返回 409 `{code:"device_limit"}`；心跳本身是 GET 始终放行，其他账号离线后自动恢复。口径由 `antiAlt.onlineLimitScope`（`device` / `device_or_ip`）决定，默认仅指纹（NAT 下用 IP 会误伤）。
+  - **纵深防御（本质可绕过：换设备 / 清 Cookie / VPN）**：注册处同一设备最多 `antiAlt.maxAccountsPerDevice`（默认 2 = 1 大号 + 1 小号）个账号；设备标识取「`X-Device-Id` 请求头 ∪ 服务端签名的 httpOnly 设备 Cookie」的**并集**，因此清 localStorage 换新指纹仍被旧 Cookie 关联到同一设备；另有同一真实 IP 的注册上限 `antiAlt.maxAccountsPerIp`（<= 0 关闭）。登录 / 心跳只登记，不在注册上限上硬拦（避免锁死存量多开账号）。
+  - **关联账号（同设备 / 同 IP）**之间的好友转账按 pair 双向 24h 累计受 `antiAlt.transferDailyLimit` 限制，交易板寄售成交受单笔 + pair 24h 累计（`antiAlt.marketDailyLimit`）限制，收购单成交只受单笔上限（`MarketBuyOrder` 不记录卖家、无逐笔成交归属）。
+  - 管理端排查入口：`GET /admin/online`（`services/admin_monitor.py`，**只读**）返回当前在线账号（`users.last_seen_at` 在 `devices.ONLINE_WINDOW_SECONDS` = 45s 内）及其最近 / 注册 IP、设备指纹，并按「同设备 / 同 IP」做**连通分量分组**（只保留含在线账号的组，组内附共享的设备 / IP），供管理员识别多开；不写库、不改变任何拦截 / 额度逻辑。前端入口在「管理」页的「在线玩家」标签（**手动刷新**，不轮询）。
+  - 改判定或额度时同步回归 `tests/test_anti_alt.py`、`tests/test_session_limits.py`、`tests/test_admin_monitor.py` 与 `services/devices.py`。
+- **并发降载（大量用户长时间挂机时的负载约束）**：
+  - **WS 广播是「每进程一次轮询 + 内存分发」**（`services/broadcast.py`）：聊天室 / 远征房间不再「每个连接各查一次库」，改由每 channel 一个生产者读一次后投递给订阅队列；每个进程各自轮询，因此仍多 worker 安全。**不要退回「每连接轮询 DB」**。世界BOSS 的伤害榜走进程内短 TTL 缓存（`world_boss.cached_contribution_rows`，仅 WS 经 `leaderboard_view(use_cache=True)` 使用）；HTTP 接口与测试必须走不带缓存的读取，否则刚写入的贡献会被缓存挡住（`test_world_boss.py` 有断言）。
+  - **挂机热路径禁止 N+1**：采集 / 生产 / 钓鱼 / 战斗上报一律用批量接口（`dohdol_util.stack_add_many` / `stack_consume_many`、`codex.unlock_monsters` / `unlock_materials`），不要退回「按件 / 按怪逐条 select」。
+  - **`/game/state` 不重复查询**：`api/v1/game.py` 不要声明 `CurrentItems`（`build_game_state` 需要**全部**装备，依赖注入加载的用不上）；已算好的 `socket_mods` / `cleared_region_count` 要透传给 `region_access` / `chest_rarity_luck`。
+  - 排行榜刷新：批量 `executemany` 写入 + `services/locks.try_advisory_lock` 互斥；生产改由独立 `ranking-worker` 进程执行（`RANKING_IN_API=false`）。
+  - 响应压缩：后端 `GZipMiddleware`（`GZIP_ENABLED`）；nginx 必须保留 `gzip_proxied any`（默认 `off` 会让 `/api/` 反代响应**完全不压缩**），且 `chat/ws`、`worldboss/ws` 需要与 `coop/ws` 一样带 Upgrade 头的独立 `location`。
+  - 前端：`stores/game.ts:loadState` 是单飞 + 合并（突发动作不再各发一次全量请求），`stores/dohdol.ts` 在后台标签页降频上报；改这两处前先看 `stores/dohdol.spec.ts` 的时序断言（测试环境为 Node，没有 `document`，需用 `isPageHidden()` 之类的守卫）。
 - 怪物、精英不直接掉落装备；主要通过抽箱获取，另有 BOSS 宝箱奖励。
 - 普攻（`ADVENTURER_SKILL`，零耗蓝兜底）威力由 `combat.json:basicAttackPotency` 指定（当前 50%，低于技能威力），前后端同源：前端 `combat.ts`、后端 `combat_model.BASIC_ATTACK_POTENCY`。改这个值会同时改变整体 DPS，进而影响怪物按「命中次数」的标定与 `core.spec.ts` 的击杀手感测试。
 - 地区关底 BOSS 有单次命中伤害上限 `bosses.json:maxHitDamagePct`（当前 20% 最大生命），在 `battle.ts:capBossHit` 结算，用于防止开局爆发 / 暴击大招秒杀 BOSS；仅地区 BOSS 生效（高难与联机不走此上限），且客户端做上限比服务端理论模型更保守，不影响上报校验。
@@ -126,7 +140,8 @@ cd backend
 
 ## 数据库升级与部署
 
-- 当前 `docker-compose.yml` 有五个服务：`db`、`backend`、`coop-worker`、`worldboss-worker`、`frontend`。worker 使用后端镜像但独立运行：缺少 `coop-worker` 时团队战斗不会推进，缺少 `worldboss-worker` 时世界BOSS 不会推进（血量不下降）。`scripts/dev.sh` 会一并启动两个 worker。
+- 当前 `docker-compose.yml` 有六个服务：`db`、`backend`、`coop-worker`、`worldboss-worker`、`ranking-worker`、`frontend`（另有 `db-backup`）。worker 使用后端镜像但独立运行：缺少 `coop-worker` 时团队战斗不会推进，缺少 `worldboss-worker` 时世界BOSS 不会推进（血量不下降），缺少 `ranking-worker` 时缓存榜（等级 / 关卡 / 战力 / 金币 / 游玩时间）不再刷新。`scripts/dev.sh` 会一并启动两个战斗 worker；本地开发默认仍由 API 进程刷新排行榜（`RANKING_IN_API=true`）。
+- 后端容器默认 `UVICORN_WORKERS=2`（并发挂机下单进程会让请求排队）；多进程时排行榜刷新由 advisory lock 保证只执行一次。数据库连接池由 `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` 控制（仅 PostgreSQL 生效）。
 - PostgreSQL 使用 Alembic：在正确数据库环境下，从 `backend` 执行 `.venv/bin/alembic upgrade head`。生产容器入口会先执行迁移，再启动 API；`AUTO_CREATE_TABLES=false`。
 - `AUTO_CREATE_TABLES=true` 只能确保表存在，不能替代已有表的结构迁移。
 - 对于联机 DLC 之前由 `create_all` 建立的本地 SQLite，已有专用 `backend/app/migrate_local.py`：停止 API/worker，在 `backend` 目录、正确 `DATABASE_URL` 下运行 `.venv/bin/python -m app.migrate_local`。它会创建 `.before-dlc` 备份；不要把该脚本当成所有未来升级的通用迁移器。

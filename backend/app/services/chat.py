@@ -5,7 +5,8 @@
 - 发言时顺带删除窗口外的**普通发言**行，表因此只保有滚动暂存量级。
 - **管理员公告是例外**：公告长期保留（置顶展示、不会消失），不参与滚动窗口的读取与清理，
   单独以 `announcements()` 查询返回。
-广播不做进程内队列：WS 连接各自按游标轮询数据库，天然兼容多 worker（与 `coop.py` 一致）。
+广播按「每进程一次轮询 + 内存分发」进行（见 `services/broadcast.py`）：数据库查询量不随连接数
+增长；每个进程各自轮询数据库，因此天然兼容多 worker（与 `coop.py` 一致）。
 """
 
 from __future__ import annotations
@@ -127,6 +128,28 @@ async def new_announcements(db: AsyncSession, after_id: int) -> list[dict]:
     """比游标更新的公告（按时间正序，供 WS 增量推送）。"""
     rows = (await db.execute(_announcement_query(after_id, newest_first=False))).all()
     return [serialize(row, user) for row, user in rows]
+
+
+def _max_ids(messages: list[dict], anns: list[dict]) -> tuple[int, int]:
+    """一组的 (最后一条普通发言 id, 最新公告 id)；空列表对应 0。"""
+    msg_id = int(messages[-1]["id"]) if messages else 0
+    ann_id = max((int(a["id"]) for a in anns), default=0)
+    return msg_id, ann_id
+
+
+async def cursors(db: AsyncSession) -> tuple[int, int]:
+    """当前最新的（普通发言 id, 公告 id），用于共享广播生产者的起始游标。"""
+    return _max_ids(await recent_messages(db), await announcements(db))
+
+
+async def broadcast_delta(
+    db: AsyncSession, after_msg: int, after_ann: int
+) -> tuple[list[dict], list[dict], int, int]:
+    """比游标更新的普通发言与公告，以及推进后的游标（供 WS 广播一次读库后分发给所有连接）。"""
+    fresh = await new_messages(db, after_msg)
+    fresh_ann = await new_announcements(db, after_ann)
+    msg_id, ann_id = _max_ids(fresh, fresh_ann)
+    return fresh, fresh_ann, (msg_id or after_msg), (ann_id or after_ann)
 
 
 async def post_message(

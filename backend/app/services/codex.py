@@ -61,6 +61,33 @@ async def unlock_monster(db: AsyncSession, user_id: int, monster_id: str, count:
     return {"monsterId": monster_id, "new": False}
 
 
+async def unlock_monsters(db: AsyncSession, user_id: int, counts: dict[str, int]) -> None:
+    """批量解锁怪物图鉴：一次查询取回已有行，内存累加。
+
+    战斗上报每 1.5s 一次、单次可能击杀多只怪，逐只 select 会形成 N+1（见 api/v1/battle.py）。
+    """
+    pending = {str(k): int(v) for k, v in (counts or {}).items() if int(v) > 0}
+    if not pending:
+        return
+    rows = {
+        str(row.monster_id): row
+        for row in (
+            await db.execute(
+                select(CodexMonster).where(
+                    CodexMonster.user_id == user_id,
+                    CodexMonster.monster_id.in_(list(pending)),
+                )
+            )
+        ).scalars().all()
+    }
+    for monster_id, count in pending.items():
+        row = rows.get(monster_id)
+        if row is None:
+            db.add(CodexMonster(user_id=user_id, monster_id=monster_id, kill_count=count))
+        else:
+            row.kill_count = int(row.kill_count or 0) + count
+
+
 async def unlock_terms(db: AsyncSession, user_id: int, terms: Iterable[Any]) -> list[list[str]]:
     """词条图鉴：普通/稀有/太古分别作为独立子项。"""
     unlocked: list[list[str]] = []
@@ -98,6 +125,30 @@ async def unlock_material(db: AsyncSession, user_id: int, item_id: str, count: i
         return {"itemId": item_id, "new": True}
     row.total_count = int(row.total_count or 0) + int(count)
     return {"itemId": item_id, "new": False}
+
+
+async def unlock_materials(db: AsyncSession, user_id: int, adds: dict[str, int]) -> None:
+    """批量解锁材料图鉴：一次查询取回已有行，内存累加（采集 / 钓鱼上报的 N+1 修复）。"""
+    pending = {str(k): int(v) for k, v in (adds or {}).items() if int(v) > 0}
+    if not pending:
+        return
+    rows = {
+        str(row.item_id): row
+        for row in (
+            await db.execute(
+                select(CodexMaterial).where(
+                    CodexMaterial.user_id == user_id,
+                    CodexMaterial.item_id.in_(list(pending)),
+                )
+            )
+        ).scalars().all()
+    }
+    for item_id, count in pending.items():
+        row = rows.get(item_id)
+        if row is None:
+            db.add(CodexMaterial(user_id=user_id, item_id=item_id, total_count=count))
+        else:
+            row.total_count = int(row.total_count or 0) + count
 
 
 def equipment_codex_entries() -> list[dict[str, Any]]:

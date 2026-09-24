@@ -1215,6 +1215,23 @@ describe('彩蛋英雄技能', () => {
     expect(eggSkillSet('minglan', 'MCH')).toBeNull()
   })
 
+  it('新增彩蛋：涅菲尔斯 / 栩荼荼 被动配置正确', () => {
+    expect(data.eggHeroes.byId['niefeiersi']).toMatchObject({
+      jobId: null,
+      attrBias: 'dex',
+      talent: 'legendary',
+      passive: { type: 'gatherExtraChance', value: 0.25 },
+    })
+    expect(data.eggHeroes.byId['xututu']).toMatchObject({
+      jobId: null,
+      attrBias: 'str',
+      talent: 'legendary',
+      passive: { type: 'treasureGoldBonus', value: 0.1 },
+    })
+    expect(eggSkillSet('niefeiersi', 'MIN')).toBeNull()
+    expect(eggSkillSet('xututu', 'WAR')).toBeNull()
+  })
+
   it('「战斗爽」使威力 100% 的技能对战普通怪物时威力翻倍，对 BOSS 无效', () => {
     const spy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
     try {

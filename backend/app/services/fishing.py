@@ -219,24 +219,36 @@ def _advance_intuition(
             intuition[special_id] = {}  # 触发即消耗前置：到期后须重新钓齐
 
 
-async def _record_fish(
-    db: AsyncSession, user_id: int, fish_id: str, region_id: int, kind: str, size: int
+async def _fish_records_map(db: AsyncSession, user_id: int) -> dict[str, FishRecord]:
+    """一次取回该账号的全部鱼获记录（fish_id → 行）。
+
+    上报窗口内可能连续钓起多条鱼，逐次 select 会形成 N+1；循环内直接改内存对象。
+    """
+    rows = (
+        await db.execute(select(FishRecord).where(FishRecord.user_id == user_id))
+    ).scalars().all()
+    return {str(row.fish_id): row for row in rows}
+
+
+def _record_fish(
+    db: AsyncSession,
+    records: dict[str, FishRecord],
+    user_id: int,
+    fish_id: str,
+    region_id: int,
+    kind: str,
+    size: int,
 ) -> None:
-    row = (
-        await db.execute(
-            select(FishRecord).where(FishRecord.user_id == user_id, FishRecord.fish_id == fish_id)
-        )
-    ).scalar_one_or_none()
+    row = records.get(str(fish_id))
     if row is None:
-        db.add(
-            FishRecord(
-                user_id=user_id, fish_id=fish_id, region_id=region_id, kind=kind,
-                count=1, max_size=size,
-            )
+        row = FishRecord(
+            user_id=user_id, fish_id=fish_id, region_id=region_id, kind=kind, count=1, max_size=size
         )
-    else:
-        row.count = int(row.count) + 1
-        row.max_size = max(int(row.max_size), size)
+        db.add(row)
+        records[str(fish_id)] = row
+        return
+    row.count = int(row.count) + 1
+    row.max_size = max(int(row.max_size), size)
 
 
 async def report_fish(
@@ -271,6 +283,7 @@ async def report_fish(
     insights = _load_insights(session, now)
     intuition = _load_intuition(session)
     special_by_id = {s["id"]: s for s in region["specials"]}
+    records = await _fish_records_map(db, user.id)
 
     caught: list[dict[str, Any]] = []
     gained: dict[str, int] = {}
@@ -289,8 +302,7 @@ async def report_fish(
             continue
 
         size = rng.randint(int(pick["sizeMin"]), int(pick["sizeMax"]))
-        await _record_fish(db, user.id, pick["id"], int(session.region_id), kind, size)
-        await dohdol_util.stack_add(db, user.id, dohdol_util.STACK_MATERIAL, pick["id"], catch_count)
+        _record_fish(db, records, user.id, pick["id"], int(session.region_id), kind, size)
         gained[pick["id"]] = gained.get(pick["id"], 0) + catch_count
         counts[pick["id"]] = counts.get(pick["id"], 0) + catch_count
         rarity = pick.get("rarity") if kind == "normal" else None
@@ -305,6 +317,9 @@ async def report_fish(
             region, conditions, pick["id"], catch_count,
             insights, intuition, insight_pct, rng, now,
         )
+
+    # 批量入库（含材料图鉴解锁）：一次查询 + 内存累加，避免每次抛竿各发一次 select。
+    await dohdol_util.stack_add_many(db, user.id, dohdol_util.STACK_MATERIAL, gained)
 
     session.session_fish = counts
     session.session_insights = {sid: expiry.isoformat() for sid, expiry in insights.items()}

@@ -39,6 +39,14 @@ class User(Base, TimestampMixin):
     farm_unlocked: Mapped[int] = mapped_column(sa.Integer, default=2, server_default="2")
     # 佩戴中的称号（titles.json 的 title id）；None = 不佩戴。最多一个，展示在排行榜 / 玩家资料。
     active_title_id: Mapped[str | None] = mapped_column(sa.String(48), nullable=True)
+    # 会话纪元：登录时 +1，令牌内携带该值（JWT 的 ep 声明）。与当前值不一致的令牌即失效，
+    # 用于「同一账号单端登录」——新登录顶掉旧端（见 core/security.py 与 api/v1/auth.py）。
+    session_epoch: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
+    # 反多开：本账号因「同一设备并发在线超限」被暂停非读请求的时刻。由心跳写入/清除，
+    # 读取时零额外查询（用户行已加载）。见 services/devices.enforce_online_limit。
+    multi_online_blocked_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )
 
     active_hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL", use_alter=True, name="fk_users_active_hero"), nullable=True)
     hero: Mapped["Hero | None"] = relationship(foreign_keys=[active_hero_id], post_update=True)
@@ -91,13 +99,14 @@ class HeroSkillStat(Base):
 
 
 class UserDevice(Base, TimestampMixin):
-    """账号 ↔ 设备指纹（浏览器指纹）关联。反多开依据：同一设备最多注册 N 个账号，
-    关联账号之间的转账 / 交易板额度另有限制（见 services/devices.py）。"""
+    """账号 ↔ 设备指纹（浏览器指纹）关联。反多开依据：同一设备最多注册 N 个账号、
+    同一设备同时在线账号数上限，关联账号之间的转账 / 交易板额度另有限制（见 services/devices.py）。"""
 
     __tablename__ = "user_devices"
     __table_args__ = (
         sa.UniqueConstraint("user_id", "device_id", name="uq_user_device"),
         sa.Index("ix_user_devices_device", "device_id"),
+        sa.Index("ix_user_devices_device_seen", "device_id", "last_seen_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -108,3 +117,12 @@ class UserDevice(Base, TimestampMixin):
     # 该账号在此设备上首次 / 最近出现的 IP（用于 IP 维度的关联判定）
     first_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
     last_ip: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    # 该账号在此设备上最近一次心跳 / 登录时间：用于「同一设备并发在线账号数」判定。
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )
+    # 本段「连续在线」的起始时间：离线（超过在线窗口）后下次上线重新计时。
+    # 并发在线上限按它做「先到先得」排序，保证结果确定（不依赖心跳先后）。
+    online_since: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )

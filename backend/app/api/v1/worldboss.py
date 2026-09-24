@@ -1,7 +1,8 @@
 """世界BOSS：全服共享血量的 BOSS、8 英雄上阵、实时总伤害榜与周期奖励。
 
 服务端权威：客户端只提交「上阵英雄」，伤害与英雄存亡由 `worldboss_worker` 推进。
-实时同步沿用远征的「一次性 ticket + 各连接按游标轮询 DB」模式。
+实时同步沿用远征的「一次性 ticket + 连接按游标轮询 DB」模式；榜单读取走进程内短 TTL 缓存
+（`world_boss.cached_contribution_rows`），避免每个连接每 5s 全表扫一次贡献表。
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from app.models.world_boss import (
     WorldBossSession,
     WorldBossTicket,
 )
+from app.services.broadcast import MEMBER_CHECK_SECONDS
 from app.services.coop_snapshot import snapshot_hero
 from app.services.roster import lock_user, require_idle_team, stop_activities
 from app.services.world_boss import (
@@ -240,17 +242,21 @@ async def stream(ws: WebSocket) -> None:
     last_event = 0
     last_boss: tuple | None = None
     last_lb = 0.0
+    last_member_check = 0.0
     try:
         while True:
             async with SessionLocal() as db:
-                user = await db.get(User, uid)
-                if not user or user.banned:
-                    await ws.close(code=4403)
-                    return
+                # 封号 / 账号有效性降为每 MEMBER_CHECK_SECONDS 检查一次（原实现每 tick 都查）。
+                now = time.time()
+                if now - last_member_check >= MEMBER_CHECK_SECONDS:
+                    user = await db.get(User, uid)
+                    if not user or user.banned:
+                        await ws.close(code=4403)
+                        return
+                    last_member_check = now
                 boss = await db.get(WorldBoss, BOSS_ID)
                 session = await _my_session(db, uid)
                 boss_sig = (int(boss.hp), boss.status, int(boss.cycle)) if boss is not None else None
-                now = time.time()
                 changed = boss_sig != last_boss or (session is not None and int(session.sequence) != last_seq)
                 due = boss is not None and now - last_lb >= 5
                 if changed or due or not sent:
@@ -266,7 +272,11 @@ async def stream(ws: WebSocket) -> None:
                     last_boss = boss_sig
                     sent = True
                     if due:
-                        payload["leaderboard"] = await leaderboard_view(db, boss.cycle, uid, 1, 50)
+                        # 榜单读取走进程内短 TTL 缓存：不再每个连接每 5s 全表扫一次。
+                        # 伤害写入会失效缓存（world_boss.add_contribution），因此最多陈旧数秒。
+                        payload["leaderboard"] = await leaderboard_view(
+                            db, boss.cycle, uid, 1, 50, use_cache=True
+                        )
                         last_lb = now
                     await ws.send_json(payload)
             await asyncio.sleep(0.5)

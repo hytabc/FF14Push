@@ -16,8 +16,12 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _register(client, username: str, device: str | None = None):
+async def _register(client, username: str, device: str | None = None, keep_cookie: bool = False):
     headers = {"X-Device-Id": device} if device else None
+    if device and not keep_cookie:
+        # httpx 客户端会保留响应 Cookie：显式指定设备时先清空，使本请求的设备身份即请求头，
+        # 等价于「换了一台设备」。验证「服务端设备 Cookie 防换指纹绕过」时传 keep_cookie=True。
+        client.cookies.clear()
     return await client.post(
         f"{API}/auth/register",
         json={"username": username, "password": "secret123", "nickname": username},

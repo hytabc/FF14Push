@@ -13,8 +13,39 @@ from app.models import KIND_ANNOUNCEMENT, KIND_NORMAL, User
 from app.models.base import utcnow
 from app.schemas.game import ChatSendRequest
 from app.services import chat
+from app.services.broadcast import MEMBER_CHECK_SECONDS, Producer, hub
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# 聊天室广播通道名：所有连接共享同一个轮询生产者的增量结果。
+CHAT_CHANNEL = "chat"
+
+
+def _chat_producer_factory() -> Producer:
+    """创建一个带游标的聊天室广播生产者（每个进程的该通道只创建一次）。"""
+    cursor: list[int] = []
+
+    async def producer() -> dict | None:
+        async with SessionLocal() as db:
+            if not cursor:
+                # 首帧：把游标推到当前最新，避免把窗口内历史当成新增重复推送。
+                msg_id, ann_id = await chat.cursors(db)
+                cursor.extend([msg_id, ann_id])
+                return None
+            messages, anns, msg_id, ann_id = await chat.broadcast_delta(db, cursor[0], cursor[1])
+        cursor[0], cursor[1] = msg_id, ann_id
+        if not messages and not anns:
+            return None
+        return {"type": "update", "messages": messages, "announcements": anns}
+
+    return producer
+
+
+async def _active(user_id: int) -> bool:
+    """低频校验连接所属账号仍有效（封号即断开）。"""
+    async with SessionLocal() as db:
+        user = await db.get(User, user_id)
+        return user is not None and not user.banned
 
 
 @router.get("/messages")
@@ -61,33 +92,25 @@ async def stream(ws: WebSocket) -> None:
             return
 
     await ws.accept()
+    # 先订阅再回放历史：此后发布的增量要么已在历史中（按 id 去重），要么进队列，不会漏帧。
+    queue = await hub.subscribe(CHAT_CHANNEL, _chat_producer_factory, chat.POLL_SECONDS)
     try:
-        # 首帧回放滚动窗口内的历史与置顶公告，随后按游标增量推送（与 coop 的快照 / 更新同构）。
         async with SessionLocal() as db:
             history = await chat.recent_messages(db)
             pinned = await chat.announcements(db)
-        last_id = history[-1]["id"] if history else 0
-        last_ann_id = max((a["id"] for a in pinned), default=0)
-        await ws.send_json(
-            {"type": "history", "messages": history, "announcements": pinned}
-        )
+        await ws.send_json({"type": "history", "messages": history, "announcements": pinned})
 
         while True:
-            async with SessionLocal() as db:
-                user = await db.get(User, user_id)
-                if user is None or user.banned:
+            try:
+                payload = await asyncio.wait_for(queue.get(), timeout=MEMBER_CHECK_SECONDS)
+            except asyncio.TimeoutError:
+                # 低频封号检查（原实现每个轮询周期都查一次）。
+                if not await _active(user_id):
                     await ws.close(code=4403)
                     return
-                fresh = await chat.new_messages(db, last_id)
-                fresh_ann = await chat.new_announcements(db, last_ann_id)
-            if fresh:
-                last_id = fresh[-1]["id"]
-            if fresh_ann:
-                last_ann_id = fresh_ann[-1]["id"]
-            if fresh or fresh_ann:
-                await ws.send_json(
-                    {"type": "update", "messages": fresh, "announcements": fresh_ann}
-                )
-            await asyncio.sleep(chat.POLL_SECONDS)
+                continue
+            await ws.send_json(payload)
     except (WebSocketDisconnect, RuntimeError):
         return
+    finally:
+        await hub.unsubscribe(CHAT_CHANNEL, queue)

@@ -10,6 +10,7 @@ from app.models.base import Base, JsonType, TimestampMixin
 
 class BattleSession(Base):
     __tablename__ = "battle_sessions"
+    __table_args__ = (sa.Index("ix_battle_sessions_user_active", "user_id", "active"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL"), nullable=True)

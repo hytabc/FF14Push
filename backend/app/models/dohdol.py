@@ -49,6 +49,7 @@ class ActivitySession(Base):
     """采集 / 生产 / 钓鱼会话。与战斗一样：服务端时钟结算，不做离线收益。"""
 
     __tablename__ = "activity_sessions"
+    __table_args__ = (sa.Index("ix_activity_sessions_user_active", "user_id", "active"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
