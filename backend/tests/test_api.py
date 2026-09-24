@@ -8,9 +8,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
+from app.api.v1.battle import _settle_boss
 from app.core.config import get_settings
 from app.main import app
 from app.models import RaidSession, BattleSession, Hero, Item, ItemTag, RegionProgress, TavernState, User
+from app.schemas.game import BattleReportRequest
 from app.services.admin import ensure_admin_user
 from app.services.economy import enchant_cost, refine_cost
 from app.services.game_config import CONFIG
@@ -2425,3 +2427,38 @@ class TestBattleDifficulty:
         assert back.status_code == 200
         assert back.json()["currentRegionId"] == 4
         assert (await auth_client.get(f"{API}/game/state")).json()["difficulty"]["level"] == 0
+
+    async def test_reclearing_last_region_unlocks_difficulty(
+        self, auth_client, session_factory
+    ) -> None:
+        """旧存档（第 40 区已通关、firstClear=False）再次击败最后一个地区 BOSS 也应解锁下一难度。"""
+        import random
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        last = max(CONFIG.region_by_id)
+        async with session_factory() as db:
+            user = (await db.execute(select(User).where(User.id == me["id"]))).scalar_one()
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            items = (await db.execute(select(Item).where(Item.user_id == me["id"]))).scalars().all()
+            row = (
+                await db.execute(
+                    select(RegionProgress).where(
+                        RegionProgress.user_id == me["id"],
+                        RegionProgress.difficulty == 0,
+                        RegionProgress.region_id == last,
+                    )
+                )
+            ).scalar_one()
+            row.cleared = True  # 模拟功能上线前已通关（不会再触发 firstClear）
+            hero.current_region_id = last
+            hero.region_kill_count = int(CONFIG.region_by_id[last]["killsRequired"])
+            await db.commit()
+
+            payload = BattleReportRequest(sessionId=0, regionId=last, elapsedMs=1000, bossKilled=True)
+            result = await _settle_boss(db, user, hero, items, payload, random.Random(1), {}, 5000, 0)
+            await db.commit()
+
+        assert result is not None
+        assert result["firstClear"] is False
+        assert result["unlockedDifficulty"] == 1
+        assert (await auth_client.get(f"{API}/game/state")).json()["difficulty"]["unlocked"] == 1

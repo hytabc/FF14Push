@@ -336,6 +336,8 @@ export const useGameStore = defineStore('game', () => {
 
       if (res.boss.unlockedDifficulty) {
         toast.push(`已解锁难度 ${res.boss.unlockedDifficulty}！`, 'loot')
+        // 立即刷新状态，让难度选择器出现新解锁的档位（否则需手动刷新页面才可见）。
+        void loadState()
       }
 
       if (autoAdvance.value && res.boss.nextRegionId) {

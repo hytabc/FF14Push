@@ -346,7 +346,6 @@ async def _settle_boss(
     grant = await grant_generated_items(db, user, generated, source="boss", rng=rng)
 
     first_clear = not progress.cleared
-    unlocked_difficulty = None
     if first_clear:
         progress.cleared = True
         progress.cleared_at = datetime.now(timezone.utc)
@@ -361,14 +360,18 @@ async def _settle_boss(
             if not nxt.unlocked:
                 access = await region_access(db,user.id,hero,items,difficulty)
                 nxt.unlocked = not access[next_region]
-        # 周目制：通关当前难度最后一个地区 → 解锁下一难度
-        if (
-            payload.regionId == _max_region_id()
-            and difficulty < MAX_LEVEL
-            and int(user.battle_difficulty_max) < difficulty + 1
-        ):
-            user.battle_difficulty_max = difficulty + 1
-            unlocked_difficulty = difficulty + 1
+
+    # 周目制：每次击败当前难度最后一个地区的关底 BOSS 都可解锁下一难度。
+    # 刻意不要求 first_clear：旧存档在功能上线前已通关最后一个地区（cleared 已为 True），
+    # 若要求首通则永远无法解锁。
+    unlocked_difficulty = None
+    if (
+        payload.regionId == _max_region_id()
+        and difficulty < MAX_LEVEL
+        and int(user.battle_difficulty_max) < difficulty + 1
+    ):
+        user.battle_difficulty_max = difficulty + 1
+        unlocked_difficulty = difficulty + 1
 
     hero.region_kill_count = 0
 
