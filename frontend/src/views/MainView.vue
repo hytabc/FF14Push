@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import data from '@shared/schema'
 
+import BattleFloatLayer from '@/components/BattleFloatLayer.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import JobFigure from '@/components/JobFigure.vue'
@@ -374,28 +375,7 @@ function dodgeInfo() {
         <div class="relative mt-4 h-28 overflow-hidden rounded-lg border border-ink-700 bg-ink-900/60">
           <JobFigure :job-id="hero?.jobId" :size="40" class="absolute bottom-1 left-2" />
           <div class="absolute inset-0 flex items-end justify-center gap-6 pb-2">
-            <transition-group name="float">
-              <span
-                v-for="f in game.floating"
-                :key="f.id"
-                class="animate-float font-mono text-sm font-bold"
-                :class="
-                  f.tone === 'hero'
-                    ? 'text-emerald-300'
-                    : f.tone === 'crit'
-                      ? 'text-orange-300'
-                      : f.tone === 'dh'
-                        ? 'text-cyan-300'
-                        : f.tone === 'critDh'
-                          ? 'text-yellow-200'
-                          : f.tone === 'miss'
-                            ? 'text-ink-400'
-                            : 'text-rose-300'
-                "
-              >
-                {{ f.text }}
-              </span>
-            </transition-group>
+            <BattleFloatLayer />
           </div>
           <p class="absolute left-2 top-2 text-[10px] text-ink-600">伤害浮动演示</p>
         </div>
@@ -514,18 +494,3 @@ function dodgeInfo() {
     </Modal>
   </div>
 </template>
-
-<style scoped>
-.float-enter-active {
-  transition: all 0.15s ease;
-}
-.float-leave-active {
-  transition: opacity 0.5s ease;
-}
-.float-enter-from {
-  opacity: 0;
-}
-.float-leave-to {
-  opacity: 0;
-}
-</style>

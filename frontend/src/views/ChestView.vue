@@ -8,7 +8,7 @@ import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { chestLuckExplain, chestRarityExplain, pityExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
-import type { Item } from '@/game/types'
+import type { Item, RarityId } from '@/game/types'
 import { attrName, attrSuffix, formatNumber, rarityBg, rarityClass, rarityName } from '@/utils/format'
 
 const game = useGameStore()
@@ -37,6 +37,55 @@ const reducedMotion =
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 let revealTimer = 0
+
+/**
+ * 大批量揭晓的分帧挂载。
+ *
+ * 50 / 100 连抽一次要渲染上百个卡片，若在单帧内全部挂载会出现长时间的主线程任务。
+ * 这里每帧只挂一批（约 0.1s 内补齐），最终展示的条目一个不少。
+ */
+const MOUNT_CHUNK = 24
+/** 兜底时长（毫秒）：rAF 被后台标签页暂停时也要保证最终全部挂载。 */
+const MOUNT_BACKSTOP_MS = 600
+const mountedCount = ref(0)
+let mountRaf = 0
+let mountBackstop = 0
+
+function stopMountRamp() {
+  if (mountRaf) cancelAnimationFrame(mountRaf)
+  if (mountBackstop) window.clearTimeout(mountBackstop)
+  mountRaf = 0
+  mountBackstop = 0
+}
+
+/** 先挂第一批，再逐帧补齐到 `total`；同时挂一个兜底定时器保证一定会挂满。 */
+function rampMount(total: number) {
+  stopMountRamp()
+  mountedCount.value = Math.min(MOUNT_CHUNK, total)
+  if (mountedCount.value >= total) return
+  const step = () => {
+    mountedCount.value = Math.min(total, mountedCount.value + MOUNT_CHUNK)
+    mountRaf = mountedCount.value < total ? requestAnimationFrame(step) : 0
+  }
+  mountRaf = requestAnimationFrame(step)
+  mountBackstop = window.setTimeout(() => {
+    mountedCount.value = total
+    stopMountRamp()
+  }, MOUNT_BACKSTOP_MS)
+}
+
+/** 当前已挂载的揭晓项（分批增长，最终等于 revealItems）。 */
+const visibleReveal = computed(() => revealItems.value.slice(0, mountedCount.value))
+
+/** 本次抽奖的最高品阶（模板里被引用两次，用 computed 避免重复遍历）。 */
+const bestRarityId = computed<RarityId>(() => {
+  const order = data.rarities.order
+  let best = -1
+  for (const item of revealItems.value) {
+    best = Math.max(best, order.indexOf(item.rarity))
+  }
+  return best >= 0 ? order[best] : 'common'
+})
 
 const heroLevel = computed(() => game.hero?.level ?? 1)
 /** 已解锁的等级档位（玩家等级达到即可选）。 */
@@ -130,7 +179,10 @@ onMounted(async () => {
   band.value = unlockedBands.value[unlockedBands.value.length - 1]?.level ?? LEVEL_BANDS[0].level
 })
 
-onBeforeUnmount(() => window.clearTimeout(revealTimer))
+onBeforeUnmount(() => {
+  window.clearTimeout(revealTimer)
+  stopMountRamp()
+})
 
 function isUnlocked(level: number): boolean {
   return heroLevel.value >= level
@@ -143,6 +195,7 @@ function canContinueDraw(): boolean {
 
 function closeReveal() {
   window.clearTimeout(revealTimer)
+  stopMountRamp()
   showReveal.value = false
   phase.value = 'result'
 }
@@ -160,6 +213,7 @@ async function draw(chestId: string, count: number) {
     lastDraw.value = { chestId, count }
     spinKey.value += 1
     showReveal.value = true
+    rampMount(revealItems.value.length)
     if (reducedMotion || revealItems.value.length === 0) {
       phase.value = 'result'
     } else {
@@ -170,21 +224,14 @@ async function draw(chestId: string, count: number) {
           ? (len - 1) * REEL_STAGGER + REEL_DURATION + 250
           : len * gridStagger(len) + 300
       revealTimer = window.setTimeout(() => {
+        // 结果列表与揭晓网格是两棵不同的 DOM 树，各自分批挂载（信息量不变）。
+        rampMount(revealItems.value.length)
         phase.value = 'result'
       }, total)
     }
   } finally {
     busy.value = null
   }
-}
-
-function bestRarity(): string {
-  const order = data.rarities.order
-  let best = -1
-  for (const item of revealItems.value) {
-    best = Math.max(best, order.indexOf(item.rarity))
-  }
-  return best >= 0 ? order[best] : 'common'
 }
 </script>
 
@@ -337,7 +384,13 @@ function bestRarity(): string {
       </article>
     </section>
 
-    <Modal :open="showReveal" :title="modalTitle" max-width="max-w-4xl" @close="closeReveal()">
+    <Modal
+      :open="showReveal"
+      :title="modalTitle"
+      max-width="max-w-4xl"
+      :blur="false"
+      @close="closeReveal()"
+    >
       <!-- 开箱动画：单抽 1 个滚轮，十连 10 个并行滚轮，50/100 连网格波浪揭晓 -->
       <div v-if="phase === 'spinning'" class="space-y-3">
         <div v-if="revealItems.length === 1" class="mx-auto w-full max-w-xl">
@@ -351,7 +404,7 @@ function bestRarity(): string {
         </div>
         <div v-else-if="revealItems.length <= 10" class="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <ChestReel
-            v-for="(item, index) in revealItems"
+            v-for="(item, index) in visibleReveal"
             :key="`${spinKey}-${index}`"
             :item="item"
             :category="item.category"
@@ -367,9 +420,9 @@ function bestRarity(): string {
           class="grid max-h-[60vh] grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-5 lg:grid-cols-8"
         >
           <div
-            v-for="(item, index) in revealItems"
+            v-for="(item, index) in visibleReveal"
             :key="`spin-${index}`"
-            class="animate-rise rounded-lg border p-1.5"
+            class="gallery-cell animate-rise rounded-lg border p-1.5"
             :class="[rarityClass(item.rarity), rarityBg(item.rarity)]"
             :style="{ animationDelay: `${index * gridStagger(revealItems.length)}ms` }"
           >
@@ -385,8 +438,8 @@ function bestRarity(): string {
       <div v-else class="space-y-3">
         <div class="flex items-center gap-2 text-xs">
           <span class="text-ink-400">最高品阶：</span>
-          <span class="font-semibold" :class="rarityClass(bestRarity() as never)">
-            {{ rarityName(bestRarity() as never) }}
+          <span class="font-semibold" :class="rarityClass(bestRarityId)">
+            {{ rarityName(bestRarityId) }}
           </span>
           <span class="ml-auto text-ink-400">共 {{ revealItems.length }} 件</span>
         </div>
@@ -396,14 +449,14 @@ function bestRarity(): string {
 
         <div class="grid max-h-[55vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
           <div
-            v-for="(item, index) in revealItems"
+            v-for="(item, index) in visibleReveal"
             :key="`result-${index}`"
-            class="animate-rise rounded-lg border p-3"
+            class="gallery-cell animate-rise rounded-lg border p-3"
             :class="[rarityClass(item.rarity), rarityBg(item.rarity), item.autoSold ? 'opacity-75' : '']"
             :style="{ animationDelay: `${Math.min(index * 45, 400)}ms` }"
           >
             <div class="flex items-center gap-2">
-              <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="36" />
+              <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="36" variant="lite" />
               <div class="min-w-0">
                 <p class="truncate text-xs font-medium">{{ item.name }}</p>
                 <p class="text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</p>

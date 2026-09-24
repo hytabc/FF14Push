@@ -1777,15 +1777,22 @@ export class BattleSimulator {
   }
 
   private pushFloat(text: string, side: 'hero' | 'monster', tone: FloatTone): void {
-    this.floating.push({ id: nextId(), text, tone, side, remaining: FLOAT_LIFE })
-    if (this.floating.length > MAX_FLOAT) this.floating.splice(0, this.floating.length - MAX_FLOAT)
+    // 只在真正增删时替换数组：`floating` 的引用稳定，Vue 才不会因为每帧重建数组而把整个
+    // 战斗页标记为脏（位移由 CSS `float-up` 播放，UI 不需要看到 remaining 的递减）。
+    this.floating = [...this.floating, { id: nextId(), text, tone, side, remaining: FLOAT_LIFE }].slice(
+      -MAX_FLOAT,
+    )
   }
 
   /** 伤害浮动数字按存活时间衰减，过期的移除（供 UI 播放淡出）。 */
   private tickFloating(dt: number): void {
     if (this.floating.length === 0) return
-    for (const f of this.floating) f.remaining -= dt
-    this.floating = this.floating.filter((f) => f.remaining > 0)
+    let expired = false
+    for (const f of this.floating) {
+      f.remaining -= dt
+      if (f.remaining <= 0) expired = true
+    }
+    if (expired) this.floating = this.floating.filter((f) => f.remaining > 0)
   }
 
   /** 日志：怪物对英雄造成的伤害。 */

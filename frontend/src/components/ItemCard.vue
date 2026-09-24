@@ -70,7 +70,7 @@ function tagStyle(colorId: string) {
 
 <template>
   <article
-    class="card group relative cursor-pointer p-3 transition"
+    class="card gallery-cell group relative cursor-pointer p-3 transition"
     :class="[rarityBg(item.rarity), selected ? 'ring-2 ring-white/70' : 'hover:border-white/40']"
     :style="style"
     @click="emit('select', item)"

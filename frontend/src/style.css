@@ -67,6 +67,23 @@ body {
   background: var(--color-ink-800);
 }
 
+/*
+ * 大批量卡片 / 网格单元（抽箱结果、图鉴、选择弹窗）：跳过滚动容器外元素的分层与绘制。
+ * 上百个节点同时参与布局/绘制是卡顿主因之一，配合分批挂载可把单帧开销压到常数级。
+ * contain-intrinsic-size 提供屏外尺寸占位，避免滚动条跳动。
+ */
+@utility gallery-cell {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
+/* 与 card 同款但去掉 backdrop-filter：用于内部有大量动画子元素的弹窗（避免反复重算模糊）。 */
+@utility card-flat {
+  border-radius: 0.875rem;
+  border: 1px solid var(--color-ink-700);
+  background: var(--color-ink-900);
+}
+
 /* 16×16 像素图标放大后保持硬边，避免插值模糊 */
 .pixel-icon {
   image-rendering: pixelated;

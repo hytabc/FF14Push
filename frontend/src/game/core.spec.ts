@@ -1293,8 +1293,11 @@ describe('装备触发效果（proc）', () => {
     expect(sim.monster).toBeTruthy()
 
     const engine = sim as unknown as { cast(s: unknown): void }
+    // 固定随机数：未命中就不会触发 proc，否则本测试会偶发失败。
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
     engine.cast(ADVENTURER_SKILL)
     const text = sim.log.map((l) => l.text).join(' | ')
+    randomSpy.mockRestore()
     expect(text).toContain('灼烧')
     expect(text).toContain('疾风')
   })
@@ -1329,8 +1332,11 @@ describe('装备触发效果（proc）', () => {
     for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
     expect(sim.monster).toBeTruthy()
     const engine = sim as unknown as { cast(s: unknown): void }
+    // 固定随机数：普攻有约 5% 未命中概率，未命中就不会触发 proc —— 否则本测试会偶发失败。
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
     engine.cast(ADVENTURER_SKILL)
     const text = sim.log.map((l) => l.text).join(' | ')
+    randomSpy.mockRestore()
     expect(text).toContain('中毒')
     expect(text).toContain('凋零')
     expect(text).toContain('失明')
@@ -1350,7 +1356,10 @@ describe('装备触发效果（proc）', () => {
       enemyAttackDown: number
       monsterMissChance: number
     }
+    // 固定随机数：未命中就不会附加减益，否则断言会偶发失败。
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
     engine.cast(ADVENTURER_SKILL)
+    randomSpy.mockRestore()
     expect(engine.enemyAttackDown).toBeCloseTo(0.2, 5)
     expect(engine.monsterMissChance).toBeCloseTo(25, 5)
   })
@@ -1363,8 +1372,11 @@ describe('装备触发效果（proc）', () => {
     sim.start()
     for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
     const engine = sim as unknown as { cast(s: unknown): void }
+    // 固定随机数：两次普攻都必须命中，否则「普攻 造成」不足两条。
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
     engine.cast(ADVENTURER_SKILL)
     const text = sim.log.map((l) => l.text).join(' | ')
+    randomSpy.mockRestore()
     expect(text).toContain('双重施法')
     expect(sim.log.filter((l) => l.text.includes('普攻 造成')).length).toBeGreaterThanOrEqual(2)
   })
@@ -1387,8 +1399,11 @@ describe('装备触发效果（proc）', () => {
     sim.heroHp = 1000
     sim.heroMp = 0
     const engine = sim as unknown as { cast(s: unknown): void }
+    // 固定随机数：未命中就不会挂上「生机 / 灵息」，后续 tick 也没有回复可断言。
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
     engine.cast(ADVENTURER_SKILL)
     sim.tick(1)
+    randomSpy.mockRestore()
     expect(sim.heroHp).toBeGreaterThan(1000)
     expect(sim.heroMp).toBeGreaterThan(0)
   })
@@ -1507,6 +1522,34 @@ describe('Lv80+ 地区强化与战斗日志', () => {
     expect(sim.floating).toHaveLength(1)
     sim.tick(0.6)
     expect(sim.floating).toHaveLength(0)
+  })
+
+  it('浮动数字数组仅在增删时替换引用（避免每帧把整页标记为脏）', () => {
+    const sim = new BattleSimulator({ stats: makeStats(), regionId: 1 })
+    sim.pushFloating('-100', 'hero', 'monster')
+    const afterPush = sim.floating
+
+    // 未过期的帧只递减 remaining，不重建数组 —— 引用稳定，Vue 不会每帧重渲染。
+    sim.tick(0.1)
+    sim.tick(0.1)
+    expect(sim.floating).toBe(afterPush)
+    expect(sim.floating[0].remaining).toBeCloseTo(0.8, 5)
+
+    // 新增一条必须换新引用，UI 才知道要渲染。
+    sim.pushFloating('-50', 'hero', 'monster')
+    const afterSecond = sim.floating
+    expect(afterSecond).not.toBe(afterPush)
+    expect(afterSecond).toHaveLength(2)
+
+    // 有条目过期时换新引用。
+    sim.tick(0.9)
+    expect(sim.floating).not.toBe(afterSecond)
+    expect(sim.floating).toHaveLength(1)
+    expect(sim.floating[0].text).toBe('-50')
+
+    // 上限仍然生效（等价于原来的 push + splice）。
+    for (let i = 0; i < 20; i += 1) sim.pushFloating(`-${i}`, 'hero', 'monster')
+    expect(sim.floating.length).toBeLessThanOrEqual(12)
   })
 })
 

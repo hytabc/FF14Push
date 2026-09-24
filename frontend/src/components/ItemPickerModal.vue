@@ -5,6 +5,7 @@ import ItemCard from '@/components/ItemCard.vue'
 import ItemFilterBar from '@/components/ItemFilterBar.vue'
 import ItemPickerTile from '@/components/ItemPickerTile.vue'
 import Modal from '@/components/Modal.vue'
+import { useVisibleLimit } from '@/composables/useVisibleLimit'
 import type { Item } from '@/game/types'
 import { RARITY_ORDER, rarityName } from '@/utils/format'
 import {
@@ -52,6 +53,9 @@ function setView(v: ViewMode) {
 }
 
 const filtered = computed(() => applyItemFilters(props.candidates, filters.value, sort.value))
+
+// 候选可达上百件（卡片视图每件还是很重的 ItemCard），首批只渲染一部分，其余由「显示更多」追加。
+const { visible, remaining, showMore } = useVisibleLimit(filtered, 60)
 
 // 每次打开都重置筛选与排序（记住视图模式），避免上一个栏位的筛选把候选全部隐藏。
 watch(
@@ -114,7 +118,7 @@ function isEquipped(item: Item): boolean {
       <!-- 卡片视图 -->
       <div v-if="view === 'card'" class="space-y-2">
         <ItemCard
-          v-for="item in filtered"
+          v-for="item in visible"
           :key="item.id"
           :item="item"
           :show-actions="false"
@@ -129,7 +133,7 @@ function isEquipped(item: Item): boolean {
         class="divide-y divide-ink-800 overflow-hidden rounded-lg border border-ink-700"
       >
         <ItemPickerTile
-          v-for="item in filtered"
+          v-for="item in visible"
           :key="item.id"
           :item="item"
           variant="list"
@@ -141,7 +145,7 @@ function isEquipped(item: Item): boolean {
       <!-- 网格视图 -->
       <div v-else class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
         <ItemPickerTile
-          v-for="item in filtered"
+          v-for="item in visible"
           :key="item.id"
           :item="item"
           variant="grid"
@@ -149,6 +153,14 @@ function isEquipped(item: Item): boolean {
           @select="emit('equip', $event)"
         />
       </div>
+
+      <button
+        v-if="remaining > 0"
+        class="mx-auto block rounded-lg border border-ink-700 bg-ink-800/60 px-4 py-2 text-xs text-ink-200 transition hover:border-amber-400"
+        @click="showMore"
+      >
+        显示更多（剩余 {{ remaining }} 件）
+      </button>
 
       <p v-if="!filtered.length" class="py-8 text-center text-xs text-ink-600">
         没有符合条件的装备。

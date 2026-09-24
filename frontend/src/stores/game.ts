@@ -131,10 +131,14 @@ export const useGameStore = defineStore('game', () => {
     return sim.value?.floating ?? []
   })
 
-  /** 副本战斗面板：各 BOSS 血量与狂暴状态。 */
+  /**
+   * 副本战斗面板：各 BOSS 血量与狂暴状态。
+   *
+   * 只依赖 0.1s 节拍（`uiTick`）而**不**依赖每帧的 `logVersion`：`bossEntries()` 每次求值
+   * 都会新建数组与对象，挂在每帧上会让副本页整页 60fps 重渲染。血量按 10Hz 刷新已足够。
+   */
   const raidBosses = computed<RaidBossEntry[]>(() => {
     void uiTick.value
-    logVersion.value
     return sim.value?.bossEntries() ?? []
   })
 

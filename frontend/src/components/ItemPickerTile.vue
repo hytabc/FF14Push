@@ -32,7 +32,7 @@ const tooltip = computed(
 <template>
   <button
     v-if="variant === 'grid'"
-    class="flex flex-col items-center gap-1 rounded-lg border border-ink-700 bg-ink-900/40 p-2 text-center transition hover:border-white/50"
+    class="gallery-cell flex flex-col items-center gap-1 rounded-lg border border-ink-700 bg-ink-900/40 p-2 text-center transition hover:border-white/50"
     :title="tooltip"
     @click="emit('select', item)"
   >

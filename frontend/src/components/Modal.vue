@@ -9,8 +9,10 @@ const props = withDefaults(
     open: boolean
     maxWidth?: string
     zIndex?: number
+    /** 面板是否使用毛玻璃背景。内部有大量动画子元素时关掉可避免反复重算模糊。 */
+    blur?: boolean
   }>(),
-  { title: '', maxWidth: 'max-w-lg', zIndex: 70 },
+  { title: '', maxWidth: 'max-w-lg', zIndex: 70, blur: true },
 )
 
 const emit = defineEmits<{ close: [] }>()
@@ -31,7 +33,10 @@ watch(
         :style="{ zIndex }"
         @click.self="emit('close')"
       >
-        <div class="card flex max-h-[calc(100vh-2rem)] w-full animate-rise flex-col p-5" :class="maxWidth">
+        <div
+          class="flex max-h-[calc(100vh-2rem)] w-full animate-rise flex-col p-5"
+          :class="[blur ? 'card' : 'card-flat', maxWidth]"
+        >
           <header v-if="title" class="mb-3 flex shrink-0 items-center justify-between">
             <h2 class="text-lg font-semibold text-white">{{ title }}</h2>
             <button class="text-ink-400 transition hover:text-white" @click="emit('close')">✕</button>

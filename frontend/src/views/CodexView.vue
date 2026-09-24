@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '@/api'
 import data from '@shared/schema'
 import ItemIcon from '@/components/ItemIcon.vue'
+import { useVisibleLimit } from '@/composables/useVisibleLimit'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, JobRole, RarityId, TermQuality } from '@/game/types'
 import { RARITY_ORDER, TERM_CATEGORY_OPTIONS, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termCategoryName, termQualityClass, termQualityName } from '@/utils/format'
@@ -315,6 +316,12 @@ const filtered = computed(() => {
   return list
 })
 
+/**
+ * 图鉴条目可达上千（装备展开后），一次性挂载会让切分类 / 改筛选出现长时间单帧任务。
+ * 首批只渲染 60 条，其余由「显示更多」按批追加；筛选变化会自动回到首批。
+ */
+const { visible, remaining, showMore } = useVisibleLimit(filtered, 60)
+
 const progressRow = computed(() => {
   if (!progress.value) return null
   return progress.value[category.value]
@@ -500,9 +507,9 @@ function entryRarity(entry: Entry): RarityId {
     <!-- 装备图鉴 -->
     <section v-else-if="category === 'equipment'" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <article
-        v-for="entry in filtered"
+        v-for="entry in visible"
         :key="entry.baseId"
-        class="card p-3"
+        class="card gallery-cell p-3"
         :class="entry.unlocked ? '' : 'opacity-55'"
       >
         <div class="flex items-start justify-between gap-2">
@@ -565,9 +572,9 @@ function entryRarity(entry: Entry): RarityId {
     <!-- 怪物图鉴 -->
     <section v-else-if="category === 'monster'" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <article
-        v-for="entry in filtered"
+        v-for="entry in visible"
         :key="entry.monsterId"
-        class="card p-3"
+        class="card gallery-cell p-3"
         :class="entry.unlocked ? '' : 'opacity-55'"
       >
         <div class="flex items-start justify-between gap-2">
@@ -611,9 +618,9 @@ function entryRarity(entry: Entry): RarityId {
     <!-- 材料图鉴 -->
     <section v-else-if="category === 'material'" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <article
-        v-for="entry in filtered"
+        v-for="entry in visible"
         :key="entry.itemId"
-        class="card p-3"
+        class="card gallery-cell p-3"
         :class="entry.unlocked ? '' : 'opacity-55'"
       >
         <div class="flex items-start justify-between gap-2">
@@ -651,9 +658,9 @@ function entryRarity(entry: Entry): RarityId {
     <!-- 鱼获图鉴 -->
     <section v-else-if="category === 'fish'" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       <article
-        v-for="entry in filtered"
+        v-for="entry in visible"
         :key="entry.fishId"
-        class="card p-3"
+        class="card gallery-cell p-3"
         :class="entry.unlocked ? '' : 'opacity-55'"
       >
         <div class="flex items-start justify-between gap-2">
@@ -706,7 +713,7 @@ function entryRarity(entry: Entry): RarityId {
 
     <!-- 词条图鉴 -->
     <section v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      <article v-for="entry in filtered" :key="entry.termId" class="card p-3">
+      <article v-for="entry in visible" :key="entry.termId" class="card gallery-cell p-3">
         <div class="flex items-start justify-between gap-2">
           <div class="flex min-w-0 items-center gap-1.5">
             <p class="truncate text-sm font-medium text-ink-100">{{ entry.name }}</p>
@@ -757,6 +764,15 @@ function entryRarity(entry: Entry): RarityId {
     <p v-if="!loading && !filtered.length" class="py-10 text-center text-xs text-ink-600">
       没有符合条件的条目。
     </p>
+
+    <!-- 图鉴条目可达上千，首批只渲染一部分，避免切分类时一次性挂载全部卡片。 -->
+    <button
+      v-if="!loading && remaining > 0"
+      class="mx-auto block rounded-lg border border-ink-700 bg-ink-800/60 px-4 py-2 text-xs text-ink-200 transition hover:border-amber-400"
+      @click="showMore"
+    >
+      显示更多（剩余 {{ remaining }} 条）
+    </button>
 
     <p class="text-center text-[10px] text-ink-600">
       图鉴完成度仅提供称号、头像框与徽章展示，不提供金币或宝箱奖励。

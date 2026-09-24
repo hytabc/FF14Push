@@ -134,18 +134,10 @@ function playtimeText(entry: RankingEntry): string {
 const profileId = ref<number | null>(null)
 const record = ref<CoopClearPayload | null>(null)
 
-/** 佩戴中的称号（突出显示），与「已解锁但未佩戴」区分。 */
+/** 佩戴中的称号：每位玩家在榜上至多展示这一个（琥珀色边框 + 底色突出）。 */
 function activeTitle(entry: RankingEntry): string | null {
   const id = entry.payload?.activeTitleId
   return id ? titleName(String(id)) : null
-}
-
-/** 其余已解锁称号（弱化显示）。 */
-function otherTitles(entry: RankingEntry): string[] {
-  const ids = entry.payload?.titles
-  if (!Array.isArray(ids)) return []
-  const active = entry.payload?.activeTitleId ? String(entry.payload.activeTitleId) : ''
-  return ids.map((id) => String(id)).filter((id) => id !== active).map((id) => titleName(id))
 }
 
 const FISH_REGION_TOTAL = data.fish.regions.length
@@ -306,13 +298,8 @@ function pickDungeon(id: string) {
                 {{ entry.nickname }}<span class="opacity-60">#{{ entry.username }}</span>
                 <span
                   v-if="activeTitle(entry)"
-                  class="ml-1 rounded bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-100"
+                  class="ml-1 inline-block rounded border border-amber-400 bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-100"
                 >{{ activeTitle(entry) }}</span>
-                <span
-                  v-for="t in otherTitles(entry)"
-                  :key="t"
-                  class="ml-1 rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-ink-400"
-                >{{ t }}</span>
                 <!-- 远征榜：行内展示该次通关的阵容 -->
                 <div v-if="pane.board === 'coop' && partyOf(entry).length" class="mt-1 flex flex-wrap gap-1">
                   <span

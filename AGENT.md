@@ -77,6 +77,12 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 - 战力不等同于装备出售估值。普通副本允许低战力挑战，高难与地区解锁有服务端资格条件；已移除机制试炼，不应重新依赖它。
 - 战力配置有校验与安全默认值：修改 `balance.json` 时检查 `services/balance.py` 和 `balance_defaults.py`；不兼容规则需考虑版本和既有挑战快照。
 - 联机 API 与 worker 共享数据库状态。修改时保留锁顺序、租约、指令处理及奖励幂等语义；SQLite 测试不能替代 PostgreSQL 并发验证。
+- **前端性能不变量（改战斗循环 / 大列表时务必保留）：**
+  - `BattleSimulator.floating` 与 `log` 的**数组引用只在真正增删时变化**（飘字见 `tickFloating`：只在有条目过期时才 `filter` 重建，未过期的帧只递减 `remaining`）。这是为了不让按帧驱动的循环每帧把订阅方标记为脏 —— 若改回「每帧重建数组」，战斗页会从 ~10Hz 退回 ~60Hz 整页重渲染（`stores/game.ts` 的 `floating`/`battleLog` 直接返回该数组）。`core.spec.ts` 有断言守住这一点。
+  - 副本 / 挖宝的 BOSS 面板（`game.raidBosses`、`treasure.bosses`）**只依赖 100ms 的 `uiTick`，不依赖每帧的 `logVersion`**：`bossEntries()` 每次求值都新建数组与对象，挂在每帧上会让整页 60fps 重渲染。
+  - 高频更新的 UI 片段（如伤害飘字层 `components/BattleFloatLayer.vue`）要**自己从 store 读状态**，不要由页面组件读取后再传 prop —— 否则页面会跟着高频更新一起重渲染。
+  - 批量卡片列表（抽箱结果、图鉴、选择弹窗）统一用 CSS `gallery-cell`（`content-visibility: auto`）跳过屏外元素的布局/绘制，并配合**分批挂载**（`ChestView` 的 `rampMount`）或**渐进渲染**（`composables/useVisibleLimit.ts` 的「显示更多」）避免单帧创建上百个节点。抽箱揭晓弹窗用 `Modal` 的 `:blur="false"`（`card-flat`）避免大量动画子元素反复触发 `backdrop-filter` 重算。
+  - 卡片内的弹层（`InfoTip` / `TermBadges`）一律 `Teleport to="body"`：`content-visibility` 会引入 `contain: paint`，若弹层留在卡内会被错误定位（给卡片加 `gallery-cell` 前先确认这一点）。
 
 ## 本地开发
 

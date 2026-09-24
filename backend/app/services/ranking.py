@@ -25,7 +25,6 @@ from app.models import (
     RankingEntry,
     RegionProgress,
     User,
-    UserTitle,
 )
 from app.models.multiplayer import CoopRecord
 from app.services.admin import is_admin
@@ -60,11 +59,6 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         if row.cleared:
             cleared.setdefault(row.user_id, []).append(row)
 
-    # 称号（展示在各榜行内；钓鱼榜的统计实时算，不走这里）
-    title_map: dict[int, list[str]] = {}
-    for row in (await db.execute(select(UserTitle))).scalars().all():
-        title_map.setdefault(row.user_id, []).append(row.title_id)
-
     await db.execute(delete(RankingEntry))
 
     # 账号级魔晶石镶嵌加成：战力榜需与玩家面板一致，故一并计入。
@@ -85,7 +79,7 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         best = max(cleared_list, key=lambda row: (row.difficulty, row.region_id), default=None)
         stage_value = best.difficulty * STAGE_REGION_BASE + best.region_id if best else 0
         stage_cleared_at = best.cleared_at if best else None
-        extra = {"titles": title_map.get(user.id, []), "activeTitleId": user.active_title_id}
+        extra = {"activeTitleId": user.active_title_id}
 
         entries = [
             _entry(user, hero, "level", hero.level, hero.exp, extra),
@@ -144,9 +138,6 @@ async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
     users = (
         await db.execute(select(User).options(selectinload(User.hero)).where(User.id.in_(ids)))
     ).scalars().all()
-    title_map: dict[int, list[str]] = {}
-    for row in (await db.execute(select(UserTitle).where(UserTitle.user_id.in_(ids)))).scalars().all():
-        title_map.setdefault(row.user_id, []).append(row.title_id)
 
     out: list[dict[str, Any]] = []
     for user in users:
@@ -159,7 +150,6 @@ async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
                 "nickname": user.nickname,
                 "username": user.username,
                 "level": user.hero.level,
-                "titles": title_map.get(user.id, []),
                 "activeTitleId": user.active_title_id,
                 "playSeconds": _play_seconds(user),
                 "fishSpecies": stat["species"],
@@ -200,7 +190,6 @@ async def fetch_fish_board(
                 "fishKing": row["fishKing"],
                 "fishEmperor": row["fishEmperor"],
                 "fishLegend": row["fishLegend"],
-                "titles": row["titles"],
                 "activeTitleId": row["activeTitleId"],
             },
         }
@@ -291,9 +280,6 @@ async def _dohdol_rows(db: AsyncSession) -> list[dict[str, Any]]:
     users = (
         await db.execute(select(User).options(selectinload(User.hero)).where(User.id.in_(ids)))
     ).scalars().all()
-    title_map: dict[int, list[str]] = {}
-    for row in (await db.execute(select(UserTitle).where(UserTitle.user_id.in_(ids)))).scalars().all():
-        title_map.setdefault(row.user_id, []).append(row.title_id)
 
     out: list[dict[str, Any]] = []
     for user in users:
@@ -306,7 +292,6 @@ async def _dohdol_rows(db: AsyncSession) -> list[dict[str, Any]]:
                 "nickname": user.nickname,
                 "username": user.username,
                 "level": user.hero.level,
-                "titles": title_map.get(user.id, []),
                 "activeTitleId": user.active_title_id,
                 "playSeconds": _play_seconds(user),
                 "dohExp": int(stat["dohExp"]),
@@ -332,7 +317,6 @@ def _dohdol_payload(row: dict[str, Any]) -> dict[str, Any]:
         "nickname": row["nickname"],
         "level": row["level"],
         "playSeconds": row["playSeconds"],
-        "titles": row["titles"],
         "activeTitleId": row["activeTitleId"],
         "dohLevel": row["dohLevel"],
         "dolLevel": row["dolLevel"],
@@ -495,7 +479,6 @@ def _entry(
         "fishSpecies": 0,
         "fishCount": 0,
         "playSeconds": _play_seconds(user),
-        "titles": [],
         "activeTitleId": user.active_title_id,
     }
     if extra:
@@ -504,7 +487,6 @@ def _entry(
                 "jobId": extra.get("jobId"),
                 "fishSpecies": extra.get("fishSpecies", 0),
                 "fishCount": extra.get("fishCount", 0),
-                "titles": extra.get("titles", []),
                 "activeTitleId": extra.get("activeTitleId"),
             }
         )

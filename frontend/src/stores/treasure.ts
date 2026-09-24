@@ -71,8 +71,8 @@ export const useTreasureStore = defineStore('treasure', () => {
     return sim.value?.floating ?? []
   })
   const bosses = computed<RaidBossEntry[]>(() => {
+    // 只依赖 0.1s 节拍：`bossEntries()` 每次求值都新建对象，挂在每帧上会让挖宝页 60fps 整页重渲染。
     void uiTick.value
-    logVersion.value
     return sim.value?.bossEntries() ?? []
   })
 
