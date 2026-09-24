@@ -35,6 +35,34 @@ services:
       start_period: 10s
     networks: [eorzea]
 
+  db-backup:
+    # 定时备份：每 BACKUP_INTERVAL_HOURS 小时把数据库导出为 tar.gz 压缩包，
+    # 只保留最近 BACKUP_KEEP 份；产物落在宿主机 ${BACKUP_DIR}（默认 ./data/backups）。
+    image: ${DOCKER_IMAGE_MIRROR-docker.m.daocloud.io/library/}postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # pg_dump 连接参数（与 db 服务一致）。
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-eorzea}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-eorzea}
+      # 容器内备份目录固定挂载到 /backups（与上面 volumes 的宿主机路径无关）。
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-6}
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+      BACKUP_PREFIX: ${BACKUP_PREFIX:-eorzea}
+    volumes:
+      - ${BACKUP_DIR:-./data/backups}:/backups
+      - ./scripts/db-backup.sh:/usr/local/bin/db-backup.sh:ro
+    entrypoint: ["sh", "/usr/local/bin/db-backup.sh"]
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [eorzea]
+
   backend:
     build:
       context: .

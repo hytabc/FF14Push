@@ -142,7 +142,7 @@ docker compose logs -f backend
 
 访问 `http://<服务器地址>:${FRONTEND_PORT}`（默认 8080）。
 
-编排包含五个服务：
+编排包含六个服务：
 
 | 服务 | 说明 | 端口 |
 | --- | --- | --- |
@@ -151,6 +151,7 @@ docker compose logs -f backend
 | `coop-worker` | 远征（团队副本）推进进程，复用后端镜像 | — |
 | `worldboss-worker` | 世界BOSS 推进进程（共享血量递减），复用后端镜像 | — |
 | `db` | PostgreSQL 16，数据持久化在 `${POSTGRES_DATA_DIR}`（默认 `./data/postgres`，bind mount 到本机） | `127.0.0.1:${POSTGRES_PORT}` → 5432 |
+| `db-backup` | 定时把数据库导出为 tar.gz 压缩包存到 `${BACKUP_DIR}`（默认 `./data/backups`） | — |
 
 > `coop-worker` / `worldboss-worker` 均为独立进程：缺少它们时远征 / 世界BOSS 不会推进（不影响其它玩法）。
 
@@ -169,6 +170,12 @@ POSTGRES_DB=eorzea
 
 # 数据库文件在本机的存放目录（bind mount）
 POSTGRES_DATA_DIR=./data/postgres
+
+# 自动备份（db-backup 服务）
+BACKUP_DIR=./data/backups        # 压缩包存放目录
+BACKUP_INTERVAL_HOURS=6          # 备份间隔（小时）
+BACKUP_KEEP=7                    # 只保留最近几份，更旧的自动清理
+BACKUP_PREFIX=eorzea             # 压缩包文件名前缀
 
 # 应用
 JWT_SECRET=请替换为随机值（openssl rand -hex 32）
@@ -198,6 +205,8 @@ docker compose ps                                    # 服务状态
 docker compose logs -f backend                       # 后端日志
 docker compose exec backend alembic upgrade head     # 手动迁移
 docker compose exec db psql -U eorzea -d eorzea      # 进数据库
+docker compose logs -f db-backup                     # 备份日志
+docker compose run --rm -e BACKUP_RUN_ONCE=1 db-backup   # 立即手动备份一次
 docker compose down                                  # 停止（保留数据）
 docker compose up -d --build                         # 更新实例（数据保留）
 ```
@@ -207,13 +216,43 @@ docker compose up -d --build                         # 更新实例（数据保�
 数据库文件通过 bind mount 落在本机目录 `${POSTGRES_DATA_DIR}`（默认仓库内 `./data/postgres`），
 不在容器里，因此**重新构建 / 重建容器不会丢数据**：
 
-- 备份：直接复制该目录即可，例如 `tar czf pgdata-$(date +%F).tar.gz -C data postgres`；
-- 恢复：`docker compose down` 后用备份替换 `./data/postgres` 再 `docker compose up -d`；
 - 迁移服务器：把该目录一起拷到新机器上的相同相对路径即可；
 - 换路径：改 `.env` 里的 `POSTGRES_DATA_DIR` 后 `docker compose up -d`（建议先把旧目录内容搬过去）。
 
 > 注意：该目录已在 `.gitignore` 中排除，不要提交到仓库。
 > Linux 上若 `db` 容器启动报数据目录权限错误，执行 `sudo chown -R 999:999 ./data/postgres` 后重启。
+
+#### 自动备份（`db-backup` 服务）
+
+编排内置 `db-backup` 服务，随 `docker compose up -d` 一起启动。启动后**立即备份一次**，
+之后每 `BACKUP_INTERVAL_HOURS`（默认 6）小时执行一次：用 `pg_dump` 导出整库，
+打包为 `tar.gz` 压缩包写入 `${BACKUP_DIR}`（默认 `./data/backups`），
+并只保留最近 `BACKUP_KEEP`（默认 7）份，自动清理更旧的。
+
+压缩包文件名形如 `eorzea-20260924-120000.tar.gz`，内含：
+
+- `dump.sql` —— 整库 SQL（自带 `DROP ... IF EXISTS`，可直接重放）；
+- `manifest.txt` —— 备份时刻、库名 / 主机 / 端口、`pg_dump` 版本。
+
+```bash
+ls -lh ./data/backups                                    # 查看已有备份
+docker compose logs -f db-backup                         # 查看备份日志
+docker compose run --rm -e BACKUP_RUN_ONCE=1 db-backup   # 立即手动备份一次
+```
+
+#### 从压缩包恢复
+
+```bash
+docker compose down
+mkdir -p /tmp/restore
+tar -xzf ./data/backups/eorzea-20260924-120000.tar.gz -C /tmp/restore
+docker compose up -d db
+docker compose exec -T db psql -U eorzea -d eorzea < /tmp/restore/dump.sql
+docker compose up -d
+```
+
+> `dump.sql` 会先 DROP 再重建对象，即覆盖当前库内容；恢复前建议先手动备份一份。
+> 若改过 `POSTGRES_USER` / `POSTGRES_DB`，把上面 `psql` 的参数改成对应值即可。
 
 ---
 
