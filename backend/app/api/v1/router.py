@@ -11,10 +11,12 @@ from app.api.v1 import (
     codex,
     dohdol,
     economy,
+    farm,
     friends,
     game,
     inventory,
     market,
+    materia,
     raid,
     ranking,
     redeem,
@@ -22,6 +24,7 @@ from app.api.v1 import (
     settings,
     tags,
     tavern,
+    treasure,
     tutorial,
 )
 
@@ -45,6 +48,9 @@ api_router.include_router(tags.router)
 api_router.include_router(redeem.router)
 api_router.include_router(raid.router)
 api_router.include_router(dohdol.router)
+api_router.include_router(materia.router)
+api_router.include_router(farm.router)
+api_router.include_router(treasure.router)
 api_router.include_router(admin.router)
 
 from app.api.v1 import heroes, registrations, pvp, coop, worldboss

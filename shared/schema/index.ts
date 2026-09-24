@@ -32,6 +32,9 @@ import recipesJson from '../data/recipes.json'
 import consumablesJson from '../data/consumables.json'
 import titlesJson from '../data/titles.json'
 import eggHeroesJson from '../data/egg-heroes.json'
+import materiaJson from '../data/materia.json'
+import farmJson from '../data/farm.json'
+import treasureJson from '../data/treasure.json'
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
@@ -450,6 +453,36 @@ export interface TitleDef {
   condition: { type: string }
 }
 
+/** 魔晶石种类：name 为 FF14 词根（刚力/巧力/智力/武略/雄略/神眼）。 */
+export interface MateriaTypeDef {
+  id: string
+  name: string
+  stat: AttrId
+  statName: string
+}
+
+/** 单件魔晶石（6 种 × 5 级）。 */
+export interface MateriaDef {
+  id: string
+  name: string
+  type: string
+  stat: AttrId
+  statName: string
+  level: number
+  value: number
+  sell: number
+}
+
+/** 作物种子（种田）。 */
+export interface SeedDef {
+  id: string
+  name: string
+  kind: string
+  yield: { type: 'gold' | 'heroLevel'; amount?: number; levels?: number }
+  desc: string
+  sell: number
+}
+
 const raritiesData = raritiesJson as unknown as {
   order: RarityId[]
   rarities: Record<RarityId, Rarity>
@@ -626,6 +659,25 @@ for (const region of (fishJson as unknown as { regions: FishRegionDef[] }).regio
     materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId, sell: f.sell })
   }
 }
+
+const materiaTypes = (materiaJson as unknown as { types: MateriaTypeDef[] }).types
+const materiaGrades = (materiaJson as unknown as { grades: string[] }).grades
+const materiaValues = (materiaJson as unknown as { values: Record<string, number[]> }).values
+const materiaSell = (materiaJson as unknown as { sell: Record<string, number> }).sell
+
+/** 魔晶石展开：6 种 × 5 级 = 30 件，id = m_{type}_{level}。 */
+const materiaList: MateriaDef[] = materiaTypes.flatMap((t) =>
+  (materiaValues[t.id] ?? []).map((value, idx) => ({
+    id: `m_${t.id}_${idx + 1}`,
+    name: `${t.name}魔晶石${materiaGrades[idx]}`,
+    type: t.id,
+    stat: t.stat,
+    statName: t.statName,
+    level: idx + 1,
+    value,
+    sell: materiaSell[String(idx + 1)] ?? 0,
+  })),
+)
 
 export const gameData = {
   rarities: { order: raritiesData.order, byId: raritiesData.rarities },
@@ -891,6 +943,51 @@ export const gameData = {
     (consumablesJson as unknown as { items: ConsumableDef[] }).items.map((c) => [c.id, c]),
   ) as Record<string, ConsumableDef>,
   titles: titlesJson as unknown as { titles: TitleDef[] },
+  materia: materiaJson as unknown as {
+    socketsPerSlot: number
+    /** 第 1..5 孔的镶嵌成功率。 */
+    successChance: number[]
+    mergeFrom: number
+    grades: string[]
+    types: MateriaTypeDef[]
+    values: Record<string, number[]>
+    sell: Record<string, number>
+  },
+  materiaItems: materiaList,
+  materiaById: Object.fromEntries(materiaList.map((m) => [m.id, m])) as Record<string, MateriaDef>,
+  farm: farmJson as unknown as {
+    initialPlots: number
+    maxPlots: number
+    expansionCosts: number[]
+    stages: number
+    stageSeconds: number
+    seeds: SeedDef[]
+  },
+  seedById: Object.fromEntries(
+    (farmJson as unknown as { seeds: SeedDef[] }).seeds.map((s) => [s.id, s]),
+  ) as Record<string, SeedDef>,
+  treasure: treasureJson as unknown as {
+    entryCost: number
+    floors: number
+    doors: number
+    correctChance: number
+    sourceRegionId: number
+    goldMultiplier: number
+    expMultiplier: number
+    finalBonusGold: number
+    specialEventChance: number
+    cardMin: number
+    cardMax: number
+    maxGuesses: number
+    rewardIncreasePerGuess: number
+    tieIsLoss: boolean
+    rewardWeights: Record<string, number>
+    rewardsPerFloor: { base: number; perFloor: number }
+    stackQtyPerFloor: { base: number; perFloor: number }
+    potionTierByFloor: number[]
+    materiaLevelByFloor: number[][]
+    minFloorFightMs: number
+  },
 }
 
 export type GameData = typeof gameData

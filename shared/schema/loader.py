@@ -69,6 +69,11 @@ class GameConfig:
     consumables: dict[str, Any]
     consumable_by_id: dict[str, Any]
     titles: dict[str, Any]
+    materia: dict[str, Any]
+    materia_by_id: dict[str, Any]
+    farm: dict[str, Any]
+    seed_by_id: dict[str, Any]
+    treasure: dict[str, Any]
     base_items: list[BaseItem]
     base_item_by_id: dict[str, BaseItem]
     exclusive_items: list[BaseItem]
@@ -225,6 +230,9 @@ def load_game_data() -> GameConfig:
         "recipes": _load("recipes.json"),
         "consumables": _load("consumables.json"),
         "titles": _load("titles.json"),
+        "materia": _load("materia.json"),
+        "farm": _load("farm.json"),
+        "treasure": _load("treasure.json"),
     }
 
     jobs = raw["jobs"]
@@ -267,6 +275,27 @@ def load_game_data() -> GameConfig:
     }
     fish_region_by_id = {int(r["regionId"]): r for r in raw["fish"]["regions"]}
 
+    # 魔晶石注册表：6 种 × 5 级 = 30 件。id = m_{type}_{level}。
+    materia_raw = raw["materia"]
+    materia_by_id: dict[str, Any] = {}
+    for mtype in materia_raw["types"]:
+        values = materia_raw["values"][mtype["id"]]
+        for level, value in enumerate(values, start=1):
+            materia_id = f"m_{mtype['id']}_{level}"
+            materia_by_id[materia_id] = {
+                "id": materia_id,
+                "name": f"{mtype['name']}魔晶石{materia_raw['grades'][level - 1]}",
+                "type": mtype["id"],
+                "stat": mtype["stat"],
+                "statName": mtype["statName"],
+                "level": level,
+                "value": float(value),
+                "sell": int(materia_raw["sell"].get(str(level), 0)),
+            }
+
+    # 作物种子注册表（种田）。
+    seed_by_id = {s["id"]: s for s in raw["farm"]["seeds"]}
+
     return GameConfig(
         rarities=raw["rarities"]["rarities"],
         rarity_order=raw["rarities"]["order"],
@@ -294,6 +323,11 @@ def load_game_data() -> GameConfig:
         consumables=raw["consumables"],
         consumable_by_id={c["id"]: c for c in raw["consumables"]["items"]},
         titles=raw["titles"],
+        materia=materia_raw,
+        materia_by_id=materia_by_id,
+        farm=raw["farm"],
+        seed_by_id=seed_by_id,
+        treasure=raw["treasure"],
         base_items=base_items,
         base_item_by_id={b.id: b for b in (*base_items, *exclusive_items)},
         exclusive_items=exclusive_items,

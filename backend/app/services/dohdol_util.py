@@ -16,9 +16,12 @@ from app.models import ActivitySession, StackItem
 from app.services.game_config import CONFIG
 
 # 材料 / 半成品 / 鱼都存进 kind="material" 的堆叠；药水与食物各占一个 kind。
+# 魔晶石与作物种子同样以堆叠库存存储（挖宝产出）。
 STACK_MATERIAL = "material"
 STACK_POTION = "potion"
 STACK_FOOD = "food"
+STACK_MATERIA = "materia"
+STACK_SEED = "seed"
 
 # 单次上报允许结算的最大窗口（秒）：页面切到后台时定时器被浏览器节流，放宽窗口以免
 # 后台产出被截断；关闭页面后不再上报，所以窗口再大也不会产生离线收益。来源：dohdol-levels.json。
@@ -74,13 +77,19 @@ def material_def(item_id: str) -> dict[str, Any] | None:
 
 
 def material_name(item_id: str) -> str:
-    """材料 / 半成品 / 鱼 / 药水食物 / 装备底材 / 专用装备 的显示名。"""
+    """材料 / 半成品 / 鱼 / 药水食物 / 魔晶石 / 作物种子 / 装备底材 / 专用装备 的显示名。"""
     d = material_def(item_id)
     if d:
         return d["name"]
     consumable = CONFIG.consumable_by_id.get(item_id)
     if consumable:
         return consumable["name"]
+    materia = CONFIG.materia_by_id.get(item_id)
+    if materia:
+        return materia["name"]
+    seed = CONFIG.seed_by_id.get(item_id)
+    if seed:
+        return seed["name"]
     base = CONFIG.base_item_by_id.get(item_id)
     if base:
         return base.name
@@ -95,21 +104,28 @@ def consumable_def(item_id: str) -> dict[str, Any] | None:
 
 
 def sell_price(kind: str, item_id: str) -> int:
-    """堆叠物品的出售单价（金币）。材料 / 半成品 / 鱼 / 药水食物均可出售。"""
+    """堆叠物品的出售单价（金币）。材料 / 半成品 / 鱼 / 药水食物 / 魔晶石均可出售；种子不可出售。"""
     if kind in (STACK_POTION, STACK_FOOD):
         spec = consumable_def(item_id)
         return max(0, int(spec.get("sell", 0))) if spec else 0
+    if kind == STACK_MATERIA:
+        materia = CONFIG.materia_by_id.get(item_id)
+        return max(0, int(materia.get("sell", 0))) if materia else 0
+    if kind == STACK_SEED:
+        return 0
     material = material_def(item_id)
     return max(0, int(material.get("sell", 0))) if material else 0
 
 
 def sellable_kind(item_id: str) -> str | None:
-    """按物品 id 推断其堆叠种类（potion / food / material），未知返回 None。"""
+    """按物品 id 推断其堆叠种类（potion / food / material / materia），未知或不可出售返回 None。"""
     spec = consumable_def(item_id)
     if spec is not None:
         return str(spec["kind"])
     if material_def(item_id) is not None:
         return STACK_MATERIAL
+    if item_id in CONFIG.materia_by_id:
+        return STACK_MATERIA
     return None
 
 
@@ -203,8 +219,9 @@ async def end_active_sessions(db: AsyncSession, user_id: int, keep_id: int | Non
 
 
 async def end_other_battle_sessions(db: AsyncSession, user_id: int) -> None:
-    """启动采集/生产/钓鱼时，停止该账号进行中的战斗会话。"""
+    """启动采集/生产/钓鱼时，停止该账号进行中的战斗会话与挖宝副本。"""
     from app.models import BattleSession  # 局部导入避免循环依赖
+    from app.services.roster import end_treasure_runs
 
     rows = (
         await db.execute(
@@ -215,6 +232,7 @@ async def end_other_battle_sessions(db: AsyncSession, user_id: int) -> None:
     for row in rows:
         row.active = False
         row.ended_at = now
+    await end_treasure_runs(db, user_id)
 
 
 def window_seconds(last_at: datetime | None, now: datetime) -> float:

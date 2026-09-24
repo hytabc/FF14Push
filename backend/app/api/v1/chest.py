@@ -7,7 +7,7 @@ import random
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
+from app.core.deps import CurrentHero, CurrentItems, CurrentSockets, CurrentUser, DbSession
 from app.models import ChestPity, ChestUnlock
 from app.schemas.game import ChestOpenRequest, ChestUnlockRequest
 from app.services.drop_luck import chest_rarity_luck
@@ -75,6 +75,7 @@ async def open_chest(
     user: CurrentUser,
     hero: CurrentHero,
     items: CurrentItems,
+    sockets: CurrentSockets,
 ) -> dict:
     chest = chest_by_id(payload.chestId)
     if chest is None:
@@ -151,5 +152,5 @@ async def open_chest(
             "sinceEpic": pity.since_epic,
             "sinceLegendary": pity.since_legendary,
         },
-        "stats": compute_stats(hero, items).to_dict(),
+        "stats": compute_stats(hero, items, sockets).to_dict(),
     }

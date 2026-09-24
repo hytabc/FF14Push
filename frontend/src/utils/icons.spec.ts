@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest'
 
 import { ICON_BASE_IDS, itemIconName, itemIconUrl } from '@/utils/icons'
 
-/** 全部应有像素图的物品 id：战斗底材 + 材料/半成品/鱼获（materialById 已在 loader 内合并鱼）+ 专用装备 + 药水食物。 */
+/** 全部应有像素图的物品 id：战斗底材 + 材料/半成品/鱼获（materialById 已在 loader 内合并鱼）+ 专用装备 + 药水食物 + 魔晶石 + 作物种子。 */
 const expectedIds = [
   ...Object.keys(data.baseItemById),
   ...Object.keys(data.materialById),
   ...Object.keys(data.dohdolItemById),
   ...Object.keys(data.consumableById),
+  ...Object.keys(data.materiaById),
+  ...Object.keys(data.seedById),
 ].sort()
 
 describe('物品像素图标索引', () => {
@@ -43,6 +45,10 @@ describe('物品像素图标索引', () => {
     expect(itemIconName('f1_1')).toBe('河鲈')
     expect(itemIconName('k1')).toBe('涅普特之龙')
     expect(itemIconName('p_expGainPct')).toBe('经验获取秘药')
+    expect(itemIconName('m_crit_1')).toBe('武略魔晶石壹型')
+    expect(itemIconName('m_str_3')).toBe('刚力魔晶石叁型')
+    expect(itemIconName('seed_gold')).toBe('金币种子')
+    expect(itemIconName('seed_exp')).toBe('经验种子')
   })
 
   it('未知 id 回落到 id 本身作为名称', () => {

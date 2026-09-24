@@ -19,6 +19,7 @@ from app.services.recruiting import (
     with_recruit_cost,
 )
 from app.services.serialization import hero_to_dict
+from app.services.materia import socket_mods
 from app.services.stats import compute_stats
 
 router = APIRouter(prefix="/tavern", tags=["tavern"])
@@ -207,7 +208,7 @@ async def recruit(
     row.candidate = _next_candidates(row, new_hero.level)[0]
     await db.commit()
 
-    stats = compute_stats(new_hero, [])
+    stats = compute_stats(new_hero, [], await socket_mods(db, user.id))
     return {
         "gold": int(user.gold),
         "cost": cost,
@@ -271,7 +272,7 @@ async def ten_pull_recruit(
     row.candidate = _next_candidates(row, new_hero.level)[0]
     await db.commit()
 
-    stats = compute_stats(new_hero, [])
+    stats = compute_stats(new_hero, [], await socket_mods(db, user.id))
     return {
         "gold": int(user.gold),
         "cost": cost,

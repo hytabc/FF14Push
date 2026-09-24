@@ -110,6 +110,14 @@ export interface MaterialStackItem {
   desc?: string
   /** 出售单价（金币）。 */
   sell?: number
+  /** 魔晶石：种类 / 属性 / 等级 / 加成值。 */
+  materiaKind?: string
+  stat?: string
+  statName?: string
+  level?: number
+  value?: number
+  /** 作物种子：产出类型（gold / heroLevel）。 */
+  seedKind?: string
 }
 
 export interface ActiveConsumable {
@@ -193,6 +201,10 @@ export interface DohDolState {
   progress: Record<string, DohDolProgressView>
   materials: MaterialStackItem[]
   consumables: MaterialStackItem[]
+  /** 魔晶石库存（挖宝产出）。 */
+  materia?: MaterialStackItem[]
+  /** 作物种子库存（挖宝产出）。 */
+  seeds?: MaterialStackItem[]
   active: ActiveConsumable[]
   recipes: RecipeView[]
   loadout: Record<string, Item>
@@ -812,5 +824,191 @@ export interface MarketListEntry {
   stackItemId?: string
   count?: number
   unitPrice: number
+}
+
+// ------------------------------------------------------------- 魔晶石镶嵌
+/** 单件魔晶石（6 种 × 5 级）。 */
+export interface MateriaDef {
+  id: string
+  name: string
+  /** 种类 id（str / dex / int / crit / det / dh）。 */
+  type: string
+  stat: string
+  statName: string
+  level: number
+  value: number
+  sell: number
+}
+
+export interface MateriaSocketState {
+  index: number
+  /** 该孔位的镶嵌成功率。 */
+  chance: number
+  materia: MateriaDef | null
+}
+
+export interface MateriaSlotState {
+  id: SlotId
+  name: string
+  category: string
+  order: number
+  sockets: MateriaSocketState[]
+}
+
+export interface MateriaStockEntry extends MateriaDef {
+  count: number
+}
+
+export interface MateriaState {
+  slots: MateriaSlotState[]
+  socketsPerSlot: number
+  successChance: number[]
+  mergeFrom: number
+  maxLevel: number
+  stock: MateriaStockEntry[]
+  bonus: Record<string, number>
+  source: { note: string }
+}
+
+export interface MateriaSocketResult {
+  success: boolean
+  chance: number
+  slot: string
+  index: number
+  materia: MateriaDef
+  state: MateriaState
+}
+
+// ------------------------------------------------------------- 种田
+export interface SeedView {
+  id: string
+  name: string
+  desc: string
+  yield: { type: string; amount?: number; levels?: number }
+  count: number
+}
+
+export interface FarmPlotState {
+  index: number
+  locked: boolean
+  seedId: string | null
+  seedName: string | null
+  /** 种植时刻（服务端 epoch 毫秒）。 */
+  plantedAt: number | null
+  /** 成熟时刻（服务端 epoch 毫秒）。 */
+  matureAt: number | null
+  /** 当前阶段（0 = 刚种下，stages = 成熟）。 */
+  stage: number
+  stages: number
+  stageSeconds: number
+  remainingMs: number
+  ready: boolean
+}
+
+export interface FarmState {
+  unlocked: number
+  initialPlots: number
+  maxPlots: number
+  /** 下一次扩张价格；已满级为 null。 */
+  expansionCost: number | null
+  expansionCosts: number[]
+  stages: number
+  stageSeconds: number
+  plots: FarmPlotState[]
+  seeds: SeedView[]
+  gold: number
+}
+
+export interface FarmHarvestResult {
+  type: 'gold' | 'heroLevel'
+  amount?: number
+  gold?: number
+  heroId?: number
+  heroName?: string
+  levelsGained?: number
+  level?: number
+  noEffect?: boolean
+}
+
+// ------------------------------------------------------------- 挖宝
+export interface TreasureConfig {
+  entryCost: number
+  floors: number
+  doors: number
+  correctChance: number
+  sourceRegionId: number
+  goldMultiplier: number
+  expMultiplier: number
+  finalBonusGold: number
+  specialEventChance: number
+  cardMin: number
+  cardMax: number
+  maxGuesses: number
+  rewardIncreasePerGuess: number
+  tieIsLoss: boolean
+  rewardWeights: Record<string, number>
+  rewardsPerFloor: { base: number; perFloor: number }
+  stackQtyPerFloor: { base: number; perFloor: number }
+  potionTierByFloor: number[]
+  materiaLevelByFloor: number[][]
+}
+
+export interface TreasureRunState {
+  runId: number
+  floor: number
+  status: 'fighting' | 'cleared' | 'ended'
+  multiplier: number
+  card: number | null
+  guessesUsed: number
+  maxGuesses: number
+  eventActive: boolean
+  chestOpened: boolean
+  endedReason: string | null
+  /** 待挑战的怪物（仅 fighting 时有值）。 */
+  boss: MonsterStats | null
+}
+
+export interface TreasureEvent {
+  card: number
+  maxGuesses: number
+  rewardIncreasePerGuess: number
+}
+
+export interface TreasureReward {
+  kind: 'gold' | 'exp' | 'potion' | 'materia' | 'seed' | 'bonusGold'
+  amount?: number
+  itemId?: string
+  name?: string
+  count?: number
+  level?: number
+  stat?: string
+  statName?: string
+  value?: number
+  tier?: number
+}
+
+export interface TreasureChestResult {
+  floor: number
+  multiplier: number
+  rewards: TreasureReward[]
+  gold: number
+  goldGained: number
+  expGained: number
+  level: { levelsGained: number; level: number; exp: number } | null
+  bonusGold: number
+  completed: boolean
+  run: TreasureRunState
+}
+
+export interface TreasureGambleResult {
+  previousCard: number
+  card: number
+  result: 'win' | 'lose' | 'tie'
+  multiplier: number
+  guessesUsed: number
+  guessesLeft: number
+  cleared: boolean
+  finished: boolean
+  run: TreasureRunState
 }
 

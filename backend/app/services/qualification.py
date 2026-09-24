@@ -19,8 +19,9 @@ async def region_access(db, user_id, hero, items, difficulty: int | None = None)
     cleared = {r.region_id for r in rows if r.cleared}
     old = {r.region_id for r in rows if r.unlocked}
     from app.services.stats import hero_items
+    from app.services.materia import socket_mods as materia_socket_mods
     items = hero_items(items, hero.id)
-    stats = compute_stats(hero, items)
+    stats = compute_stats(hero, items, await materia_socket_mods(db, user_id))
     return {int(r): region_gate(int(r), stats, items, cleared, int(r) in old) for r in BALANCE['regions']}
 
 

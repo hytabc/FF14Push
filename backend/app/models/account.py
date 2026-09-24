@@ -32,6 +32,8 @@ class User(Base, TimestampMixin):
     # 见 services/difficulty.py 与 shared/data/combat.json:difficulty。
     battle_difficulty: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
     battle_difficulty_max: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
+    # 种田：已解锁的田地数量（初始 2，最多 10）。见 services/farm.py 与 shared/data/farm.json。
+    farm_unlocked: Mapped[int] = mapped_column(sa.Integer, default=2, server_default="2")
 
     active_hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL", use_alter=True, name="fk_users_active_hero"), nullable=True)
     hero: Mapped["Hero | None"] = relationship(foreign_keys=[active_hero_id], post_update=True)

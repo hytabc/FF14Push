@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.core.config import get_settings
-from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
+from app.core.deps import CurrentHero, CurrentItems, CurrentSockets, CurrentUser, DbSession
 from app.models import (
     AuditLog,
     BattleSession,
@@ -49,6 +49,7 @@ from app.services.stats import compute_stats
 from app.services.validator import MAX_ELAPSED_MS, MIN_ELAPSED_MS, validate_report
 
 from app.services.qualification import ensure_region_progress, require_region, region_access
+from app.services.roster import end_treasure_runs
 from app.services.balance import BALANCE, soft_penalty
 from app.services.valuation import hero_power
 
@@ -88,7 +89,7 @@ async def _end_active_sessions(db: DbSession, user_id: int) -> None:
 
 @router.post("/session/start")
 async def start_session(
-    payload: BattleStartRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
+    payload: BattleStartRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems, sockets: CurrentSockets
 ) -> dict:
     if payload.regionId not in CONFIG.region_by_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="地区不存在")
@@ -103,6 +104,8 @@ async def start_session(
     from app.services.dohdol_util import end_active_sessions as _end_activity
 
     await _end_activity(db, user.id)
+    # 挖宝同为战斗类活动：开始地区战斗即结束进行中的副本（已入账奖励保留）。
+    await end_treasure_runs(db, user.id)
 
     hero.current_region_id = payload.regionId
     hero.region_kill_count = 0  # PRD 地区 6.2：切换地区后计数从 0 开始
@@ -121,7 +124,7 @@ async def start_session(
     region = CONFIG.region_by_id[payload.regionId]
     return {
         "sessionId": session.id,
-        "penalty": effective_penalty(compute_stats(hero,items),payload.regionId),
+        "penalty": effective_penalty(compute_stats(hero,items,sockets),payload.regionId),
         "regionId": payload.regionId,
         "difficulty": difficulty,
         "killsRequired": kills_required(payload.regionId),
@@ -138,6 +141,7 @@ async def report(
     user: CurrentUser,
     hero: CurrentHero,
     items: CurrentItems,
+    sockets: CurrentSockets,
 ) -> dict:
     session = (
         await db.execute(
@@ -156,7 +160,7 @@ async def report(
 
     difficulty = int(session.difficulty or 0)
     await require_region(db,user.id,hero,items,payload.regionId,difficulty)
-    stats = compute_stats(hero, items)
+    stats = compute_stats(hero, items, sockets)
 
     # 彩蛋技能「拔豆芽」：本次上报释放的充能技能 → 累加奖励翻倍怪物数（上限 20，可跨上报保留）。
     # 先在本地计算，等上报通过校验后再写回，避免被拒绝的上报也能累积充能。
@@ -272,7 +276,7 @@ async def report(
     boss_result = None
     if payload.bossKilled:
         boss_result = await _settle_boss(
-            db, user, hero, items, payload, rng, merged_mods, window_ms, difficulty
+            db, user, hero, items, payload, rng, merged_mods, window_ms, difficulty, sockets
         )
 
     session.last_report_at = now
@@ -308,6 +312,7 @@ async def _settle_boss(
     term_mods: dict[str, float] | None = None,
     window_ms: int = 0,
     difficulty: int = 0,
+    socket_mods: dict[str, float] | None = None,
 ) -> dict | None:
     required = kills_required(payload.regionId)
     if int(hero.region_kill_count) < required:
@@ -321,7 +326,7 @@ async def _settle_boss(
     gold_potion = float((term_mods or {}).get("goldGainPct", 0.0)) / 100.0
     boss_gold = int(
         roll_gold(payload.regionId, "boss", 0.0, rng)
-        * effective_penalty(compute_stats(hero,items),payload.regionId)["rewardMultiplier"]
+        * effective_penalty(compute_stats(hero,items,socket_mods),payload.regionId)["rewardMultiplier"]
         * (1.0 + gold_potion)
         * monster_gold_multiplier(difficulty)
     )

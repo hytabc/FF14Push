@@ -496,3 +496,88 @@ def test_battle_difficulty_config() -> None:
     # 玩家攻击 / 防御为逐级相乘的系数
     assert float(cfg["playerAttackMultiplierPerLevel"]) == pytest.approx(0.85)
     assert float(cfg["playerDefenseMultiplierPerLevel"]) == pytest.approx(0.9)
+
+
+def test_materia_config() -> None:
+    """魔晶石：6 种 × 5 级 = 30 件；第 1 孔 100% → 第 5 孔 5%；5 合 1；名称沿用 FF14 国服译名。"""
+    cfg = CONFIG.materia
+    assert int(cfg["socketsPerSlot"]) == 5
+    assert [float(v) for v in cfg["successChance"]] == [1.0, 0.6, 0.35, 0.15, 0.05]
+    assert float(cfg["successChance"][0]) == 1.0
+    assert float(cfg["successChance"][-1]) == 0.05
+    assert int(cfg["mergeFrom"]) == 5
+    assert len(cfg["types"]) == 6
+    assert len(CONFIG.materia_by_id) == 6 * 5
+    for mtype in cfg["types"]:
+        assert mtype["stat"] in CONFIG.economy["power"]["weights"], "魔晶石属性必须计入战力权重"
+        values = [CONFIG.materia_by_id[f"m_{mtype['id']}_{lv}"]["value"] for lv in range(1, 6)]
+        assert values == sorted(values) and values[0] < values[-1]
+    assert CONFIG.materia_by_id["m_crit_1"]["name"] == "武略魔晶石壹型"
+    assert CONFIG.materia_by_id["m_str_3"]["name"] == "刚力魔晶石叁型"
+    assert CONFIG.materia_by_id["m_dh_5"]["name"] == "神眼魔晶石伍型"
+
+
+def test_farm_config() -> None:
+    """种田：初始 2 片、最多 10 片、扩张越往后越贵；5 阶段 × 10min；金币/经验种子产出。"""
+    cfg = CONFIG.farm
+    assert int(cfg["initialPlots"]) == 2
+    assert int(cfg["maxPlots"]) == 10
+    costs = [int(c) for c in cfg["expansionCosts"]]
+    assert len(costs) == int(cfg["maxPlots"]) - int(cfg["initialPlots"])
+    assert costs == sorted(costs) and costs[0] < costs[-1]
+    assert int(cfg["stages"]) == 5
+    assert int(cfg["stageSeconds"]) == 600
+    seeds = {s["id"]: s for s in cfg["seeds"]}
+    assert seeds["seed_gold"]["yield"] == {"type": "gold", "amount": 10_000_000}
+    assert seeds["seed_exp"]["yield"] == {"type": "heroLevel", "levels": 1}
+    # 种子不可出售，避免「种田 → 卖种子」套利
+    assert all(int(s["sell"]) == 0 for s in cfg["seeds"])
+
+
+def test_treasure_config() -> None:
+    """挖宝：100W 入场、5 层、门 50%、每层 = 难度(层-1) 的地区 40 BOSS、通关五层 +1000W。"""
+    cfg = CONFIG.treasure
+    assert int(cfg["entryCost"]) == 1_000_000
+    assert int(cfg["floors"]) == 5
+    assert int(cfg["doors"]) == 2
+    assert float(cfg["correctChance"]) == pytest.approx(0.5)
+    assert int(cfg["sourceRegionId"]) == 40
+    assert int(cfg["finalBonusGold"]) == 10_000_000
+    assert float(cfg["specialEventChance"]) == pytest.approx(0.05)
+    assert int(cfg["maxGuesses"]) == 5
+    # 秘药档位：1-2 层 I、3-4 层 II、5 层 III
+    assert [int(t) for t in cfg["potionTierByFloor"]] == [1, 1, 2, 2, 3]
+    # 魔晶石等级随层上涨
+    ranges = cfg["materiaLevelByFloor"]
+    assert len(ranges) == int(cfg["floors"])
+    assert [int(r[0]) for r in ranges] == sorted(int(r[0]) for r in ranges)
+    # 概率序：魔晶石 >> 金币 = 经验 > 秘药 > 种子
+    weights = cfg["rewardWeights"]
+    assert weights["materia"] > weights["gold"] == weights["exp"] > weights["potion"] > weights["seed"]
+
+
+def test_treasure_is_not_a_gold_printer() -> None:
+    """防刷：即使假设玩家每层必定击败 BOSS，单次挖宝的期望金币也必须低于入场成本。
+
+    只有「击败 5 层地区 40 关底 BOSS + 连过 4 扇 50/50 的门」才可能接近收益上限，
+    因此挖宝不构成任何形式的「不打怪只刷金币」路线。
+    """
+    from app.services.difficulty import monster_gold_multiplier
+
+    cfg = CONFIG.treasure
+    region = CONFIG.region_by_id[int(cfg["sourceRegionId"])]
+    gold_base = float(region["baseGold"]) * float(CONFIG.regions["goldMultipliers"]["boss"])
+    weights = cfg["rewardWeights"]
+    p_gold = float(weights["gold"]) / sum(float(w) for w in weights.values())
+
+    expected = 0.0
+    reach = 1.0
+    for floor in range(1, int(cfg["floors"]) + 1):
+        gold_unit = gold_base * monster_gold_multiplier(floor - 1) * float(cfg["goldMultiplier"])
+        entries = int(cfg["rewardsPerFloor"]["base"]) + int(cfg["rewardsPerFloor"]["perFloor"]) * (floor - 1)
+        expected += reach * entries * p_gold * gold_unit
+        reach *= float(cfg["correctChance"])
+    # 通关第 5 层（需连过 4 扇门）的额外金币
+    expected += float(cfg["correctChance"]) ** (int(cfg["floors"]) - 1) * int(cfg["finalBonusGold"])
+
+    assert expected < int(cfg["entryCost"]), f"期望金币 {expected:.0f} 已达入场成本"

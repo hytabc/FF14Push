@@ -294,3 +294,68 @@ class ChatSendRequest(BaseModel):
 
     text: str = Field(min_length=1, max_length=200)
 
+
+# --------------------------------------------------------------- 魔晶石镶嵌
+class MateriaSocketRequest(BaseModel):
+    """在账号级栏位的指定孔位镶嵌魔晶石（孔位须按顺序填充）。"""
+
+    slot: str = Field(min_length=1, max_length=16)
+    index: int = Field(ge=0, le=15)
+    materiaId: str = Field(min_length=1, max_length=32)
+
+
+class MateriaRemoveRequest(BaseModel):
+    """取出孔位中的魔晶石（必定成功并返还）。"""
+
+    slot: str = Field(min_length=1, max_length=16)
+    index: int = Field(ge=0, le=15)
+
+
+class MateriaMergeRequest(BaseModel):
+    """合成：mergeFrom 个同级同种魔晶石 → 1 个高一级。"""
+
+    materiaId: str = Field(min_length=1, max_length=32)
+
+
+# --------------------------------------------------------------- 种田
+class FarmPlantRequest(BaseModel):
+    plotIndex: int = Field(ge=0, le=15)
+    seedId: str = Field(min_length=1, max_length=32)
+
+
+class FarmHarvestRequest(BaseModel):
+    plotIndex: int = Field(ge=0, le=15)
+    # 经验种子：选择获得 +1 级的英雄；金币种子忽略该字段。
+    heroId: int | None = None
+    # 目标英雄满级时的二次确认（前端弹窗后传 true）。
+    confirm: bool = False
+
+
+# --------------------------------------------------------------- 挖宝
+class TreasureFloorClearRequest(BaseModel):
+    runId: int
+    # 仅作参考：服务端以自己的时钟校验最短战斗时长。
+    elapsedMs: int = 0
+
+
+class TreasureGambleRequest(BaseModel):
+    runId: int
+    guess: Literal["high", "low"]
+
+
+class TreasureGambleStopRequest(BaseModel):
+    runId: int
+
+
+class TreasureChestOpenRequest(BaseModel):
+    runId: int
+
+
+class TreasureDoorRequest(BaseModel):
+    runId: int
+    door: int = Field(ge=0, le=7)
+
+
+class TreasureRunRequest(BaseModel):
+    runId: int
+

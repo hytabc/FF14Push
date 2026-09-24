@@ -46,7 +46,13 @@ async def _stacks(db: AsyncSession, user_id: int) -> list[dict[str, Any]]:
     ).scalars().all()
     out: list[dict[str, Any]] = []
     for row in rows:
-        spec = dohdol_util.material_def(row.item_id) or dohdol_util.consumable_def(row.item_id) or {}
+        spec = (
+            dohdol_util.material_def(row.item_id)
+            or dohdol_util.consumable_def(row.item_id)
+            or CONFIG.materia_by_id.get(row.item_id)
+            or CONFIG.seed_by_id.get(row.item_id)
+            or {}
+        )
         entry: dict[str, Any] = {
             "itemId": row.item_id,
             "kind": row.kind,
@@ -57,6 +63,16 @@ async def _stacks(db: AsyncSession, user_id: int) -> list[dict[str, Any]]:
         if row.kind in ("potion", "food"):
             entry["consumableKind"] = row.kind
             entry["effects"] = spec.get("effects", [])
+            entry["desc"] = spec.get("desc", "")
+        elif row.kind == "materia":
+            entry["materiaKind"] = spec.get("type")
+            entry["stat"] = spec.get("stat")
+            entry["statName"] = spec.get("statName")
+            entry["level"] = spec.get("level")
+            entry["value"] = spec.get("value")
+            entry["desc"] = f"{spec.get('statName', '')} +{spec.get('value', 0)}"
+        elif row.kind == "seed":
+            entry["seedKind"] = spec.get("yield", {}).get("type")
             entry["desc"] = spec.get("desc", "")
         else:
             entry["materialKind"] = spec.get("kind", "gather")
@@ -164,6 +180,8 @@ async def build_dohdol_state(
         "progress": progress,
         "materials": [row for row in stacks if row["kind"] == "material"],
         "consumables": [row for row in stacks if row["kind"] in ("potion", "food")],
+        "materia": [row for row in stacks if row["kind"] == "materia"],
+        "seeds": [row for row in stacks if row["kind"] == "seed"],
         "active": await consumables.active_state(db, user_id),
         "recipes": recipes,
         "loadout": dedicated_loadout,

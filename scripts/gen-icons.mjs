@@ -28,6 +28,8 @@ const MATERIALS_FILE = join(ROOT, 'shared/data/materials.json')
 const DOHDOL_EQUIP_FILE = join(ROOT, 'shared/data/dohdol-equipment.json')
 const FISH_FILE = join(ROOT, 'shared/data/fish.json')
 const CONSUMABLES_FILE = join(ROOT, 'shared/data/consumables.json')
+const MATERIA_FILE = join(ROOT, 'shared/data/materia.json')
+const FARM_FILE = join(ROOT, 'shared/data/farm.json')
 const OUT_DIR = join(ROOT, 'frontend/src/assets/icons')
 
 /** 画布边长（像素） */
@@ -752,6 +754,29 @@ const SHAPES = {
     'oooooooooo',
     'oooooooooo',
     '.oooooooo.',
+  ],
+
+  // ── 魔晶石 / 作物种子 ──
+  mat_materia: [
+    '...oooooo...',
+    '..olmmmmdo..',
+    '.olmggggmdo.',
+    'olmggggggmdo',
+    'olmggggggmdo',
+    'olmggggggmdo',
+    '.olmggggmdo.',
+    '..olmmmmdo..',
+    '...oooooo...',
+  ],
+  mat_seed: [
+    '....oo....',
+    '..oolmoo..',
+    '.olmmmmdo.',
+    '.ommmmmmo.',
+    '.ommmmmmo.',
+    '..ommmmo..',
+    '..olmmdo..',
+    '...oooo...',
   ],
 
   // ── 生产/采集工具 4（防具槽复用 head/body/hands/legs/feet）──
@@ -1511,6 +1536,55 @@ function listConsumables(consumablesJson) {
   })
 }
 
+/** 魔晶石（materia.json）：6 种 × 5 级；等级用装饰标记 + 亮度区分。 */
+const MATERIA_COLORS = {
+  str: [0xd0, 0x52, 0x4a], // 刚力（力量）
+  dex: [0x5a, 0xc0, 0x6a], // 巧力（敏捷）
+  int: [0x6a, 0x8a, 0xe0], // 智力
+  crit: [0xe8, 0x8a, 0x30], // 武略（暴击）
+  det: [0xc0, 0x8a, 0xe8], // 雄略（信念）
+  dh: [0x4a, 0xc8, 0xd0], // 神眼（直击）
+}
+
+/** 魔晶石等级标记（1-5 级依次为 无 / 点 / 竖 / 十字 / 叉）。 */
+const MATERIA_LEVEL_MARKS = [
+  null,
+  ['.....', '.....', '..o..', '.....', '.....'],
+  ['.....', '..o..', '..o..', '..o..', '.....'],
+  ['.....', '..o..', 'ooooo', '..o..', '.....'],
+  ['o...o', '.o.o.', '..o..', '.o.o.', 'o...o'],
+]
+
+function listMateria(materiaJson) {
+  const out = []
+  for (const type of materiaJson.types) {
+    const base = MATERIA_COLORS[type.id] ?? [0xb0, 0xa0, 0xe8]
+    for (let level = 1; level <= materiaJson.grades.length; level += 1) {
+      const brightness = 0.7 + level * 0.12
+      out.push({
+        id: `m_${type.id}_${level}`,
+        shape: 'mat_materia',
+        palette: makePalette(base.map((v) => v * brightness)),
+        ornament: MATERIA_LEVEL_MARKS[level - 1] ?? null,
+      })
+    }
+  }
+  return out
+}
+
+/** 作物种子（farm.json：金币 / 经验种子）。 */
+const SEED_COLORS = {
+  seed_gold: [0xe8, 0xc3, 0x4a],
+  seed_exp: [0x9a, 0x7f, 0xe0],
+}
+
+function listSeeds(farmJson) {
+  return farmJson.seeds.map((seed) => {
+    const base = SEED_COLORS[seed.id] ?? [0xc9, 0xa0, 0x6a]
+    return { id: seed.id, shape: 'mat_seed', palette: makePalette(base), ornament: null }
+  })
+}
+
 function main() {
   const data = JSON.parse(readFileSync(DATA_FILE, 'utf8'))
   const exclusiveJson = JSON.parse(readFileSync(EXCLUSIVE_FILE, 'utf8'))
@@ -1518,6 +1592,8 @@ function main() {
   const dohdolEquipJson = JSON.parse(readFileSync(DOHDOL_EQUIP_FILE, 'utf8'))
   const fishJson = JSON.parse(readFileSync(FISH_FILE, 'utf8'))
   const consumablesJson = JSON.parse(readFileSync(CONSUMABLES_FILE, 'utf8'))
+  const materiaJson = JSON.parse(readFileSync(MATERIA_FILE, 'utf8'))
+  const farmJson = JSON.parse(readFileSync(FARM_FILE, 'utf8'))
 
   const weapons = data.weaponFamilies.length
   const armors = data.armorFamilies.length
@@ -1530,13 +1606,24 @@ function main() {
   const dohdolItems = listDohdolItems(dohdolEquipJson)
   const fish = listFish(fishJson)
   const consumables = listConsumables(consumablesJson)
+  const materia = listMateria(materiaJson)
+  const seeds = listSeeds(farmJson)
 
   const expectedBase = expectedBaseCount(data)
   if (baseItems.length !== expectedBase) {
     throw new Error(`底材数量不符：期望 ${expectedBase}，实际 ${baseItems.length}`)
   }
 
-  const items = [...baseItems, ...exclusiveItems, ...materials, ...dohdolItems, ...fish, ...consumables]
+  const items = [
+    ...baseItems,
+    ...exclusiveItems,
+    ...materials,
+    ...dohdolItems,
+    ...fish,
+    ...consumables,
+    ...materia,
+    ...seeds,
+  ]
 
   mkdirSync(OUT_DIR, { recursive: true })
 
@@ -1575,7 +1662,7 @@ function main() {
   console.log(
     `[gen-icons] 战斗装备 ${baseItems.length}（底形 ${weapons + armors + accessories} × 档位 ${tiers}）` +
       ` + 绝境龙神 ${exclusiveItems.length} + 材料/半成品 ${materials.length} + 专用装备 ${dohdolItems.length}` +
-      ` + 鱼获 ${fish.length} + 药水食物 ${consumables.length}`,
+      ` + 鱼获 ${fish.length} + 药水食物 ${consumables.length} + 魔晶石 ${materia.length} + 种子 ${seeds.length}`,
   )
 }
 

@@ -7,7 +7,7 @@ import random
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
+from app.core.deps import CurrentHero, CurrentItems, CurrentSockets, CurrentUser, DbSession
 from app.models import Item, ItemTag
 from app.schemas.game import SellRequest, SetItemTagsRequest, UnequipRequest
 from app.services.game_config import CONFIG
@@ -29,7 +29,7 @@ async def _owned_item(db: DbSession, user_id: int, item_id: int) -> Item:
 
 
 @router.post("/equip")
-async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems) -> dict:
+async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems, sockets: CurrentSockets) -> dict:
     item_id = int(payload.get("itemId", 0))
     slot = str(payload.get("slot", ""))
 
@@ -62,13 +62,13 @@ async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHe
     item.equipped_hero_id = hero.id
     await db.commit()
 
-    stats = compute_stats(hero, items)
+    stats = compute_stats(hero, items, sockets)
     return {"item": item_to_dict(item, sell_price_range(item)), "stats": stats.to_dict()}
 
 
 @router.post("/unequip")
 async def unequip(
-    payload: UnequipRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
+    payload: UnequipRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems, sockets: CurrentSockets
 ) -> dict:
     item = (
         await db.execute(
@@ -80,7 +80,7 @@ async def unequip(
     item.equipped_slot = None
     item.equipped_hero_id = None
     await db.commit()
-    stats = compute_stats(hero, items)
+    stats = compute_stats(hero, items, sockets)
     return {"stats": stats.to_dict()}
 
 

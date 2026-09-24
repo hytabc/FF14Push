@@ -25,6 +25,11 @@ const dohdol = useDohDolStore()
 
 const consumables = computed(() => game.state?.dohdol?.consumables ?? [])
 const activeBuffs = computed(() => game.state?.dohdol?.active ?? [])
+/** 挖宝产出：魔晶石（可出售）与作物种子（不可出售，用于种田）。 */
+const lootStacks = computed(() => [
+  ...(game.state?.dohdol?.materia ?? []),
+  ...(game.state?.dohdol?.seeds ?? []),
+])
 
 /** 生效中药水/食物：按服务端绝对到期时间本地每秒重算剩余时长（不再依赖状态刷新）。 */
 const nowMs = ref(Date.now())
@@ -226,6 +231,32 @@ async function batchSell() {
           >
             出售
           </button>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="lootStacks.length" class="card p-4">
+      <h2 class="text-sm font-semibold text-white">魔晶石 / 作物种子</h2>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <div
+          v-for="s in lootStacks"
+          :key="s.itemId"
+          class="flex flex-wrap items-center gap-2 rounded border border-ink-700 bg-ink-900/50 px-2 py-1 text-[11px]"
+          :title="s.desc"
+        >
+          <ItemIcon :base-id="s.itemId" variant="plain" :size="20" />
+          <span class="min-w-0 text-ink-200">
+            {{ s.name }}<span class="block text-emerald-300">{{ s.desc }}</span>
+          </span>
+          <span class="font-mono text-ink-400">×{{ s.count }}</span>
+          <button
+            v-if="(s.sell ?? 0) > 0"
+            class="rounded bg-amber-600/70 px-2 py-0.5 text-white hover:bg-amber-500"
+            @click="dohdol.sellStack(s.kind, s.itemId, 1)"
+          >
+            出售
+          </button>
+          <span v-else class="text-ink-500">不可出售</span>
         </div>
       </div>
     </section>

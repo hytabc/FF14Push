@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, update
 from app.models import User, Hero, Item, BattleSession, RaidSession, ActivitySession
 from app.models.multiplayer import CoopMember, CoopRoom
+from app.models.treasure import STATUS_ENDED, TreasureRun
 from app.models.world_boss import SESSION_RUNNING, WorldBossSession
 
 async def lock_user(db, user_id):
@@ -20,10 +21,18 @@ async def require_idle_team(db, user_id):
     if boss_active:
         raise HTTPException(409, '世界BOSS 战斗进行中，英雄和装备已锁定')
 
+async def end_treasure_runs(db, user_id):
+    """结束该账号进行中的挖宝副本（已开箱入账的奖励不受影响）。"""
+    await db.execute(update(TreasureRun).where(
+        TreasureRun.user_id == user_id, TreasureRun.status != STATUS_ENDED
+    ).values(status=STATUS_ENDED, ended_reason='superseded'))
+
 async def stop_activities(db, user_id):
     now = datetime.now(timezone.utc)
     for model in (BattleSession, RaidSession, ActivitySession):
         await db.execute(update(model).where(model.user_id == user_id, model.active.is_(True)).values(active=False, ended_at=now))
+    # 挖宝：开始其它活动 / 切换英雄 / 解雇时，进行中的副本一并结束。
+    await end_treasure_runs(db, user_id)
 
 async def owned_hero(db, user_id, hero_id):
     hero = await db.scalar(select(Hero).where(Hero.user_id == user_id, Hero.id == hero_id))

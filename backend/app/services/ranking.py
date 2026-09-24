@@ -29,6 +29,7 @@ from app.models import (
 )
 from app.models.multiplayer import CoopRecord
 from app.services.admin import is_admin
+from app.services.materia import socket_mods_map
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
@@ -66,6 +67,9 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
 
     await db.execute(delete(RankingEntry))
 
+    # 账号级魔晶石镶嵌加成：战力榜需与玩家面板一致，故一并计入。
+    mods_map = await socket_mods_map(db, [int(u.id) for u in users])
+
     counts = {board: 0 for board in CACHED_BOARDS}
     for user in users:
         # 管理员与已封禁账号不参与排行榜（管理员另有「不创建英雄」双重保险）
@@ -75,7 +79,7 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         if hero is None:
             continue
 
-        stats = compute_stats(hero, user.items)
+        stats = compute_stats(hero, user.items, mods_map.get(int(user.id)))
         cleared_list = cleared.get(user.id, [])
         # 关卡榜以「难度优先」为主序：取最高难度，再取该难度下已通关的最大地区。
         best = max(cleared_list, key=lambda row: (row.difficulty, row.region_id), default=None)

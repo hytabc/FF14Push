@@ -50,6 +50,17 @@ def apply_exp(hero: Any, amount: int) -> dict[str, int]:
     return {"levelsGained": gained, "exp": hero.exp, "level": hero.level}
 
 
+def grant_levels(hero: Any, levels: int) -> dict[str, int]:
+    """直接提升英雄等级（经验种子等奖励）：保留当前经验，仅满级时经验归零。"""
+    if levels <= 0:
+        return {"levelsGained": 0, "exp": int(hero.exp), "level": int(hero.level)}
+    before = int(hero.level)
+    hero.level = min(LEVEL_CAP, before + int(levels))
+    if hero.level >= LEVEL_CAP:
+        hero.exp = 0
+    return {"levelsGained": hero.level - before, "exp": int(hero.exp), "level": int(hero.level)}
+
+
 async def highest_hero_level(db: AsyncSession, user_id: int) -> int:
     """只比较该账号当前拥有的英雄，不包含其他玩家或登记克隆。"""
     return int(await db.scalar(select(func.max(Hero.level)).where(Hero.user_id == user_id)) or 1)

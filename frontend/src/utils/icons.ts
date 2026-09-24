@@ -26,13 +26,15 @@ export function itemIconUrl(baseId: string): string | undefined {
   return ICON_BY_BASE_ID[baseId]
 }
 
-/** 物品 id → 中文名，逐级回退（战斗底材 → 材料/半成品/鱼 → 专用装备 → 消耗品），绝不直接把 id 抛给玩家。 */
+/** 物品 id → 中文名，逐级回退（战斗底材 → 材料/半成品/鱼 → 专用装备 → 消耗品 → 魔晶石/种子），绝不直接把 id 抛给玩家。 */
 export function itemIconName(baseId: string): string {
   return (
     data.baseItemById[baseId]?.name ??
     data.materialById[baseId]?.name ??
     data.dohdolItemById[baseId]?.name ??
     data.consumableById[baseId]?.name ??
+    data.materiaById[baseId]?.name ??
+    data.seedById[baseId]?.name ??
     baseId
   )
 }

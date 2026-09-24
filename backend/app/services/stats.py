@@ -96,10 +96,14 @@ class HeroStats:
         }
 
 
-def aggregate_equipment(items: Iterable[Any]) -> EquipmentAggregate:
+def aggregate_equipment(
+    items: Iterable[Any], socket_mods: dict[str, float] | None = None
+) -> EquipmentAggregate:
     """汇总已穿戴装备的基础属性、副属性与词条。
 
     生产/采集专用装备（doh_* / dol_*）不参与战斗结算，直接跳过。
+    `socket_mods` 为账号级魔晶石镶嵌加成（见 services/materia.py），与装备副属性走同一条
+    路径（主属性并入 core_attrs、其余并入 sub_attrs），因此享受偏置 / 联动 / 三属性换算。
     """
     agg = EquipmentAggregate()
     for item in items:
@@ -127,6 +131,9 @@ def aggregate_equipment(items: Iterable[Any]) -> EquipmentAggregate:
             if base and base.weapon_type:
                 agg.weapon_type = base.weapon_type
                 agg.job_id = base.job_id
+    for attr, value in (socket_mods or {}).items():
+        target = agg.core_attrs if attr in ("str", "dex", "int", "vit") else agg.sub_attrs
+        target[attr] = target.get(attr, 0.0) + float(value)
     return agg
 
 
@@ -159,10 +166,12 @@ def hero_items(items: Iterable[Any], hero_id: int | None) -> list[Any]:
     return [i for i in items if getattr(i, "equipped_hero_id", None) in (None, hero_id)]
 
 
-def compute_stats(hero: Any, items: Iterable[Any]) -> HeroStats:
-    """计算英雄最终面板属性。"""
+def compute_stats(
+    hero: Any, items: Iterable[Any], socket_mods: dict[str, float] | None = None
+) -> HeroStats:
+    """计算英雄最终面板属性。`socket_mods` 为账号级魔晶石镶嵌加成。"""
     items = hero_items(items, getattr(hero, "id", None))
-    agg = aggregate_equipment(items)
+    agg = aggregate_equipment(items, socket_mods)
     level = int(hero.level)
     gc = float(CONFIG.talents["talents"][hero.talent]["growthCoef"])
     bias = hero.attr_bias

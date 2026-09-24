@@ -10,9 +10,9 @@ from app.services.serialization import hero_to_dict
 from app.services.multiplayer_config import MULTIPLAYER
 from app.services.item_factory import base_attr_range
 
-def make_snapshot(hero, items, clears=(), strategy='assist'):
+def make_snapshot(hero, items, clears=(), strategy='assist', socket_mods=None):
     equipped = [i for i in hero_items(items, hero.id) if i.equipped_slot and i.category in ('weapon','armor','accessory')]
-    stats = compute_stats(hero, equipped)
+    stats = compute_stats(hero, equipped, socket_mods)
     job = CONFIG.job_by_id.get(stats.job_id, {})
     role = job.get('role', 'melee')
     role = role if role in ('tank','healer') else 'dps'
@@ -42,7 +42,8 @@ def item_snapshot(item,owner_id):
 async def snapshot_hero(db, hero, strategy='assist'):
     items = (await db.scalars(select(Item).where(Item.user_id == hero.user_id))).all()
     clears = (await db.scalars(select(CoopProgress.dungeon_id).where(CoopProgress.user_id == hero.user_id, CoopProgress.clears > 0))).all()
-    return make_snapshot(hero, items, clears, strategy)
+    from app.services.materia import socket_mods
+    return make_snapshot(hero, items, clears, strategy, await socket_mods(db, hero.user_id))
 
 def entry_failures(snapshot, dungeon, config):
     errors=[]

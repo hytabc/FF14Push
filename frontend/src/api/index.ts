@@ -635,4 +635,146 @@ export const api = {
   async marketCancel(listingId: number) {
     return (await http.post<{ gold: number; message: string }>('/market/cancel', { listingId })).data
   },
+
+  // ---------------------------------------------------------------- 挖宝
+  async treasureState() {
+    return (
+      await http.get<{
+        config: import('@/game/types').TreasureConfig
+        run: import('@/game/types').TreasureRunState | null
+      }>('/treasure/state')
+    ).data
+  },
+
+  async treasureStart() {
+    return (
+      await http.post<{
+        cost: number
+        gold: number
+        run: import('@/game/types').TreasureRunState
+      }>('/treasure/start', {})
+    ).data
+  },
+
+  async treasureFloorClear(runId: number, elapsedMs = 0) {
+    return (
+      await http.post<{
+        event: import('@/game/types').TreasureEvent | null
+        run: import('@/game/types').TreasureRunState
+      }>('/treasure/floor/clear', { runId, elapsedMs })
+    ).data
+  },
+
+  async treasureGamble(runId: number, guess: 'high' | 'low') {
+    return (
+      await http.post<import('@/game/types').TreasureGambleResult>('/treasure/gamble', {
+        runId,
+        guess,
+      })
+    ).data
+  },
+
+  async treasureGambleStop(runId: number) {
+    return (
+      await http.post<{ run: import('@/game/types').TreasureRunState }>('/treasure/gamble/stop', {
+        runId,
+      })
+    ).data
+  },
+
+  async treasureChestOpen(runId: number) {
+    return (
+      await http.post<import('@/game/types').TreasureChestResult>('/treasure/chest/open', { runId })
+    ).data
+  },
+
+  async treasureDoor(runId: number, door: number) {
+    return (
+      await http.post<{
+        correct: boolean
+        door: number
+        run: import('@/game/types').TreasureRunState
+      }>('/treasure/door/choose', { runId, door })
+    ).data
+  },
+
+  async treasureRetry(runId: number) {
+    return (
+      await http.post<{ run: import('@/game/types').TreasureRunState }>('/treasure/retry', { runId })
+    ).data
+  },
+
+  async treasureAbandon(runId: number) {
+    return (
+      await http.post<{ run: import('@/game/types').TreasureRunState }>('/treasure/abandon', {
+        runId,
+      })
+    ).data
+  },
+
+  // ---------------------------------------------------------------- 魔晶石镶嵌
+  async materiaState() {
+    return (await http.get<import('@/game/types').MateriaState>('/materia/state')).data
+  },
+
+  async materiaSocket(slot: string, index: number, materiaId: string) {
+    return (
+      await http.post<import('@/game/types').MateriaSocketResult>('/materia/socket', {
+        slot,
+        index,
+        materiaId,
+      })
+    ).data
+  },
+
+  async materiaRemove(slot: string, index: number) {
+    return (
+      await http.post<{
+        removed: import('@/game/types').MateriaDef
+        slot: string
+        index: number
+        state: import('@/game/types').MateriaState
+      }>('/materia/remove', { slot, index })
+    ).data
+  },
+
+  async materiaMerge(materiaId: string) {
+    return (
+      await http.post<{
+        consumed: string
+        count: number
+        produced: import('@/game/types').MateriaDef
+        state: import('@/game/types').MateriaState
+      }>('/materia/merge', { materiaId })
+    ).data
+  },
+
+  // ---------------------------------------------------------------- 种田
+  async farmState() {
+    return (await http.get<import('@/game/types').FarmState>('/farm/state')).data
+  },
+
+  async farmExpand() {
+    return (
+      await http.post<{ cost: number; state: import('@/game/types').FarmState }>('/farm/expand', {})
+    ).data
+  },
+
+  async farmPlant(plotIndex: number, seedId: string) {
+    return (
+      await http.post<{ state: import('@/game/types').FarmState }>('/farm/plant', {
+        plotIndex,
+        seedId,
+      })
+    ).data
+  },
+
+  async farmHarvest(plotIndex: number, heroId?: number | null, confirm = false) {
+    return (
+      await http.post<{
+        result: import('@/game/types').FarmHarvestResult
+        state: import('@/game/types').FarmState
+      }>('/farm/harvest', { plotIndex, heroId: heroId ?? null, confirm })
+    ).data
+  },
 }

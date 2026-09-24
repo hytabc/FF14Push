@@ -11,8 +11,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
 
-from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
+from app.core.deps import CurrentHero, CurrentItems, CurrentSockets, CurrentUser, DbSession
 from app.models import RaidProgress, RaidSession
+from app.services.roster import end_treasure_runs
 from app.schemas.game import (
     RaidChestClaimRequest,
     RaidReportRequest,
@@ -87,8 +88,8 @@ async def _end_active_sessions(db: DbSession, user_id: int) -> None:
 
 
 @router.get("")
-async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems) -> dict:
-    stats = compute_stats(hero, items)
+async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems, sockets: CurrentSockets) -> dict:
+    stats = compute_stats(hero, items, sockets)
     power = hero_power(stats)
     today = datetime.now(timezone.utc).date()
     rows = (
@@ -144,13 +145,13 @@ async def raid_list(db: DbSession, user: CurrentUser, hero: CurrentHero, items: 
 
 @router.post("/session/start")
 async def start_session(
-    payload: RaidStartRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
+    payload: RaidStartRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems, sockets: CurrentSockets
 ) -> dict:
     raid = raid_by_id(payload.raidId)
     if raid is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="副本不存在")
 
-    stats = compute_stats(hero, items)
+    stats = compute_stats(hero, items, sockets)
     ok, reason = eligibility(raid, hero.level, stats, items)
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=reason)
@@ -160,6 +161,7 @@ async def start_session(
     from app.services.dohdol_util import end_active_sessions as _end_activity
 
     await _end_activity(db, user.id)
+    await end_treasure_runs(db, user.id)
     session = RaidSession(user_id=user.id, hero_id=hero.id, raid_id=raid["id"], active=True, cleared=False)
     session.balance_snapshot = snapshot(raid,hero.level,stats,items)
     previous = await db.scalar(select(func.count(RaidSession.id)).where(RaidSession.user_id==user.id,RaidSession.raid_id==raid['id']))
@@ -181,7 +183,7 @@ async def start_session(
 
 @router.post("/session/report")
 async def report_session(
-    payload: RaidReportRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
+    payload: RaidReportRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems, sockets: CurrentSockets
 ) -> dict:
     raid = raid_by_id(payload.raidId)
     if raid is None:
@@ -210,7 +212,7 @@ async def report_session(
     session.active = False
     session.ended_at = now
 
-    stats = compute_stats(hero, items)
+    stats = compute_stats(hero, items, sockets)
     current = snapshot(raid,hero.level,stats,items)
     fight_ms = int(payload.fightMs if payload.fightMs is not None else server_elapsed_ms)
     failures = clear_failures(session.balance_snapshot,current,server_elapsed_ms,fight_ms) if payload.cleared else []

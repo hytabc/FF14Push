@@ -95,6 +95,16 @@ async def get_current_items(db: DbSession, user: CurrentUser) -> list[Item]:
 CurrentItems = Annotated[list[Item], Depends(get_current_items)]
 
 
+async def get_current_sockets(db: DbSession, user: CurrentUser) -> dict[str, float]:
+    """账号级魔晶石镶嵌加成，供 compute_stats 注入（见 services/materia.py）。"""
+    from app.services.materia import socket_mods
+
+    return await socket_mods(db, user.id)
+
+
+CurrentSockets = Annotated[dict[str, float], Depends(get_current_sockets)]
+
+
 async def get_optional_user(
     db: DbSession,
     authorization: Annotated[str | None, Header()] = None,

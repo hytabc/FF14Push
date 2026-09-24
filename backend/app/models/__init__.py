@@ -12,8 +12,10 @@ from app.models.dohdol import (
     UserTitle,
 )
 from app.models.equipment import ChestPity, ChestUnlock, Item, ItemTag
+from app.models.farm import FarmPlot
 from app.models.friends import STATUS_ACCEPTED, STATUS_PENDING, CoinTransfer, Friendship
 from app.models.market import MarketListing
+from app.models.materia import MateriaSocket
 from app.models.progress import (
     AutoSellSetting,
     CodexEquipment,
@@ -27,6 +29,7 @@ from app.models.progress import (
 from app.models.raid import RaidProgress, RaidSession
 from app.models.redeem import RedeemRecord
 from app.models.system import AuditLog, BattleSession, RankingEntry, SecurityEvent
+from app.models.treasure import STATUS_CLEARED, STATUS_ENDED, STATUS_FIGHTING, TreasureRun
 
 __all__ = [
     "Base",
@@ -68,6 +71,12 @@ __all__ = [
     "FishRecord",
     "ActiveConsumable",
     "UserTitle",
+    "MateriaSocket",
+    "FarmPlot",
+    "TreasureRun",
+    "STATUS_FIGHTING",
+    "STATUS_CLEARED",
+    "STATUS_ENDED",
 ]
 
 from app.models.multiplayer import (HeroRegistration, CoopRoom, CoopMember, CoopSeat,

@@ -24,6 +24,7 @@ from app.services.ranking import (
     refresh_all_rankings,
 )
 from app.services.serialization import hero_to_dict, loadout
+from app.services.materia import socket_mods
 from app.services.stats import compute_stats
 from app.services.valuation import hero_power
 
@@ -102,7 +103,7 @@ async def player_profile(user_id: int, db: DbSession, viewer: CurrentUser) -> di
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="玩家不存在")
 
     items = await load_user_items(db, user_id)
-    stats = compute_stats(hero, items)
+    stats = compute_stats(hero, items, await socket_mods(db, user_id))
     # 标签属于物主私有（id 只在物主账号内有意义），跨账号查看时清空
     equipped = {slot: {**data, "tagIds": []} for slot, data in loadout(items, hero.id).items()}
     combat = {s: d for s, d in equipped.items() if d["category"] in _COMBAT_CATEGORIES}

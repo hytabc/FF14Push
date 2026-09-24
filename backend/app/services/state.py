@@ -27,6 +27,7 @@ from app.services.drop_luck import chest_luck_max, chest_rarity_luck, cleared_re
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
 from app.services.loot import drop_rate_multiplier
+from app.services.materia import socket_mods as materia_socket_mods
 from app.services.progression import exp_to_next, highest_hero_level
 from app.services.recruiting import initial_hero, recruit_cost, with_recruit_cost
 from app.services.regions_util import boss_stats, kills_required, monster_stats, spawn_interval
@@ -65,7 +66,8 @@ async def build_game_state(
     if hero is None:
         hero = _placeholder_hero(user.id)
 
-    stats = compute_stats(hero, items)
+    socket_mods = await materia_socket_mods(db, user.id)
+    stats = compute_stats(hero, items, socket_mods)
     difficulty = active_difficulty(user)
 
     progress_rows = (
@@ -149,7 +151,7 @@ async def build_game_state(
         "recruitCost": recruit_cost(hero.talent, hero.level),
         "loadout": loadout(items, hero.id),
         "activeHeroId": user.active_hero_id,
-        "heroes": [hero_to_dict(h, compute_stats(h, items)) for h in (await db.scalars(select(Hero).where(Hero.user_id == user.id).order_by(Hero.id))).all()],
+        "heroes": [hero_to_dict(h, compute_stats(h, items, socket_mods)) for h in (await db.scalars(select(Hero).where(Hero.user_id == user.id).order_by(Hero.id))).all()],
         "items": [item_to_dict(item, sell_price_range(item)) for item in items],
         "itemCounts": count_by_rarity(items),
         "tags": [tag_to_dict(t) for t in tag_rows],
