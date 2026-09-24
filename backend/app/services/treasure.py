@@ -342,13 +342,15 @@ async def open_chest(
     # 彩蛋被动「金主」：挖宝所有金币奖励 +value（含下底附赠），0.1 = +10%。
     gold_factor = 1.0 + treasure_gold_bonus(hero.egg_id if hero is not None else None)
 
-    gold_base = (
-        roll_gold(source_region_id(), "boss", 0.0, rng)
-        * monster_gold_multiplier(difficulty)
-    )
+    rolled = roll_gold(source_region_id(), "boss", 0.0, rng)
+    # 经验沿用「难度放大后的金币基准」（保持原有口径：基础金币 × 难度金币系数 × xpPerGold × 难度经验系数）。
+    maxed_gold_base = rolled * monster_gold_multiplier(difficulty)
     gold_bonus = 1.0 + max(0.0, float(term_mods.get("goldGainPct", 0.0))) / 100.0
-    gold_unit = gold_base * float(_cfg()["goldMultiplier"]) * gold_bonus
-    exp_base = gold_base * float(CONFIG.monsters["xpPerGold"]) * monster_exp_multiplier(difficulty)
+    # 挖宝**金币**不吃难度加成：难度只放大怪物数值与经验。否则高难度的金币加成会同时抬高
+    # 挖宝收益，使「即使每层必定击败 BOSS，期望金币仍低于入场成本」的防刷边界失效
+    # （见 tests/test_shared_data.py:test_treasure_is_not_a_gold_printer）。
+    gold_unit = rolled * float(_cfg()["goldMultiplier"]) * gold_bonus
+    exp_base = maxed_gold_base * float(CONFIG.monsters["xpPerGold"]) * monster_exp_multiplier(difficulty)
     exp_unit = apply_exp_bonus(
         max(1, int(exp_base * float(_cfg()["expMultiplier"]))), term_mods
     )

@@ -530,12 +530,12 @@ def test_battle_difficulty_config() -> None:
     """难度配置：最高 15；怪物按加法（1 + 单级加成×N）、玩家按乘法（0.85^N / 0.9^N）。"""
     cfg = CONFIG.combat["difficulty"]
     assert int(cfg["maxLevel"]) == 15
-    # 1 级加成符合需求：HP / 防御 / 经验 +100%、攻击 +50%、金币 +10%
+    # 1 级加成符合需求：HP / 防御 / 经验 +100%、攻击 +50%、金币 +50%
     assert 1 + float(cfg["monsterHpBonusPerLevel"]) == pytest.approx(2.0)
     assert 1 + float(cfg["monsterDefenseBonusPerLevel"]) == pytest.approx(2.0)
     assert 1 + float(cfg["monsterExpBonusPerLevel"]) == pytest.approx(2.0)
     assert 1 + float(cfg["monsterAttackBonusPerLevel"]) == pytest.approx(1.5)
-    assert 1 + float(cfg["monsterGoldBonusPerLevel"]) == pytest.approx(1.1)
+    assert 1 + float(cfg["monsterGoldBonusPerLevel"]) == pytest.approx(1.5)
     # 玩家攻击 / 防御为逐级相乘的系数
     assert float(cfg["playerAttackMultiplierPerLevel"]) == pytest.approx(0.85)
     assert float(cfg["playerDefenseMultiplierPerLevel"]) == pytest.approx(0.9)
@@ -604,9 +604,11 @@ def test_treasure_is_not_a_gold_printer() -> None:
 
     只有「击败 5 层地区 40 关底 BOSS + 连过 4 扇 50/50 的门」才可能接近收益上限，
     因此挖宝不构成任何形式的「不打怪只刷金币」路线。
-    """
-    from app.services.difficulty import monster_gold_multiplier
 
+    注意挖宝金币**不吃难度加成**（`combat.json:difficulty.monsterGoldBonusPerLevel` 只作用于
+    地区战斗；挖宝只借难度放大怪物数值与经验），因此这里不乘难度金币系数——否则提高难度
+    金币加成会直接把挖宝顶成印钞路线。
+    """
     cfg = CONFIG.treasure
     region = CONFIG.region_by_id[int(cfg["sourceRegionId"])]
     gold_base = float(region["baseGold"]) * float(CONFIG.regions["goldMultipliers"]["boss"])
@@ -616,7 +618,7 @@ def test_treasure_is_not_a_gold_printer() -> None:
     expected = 0.0
     reach = 1.0
     for floor in range(1, int(cfg["floors"]) + 1):
-        gold_unit = gold_base * monster_gold_multiplier(floor - 1) * float(cfg["goldMultiplier"])
+        gold_unit = gold_base * float(cfg["goldMultiplier"])
         entries = int(cfg["rewardsPerFloor"]["base"]) + int(cfg["rewardsPerFloor"]["perFloor"]) * (floor - 1)
         expected += reach * entries * p_gold * gold_unit
         reach *= float(cfg["correctChance"])

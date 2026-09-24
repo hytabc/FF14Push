@@ -1631,7 +1631,7 @@ describe('战斗难度等级', () => {
     expect(monsterHpMultiplier(0)).toBe(1)
     expect(monsterGoldMultiplier(0)).toBe(1)
     expect(monsterExpMultiplier(0)).toBe(1)
-    expect(monsterGoldMultiplier(1)).toBeCloseTo(1.1, 5)
+    expect(monsterGoldMultiplier(1)).toBeCloseTo(1.5, 5)
     expect(monsterExpMultiplier(1)).toBeCloseTo(2, 5)
   })
 })

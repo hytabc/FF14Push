@@ -258,7 +258,7 @@ const logTone: Record<string, string> = {
             </li>
           </ul>
           <p class="mt-2 text-[11px] text-ink-500">
-            金币 / 经验为同难度关底 BOSS 产出的 {{ config?.goldMultiplier ?? 2 }} 倍，数量随层数上涨。
+            经验 = 同难度关底 BOSS 产出 ×{{ config?.expMultiplier ?? 2 }}；金币 = 基础关底 BOSS 金币 ×{{ config?.goldMultiplier ?? 2 }}（不吃难度加成），数量随层数上涨。
           </p>
         </div>
 

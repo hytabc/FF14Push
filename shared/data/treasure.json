@@ -5,7 +5,7 @@
   "doors": 2,
   "correctChance": 0.5,
   "sourceRegionId": 40,
-  "$commentReward": "金币 / 经验奖励 = 同难度（层-1）地区 40 关底 BOSS 产出的 goldMultiplier / expMultiplier 倍，再照常叠加玩家金币/经验词条与药食加成。",
+  "$commentReward": "经验奖励 = 同难度（层-1）地区 40 关底 BOSS 产出的 goldMultiplier × expMultiplier 倍；**金币奖励不吃难度加成**（难度只放大怪物数值与经验，否则高难度挖宝会变成刷金路线、击穿防刷边界），仅按基础 BOSS 金币 × goldMultiplier 结算。两者再照常叠加玩家金币/经验词条与药食加成。",
   "goldMultiplier": 2.0,
   "expMultiplier": 2.0,
   "finalBonusGold": 10000000,

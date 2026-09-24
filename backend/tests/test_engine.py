@@ -1585,9 +1585,9 @@ class TestBattleDifficulty:
     def test_gold_and_exp_caps_scale_with_difficulty(self) -> None:
         stats = compute_stats(FakeHero(level=60), _expected_gear(60))
         base = max_gold_for_kill(20, "normal", stats, 0)
-        assert max_gold_for_kill(20, "normal", stats, 1) == pytest.approx(base * 1.1)
+        assert max_gold_for_kill(20, "normal", stats, 1) == pytest.approx(base * 1.5)
         assert monster_exp_multiplier(1) == pytest.approx(2.0)
-        assert monster_gold_multiplier(2) == pytest.approx(1.2)
+        assert monster_gold_multiplier(2) == pytest.approx(2.0)
 
     def test_validate_report_accepts_difficulty_scaled_rewards(self) -> None:
         """高难度的金币/经验上限同步放大，合法上报不会被截断或拒绝。"""
