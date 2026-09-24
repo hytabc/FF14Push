@@ -51,6 +51,9 @@ const skills = computed(() => {
 
 const eggDesc = computed(() => (hero.value?.eggId ? (data.eggHeroes.byId[hero.value.eggId]?.desc ?? '彩蛋英雄') : ''))
 
+/** 当前职业的绝技（招牌技能）。 */
+const signature = computed(() => data.jobById[hero.value?.jobId ?? '']?.signature ?? null)
+
 const totalCasts = computed(() =>
   Object.values(game.state?.skillStats ?? {}).reduce((sum, v) => sum + Number(v), 0),
 )
@@ -340,6 +343,20 @@ const powerTip = computed(() => statExplain('power', statCtx.value))
       </p>
 
       <div class="mt-3 space-y-2">
+        <!-- 绝技（招牌技能）：独立充能槽，满槽自动释放 -->
+        <div v-if="signature" class="rounded-lg border border-sky-500/40 bg-sky-500/5 p-3">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-medium text-ink-100">绝技 · {{ signature.name }}</span>
+            <span class="text-ink-400">
+              充能 {{ signature.chargeSeconds }}s ·
+              {{ signature.potency > 0 ? `${signature.potency}% 威力` : '辅助效果' }}
+            </span>
+          </div>
+          <p v-if="signature.effects.length" class="mt-1 text-[10px] text-ink-400">
+            {{ signature.effects.map(skillEffectLabel).join('、') }}
+          </p>
+          <p class="mt-1 text-[10px] text-ink-500">{{ signature.desc }}</p>
+        </div>
         <div
           v-for="skill in skills"
           :key="skill.id"
@@ -387,6 +404,7 @@ const powerTip = computed(() => statExplain('power', statCtx.value))
           <p class="mt-1 text-[10px] text-ink-500">
             {{ job.skills.map((s) => s.name).join(' / ') }}
           </p>
+          <p class="text-[10px] text-sky-400/80">绝技：{{ job.signature.name }}</p>
         </div>
       </div>
     </section>

@@ -11,9 +11,11 @@ import ToastStack from '@/components/ToastStack.vue'
 import TutorialOverlay from '@/components/TutorialOverlay.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useGameStore } from '@/stores/game'
+import { useSoundStore } from '@/stores/sound'
 
 const auth = useAuthStore()
 const game = useGameStore()
+const sound = useSoundStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -73,6 +75,13 @@ function heartbeat() {
   void api.friendHeartbeat().catch(() => {})
 }
 
+/** 浏览器自动播放策略：必须在首个用户手势里解锁 AudioContext，之后音效才会出声。 */
+function unlockSound() {
+  sound.unlock()
+  window.removeEventListener('pointerdown', unlockSound)
+  window.removeEventListener('keydown', unlockSound)
+}
+
 onMounted(async () => {
   if (auth.isLoggedIn) {
     await auth.loadProfile()
@@ -80,10 +89,14 @@ onMounted(async () => {
   }
   heartbeat()
   heartbeatTimer = window.setInterval(heartbeat, HEARTBEAT_MS)
+  window.addEventListener('pointerdown', unlockSound)
+  window.addEventListener('keydown', unlockSound)
 })
 
 onUnmounted(() => {
   if (heartbeatTimer) window.clearInterval(heartbeatTimer)
+  window.removeEventListener('pointerdown', unlockSound)
+  window.removeEventListener('keydown', unlockSound)
 })
 
 async function logout() {

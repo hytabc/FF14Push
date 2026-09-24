@@ -66,9 +66,13 @@ class ActivitySession(Base):
     total_actions: Mapped[int] = mapped_column(sa.BigInteger, default=0)
     # 生产：本次会话要制造的总件数（「制作X个」/「制作全部」）。None = 不设上限（旧会话）。
     target_actions: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
-    # 钓鱼：捕鱼人之识到期时间（服务端时钟）与本次会话已钓起的普通鱼 id
-    insight_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
-    session_fish: Mapped[list] = mapped_column(JsonType, default=list)
+    # 钓鱼：本会话已钓起鱼获计数（fishId → 数量）
+    session_fish: Mapped[dict] = mapped_column(JsonType, default=dict)
+    # 钓鱼：各特殊鱼的「捕鱼人之识」到期时间（specialId → ISO 字符串）。
+    # 一鱼一 BUFF，互不刷新：只在未激活时开启，结束后必须重新钓齐前置才可再次触发。
+    session_insights: Mapped[dict] = mapped_column(JsonType, default=dict)
+    # 钓鱼：各特殊鱼的直觉前置累计（specialId → {fishId: count}）；触发 BUFF 时清零。
+    session_intuition: Mapped[dict] = mapped_column(JsonType, default=dict)
 
 
 class FishRecord(Base):

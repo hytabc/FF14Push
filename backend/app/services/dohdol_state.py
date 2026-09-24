@@ -167,6 +167,10 @@ async def build_dohdol_state(
     fish_count = sum(int(r.count) for r in fish_rows)
     king_count = sum(1 for r in fish_rows if r.kind == "king")
     emperor_count = sum(1 for r in fish_rows if r.kind == "emperor")
+    legend_count = sum(1 for r in fish_rows if r.kind == "legend")
+    legend_total = sum(
+        1 for region in CONFIG.fish["regions"] for s in region["specials"] if s["kind"] == "legend"
+    )
 
     title_rows = (
         await db.execute(select(UserTitle).where(UserTitle.user_id == user_id))
@@ -175,6 +179,7 @@ async def build_dohdol_state(
     titles = [
         {**t, "owned": t["id"] in owned_titles} for t in CONFIG.titles["titles"]
     ]
+    active_title_id = await db.scalar(select(User.active_title_id).where(User.id == user_id))
 
     return {
         "progress": progress,
@@ -193,12 +198,15 @@ async def build_dohdol_state(
             "sources": factors,
         },
         "titles": titles,
+        "activeTitleId": active_title_id,
         "fishStats": {
             "species": fish_species,
             "count": fish_count,
             "king": king_count,
-            "kingTotal": len(CONFIG.fish["regions"]),
+            "kingTotal": sum(1 for r in CONFIG.fish["regions"] for s in r["specials"] if s["kind"] == "king"),
             "emperor": emperor_count,
-            "emperorTotal": len(CONFIG.fish["regions"]),
+            "emperorTotal": sum(1 for r in CONFIG.fish["regions"] for s in r["specials"] if s["kind"] == "emperor"),
+            "legend": legend_count,
+            "legendTotal": legend_total,
         },
     }

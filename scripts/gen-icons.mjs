@@ -731,6 +731,20 @@ const SHAPES = {
     '..olmmmmdo..',
     'g..oooooo...',
   ],
+  fish_legend: [
+    'g.o.o.o.o..g',
+    '.ooooooo....',
+    'g..oooooo..g',
+    '..olmmmmdo..',
+    '.olmommmmdo.',
+    'olmmmmmmmoo.',
+    'olmmmmmmoooo',
+    'olmmmmmmoooo',
+    'olmmmmmmmoo.',
+    '.olmmmmmmdo.',
+    'g..olmmmdo..',
+    '...oooooo..g',
+  ],
 
   // ── 药水 / 食物 2 ──
   cons_potion: [
@@ -1012,11 +1026,14 @@ const DOL_PALETTES = [
   { m: [0x3f, 0xb0, 0xc0], d: [0x1f, 0x70, 0x80], l: [0x86, 0xe0, 0xe8] },
 ]
 
-/** 鱼：普通 / 鱼王 / 鱼皇 */
+/** 鱼：普通鱼（白 / 蓝 / 紫档位）+ 鱼王 / 鱼皇 / 困难鱼 */
 const FISH_PALETTES = {
-  normal: { m: [0x6f, 0x9f, 0xd0], d: [0x3f, 0x6f, 0xa0], l: [0xa8, 0xcc, 0xec] },
+  white: { m: [0x6f, 0x9f, 0xd0], d: [0x3f, 0x6f, 0xa0], l: [0xa8, 0xcc, 0xec] },
+  blue: { m: [0x4f, 0x7f, 0xe0], d: [0x24, 0x4a, 0xa0], l: [0x9c, 0xc0, 0xff] },
+  purple: { m: [0x9a, 0x6f, 0xd8], d: [0x5a, 0x34, 0x9a], l: [0xd0, 0xb0, 0xf4] },
   king: { m: [0xe0, 0xb8, 0x40], d: [0xa0, 0x7a, 0x10], l: [0xff, 0xe0, 0x8a] },
   emperor: { m: [0xb0, 0x60, 0xd0], d: [0x70, 0x30, 0xa0], l: [0xe0, 0xa0, 0xf0] },
+  legend: { m: [0xe8, 0x5a, 0x8a], d: [0xa0, 0x28, 0x58], l: [0xff, 0xa8, 0xc4] },
 }
 
 /** 钓场地区生态色（给同种鱼做微差） */
@@ -1508,19 +1525,25 @@ function listDohdolItems(equipJson) {
   })
 }
 
-/** 鱼获（fish.json）：普通 f{r}_{n} / 鱼王 k{r} / 鱼皇 e{r} */
-const FISH_SHAPE_BY_KIND = { normal: 'fish_normal', king: 'fish_king', emperor: 'fish_emperor' }
+/** 鱼获（fish.json）：普通 f{r}_{n}（按白/蓝/紫档位取色）/ 特殊鱼（鱼王 k / 鱼皇 e / 困难鱼 l） */
+const FISH_SHAPE_BY_KIND = {
+  normal: 'fish_normal',
+  king: 'fish_king',
+  emperor: 'fish_emperor',
+  legend: 'fish_legend',
+}
 function listFish(fishJson) {
   const out = []
-  const make = (id, kind, regionId) => {
+  const make = (id, kind, regionId, rarity) => {
     const tint = REGION_TINTS[regionId % REGION_TINTS.length]
-    const base = mix(FISH_PALETTES[kind].m, tint, 0.3)
+    const key = kind === 'normal' ? rarity ?? 'white' : kind
+    const spec = FISH_PALETTES[key] ?? FISH_PALETTES.white
+    const base = mix(spec.m, tint, 0.3)
     out.push({ id, shape: FISH_SHAPE_BY_KIND[kind], palette: makePalette(base), ornament: null })
   }
   for (const region of fishJson.regions) {
-    for (const f of region.normal) make(f.id, 'normal', region.regionId)
-    make(region.king.id, 'king', region.regionId)
-    make(region.emperor.id, 'emperor', region.regionId)
+    for (const f of region.normal) make(f.id, 'normal', region.regionId, f.rarity)
+    for (const s of region.specials) make(s.id, s.kind, region.regionId)
   }
   return out
 }

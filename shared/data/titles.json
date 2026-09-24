@@ -1,21 +1,177 @@
 {
-  "$comment": "称号。钓起全部地区的鱼王 / 鱼皇各解锁一个称号，展示在排行榜。",
+  "$comment": "称号。手工维护（gen-dohdol-data.py 已不再写入本文件）。条件由后端 services/titles.py 数据驱动判定；展示在排行榜 / 玩家资料 / 设置页（可佩戴一个）。旧两条（鱼王猎手 / 海皇）只统计 legacy 鱼王 / 鱼皇，新增困难鱼不影响其达成条件。",
   "titles": [
     {
       "id": "fish_king_all",
       "name": "鱼王猎手",
       "desc": "钓起全部地区的鱼王",
-      "condition": {
-        "type": "all_king"
-      }
+      "condition": { "type": "all_king" }
     },
     {
       "id": "fish_emperor_all",
       "name": "海皇",
       "desc": "钓起全部地区的鱼皇",
-      "condition": {
-        "type": "all_emperor"
-      }
+      "condition": { "type": "all_emperor" }
+    },
+    {
+      "id": "fish_king_20",
+      "name": "太公仙路",
+      "desc": "钓起 20 种鱼王",
+      "condition": { "type": "count_kind", "kind": "king", "count": 20 }
+    },
+    {
+      "id": "fish_king_30",
+      "name": "浪涛行者",
+      "desc": "钓起 30 种鱼王",
+      "condition": { "type": "count_kind", "kind": "king", "count": 30 }
+    },
+    {
+      "id": "fish_king_40",
+      "name": "金曦之鳞",
+      "desc": "钓起 40 种鱼王",
+      "condition": { "type": "count_kind", "kind": "king", "count": 40 }
+    },
+    {
+      "id": "fish_emperor_20",
+      "name": "净界太公",
+      "desc": "钓起 20 种鱼皇",
+      "condition": { "type": "count_kind", "kind": "emperor", "count": 20 }
+    },
+    {
+      "id": "fish_grand_all",
+      "name": "烟波钓徒",
+      "desc": "钓起全部困难鱼（钓场之王的真正试炼）",
+      "condition": { "type": "all_legend" }
+    },
+    {
+      "id": "fish_legend_10",
+      "name": "钓场之王",
+      "desc": "钓起 10 种困难鱼",
+      "condition": { "type": "count_kind", "kind": "legend", "count": 10 }
+    },
+    {
+      "id": "fish_specific_hue",
+      "name": "最终鲩想",
+      "desc": "钓起传说中的七彩天主",
+      "condition": { "type": "specific_fish", "fishIds": ["l21_hue_lord"] }
+    },
+    {
+      "id": "fish_specific_mirror",
+      "name": "镜花水月",
+      "desc": "在晴夜的刹那钓起镜中蝶",
+      "condition": { "type": "specific_fish", "fishIds": ["l25_mirror_butterfly"] }
+    },
+    {
+      "id": "fish_all_special",
+      "name": "太公封神",
+      "desc": "钓起全部的鱼王、鱼皇与困难鱼",
+      "condition": { "type": "all_special" }
+    },
+    {
+      "id": "fish_la_king",
+      "name": "碧海钓鱼之王",
+      "desc": "钓起拉诺西亚全部鱼王",
+      "condition": { "type": "region_group_king", "regionIds": [1, 2, 3] }
+    },
+    {
+      "id": "fish_shroud_king",
+      "name": "密林钓鱼之王",
+      "desc": "钓起黑衣森林全部鱼王",
+      "condition": { "type": "region_group_king", "regionIds": [6, 7] }
+    },
+    {
+      "id": "fish_sag_king",
+      "name": "黄沙钓鱼之王",
+      "desc": "钓起萨纳兰全部鱼王",
+      "condition": { "type": "region_group_king", "regionIds": [4, 5, 8, 9] }
+    },
+    {
+      "id": "fish_species_50",
+      "name": "钓遍世界",
+      "desc": "钓起 50 种不同的鱼",
+      "condition": { "type": "species_count", "count": 50 }
+    },
+    {
+      "id": "fish_purple_20",
+      "name": "捕鱼专家",
+      "desc": "钓起 20 种紫鱼",
+      "condition": { "type": "count_rarity", "rarity": "purple", "count": 20 }
+    },
+    {
+      "id": "fish_count_10000",
+      "name": "世界级钓手",
+      "desc": "累计钓起 10000 条鱼",
+      "condition": { "type": "fish_count", "count": 10000 }
+    },
+    {
+      "id": "treasure_egg_hunter",
+      "name": "寻宝猎人",
+      "desc": "在挖宝最深处翻出了不该存在的东西",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "treasure_bottom", "chance": 0.02 }
+    },
+    {
+      "id": "treasure_egg_rich",
+      "name": "一夜暴富",
+      "desc": "传说中的黄金雨，只落在最幸运的人头上",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "treasure_bottom", "chance": 0.01 }
+    },
+    {
+      "id": "treasure_egg_tomb",
+      "name": "古墓丽影",
+      "desc": "你不该打扰长眠于此的主人",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "treasure_bottom", "chance": 0.005 }
+    },
+    {
+      "id": "treasure_egg_lord",
+      "name": "宝藏之主",
+      "desc": "整座遗迹的财富，如今都刻着你的名字",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "treasure_bottom", "chance": 0.002 }
+    },
+    {
+      "id": "treasure_egg_dream",
+      "name": "黄金之梦",
+      "desc": "下底千百次，只为那一次金光",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "treasure_bottom", "chance": 0.0008 }
+    },
+    {
+      "id": "gather_egg_vein",
+      "name": "矿脉破坏者",
+      "desc": "一镐下去，山都要让路",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "gather", "chance": 0.0006 }
+    },
+    {
+      "id": "gather_egg_bounty",
+      "name": "大地的恩惠",
+      "desc": "土地偶尔会慷慨得不像话",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "gather", "chance": 0.0004 }
+    },
+    {
+      "id": "gather_egg_harvest",
+      "name": "丰收之神",
+      "desc": "镰刀挥过之处，寸草不留",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "gather", "chance": 0.00025 }
+    },
+    {
+      "id": "gather_egg_friend",
+      "name": "自然之友",
+      "desc": "林木在你耳边低语，把最好的都给了你",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "gather", "chance": 0.00015 }
+    },
+    {
+      "id": "gather_egg_avatar",
+      "name": "大地使者",
+      "desc": "据说只有被大地选中的人才配得上这个名号",
+      "egg": true,
+      "condition": { "type": "random_drop", "event": "gather", "chance": 0.00008 }
     }
   ]
 }

@@ -64,6 +64,7 @@ async def game_config() -> dict:
         "gatherNodes": CONFIG.gather_nodes,
         "dohdolEquipment": CONFIG.dohdol_equipment,
         "fish": CONFIG.fish,
+        "weather": CONFIG.weather,
         "recipes": CONFIG.recipes,
         "consumables": CONFIG.consumables,
         "titles": CONFIG.titles,

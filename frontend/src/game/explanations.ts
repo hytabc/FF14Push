@@ -255,22 +255,41 @@ export function recruitCostExplain(level: number, talent: RarityId, cost: number
   }
 }
 
-/** 鱼王 / 鱼皇。真源：后端 services/fishing.py::report_fish + fish.json.king/emperor.chance */
-export function fishChanceExplain(region: {
-  king: { name: string; chance: number; prereqFishIds: string[] }
-  emperor: { name: string; chance: number; prereqFishIds: string[] }
-}, chanceBonusPct = 0): Explain {
+/** 特殊鱼（鱼王 / 鱼皇 / 困难鱼）。真源：后端 services/fishing.py::report_fish + fish.json.specials[].intuition */
+export function fishChanceExplain(
+  region: {
+    specials: Array<{
+      name: string
+      kind: string
+      weather?: string[]
+      timeOfDay?: string[]
+      intuition: { chance: number; requires: Array<{ fishId: string; count: number }> }
+    }>
+  },
+  chanceBonusPct = 0,
+): Explain {
   const factor = 1 + chanceBonusPct / 100
-  return {
-    title: '鱼王 / 鱼皇概率如何计算',
-    lines: [
-      '仅在「捕鱼人之识」生效期间判定：先判鱼王、再判鱼皇，都未命中则为普通鱼。',
-      `鱼王 ${region.king.name}：${pct(region.king.chance, 1)} × (1 + 鱼识加成 ${chanceBonusPct.toFixed(0)}%) = ${pct(region.king.chance * factor, 2)}`,
-      `鱼皇 ${region.emperor.name}：${pct(region.emperor.chance, 1)} × (1 + 鱼识加成 ${chanceBonusPct.toFixed(0)}%) = ${pct(region.emperor.chance * factor, 2)}`,
-      `前置普通鱼：鱼王需 ${region.king.prereqFishIds.length} 种、鱼皇需 ${region.emperor.prereqFishIds.length} 种。`,
-      '依据：服务端 fishing.report_fish()，配置 shared/data/fish.json 的 king / emperor.chance。',
-    ],
+  const lines: string[] = [
+    '仅在对应「捕鱼人之识」生效期间判定：按稀有度先判困难鱼、再鱼皇、再鱼王，均未命中则为普通鱼。',
+  ]
+  for (const s of region.specials) {
+    const req = s.intuition.requires
+      .map((r) => `${data.fishById[r.fishId]?.name ?? r.fishId}×${r.count}`)
+      .join('、')
+    const gate: string[] = []
+    if (s.weather?.length) {
+      gate.push(s.weather.map((w) => data.weather.types.find((t) => t.id === w)?.name ?? w).join('/'))
+    }
+    if (s.timeOfDay?.length) {
+      gate.push(s.timeOfDay.map((t) => data.weather.timeOfDayNames[t] ?? t).join('/'))
+    }
+    lines.push(
+      `${s.name}：${pct(s.intuition.chance, 3)} × (1 + 鱼识加成 ${chanceBonusPct.toFixed(0)}%) = ${pct(s.intuition.chance * factor, 3)}` +
+        `；前置 ${req}${gate.length ? `；窗口 ${gate.join('、')}` : ''}`,
+    )
   }
+  lines.push('依据：服务端 fishing.report_fish()，配置 shared/data/fish.json 的 specials[].intuition。')
+  return { title: '特殊鱼概率如何计算', lines }
 }
 
 /** 抽箱幸运来源 id → 中文名（chests.json.rarityLuck.sources）。 */

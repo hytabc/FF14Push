@@ -64,6 +64,8 @@ class GameConfig:
     dohdol_item_by_id: dict[str, Any]
     fish: dict[str, Any]
     fish_region_by_id: dict[int, dict[str, Any]]
+    fish_by_id: dict[str, Any]
+    weather: dict[str, Any]
     recipes: dict[str, Any]
     recipe_by_id: dict[str, Any]
     consumables: dict[str, Any]
@@ -227,6 +229,7 @@ def load_game_data() -> GameConfig:
         "gatherNodes": _load("gather-nodes.json"),
         "dohdolEquipment": _load("dohdol-equipment.json"),
         "fish": _load("fish.json"),
+        "weather": _load("weather.json"),
         "recipes": _load("recipes.json"),
         "consumables": _load("consumables.json"),
         "titles": _load("titles.json"),
@@ -255,19 +258,27 @@ def load_game_data() -> GameConfig:
     dohdol_jobs = raw["dohdolJobs"]
     dohdol_item_by_id = {it["id"]: it for it in raw["dohdolEquipment"]["items"]}
 
-    # 材料注册表：采集材料 + 半成品 + 鱼（鱼也是烹饪材料）
+    # 材料注册表：采集材料 + 半成品 + 鱼（鱼也是烹饪材料；含普通鱼与特殊鱼）
     material_by_id: dict[str, Any] = {m["id"]: m for m in raw["materials"]["materials"]}
+    fish_by_id: dict[str, Any] = {}
     for region in raw["fish"]["regions"]:
         for fish in region["normal"]:
             material_by_id[fish["id"]] = {
                 "id": fish["id"], "name": fish["name"], "kind": "fish",
                 "regionId": region["regionId"], "sell": int(fish.get("sell", 0)),
             }
-        for key in ("king", "emperor"):
-            fish = region[key]
+            fish_by_id[fish["id"]] = {
+                "name": fish["name"], "kind": "normal",
+                "rarity": fish.get("rarity", "white"), "regionId": region["regionId"],
+            }
+        for fish in region["specials"]:
             material_by_id[fish["id"]] = {
                 "id": fish["id"], "name": fish["name"], "kind": "fish",
                 "regionId": region["regionId"], "sell": int(fish.get("sell", 0)),
+            }
+            fish_by_id[fish["id"]] = {
+                "name": fish["name"], "kind": fish["kind"],
+                "rarity": None, "regionId": region["regionId"],
             }
 
     gather_node_by = {
@@ -318,6 +329,8 @@ def load_game_data() -> GameConfig:
         dohdol_item_by_id=dohdol_item_by_id,
         fish=raw["fish"],
         fish_region_by_id=fish_region_by_id,
+        fish_by_id=fish_by_id,
+        weather=raw["weather"],
         recipes=raw["recipes"],
         recipe_by_id={r["id"]: r for r in raw["recipes"]["recipes"]},
         consumables=raw["consumables"],

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-withDefaults(
+import { watch } from 'vue'
+
+import { sound } from '@/game/audio'
+
+const props = withDefaults(
   defineProps<{
     title?: string
     open: boolean
@@ -10,6 +14,12 @@ withDefaults(
 )
 
 const emit = defineEmits<{ close: [] }>()
+
+// 弹窗开关音：所有 Modal 共用，统一界面反馈。
+watch(
+  () => props.open,
+  (open) => sound.play(open ? 'ui.modal.open' : 'ui.modal.close'),
+)
 </script>
 
 <template>

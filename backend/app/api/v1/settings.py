@@ -6,8 +6,8 @@ from fastapi import APIRouter
 from sqlalchemy import select
 
 from app.core.deps import CurrentUser, DbSession
-from app.models import AutoSellSetting
-from app.schemas.game import AutoSellRequest
+from app.models import AutoSellSetting, UserTitle
+from app.schemas.game import ActiveTitleRequest, AutoSellRequest
 from app.services.game_config import CONFIG
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -47,3 +47,25 @@ async def set_auto_sell(payload: AutoSellRequest, db: DbSession, user: CurrentUs
     row.rarities = list(payload.rarities) if payload.rarities else list(CONFIG.economy["sell"]["autoSellRarities"])
     await db.commit()
     return {"enabled": bool(row.enabled), "rarities": list(row.rarities)}
+
+
+@router.post("/active-title")
+async def set_active_title(payload: ActiveTitleRequest, db: DbSession, user: CurrentUser) -> dict:
+    """佩戴称号（最多一个）。只能佩戴已拥有的称号，传 None 取消佩戴。"""
+    title_id = payload.titleId or None
+    if title_id is not None:
+        valid = {t["id"] for t in CONFIG.titles["titles"]}
+        if title_id not in valid:
+            return {"ok": False, "activeTitleId": user.active_title_id, "message": "未知称号"}
+        owned = (
+            await db.execute(
+                select(UserTitle).where(
+                    UserTitle.user_id == user.id, UserTitle.title_id == title_id
+                )
+            )
+        ).scalar_one_or_none()
+        if owned is None:
+            return {"ok": False, "activeTitleId": user.active_title_id, "message": "尚未获得该称号"}
+    user.active_title_id = title_id
+    await db.commit()
+    return {"ok": True, "activeTitleId": user.active_title_id}

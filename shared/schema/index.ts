@@ -28,6 +28,7 @@ import materialsJson from '../data/materials.json'
 import gatherNodesJson from '../data/gather-nodes.json'
 import dohdolEquipmentJson from '../data/dohdol-equipment.json'
 import fishJson from '../data/fish.json'
+import weatherJson from '../data/weather.json'
 import recipesJson from '../data/recipes.json'
 import consumablesJson from '../data/consumables.json'
 import titlesJson from '../data/titles.json'
@@ -155,6 +156,22 @@ export interface SkillDef {
   effects: SkillEffect[]
 }
 
+/** 绝技（招牌技能）：独立充能槽，满槽自动释放，不占 GCD、不耗魔力。 */
+export interface SignatureSkillDef {
+  id: string
+  name: string
+  /** 展示用梗 / 出处说明。 */
+  desc: string
+  /** 纯战斗时间充满所需秒数。 */
+  chargeSeconds: number
+  /** 每次击杀额外充能（百分比）。 */
+  chargePerKill: number
+  potency: number
+  damageType: 'physical' | 'magical'
+  target: 'single' | 'aoe' | 'self'
+  effects: SkillEffect[]
+}
+
 export interface JobDef {
   id: string
   name: string
@@ -163,6 +180,8 @@ export interface JobDef {
   weaponType: string
   mainAttr: 'str' | 'dex' | 'int'
   skills: SkillDef[]
+  /** FF14 招牌技能，充能槽自动释放。 */
+  signature: SignatureSkillDef
 }
 
 export interface BaseAttrEntry {
@@ -379,22 +398,48 @@ export interface DohDolItemDef {
   bonus: Record<string, number>
 }
 
+export type FishRarity = 'white' | 'blue' | 'purple'
+export type FishKind = 'king' | 'emperor' | 'legend'
+/** 图鉴 / 图标索引里的鱼分类：普通鱼 + 三类特殊鱼。 */
+export type FishEntryKind = 'normal' | FishKind
+
 export interface FishDef {
   id: string
   name: string
+  /** 普通鱼档位：白鱼（常见）/ 蓝鱼 / 紫鱼（稀有）。 */
+  rarity: FishRarity
   weight?: number
+  /** 天气门槛（weather.json 的 type id）；未声明则该鱼在任何天气都可钓。 */
+  weather?: string[]
+  /** 时间门槛（dawn / day / dusk / night）；未声明则不限时段。 */
+  timeOfDay?: string[]
   sizeMin: number
   sizeMax: number
   exp: number
   sell?: number
 }
 
-export interface KingFishDef {
+/** 统一的「直觉」结构：每种直觉只绑定一条特殊鱼，钓齐前置后开启。 */
+export interface FishIntuitionDef {
+  /** BUFF 名称，如「捕鱼人之识」。 */
+  name: string
+  /** 计数型前置：本次会话（触发后清零）需累计钓起的鱼获。 */
+  requires: Array<{ fishId: string; count: number }>
+  /** BUFF 时长区间（秒），随机取值。 */
+  durationSec: [number, number]
+  /** BUFF 生效期间每次抛竿的命中概率。 */
+  chance: number
+}
+
+export interface SpecialFishDef {
   id: string
   name: string
-  prereqFishIds: string[]
-  insightSeconds: [number, number]
-  chance: number
+  kind: FishKind
+  /** 旧 40 区鱼王 / 鱼皇（迁移而来，id 与数值保持不变）。旧称号只统计 legacy 集合。 */
+  legacy?: boolean
+  weather?: string[]
+  timeOfDay?: string[]
+  intuition: FishIntuitionDef
   sizeMin: number
   sizeMax: number
   exp: number
@@ -406,8 +451,28 @@ export interface FishRegionDef {
   name: string
   levelReq: number
   normal: FishDef[]
-  king: KingFishDef
-  emperor: KingFishDef
+  specials: SpecialFishDef[]
+}
+
+export interface WeatherTypeDef {
+  id: string
+  name: string
+  hex: string
+}
+
+export interface WeatherRegionDef {
+  regionId: number
+  profile?: string
+  weights: Record<string, number>
+}
+
+export interface WeatherConfig {
+  weatherPeriodSec: number
+  eorzea: { dayRealSeconds: number }
+  types: WeatherTypeDef[]
+  timeOfDay: Record<string, [number, number]>
+  timeOfDayNames: Record<string, string>
+  regions: WeatherRegionDef[]
 }
 
 export interface RecipeInput {
@@ -450,7 +515,10 @@ export interface TitleDef {
   id: string
   name: string
   desc: string
-  condition: { type: string }
+  /** 解锁条件（后端 services/titles.py 数据驱动判定）。`random_drop` 为极低概率彩蛋掉落。 */
+  condition: { type: string } & Record<string, unknown>
+  /** 彩蛋称号：非确定性条件，低概率掉落（如挖宝下底 / 采集）。 */
+  egg?: boolean
 }
 
 /** 魔晶石种类：name 为 FF14 词根（刚力/巧力/智力/武略/雄略/神眼）。 */
@@ -651,12 +719,24 @@ const exclusiveItems = expandBaseItems(
 const materialList: MaterialDef[] = [
   ...(materialsJson as unknown as { materials: MaterialDef[] }).materials,
 ]
-for (const region of (fishJson as unknown as { regions: FishRegionDef[] }).regions) {
+const fishRegions = (fishJson as unknown as { regions: FishRegionDef[] }).regions
+for (const region of fishRegions) {
   for (const f of region.normal) {
     materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId, sell: f.sell })
   }
-  for (const f of [region.king, region.emperor]) {
+  for (const f of region.specials) {
     materialList.push({ id: f.id, name: f.name, kind: 'fish', regionId: region.regionId, sell: f.sell })
+  }
+}
+
+/** 鱼 id → { 名称, 分类, 普通鱼档位, 钓场 }，供图标 / UI 查询。 */
+const fishIndex: Record<string, { name: string; kind: FishEntryKind; rarity?: FishRarity; regionId: number }> = {}
+for (const region of fishRegions) {
+  for (const f of region.normal) {
+    fishIndex[f.id] = { name: f.name, kind: 'normal', rarity: f.rarity, regionId: region.regionId }
+  }
+  for (const f of region.specials) {
+    fishIndex[f.id] = { name: f.name, kind: f.kind, regionId: region.regionId }
   }
 }
 
@@ -922,11 +1002,14 @@ export const gameData = {
   fish: fishJson as unknown as {
     castSeconds: number
     insightBuffName: string
+    rarityNames: Record<FishRarity, string>
     regions: FishRegionDef[]
   },
+  fishById: fishIndex as Record<string, { name: string; kind: FishEntryKind; rarity?: FishRarity; regionId: number }>,
   fishRegionById: Object.fromEntries(
-    (fishJson as unknown as { regions: FishRegionDef[] }).regions.map((r) => [r.regionId, r]),
+    fishRegions.map((r) => [r.regionId, r]),
   ) as Record<number, FishRegionDef>,
+  weather: weatherJson as unknown as WeatherConfig,
   recipes: recipesJson as unknown as {
     equipment: {
       highQualityMultiplier: number

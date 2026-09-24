@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
+import { sound } from '@/game/audio'
 import { buildWheelSectors, nextRotation, type WheelSector } from '@/game/core/wheel'
 import type { TreasureReward } from '@/game/types'
 
@@ -76,12 +77,14 @@ onMounted(async () => {
   sectors.value = buildWheelSectors(props.rewards, props.pool)
   const targets = sectors.value.filter((sector) => sector.isReward)
   if (!targets.length) {
+    sound.play('wheel.done')
     emit('done')
     return
   }
   if (REDUCED_MOTION) {
     // 尊重「减少动态效果」：直接落到终态，不播放旋转。
     spun.value = targets.length
+    sound.play('wheel.done')
     emit('done')
     return
   }
@@ -90,10 +93,13 @@ onMounted(async () => {
     // 落点抖动控制在该扇区中心附近，避免停到扇区边缘。
     const jitter = (Math.random() - 0.5) * step.value * 0.5
     rotation.value = nextRotation(rotation.value, targets[index], 2, jitter)
+    sound.play('wheel.spin')
     await wait(props.spinMs)
     if (cancelled) return
     spun.value = index + 1
+    sound.play('wheel.tick')
   }
+  sound.play('wheel.done')
   emit('done')
 })
 

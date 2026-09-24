@@ -8,8 +8,10 @@ import type { GatherNodeDef } from '@shared/schema'
 import ActivityLog from '@/components/ActivityLog.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import SearchSelect, { type SearchOption } from '@/components/SearchSelect.vue'
 import SequencePanel from '@/components/SequencePanel.vue'
 import { gatherYieldExplain } from '@/game/explanations'
+import { resolveGatherAvailability } from '@/game/core/gather'
 import { nextStepId, resolveGatherStep } from '@/game/core/sequence'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
@@ -119,18 +121,29 @@ function regionName(regionId: number): string {
   return data.regions.regions.find((r) => r.id === regionId)?.name ?? `地区 ${regionId}`
 }
 
-/** 可加入采集序列的材料：已解锁且采集等级足够的采集点产物。 */
+/** 可加入采集序列的材料（含当前无法采集的，加入后由序列统一提示并禁止开始）。 */
 const seqMaterial = ref('')
 const seqQty = ref(1)
-const gatherMaterialOptions = computed(() => {
-  const out: Array<{ id: string; name: string; regionId: number }> = []
+const gatherMaterialOptions = computed<Array<SearchOption & { regionId: number }>>(() => {
+  const out: Array<SearchOption & { regionId: number }> = []
   for (const m of data.materials.materials) {
     if (m.kind !== 'gather') continue
-    const step = resolveGatherStep(m.id, 1, isRegionUnlocked, dolLevel.value, 'probe')
-    if (!step) continue
-    out.push({ id: m.id, name: m.name, regionId: step.regionId })
+    const avail = resolveGatherAvailability(m.id, isRegionUnlocked, dolLevel.value)
+    if (!avail) continue
+    out.push({
+      value: m.id,
+      label: m.name,
+      hint: regionName(avail.regionId),
+      regionId: avail.regionId,
+      badge:
+        avail.blocked === 'level'
+          ? `等级不足 Lv.${avail.requiredLevel}`
+          : avail.blocked === 'region'
+            ? '未解锁'
+            : undefined,
+    })
   }
-  out.sort((a, b) => a.regionId - b.regionId || a.name.localeCompare(b.name))
+  out.sort((a, b) => a.regionId - b.regionId || a.label.localeCompare(b.label))
   return out
 })
 
@@ -139,8 +152,12 @@ function addGatherStep() {
   const qty = Math.max(1, Math.floor(Number(seqQty.value) || 1))
   const step = resolveGatherStep(seqMaterial.value, qty, isRegionUnlocked, dolLevel.value, nextStepId())
   if (!step) {
-    toast.push('该材料当前无法采集', 'error')
+    toast.push('该材料无法采集', 'error')
     return
+  }
+  if (step.blocked) {
+    const need = step.requiredLevel ? `（需采集等级 Lv.${step.requiredLevel}）` : ''
+    toast.push(`「${step.name}」当前无法采集${need}`, 'error')
   }
   dohdol.addStep(step)
 }
@@ -281,16 +298,13 @@ async function toggle() {
     >
       <template #composer>
         <div class="flex flex-wrap items-center gap-2 text-xs">
-          <select
+          <SearchSelect
             v-model="seqMaterial"
-            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400 disabled:opacity-40"
+            :options="gatherMaterialOptions"
+            placeholder="搜索材料"
+            empty-text="无匹配材料"
             :disabled="dohdol.seqActive"
-          >
-            <option value="" disabled>选择材料</option>
-            <option v-for="m in gatherMaterialOptions" :key="m.id" :value="m.id">
-              {{ m.name }}（{{ regionName(m.regionId) }}）
-            </option>
-          </select>
+          />
           <input
             v-model.number="seqQty"
             type="number"

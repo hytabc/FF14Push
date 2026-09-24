@@ -259,7 +259,7 @@ def material_codex_entries() -> list[dict[str, Any]]:
 
 
 def fish_codex_entries() -> list[dict[str, Any]]:
-    """全部鱼获条目：每钓场的普通鱼 + 鱼王 + 鱼皇。"""
+    """全部鱼获条目：每钓场的普通鱼（白 / 蓝 / 紫）+ 特殊鱼（鱼王 / 鱼皇 / 困难鱼）。"""
     out: list[dict[str, Any]] = []
     for region in CONFIG.fish["regions"]:
         region_id = int(region["regionId"])
@@ -270,6 +270,7 @@ def fish_codex_entries() -> list[dict[str, Any]]:
                     "fishId": fish["id"],
                     "name": fish["name"],
                     "kind": "normal",
+                    "rarity": fish.get("rarity", "white"),
                     "regionId": region_id,
                     "regionName": region_name,
                     "sizeMin": fish["sizeMin"],
@@ -277,22 +278,31 @@ def fish_codex_entries() -> list[dict[str, Any]]:
                     "exp": fish.get("exp", 0),
                     "sell": fish.get("sell", 0),
                     "chance": None,
+                    "weather": fish.get("weather"),
+                    "timeOfDay": fish.get("timeOfDay"),
+                    "requires": None,
+                    "buffName": None,
                 }
             )
-        for kind, key in (("king", "king"), ("emperor", "emperor")):
-            fish = region[key]
+        for special in region["specials"]:
+            intuition = special.get("intuition") or {}
             out.append(
                 {
-                    "fishId": fish["id"],
-                    "name": fish["name"],
-                    "kind": kind,
+                    "fishId": special["id"],
+                    "name": special["name"],
+                    "kind": special["kind"],
+                    "rarity": None,
                     "regionId": region_id,
                     "regionName": region_name,
-                    "sizeMin": fish["sizeMin"],
-                    "sizeMax": fish["sizeMax"],
-                    "exp": fish.get("exp", 0),
-                    "sell": fish.get("sell", 0),
-                    "chance": fish.get("chance"),
+                    "sizeMin": special["sizeMin"],
+                    "sizeMax": special["sizeMax"],
+                    "exp": special.get("exp", 0),
+                    "sell": special.get("sell", 0),
+                    "chance": intuition.get("chance"),
+                    "weather": special.get("weather"),
+                    "timeOfDay": special.get("timeOfDay"),
+                    "requires": intuition.get("requires"),
+                    "buffName": intuition.get("name"),
                 }
             )
     return out

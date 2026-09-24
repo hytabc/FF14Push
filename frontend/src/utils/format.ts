@@ -220,6 +220,7 @@ const SKILL_EFFECT_LABELS: Record<string, (pct: number, seconds: number) => stri
   damageReduction: (pct, seconds) => `受到伤害 −${pct}%${durationSuffix(seconds)}`,
   skillDamageBuff: (pct, seconds) => `技能威力 +${pct}%${durationSuffix(seconds)}`,
   immunity: (pct) => `免疫下 ${Math.round(pct / 100)} 次伤害`,
+  undying: (_pct, seconds) => `锁血不死${durationSuffix(seconds)}`,
   doublePowerCharges: (pct) => `接下来 ${Math.round(pct / 100)} 次技能威力翻倍`,
   doubleRewardCharges: (pct) => `接下来 ${Math.round(pct / 100)} 个怪物经验/金币翻倍`,
   mpCostHalveCharges: (pct) => `接下来 ${Math.round(pct / 100)} 次技能魔力消耗减半`,

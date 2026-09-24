@@ -8,10 +8,11 @@ import { consumableBonus } from '@/utils/consumables'
 import ActivityLog from '@/components/ActivityLog.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import SearchSelect, { type SearchOption } from '@/components/SearchSelect.vue'
 import SequencePanel from '@/components/SequencePanel.vue'
 import { findGatherTarget } from '@/game/core/gather'
 import { craftQualityExplain, craftRarityExplain } from '@/game/explanations'
-import { nextStepId } from '@/game/core/sequence'
+import { expandRecipeSteps, nextStepId, SEQ_STEP_LIMIT } from '@/game/core/sequence'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
@@ -155,11 +156,12 @@ async function stop() {
 // ---------------------------------------------------------------- 制作序列
 const seqRecipe = ref('')
 const seqQty = ref(1)
-const seqRecipeOptions = computed(() =>
+const dolLevel = computed(() => dohdol.state?.progress?.dol?.level ?? 1)
+const seqRecipeOptions = computed<SearchOption[]>(() =>
   (dohdol.state?.recipes ?? [])
     .filter((r) => r.unlocked)
     .map((r) => ({
-      id: r.id,
+      value: r.id,
       label: `[${data.dohdolJobById[r.jobId]?.name ?? r.jobId}] ${r.output.name}（Lv.${r.requiredLevel}）`,
     }))
     .sort((a, b) => a.label.localeCompare(b.label)),
@@ -190,6 +192,48 @@ function addRecipeToSequence(r: RecipeView) {
     jobId: r.jobId,
     target: amountOf(r.id),
   })
+}
+
+/** 仅炼金术士 / 烹调师支持「添加整个合成列表」。 */
+function supportsTree(r: RecipeView): boolean {
+  return r.jobId === 'ALC' || r.jobId === 'CUL'
+}
+
+/** 当前展开「＋序列」二选一菜单的配方 id。 */
+const treeMenuFor = ref<string | null>(null)
+
+function onSeqClick(r: RecipeView) {
+  if (!supportsTree(r)) {
+    addRecipeToSequence(r)
+    return
+  }
+  treeMenuFor.value = treeMenuFor.value === r.id ? null : r.id
+}
+
+function chooseAdd(r: RecipeView, mode: 'single' | 'tree') {
+  treeMenuFor.value = null
+  if (mode === 'tree') expandToSequence(r)
+  else addRecipeToSequence(r)
+}
+
+/** 递归展开该配方的整棵合成列表（采集 + 中间品制作），加入序列。 */
+function expandToSequence(r: RecipeView) {
+  const { steps, warnings } = expandRecipeSteps(r.id, amountOf(r.id), {
+    isUnlocked: isRegionUnlocked,
+    dolLevel: dolLevel.value,
+    nextId: nextStepId,
+  })
+  for (const w of warnings) toast.push(w, 'error')
+  if (!steps.length) {
+    toast.push('无法展开合成列表', 'error')
+    return
+  }
+  if (dohdol.sequence.length + steps.length > SEQ_STEP_LIMIT) {
+    toast.push(`超出序列上限（${SEQ_STEP_LIMIT} 步），请先清空部分步骤`, 'error')
+    return
+  }
+  for (const step of steps) dohdol.addStep(step)
+  toast.push(`已添加整个合成列表（${steps.length} 步）`, 'success')
 }
 </script>
 
@@ -322,14 +366,13 @@ function addRecipeToSequence(r: RecipeView) {
     >
       <template #composer>
         <div class="flex flex-wrap items-center gap-2 text-xs">
-          <select
+          <SearchSelect
             v-model="seqRecipe"
-            class="min-w-48 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400 disabled:opacity-40"
+            :options="seqRecipeOptions"
+            placeholder="搜索配方"
+            empty-text="无匹配配方"
             :disabled="dohdol.seqActive"
-          >
-            <option value="" disabled>选择配方</option>
-            <option v-for="r in seqRecipeOptions" :key="r.id" :value="r.id">{{ r.label }}</option>
-          </select>
+          />
           <input
             v-model.number="seqQty"
             type="number"
@@ -402,15 +445,36 @@ function addRecipeToSequence(r: RecipeView) {
             >
               制作全部
             </button>
-            <button
-              class="rounded-md px-2.5 py-1 text-xs transition"
-              :class="r.unlocked ? 'bg-violet-500/20 text-violet-300' : 'bg-ink-800 text-ink-500'"
-              :disabled="!r.unlocked || dohdol.seqActive"
-              title="把该配方加入制作序列"
-              @click="addRecipeToSequence(r)"
-            >
-              ＋序列
-            </button>
+            <div class="relative">
+              <button
+                class="rounded-md px-2.5 py-1 text-xs transition"
+                :class="r.unlocked ? 'bg-violet-500/20 text-violet-300' : 'bg-ink-800 text-ink-500'"
+                :disabled="!r.unlocked || dohdol.seqActive"
+                :title="supportsTree(r) ? '加入制作序列：可只加该物品或整个合成列表' : '把该配方加入制作序列'"
+                @click="onSeqClick(r)"
+              >
+                ＋序列
+              </button>
+              <template v-if="treeMenuFor === r.id">
+                <div class="fixed inset-0 z-10" @click="treeMenuFor = null" />
+                <div
+                  class="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-ink-600 bg-ink-900 p-1 text-xs shadow-xl"
+                >
+                  <button
+                    class="block w-full rounded px-2 py-1 text-left text-ink-200 transition hover:bg-ink-800"
+                    @click="chooseAdd(r, 'single')"
+                  >
+                    只添加该物品
+                  </button>
+                  <button
+                    class="block w-full rounded px-2 py-1 text-left text-ink-200 transition hover:bg-ink-800"
+                    @click="chooseAdd(r, 'tree')"
+                  >
+                    添加整个合成列表
+                  </button>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
         <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">

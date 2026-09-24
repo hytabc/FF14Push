@@ -1,14 +1,15 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import data from '@shared/schema'
-
 import { api } from '@/api'
+import { sound } from '@/game/audio'
+import { resolveGatherAvailability } from '@/game/core/gather'
 import { ProgressClock } from '@/game/core/progress'
 import type { SequenceLoopMode, SequenceStep, StepResult, StepStatus } from '@/game/core/sequence'
-import { SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
-import type { FishCatch, ActivityLogEntry } from '@/game/types'
+import { gatherStepIssue, SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
+import type { FishCatch, ActivityLogEntry, FishConditionsView, FishInsightView } from '@/game/types'
 import { activityExpLog } from '@/utils/battleLog'
+import { titleName } from '@/utils/titles'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 
@@ -17,10 +18,6 @@ const REPORT_MS = 1500
 
 /** 生产 / 采集日志保留的最大条数，超出后裁掉最旧的（与战斗日志同策略）。 */
 const MAX_LOG = 120
-
-const TITLE_NAMES: Record<string, string> = Object.fromEntries(
-  data.titles.titles.map((t) => [t.id, t.name]),
-)
 
 export type ActivityMode = 'idle' | 'gather' | 'produce' | 'fish'
 
@@ -39,8 +36,10 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const lastGained = ref<Array<{ itemId: string; name: string; count: number }>>([])
   const lastProduced = ref<Array<{ baseId: string; name: string; rarity: string }>>([])
   const lastCaught = ref<FishCatch[]>([])
-  /** 「捕鱼人之识」绝对到期时间（epoch 毫秒），前端据此实时倒计时；null = 未生效。 */
-  const insightExpiresAt = ref<number | null>(null)
+  /** 生效中的「捕鱼人之识」列表（每种直觉只绑定一条鱼，各自倒计时）。 */
+  const insights = ref<FishInsightView[]>([])
+  /** 当前钓场的天气 / 艾欧泽亚时间条件（服务端下发）。 */
+  const conditions = ref<FishConditionsView | null>(null)
   /** 生产 / 采集日志：按结算轮次追加「获取数量 + 经验明细」。 */
   const logEntries = ref<ActivityLogEntry[]>([])
   /** 当前生产会话选中的配方（用于判断材料是否耗尽）。 */
@@ -93,6 +92,35 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const currentSeqStep = computed(() =>
     seqActive.value ? sequence.value[seqIndex.value] ?? null : null,
   )
+
+  /** 状态已加载时判断地区是否解锁；未加载时乐观视为已解锁，避免误拦。 */
+  function isRegionUnlocked(regionId: number): boolean {
+    if (!game.state) return true
+    const entry = game.state.regionProgress?.[String(regionId)]
+    return entry ? entry.unlocked : regionId === 1
+  }
+
+  const dolLevel = computed(() => state.value?.progress?.dol?.level ?? 1)
+
+  /** 序列中当前无法执行的步骤及原因（状态未加载时返回空，避免误拦）。 */
+  const sequenceIssues = computed<Array<{ id: string; name: string; reason: string }>>(() => {
+    const s = state.value
+    if (!s) return []
+    const issues: Array<{ id: string; name: string; reason: string }> = []
+    for (const step of sequence.value) {
+      if (step.kind === 'gather') {
+        const reason = gatherStepIssue(step, isRegionUnlocked, dolLevel.value)
+        if (reason) issues.push({ id: step.id, name: step.name, reason })
+      } else {
+        const recipe = s.recipes.find((r) => r.id === step.recipeId)
+        if (recipe && !recipe.unlocked) {
+          issues.push({ id: step.id, name: step.name, reason: `需要生产等级 Lv.${recipe.requiredLevel}` })
+        }
+      }
+    }
+    return issues
+  })
+  const sequenceBlocked = computed(() => sequenceIssues.value.length > 0)
 
   function renderProgress() {
     progress.value = clock.position()
@@ -181,8 +209,12 @@ export const useDohDolStore = defineStore('dohdol', () => {
             `采集 ${r.actions} 次：${r.gained.map((g) => `${g.name} ×${g.count}`).join('、')}`,
             'loot',
           )
+          sound.play('gather.gain')
         }
         if (r.xp > 0 && r.xpBreakdown) pushLog(activityExpLog(r.xpBreakdown), 'exp')
+        for (const title of r.newTitles ?? []) {
+          toast.push(`达成彩蛋称号「${titleName(title)}」`, 'success')
+        }
         syncCycle(r.cycle, rtt)
         const step = currentSeqStep.value
         if (step?.kind === 'gather') {
@@ -213,6 +245,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
           for (const item of r.items) {
             toast.push(`制造出 ${item.name}（高品质）`, 'loot')
           }
+          sound.play('produce.high')
         }
         if (r.crafts > 0) {
           const produced = r.materials.map((m) => `${m.name} ×${m.count}`)
@@ -224,6 +257,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
             produced.push(...shown)
           }
           pushLog(`制造 ${r.crafts} 次：${produced.join('、')}`, 'loot')
+          if (!r.items.length) sound.play('produce.craft')
         }
         if (r.xp > 0 && r.xpBreakdown) pushLog(activityExpLog(r.xpBreakdown), 'exp')
       } else if (mode.value === 'fish') {
@@ -231,10 +265,15 @@ export const useDohDolStore = defineStore('dohdol', () => {
         if (sessionId.value !== id) return
         lastGained.value = r.gained
         lastCaught.value = r.caught
-        insightExpiresAt.value = r.insightExpiresAt ? Date.parse(r.insightExpiresAt) : null
+        insights.value = r.insights
+        conditions.value = r.conditions
+        // 鱼王 / 鱼皇 / 困难鱼用更华丽的音效与普通鱼获区分。
+        if (r.caught.length) {
+          sound.play(r.caught.some((f) => f.kind !== 'normal') ? 'fish.rare' : 'fish.catch')
+        }
         syncCycle(r.cycle, rtt)
         for (const title of r.newTitles) {
-          toast.push(`达成称号「${TITLE_NAMES[title] ?? title}」`, 'success')
+          toast.push(`达成称号「${titleName(title)}」`, 'success')
         }
       }
       await game.loadState()
@@ -293,9 +332,11 @@ export const useDohDolStore = defineStore('dohdol', () => {
     mode.value = 'fish'
     recipeId.value = null
     lastCaught.value = []
-    insightExpiresAt.value = null
+    insights.value = []
+    conditions.value = res.conditions
     syncCycle(res.cycle, rtt)
     startLoop()
+    sound.play('fish.cast')
   }
 
   /** 本地收尾：清空会话状态但不调用 stop 接口（服务端已自动结束会话时用）。 */
@@ -380,6 +421,22 @@ export const useDohDolStore = defineStore('dohdol', () => {
       toast.push('序列为空，请先添加步骤', 'error')
       return
     }
+    if (sequenceBlocked.value) {
+      toast.push('序列中存在无法执行的步骤，请先提升等级或解锁地区', 'error')
+      return
+    }
+    // 状态已加载时按当前等级 / 解锁重解析采集点（升级后自愈）。
+    if (state.value) {
+      for (const step of sequence.value) {
+        if (step.kind !== 'gather') continue
+        const found = resolveGatherAvailability(step.materialId, isRegionUnlocked, dolLevel.value)
+        if (!found) continue
+        step.jobId = found.jobId
+        step.regionId = found.regionId
+        step.blocked = found.blocked
+        step.requiredLevel = found.requiredLevel
+      }
+    }
     await stop(true)
     await game.stopBattle(true)
     seqResults.value = []
@@ -450,6 +507,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
         : `「${step.name}」仅完成 ${done}/${target}`,
       status === 'done' ? 'success' : 'info',
     )
+    if (status === 'done') sound.play('seq.step')
     seqIndex.value += 1
     await runStep()
   }
@@ -484,6 +542,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
         ok >= total ? `序列完成：共 ${total} 步` : `序列结束：${ok}/${total} 步完成`,
         ok >= total ? 'success' : 'info',
       )
+      if (ok >= total) sound.play('seq.done')
     }
   }
 
@@ -530,7 +589,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
     lastGained,
     lastProduced,
     lastCaught,
-    insightExpiresAt,
+    insights,
+    conditions,
     logEntries,
     recipeId,
     targetCount,
@@ -550,6 +610,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
     loopTotal,
     loopRound,
     currentSeqStep,
+    sequenceIssues,
+    sequenceBlocked,
     addStep,
     removeStep,
     moveStep,

@@ -162,6 +162,10 @@ export interface TitleView {
   name: string
   desc: string
   owned: boolean
+  /** 解锁条件的结构化描述（后端 titles.json）。 */
+  condition?: { type: string } & Record<string, unknown>
+  /** 彩蛋称号：低概率掉落（挖宝下底 / 采集）。 */
+  egg?: boolean
 }
 
 export interface DohDolProgressView {
@@ -211,6 +215,8 @@ export interface DohDolState {
   bonus: Record<string, number>
   craft: CraftOdds
   titles: TitleView[]
+  /** 佩戴中的称号 id（设置页最多一个）；null = 未佩戴。 */
+  activeTitleId: string | null
   fishStats: {
     species: number
     count: number
@@ -218,6 +224,9 @@ export interface DohDolState {
     kingTotal: number
     emperor: number
     emperorTotal: number
+    /** 困难鱼（legend）种类数与总数。 */
+    legend: number
+    legendTotal: number
   }
 }
 
@@ -263,6 +272,8 @@ export interface GatherReportResponse {
   xp: number
   xpBreakdown: ActivityExpBreakdown
   level: { levelsGained: number; level: number; exp: number }
+  /** 本次极低概率掉落的彩蛋称号 id。 */
+  newTitles: string[]
   cycle: ActivityCycle
 }
 
@@ -286,9 +297,34 @@ export interface ProduceReportResponse {
 export interface FishCatch {
   id: string
   name: string
-  kind: 'normal' | 'king' | 'emperor'
+  kind: 'normal' | 'king' | 'emperor' | 'legend'
+  /** 普通鱼档位（白 / 蓝 / 紫）；特殊鱼为 null。 */
+  rarity?: 'white' | 'blue' | 'purple' | null
   size: number
   exp: number
+}
+
+/** 生效中的「捕鱼人之识」：每种直觉只绑定一条鱼。 */
+export interface FishInsightView {
+  fishId: string
+  /** 该 BUFF 绑定的鱼名。 */
+  name: string
+  kind: 'king' | 'emperor' | 'legend'
+  /** BUFF 名称（如「捕鱼人之识」「镜中之识」）。 */
+  buffName: string
+  remainingSec: number
+  expiresAt: string
+}
+
+/** 当前钓场的天气 / 艾欧泽亚时间条件。 */
+export interface FishConditionsView {
+  weather: string
+  weatherName: string
+  weatherHex: string
+  etHour: number
+  etClock: string
+  timeOfDay: string
+  timeOfDayName: string
 }
 
 export interface FishReportResponse {
@@ -298,9 +334,10 @@ export interface FishReportResponse {
   xp: number
   xpBreakdown: ActivityExpBreakdown
   level: { levelsGained: number; level: number; exp: number }
-  insightRemainingSec: number
-  /** 「捕鱼人之识」绝对到期时间（ISO 8601，服务端时钟）；未生效时为 null。 */
-  insightExpiresAt: string | null
+  /** 当前环境条件（天气 / ET）。 */
+  conditions: FishConditionsView
+  /** 本次生效中的「捕鱼人之识」列表（一鱼一 BUFF，各自倒计时）。 */
+  insights: FishInsightView[]
   newTitles: string[]
   cycle: ActivityCycle
 }
@@ -317,6 +354,8 @@ export interface PlayerProfile {
   loadout: Partial<Record<SlotId, Item>>
   /** 生产 / 采集专用装备（仅含已装备栏位，跨账号只读）。 */
   dohdolLoadout: Partial<Record<string, Item>>
+  /** 该玩家佩戴中的称号 id；null = 未佩戴。 */
+  activeTitleId: string | null
 }
 
 /** 被自动出售的掉落物（未进入背包，仅用于提示）。 */
@@ -648,7 +687,7 @@ export interface GameState {
   catchUpExpBonusPct?: number
   activeHeroId?: number | null
   heroes?: Hero[]
-  user: { id: number; nickname: string; gold: number }
+  user: { id: number; nickname: string; gold: number; activeTitleId: string | null }
   hero: Hero
   power: number
   powerAudit?: { version: string; groups: Record<string, number>; contributions: Record<string, { raw: number; effective: number; contribution: number }> }
@@ -1073,6 +1112,8 @@ export interface TreasureChestResult {
   level: { levelsGained: number; level: number; exp: number } | null
   bonusGold: number
   completed: boolean
+  /** 通关第 5 层（下底）时极低概率掉落的彩蛋称号 id。 */
+  newTitles: string[]
   run: TreasureRunState
 }
 

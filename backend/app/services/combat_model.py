@@ -41,6 +41,30 @@ def resolve_job_skills(stats: HeroStats) -> list[dict[str, Any]]:
     return list(egg_skills) if replace else [*egg_skills, *base]
 
 
+def signature_skill(stats: HeroStats) -> dict[str, Any] | None:
+    """当前职业的绝技（招牌技能）；冒险者等无绝技职业返回 None。"""
+    job = CONFIG.job_by_id.get(stats.job_id)
+    return (job or {}).get("signature")
+
+
+def signature_potency_per_sec(stats: HeroStats) -> float:
+    """绝技对期望 DPS 的贡献（威力 / 有效充能秒数）。
+
+    绝技为独立充能槽（不占 GCD、不耗魔力），只有伤害型（potency>0）需要计入模型。
+    这里按「纯时间充能」取有效冷却：客户端另有「每次击杀 +chargePerKill」的加速，
+    会让实际释放更快、模型略偏保守；该偏差由校验容差（2x）覆盖，不会误拒合法上报，
+    也不会过分放宽击杀额度。
+    """
+    sig = signature_skill(stats)
+    if not sig:
+        return 0.0
+    potency = float(sig.get("potency", 0) or 0)
+    if potency <= 0:
+        return 0.0
+    charge_seconds = max(1.0, float(sig.get("chargeSeconds", 120) or 120))
+    return potency / charge_seconds
+
+
 def damage_multiplier(stats: HeroStats) -> float:
     """期望增伤：信念 × 暴击 × 直击。"""
     det = 1.0 + stats.det_bonus_pct / 100.0
@@ -177,6 +201,9 @@ def theoretical_dps(
     # 装备「双重施法」：概率额外释放一次，第二次不占 GCD，故在 GCD 夹取之后放大技能输出与出手频率。
     double_cast = 1.0 + max(0.0, stats.term_mods.get("doubleCastPct", 0.0)) / 100.0
     potency_per_sec *= double_cast
+
+    # 绝技（招牌技能）：独立充能槽、不占 GCD，伤害型绝技按有效充能时间折算期望 DPS。
+    potency_per_sec += signature_potency_per_sec(stats)
 
     # 普攻与技能完全独立：按自身冷却出手（受攻速缩短），不占用 GCD、也不受技能可用性影响。
     # 普攻为物理伤害，取「攻击力」而非 power_attack（法系职业普攻同样吃攻击力）。

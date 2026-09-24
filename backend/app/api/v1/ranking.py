@@ -117,4 +117,5 @@ async def player_profile(user_id: int, db: DbSession, viewer: CurrentUser) -> di
         "playSeconds": int(target.play_ms or 0) // 1000,
         "loadout": combat,
         "dohdolLoadout": dedicated,
+        "activeTitleId": target.active_title_id,
     }

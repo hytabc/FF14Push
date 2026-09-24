@@ -5,6 +5,7 @@ import { api } from '@/api'
 import { http, toApiError } from '@/api/client'
 import JobIcon from '@/components/JobIcon.vue'
 import Modal from '@/components/Modal.vue'
+import { sound } from '@/game/audio'
 import { useAuthStore } from '@/stores/auth'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -48,6 +49,27 @@ let clock: ReturnType<typeof setInterval> | undefined
 let disposed = false
 let connecting = false
 let polling = false
+/** 已播放过音效的最大事件序号：只对增量事件发声，避免快照重复触发。 */
+let lastEventSeq = 0
+
+/** 世界BOSS 由服务端权威推进：对新增事件（BOSS 技能 / 死亡 / 复活 / 阶段）播放对应音效。 */
+function playEventSounds(events: Array<{ seq: number; kind: string }>): void {
+  for (const event of events) {
+    if (event.seq <= lastEventSeq) continue
+    lastEventSeq = event.seq
+    if (event.kind === 'bossSkill') sound.play('wb.bossSkill')
+    else if (event.kind === 'death') sound.play('wb.death')
+    else if (event.kind === 'revive') sound.play('wb.revive')
+    else if (event.kind === 'phase') sound.play('wb.phase')
+  }
+}
+
+/** 快照同步：把事件游标推到当前快照的最新序号，避免把历史事件当成新增来播放。 */
+function syncEventCursor(): void {
+  for (const event of state.value?.session?.events ?? []) {
+    if (event.seq > lastEventSeq) lastEventSeq = event.seq
+  }
+}
 
 const boss = computed(() => state.value?.boss ?? null)
 const session = computed(() => state.value?.session ?? null)
@@ -118,6 +140,7 @@ async function load() {
   const [st, ro] = await Promise.all([api.worldbossState(), http.get<{ heroes: (Hero & { id: number })[] }>('/heroes')])
   state.value = st
   roster.value = ro.data.heroes
+  syncEventCursor()
 }
 
 async function connect() {
@@ -142,6 +165,7 @@ async function connect() {
       if (msg.session && state.value.session && msg.sequence < state.value.sequence) return
       if (msg.boss) state.value.boss = msg.boss
       if (msg.session) {
+        playEventSounds(msg.session.events ?? [])
         msg.session.events = mergeEvents(state.value.session?.events ?? [], msg.session.events)
         state.value.session = msg.session
       }
@@ -172,6 +196,7 @@ async function enter() {
     await game.stopRaid(true)
     state.value = await api.worldbossEnter([...selected.value])
     receipt.value = null
+    syncEventCursor()
     await connect()
   })
 }
@@ -192,6 +217,7 @@ async function claim() {
     receipt.value = await api.worldbossClaim(state.value.unclaimedCycle)
     await game.loadState()
     toast.push(`获得 ${receipt.value.items} 件绝境龙神装备`, 'loot')
+    sound.play('ui.loot')
     await load()
   })
 }
@@ -204,6 +230,7 @@ async function heartbeat() {
     const fresh = await api.worldbossState()
     if (state.value && session.value && fresh.session && fresh.sequence < state.value.sequence) return
     state.value = fresh
+    syncEventCursor()
     await connect()
   } catch (e) {
     error.value = toApiError(e).message

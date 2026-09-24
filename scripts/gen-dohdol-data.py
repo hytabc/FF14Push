@@ -3,12 +3,15 @@
 
 用法（仓库根目录）：`python scripts/gen-dohdol-data.py`
 
-生成：materials.json / gather-nodes.json / dohdol-equipment.json / fish.json /
-consumables.json / recipes.json / titles.json
+生成：materials.json / gather-nodes.json / dohdol-equipment.json /
+consumables.json / recipes.json
+
+注：`fish.json`（钓场 / 普通鱼分档 / 特殊鱼 / 困难鱼）与 `titles.json`（钓鱼称号）已迁到
+`scripts/gen-fish-data.py` 生成；本脚本不再写这两个文件，避免互相覆盖。
 
 设计：每个地区有专属的矿物与植物各一件（FF14 风格命名，跨地区不重复），
 另加少量通用材料（半成品原料）。与 scripts/gen-icons.mjs 一样属于内容生成器，
-改动内容后重跑本脚本即可（fish/consumables/titles 也一并重写）。
+改动内容后重跑本脚本即可（consumables/recipes 一并重写）。
 """
 import json
 from pathlib import Path
@@ -31,10 +34,6 @@ BASE_ITEMS = json.loads((DATA / "base-items.json").read_text(encoding="utf-8"))
 # 且绝不反超战斗——既保住收集动机，又不让它变成不打怪也能刷钱的路线。
 # 回归保护：backend/tests/test_dohdol.py:TestDohdolSellBalance。
 BAND_SELL = {1: 6, 9: 16, 17: 32, 23: 64, 29: 128, 35: 256}          # 采集素材（地区专属）
-FISH_SELL = {1: 8, 9: 20, 17: 40, 23: 80, 29: 160, 35: 320}          # 普通渔获（不变）
-# 鱼王 / 鱼皇：全档位整体陡增（每档约 3~3.75×），100 级地区鱼皇 30W。普通渔获不动。
-KING_SELL = {1: 160, 9: 600, 17: 2200, 23: 8000, 29: 25000, 35: 75000}        # 鱼王（约鱼皇的 1/4）
-EMPEROR_SELL = {1: 640, 9: 2400, 17: 9000, 23: 33000, 29: 100000, 35: 300000}  # 鱼皇
 HALF_SELL = 50                                                       # 半成品（统一固定，不随档位变化）
 
 
@@ -48,18 +47,6 @@ def _band(rid: int, table: dict[int, int]) -> int:
 
 def mat_sell(rid: int) -> int:
     return _band(rid, BAND_SELL)
-
-
-def fish_sell(rid: int) -> int:
-    return _band(rid, FISH_SELL)
-
-
-def king_sell(rid: int) -> int:
-    return _band(rid, KING_SELL)
-
-
-def emperor_sell(rid: int) -> int:
-    return _band(rid, EMPEROR_SELL)
 
 # ---------------------------------------------------------------- 材料
 materials = []
@@ -366,75 +353,8 @@ dump("dohdol-equipment.json", {
 })
 
 # ---------------------------------------------------------------- 鱼类
-# 鱼名参考《最终幻想 XIV》的鱼类命名（普通鱼在多个钓场重复出现是正常的；
-# 鱼王 / 鱼皇每个地区各一条，名称互不重复）。
-FISH_NORMAL_NAMES = [
-    "河鲈", "海鲈", "三文鱼", "鲤鱼", "泥鳅", "银鱼", "香鱼", "鳟鱼",
-    "白鲑", "茴鱼", "鲱鱼", "沙丁鱼", "鲭鱼", "鲣鱼", "金枪鱼", "旗鱼",
-    "鲷鱼", "石斑鱼", "比目鱼", "鲽鱼", "鳐鱼", "鲨鱼", "河豚", "灯笼鱼",
-    "海马", "神仙鱼", "蝴蝶鱼", "小丑鱼", "章鱼", "乌贼", "水母", "海星",
-    "螃蟹", "龙虾", "扇贝", "牡蛎", "海胆", "鲍鱼", "珊瑚鱼", "深海鳕",
-]
-FISH_KING_NAMES = [
-    "涅普特之龙", "利维亚桑的眷属", "蓝宝石恶魔", "红玉蛇", "熔岩王", "冰霜帝王",
-    "沙海之主", "苍天霸主", "深渊恐惧", "幽灵船长", "千年鲟", "湖之主",
-    "雷鸣鲶", "白银之鳞", "黄金鲷", "黑曜石鲨", "翡翠巨龙", "紫电鳗",
-    "苍翼飞鱼", "血月鳐", "星辉水母", "虚空鲸", "太古腔棘鱼", "沸腾章鱼",
-    "极光鲑", "沙漠鲵", "沼泽之主", "森林守卫", "遗迹守护者", "巨型三角鱼",
-    "风暴旗鱼", "冰海巨兽", "火焰鲡", "云端鲲", "幽谷潜者", "圣泉之鱼",
-    "王都锦鲤", "熔心鲟", "天外怪兽", "终末鲸",
-]
-FISH_EMPEROR_NAMES = [
-    "海皇利维亚桑", "神龙之影", "世界蛇", "太古利维坦", "群星之鲸", "混沌之鱼",
-    "终焉之鲟", "苍穹之翼", "大地之脾", "月读的守望", "火神之鳞", "风神之息",
-    "水神之泪", "雷神之怒", "冰神之牙", "土神之核", "圣兽白虎", "朱雀之羽",
-    "青龙之鳞", "玄武之甲", "森罗万象", "时间之鱼", "虚空之王", "星海之主",
-    "永劫之鲛", "创世之鲲", "灭世之鲸", "天启之鳞", "究极神鱼", "完美之鱼",
-    "无瑕之鳞", "黄金之王", "极乐鸟鱼", "幻海之主", "万象之鱼", "万物之始",
-    "终末之鲛", "原初之鱼", "十二神之鳞", "艾欧泽亚之王",
-]
-assert len(FISH_KING_NAMES) >= len(regions) and len(FISH_EMPEROR_NAMES) >= len(regions)
-assert len(FISH_NORMAL_NAMES) >= 4
-
-fish_regions = []
-for index, r in enumerate(regions):
-    rid = r["id"]
-    # 每个钓场 4 种普通鱼，按地区错开取名（同一鱼种在多个钓场出现是正常的）
-    normal = []
-    for slot in range(4):
-        name = FISH_NORMAL_NAMES[(index * 2 + slot) % len(FISH_NORMAL_NAMES)]
-        weight = [55, 28, 14, 3][slot]
-        smin, smax = [(20, 60), (30, 90), (50, 130), (60, 150)][slot]
-        normal.append({
-            "id": f"f{rid}_{slot + 1}", "name": name,
-            "weight": weight, "sizeMin": smin, "sizeMax": smax,
-            "exp": 4 + rid // 4, "sell": fish_sell(rid),
-        })
-    fish_regions.append({
-        "regionId": rid,
-        "name": r["name"],
-        "levelReq": band_level(rid),
-        "normal": normal,
-        "king": {
-            "id": f"k{rid}", "name": FISH_KING_NAMES[index],
-            "prereqFishIds": [f"f{rid}_1", f"f{rid}_2"],
-            "insightSeconds": [30, 45], "chance": 0.014,
-            "sizeMin": 160, "sizeMax": 240, "exp": 40 + rid, "sell": king_sell(rid),
-        },
-        "emperor": {
-            "id": f"e{rid}", "name": FISH_EMPEROR_NAMES[index],
-            "prereqFishIds": [f"f{rid}_1", f"f{rid}_2", f"f{rid}_3", f"f{rid}_4"],
-            "insightSeconds": [45, 60], "chance": 0.004,
-            "sizeMin": 240, "sizeMax": 360, "exp": 120 + rid * 2, "sell": emperor_sell(rid),
-        },
-    })
-
-dump("fish.json", {
-        "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。levelReq 为采集等级门槛（与采集点一致，40 个地区线性铺满 1-100）。sell 为出售单价（金币）：普通渔获按 FISH_SELL 递增且维持原价；鱼王/鱼皇按 KING_SELL / EMPEROR_SELL 全档位陡增（每档约 3~3.75×），100 级地区鱼皇单价 30W。",
-    "castSeconds": 3.0,
-    "insightBuffName": "捕鱼人之识",
-    "regions": fish_regions,
-})
+# 注：`fish.json`（钓场 / 普通鱼分档 / 特殊鱼 / 困难鱼 / 称号）已迁移到 `scripts/gen-fish-data.py`
+# 生成（它从冻结的 `scripts/fish-base.json` 重建）。本脚本**不再**写入 `fish.json`，避免互相覆盖。
 
 # ---------------------------------------------------------------- 消耗品
 # 药食分三档：I 档（生产 Lv1，现有）、II 档（Lv40）、III 档（Lv80）。效果按 scale 放大，
@@ -733,12 +653,7 @@ dump("recipes.json", {
 })
 
 # ---------------------------------------------------------------- 称号
-dump("titles.json", {
-    "$comment": "称号。钓起全部地区的鱼王 / 鱼皇各解锁一个称号，展示在排行榜。",
-    "titles": [
-        {"id": "fish_king_all", "name": "鱼王猎手", "desc": "钓起全部地区的鱼王", "condition": {"type": "all_king"}},
-        {"id": "fish_emperor_all", "name": "海皇", "desc": "钓起全部地区的鱼皇", "condition": {"type": "all_emperor"}},
-    ],
-})
+# 注：`titles.json`（钓鱼称号，含新增 FF14 称号）由 `scripts/gen-fish-data.py` 维护，本脚本不写，
+# 避免覆盖上面手工维护的称号表。
 
 print("done")

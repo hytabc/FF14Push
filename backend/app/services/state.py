@@ -142,7 +142,12 @@ async def build_game_state(
         }
 
     return {
-        "user": {"id": user.id, "nickname": user.nickname, "gold": int(user.gold)},
+        "user": {
+            "id": user.id,
+            "nickname": user.nickname,
+            "gold": int(user.gold),
+            "activeTitleId": user.active_title_id,
+        },
         "hero": hero_to_dict(hero, stats),
         "power": hero_power(stats),
         "powerAudit": power_audit(stats),

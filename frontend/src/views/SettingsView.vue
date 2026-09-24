@@ -7,12 +7,28 @@ import data from '@shared/schema'
 import Modal from '@/components/Modal.vue'
 import { useGameStore } from '@/stores/game'
 import { useAuthStore } from '@/stores/auth'
+import { useSoundStore } from '@/stores/sound'
 import { useToastStore } from '@/stores/toast'
 import { RARITY_ORDER, formatNumber, rarityName } from '@/utils/format'
 
 const game = useGameStore()
 const toast = useToastStore()
 const auth = useAuthStore()
+const sound = useSoundStore()
+
+/** 音量档位：主音量 + 三类（与 game/audio.ts 的 SoundCategory 对应）。 */
+type VolumeKey = 'master' | 'battle' | 'ui' | 'ambient'
+const volumeRows: Array<{ key: VolumeKey; label: string }> = [
+  { key: 'master', label: '主音量' },
+  { key: 'battle', label: '战斗' },
+  { key: 'ui', label: '界面' },
+  { key: 'ambient', label: '生活（采集 / 生产 / 钓鱼）' },
+]
+
+function setVolume(key: VolumeKey, event: Event) {
+  sound[key] = Number((event.target as HTMLInputElement).value)
+}
+
 const nickname = ref(auth.nickname)
 const changingNickname = ref(false)
 watch(() => auth.nickname, (value) => { nickname.value = value })
@@ -42,6 +58,30 @@ const rarities = ref<string[]>([])
 const saving = ref(false)
 const confirmRestart = ref(false)
 
+// 称号：每位玩家最多佩戴一个（展示在排行榜 / 玩家资料）。
+const activeTitleId = ref<string | null>(null)
+const savingTitle = ref(false)
+const ownedTitles = computed(() => (game.state?.dohdol?.titles ?? []).filter((t) => t.owned))
+
+async function saveActiveTitle(titleId: string | null) {
+  if (savingTitle.value || activeTitleId.value === titleId) return
+  savingTitle.value = true
+  try {
+    const res = await api.setActiveTitle(titleId)
+    if (!res.ok) {
+      toast.push(res.message ?? '设置失败', 'error')
+      return
+    }
+    if (game.state) game.state.dohdol.activeTitleId = res.activeTitleId
+    activeTitleId.value = res.activeTitleId
+    toast.push(res.activeTitleId ? '称号已佩戴' : '已取消佩戴称号', 'success')
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    savingTitle.value = false
+  }
+}
+
 const redeemEnabled = ref(false)
 const canRedeem = ref(false)
 const rewardGold = ref(0)
@@ -68,6 +108,7 @@ onMounted(async () => {
   const settings = game.state?.settings.autoSell
   enabled.value = settings?.enabled ?? false
   rarities.value = settings?.rarities ?? [...autoSellOptions]
+  activeTitleId.value = game.state?.dohdol?.activeTitleId ?? null
   await loadRedeem()
 })
 
@@ -205,6 +246,44 @@ async function replayFromSettings() {
     </section>
 
     <section class="card p-4">
+      <h3 class="text-sm font-semibold text-white">称号</h3>
+      <p class="mt-1 text-[11px] text-ink-500">
+        每位玩家最多佩戴一个称号，会展示在排行榜与玩家资料中。称号来自钓鱼（全部鱼王 / 鱼皇 / 困难鱼等），
+        <span class="text-rose-300">彩蛋称号</span>则在挖宝下底 / 采集时以极低概率掉落。
+      </p>
+      <div v-if="ownedTitles.length" class="mt-3 flex flex-wrap gap-2">
+        <button
+          class="rounded border px-2.5 py-1 text-[11px] transition disabled:opacity-50"
+          :class="
+            activeTitleId === null
+              ? 'border-amber-400 bg-amber-400/15 text-amber-200'
+              : 'border-ink-600 text-ink-400 hover:border-ink-400'
+          "
+          :disabled="savingTitle"
+          @click="saveActiveTitle(null)"
+        >
+          不佩戴
+        </button>
+        <button
+          v-for="t in ownedTitles"
+          :key="t.id"
+          class="rounded border px-2.5 py-1 text-[11px] transition disabled:opacity-50"
+          :class="
+            activeTitleId === t.id
+              ? 'border-amber-400 bg-amber-400/15 text-amber-200'
+              : 'border-ink-600 text-ink-400 hover:border-ink-400'
+          "
+          :title="t.desc"
+          :disabled="savingTitle"
+          @click="saveActiveTitle(t.id)"
+        >
+          {{ t.name }}<span v-if="t.egg" class="ml-1 text-[9px] text-rose-300">彩蛋</span>
+        </button>
+      </div>
+      <p v-else class="mt-3 text-xs text-ink-500">尚未获得任何称号。</p>
+    </section>
+
+    <section class="card p-4">
       <h3 class="text-sm font-semibold text-white">自动出售</h3>
       <p class="mt-1 text-[11px] text-ink-500">
         开启后，新获得的指定品阶装备会立即出售换取金币（合成与重造产物不受影响）。
@@ -238,6 +317,49 @@ async function replayFromSettings() {
       >
         {{ saving ? '保存中…' : '保存设置' }}
       </button>
+    </section>
+
+    <section class="card p-4">
+      <h3 class="text-sm font-semibold text-white">音效</h3>
+      <p class="mt-1 text-[11px] text-ink-500">
+        全部音效由浏览器实时合成，无需下载素材。受浏览器自动播放策略限制，进入页面后需先点击一次才会出声。
+      </p>
+
+      <label class="mt-3 flex items-center gap-2 text-xs text-ink-200">
+        <input v-model="sound.enabled" type="checkbox" />
+        开启音效
+      </label>
+
+      <div class="mt-3 grid gap-3 sm:max-w-md" :class="sound.enabled ? '' : 'opacity-60'">
+        <label v-for="row in volumeRows" :key="row.key" class="grid gap-1 text-xs text-ink-200">
+          <span class="flex items-center justify-between">
+            <span>{{ row.label }}</span>
+            <span class="font-mono text-ink-400">{{ Math.round(sound[row.key] * 100) }}%</span>
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            :value="sound[row.key]"
+            :disabled="!sound.enabled"
+            class="accent-amber-500"
+            @input="setVolume(row.key, $event)"
+          />
+        </label>
+      </div>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button class="rounded-md bg-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-600" @click="sound.preview('battle.crit')">
+          试听 · 战斗
+        </button>
+        <button class="rounded-md bg-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-600" @click="sound.preview('ui.success')">
+          试听 · 界面
+        </button>
+        <button class="rounded-md bg-ink-700 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-600" @click="sound.preview('gather.gain')">
+          试听 · 生活
+        </button>
+      </div>
     </section>
 
     <section class="card p-4">

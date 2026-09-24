@@ -73,6 +73,35 @@ def test_all_jobs_have_seven_skills() -> None:
         assert len({s["id"] for s in job["skills"]}) == 7
 
 
+def test_all_jobs_have_signature() -> None:
+    """每个职业恰好一个绝技，字段齐全、充能参数合理、id 不与现有技能重复。"""
+    for job in CONFIG.jobs["jobs"]:
+        sig = job["signature"]
+        assert sig["id"] and sig["name"] and sig["desc"], job["id"]
+        assert sig["id"] not in {s["id"] for s in job["skills"]}, (job["id"], sig["id"])
+        assert float(sig["chargeSeconds"]) > 0, job["id"]
+        assert float(sig["chargePerKill"]) >= 0, job["id"]
+        assert sig["damageType"] in ("physical", "magical"), job["id"]
+        assert sig["target"] in ("single", "aoe", "self"), job["id"]
+        assert isinstance(sig["effects"], list), job["id"]
+
+
+def test_signature_damage_type_matches_main_attr() -> None:
+    """力量/敏捷职业的伤害型绝技必须是物理伤害（否则按智力结算、DPS 差数倍）。"""
+    for job in CONFIG.jobs["jobs"]:
+        sig = job["signature"]
+        if job["mainAttr"] == "int" or int(sig.get("potency", 0)) <= 0:
+            continue
+        assert sig["damageType"] != "magical", (job["id"], sig["id"])
+
+
+def test_signature_charge_is_reasonable() -> None:
+    """绝技充能时间落在合理区间（60~180s），避免过短失衡 / 过长形同虚设。"""
+    for job in CONFIG.jobs["jobs"]:
+        charge = float(job["signature"]["chargeSeconds"])
+        assert 60 <= charge <= 180, (job["id"], charge)
+
+
 def test_weapon_types_cover_jobs() -> None:
     weapon_types = {j["weaponType"] for j in CONFIG.jobs["jobs"]}
     base_weapon_types = {b.weapon_type for b in CONFIG.base_items if b.category == "weapon"}

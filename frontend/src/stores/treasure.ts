@@ -5,6 +5,7 @@ import data from '@shared/schema'
 
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
+import { sound } from '@/game/audio'
 import { BattleSimulator } from '@/game/core/battle'
 import type {
   RaidBossEntry,
@@ -14,6 +15,7 @@ import type {
   TreasureGambleResult,
   TreasureRunState,
 } from '@/game/types'
+import { titleName } from '@/utils/titles'
 
 import { useGameStore } from './game'
 import { useToastStore } from './toast'
@@ -106,6 +108,7 @@ export const useTreasureStore = defineStore('treasure', () => {
       stats: game.hero.stats,
       raid: { bosses: [target.boss], enrage: null },
       eggId: game.hero.eggId,
+      onSound: (cue) => sound.play(cue),
     })
     sim.value.start()
     running.value = true
@@ -216,8 +219,11 @@ export const useTreasureStore = defineStore('treasure', () => {
       if (res.result === 'lose') {
         event.value = null
         toast.push('猜错了，本层宝箱奖励已清空', 'error')
+        sound.play('ui.error')
       } else if (res.finished) {
         event.value = null
+      } else {
+        sound.play('ui.success')
       }
     } catch (e) {
       pushError(e)
@@ -247,11 +253,17 @@ export const useTreasureStore = defineStore('treasure', () => {
       const res = await api.treasureChestOpen(run.value.runId)
       chest.value = res
       run.value = res.run
+      sound.play('treasure.chest.open')
       if (res.expGained > 0 && res.level && res.level.levelsGained > 0) {
         toast.push(`英雄升到 ${res.level.level} 级！`, 'success')
+        sound.play('battle.levelup')
       }
       if (res.completed) {
         toast.push(`通关第 5 层！额外获得 ${res.bonusGold.toLocaleString()} 金币`, 'loot')
+        sound.play('battle.clear')
+      }
+      for (const title of res.newTitles ?? []) {
+        toast.push(`达成彩蛋称号「${titleName(title)}」`, 'success')
       }
       await game.loadState()
     } catch (e) {
@@ -270,9 +282,11 @@ export const useTreasureStore = defineStore('treasure', () => {
       run.value = res.run
       if (res.correct) {
         toast.push(`选对了！进入第 ${res.run.floor} 层`, 'success')
+        sound.play('treasure.door.ok')
         beginFloor(res.run)
       } else {
         toast.push('选错了门，本次挖宝结束', 'error')
+        sound.play('treasure.door.bad')
       }
     } catch (e) {
       pushError(e)

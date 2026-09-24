@@ -5,6 +5,7 @@ import data from '@shared/schema'
 
 import { api, type KillPayload } from '@/api'
 import { toApiError } from '@/api/client'
+import { sound } from '@/game/audio'
 import { BattleSimulator } from '@/game/core/battle'
 import type { AutoSoldItem, Category, GameState, Item, RaidBossEntry, RaidReportResponse, RerollMode, SlotId } from '@/game/types'
 
@@ -184,6 +185,7 @@ export const useGameStore = defineStore('game', () => {
         killCount: 0,
         difficulty: session.difficulty,
         eggId: state.value.hero.eggId,
+        onSound: (cue) => sound.play(cue),
       })
       sim.value.start()
       running.value = true
@@ -366,6 +368,7 @@ export const useGameStore = defineStore('game', () => {
 
     if (res.level.levelsGained > 0) {
       toast.push(`英雄升到 ${res.level.level} 级！`, 'success')
+      sound.play('battle.levelup')
       if (!pendingAdvance) void refreshAfterGearChange()
     }
 
@@ -427,6 +430,7 @@ export const useGameStore = defineStore('game', () => {
         penalty: session.penalty,
         raid: { bosses: session.bosses, enrage: session.enrage },
         eggId: state.value.hero.eggId,
+        onSound: (cue) => sound.play(cue),
       })
       sim.value.start()
       running.value = true

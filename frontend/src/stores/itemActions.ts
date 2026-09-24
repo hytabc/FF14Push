@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+import { sound } from '@/game/audio'
+import type { Item, RerollMode } from '@/game/types'
+import { diffReroll } from '@/utils/rerollDiff'
+
 import { useGameStore } from './game'
 import { useToastStore } from './toast'
-import type { Item, RerollMode } from '@/game/types'
 
 export type ItemActionKind = 'refine' | 'enchant' | 'sell' | 'enchantAuto'
 
@@ -59,6 +62,15 @@ export const useItemActions = defineStore('itemActions', () => {
     result.value = null
   }
 
+  /** 重造 / 附魔结果音效：先播滚动音，再按属性涨跌播升 / 降音；命中稀有词条额外加音。 */
+  function playReroll(kind: 'refine' | 'enchant', before: Item, after: Item, hit = false): void {
+    sound.play(kind === 'refine' ? 'reroll.roll' : 'enchant.cast')
+    const changes = diffReroll(kind, before, after)
+    if (changes.some((c) => c.direction === 'up')) sound.play('reroll.up')
+    else if (changes.some((c) => c.direction === 'down')) sound.play('reroll.down')
+    if (hit) sound.play('enchant.rare')
+  }
+
   async function confirm() {
     const current = pending.value
     if (!current || busy.value) return
@@ -66,7 +78,7 @@ export const useItemActions = defineStore('itemActions', () => {
     try {
       if (current.kind === 'refine') {
         const res = await game.refine(current.item.id, current.mode, current.times)
-        if (res)
+        if (res) {
           result.value = {
             kind: 'refine',
             before: res.before,
@@ -75,9 +87,11 @@ export const useItemActions = defineStore('itemActions', () => {
             cost: res.cost,
             mode: current.mode,
           }
+          playReroll(current.kind, res.before, res.after)
+        }
       } else if (current.kind === 'enchant') {
         const res = await game.enchant(current.item.id, false, current.mode, current.times)
-        if (res)
+        if (res) {
           result.value = {
             kind: 'enchant',
             before: res.before,
@@ -86,9 +100,11 @@ export const useItemActions = defineStore('itemActions', () => {
             cost: res.cost,
             mode: current.mode,
           }
+          playReroll('enchant', res.before, res.after, res.hit)
+        }
       } else if (current.kind === 'enchantAuto') {
         const res = await game.enchant(current.item.id, true)
-        if (res)
+        if (res) {
           result.value = {
             kind: 'enchant',
             before: res.before,
@@ -97,12 +113,16 @@ export const useItemActions = defineStore('itemActions', () => {
             cost: res.cost,
             mode: current.mode,
           }
+          playReroll('enchant', res.before, res.after, res.hit)
+        }
       } else if (current.kind === 'sell') {
         await game.sell([current.item.id])
+        sound.play('ui.loot')
       }
       pending.value = null
     } catch {
       toast.push('操作失败', 'error')
+      sound.play('ui.error')
     } finally {
       busy.value = false
     }

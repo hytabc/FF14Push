@@ -282,6 +282,7 @@ async def test_fifth_floor_grants_bonus_and_completes(auth_client, session_facto
         _force_random(monkeypatch, 0.9)  # 不触发事件
         assert (await _clear(auth_client, session_factory, run_id)).status_code == 200
         body = (await _open(auth_client, run_id)).json()
+        assert isinstance(body.get("newTitles"), list), "开箱响应应带彩蛋称号槽位"
         if floor < 5:
             _force_random(monkeypatch, 0.1)  # 门选对
             door = (await _door(auth_client, run_id)).json()

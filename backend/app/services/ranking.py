@@ -85,7 +85,7 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
         best = max(cleared_list, key=lambda row: (row.difficulty, row.region_id), default=None)
         stage_value = best.difficulty * STAGE_REGION_BASE + best.region_id if best else 0
         stage_cleared_at = best.cleared_at if best else None
-        extra = {"titles": title_map.get(user.id, [])}
+        extra = {"titles": title_map.get(user.id, []), "activeTitleId": user.active_title_id}
 
         entries = [
             _entry(user, hero, "level", hero.level, hero.exp, extra),
@@ -111,7 +111,7 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
 
 # ---------------------------------------------------------------- 钓鱼榜（实时）
 async def _fish_stats_by_user(db: AsyncSession) -> dict[int, dict[str, int]]:
-    """按账号聚合鱼类统计：种类数、总条数，以及普通 / 鱼王 / 鱼皇各自的种类数。"""
+    """按账号聚合鱼类统计：种类数、总条数，以及普通 / 鱼王 / 鱼皇 / 困难鱼各自的种类数。"""
     rows = (
         await db.execute(
             select(FishRecord).join(User, User.id == FishRecord.user_id).where(User.banned.is_(False))
@@ -120,11 +120,12 @@ async def _fish_stats_by_user(db: AsyncSession) -> dict[int, dict[str, int]]:
     agg: dict[int, dict[str, int]] = {}
     for row in rows:
         stat = agg.setdefault(
-            row.user_id, {"species": 0, "count": 0, "normal": 0, "king": 0, "emperor": 0}
+            row.user_id,
+            {"species": 0, "count": 0, "normal": 0, "king": 0, "emperor": 0, "legend": 0},
         )
         stat["species"] += 1
         stat["count"] += int(row.count)
-        bucket = row.kind if row.kind in ("king", "emperor") else "normal"
+        bucket = row.kind if row.kind in ("king", "emperor", "legend") else "normal"
         stat[bucket] += 1
     return agg
 
@@ -159,12 +160,14 @@ async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
                 "username": user.username,
                 "level": user.hero.level,
                 "titles": title_map.get(user.id, []),
+                "activeTitleId": user.active_title_id,
                 "playSeconds": _play_seconds(user),
                 "fishSpecies": stat["species"],
                 "fishCount": stat["count"],
                 "fishNormal": stat["normal"],
                 "fishKing": stat["king"],
                 "fishEmperor": stat["emperor"],
+                "fishLegend": stat["legend"],
             }
         )
     return out
@@ -196,7 +199,9 @@ async def fetch_fish_board(
                 "fishNormal": row["fishNormal"],
                 "fishKing": row["fishKing"],
                 "fishEmperor": row["fishEmperor"],
+                "fishLegend": row["fishLegend"],
                 "titles": row["titles"],
+                "activeTitleId": row["activeTitleId"],
             },
         }
         for index, row in enumerate(rows[offset : offset + page_size])
@@ -302,6 +307,7 @@ async def _dohdol_rows(db: AsyncSession) -> list[dict[str, Any]]:
                 "username": user.username,
                 "level": user.hero.level,
                 "titles": title_map.get(user.id, []),
+                "activeTitleId": user.active_title_id,
                 "playSeconds": _play_seconds(user),
                 "dohExp": int(stat["dohExp"]),
                 "dolExp": int(stat["dolExp"]),
@@ -327,6 +333,7 @@ def _dohdol_payload(row: dict[str, Any]) -> dict[str, Any]:
         "level": row["level"],
         "playSeconds": row["playSeconds"],
         "titles": row["titles"],
+        "activeTitleId": row["activeTitleId"],
         "dohLevel": row["dohLevel"],
         "dolLevel": row["dolLevel"],
         "dohExp": row["dohExp"],
@@ -489,6 +496,7 @@ def _entry(
         "fishCount": 0,
         "playSeconds": _play_seconds(user),
         "titles": [],
+        "activeTitleId": user.active_title_id,
     }
     if extra:
         payload.update(
@@ -497,6 +505,7 @@ def _entry(
                 "fishSpecies": extra.get("fishSpecies", 0),
                 "fishCount": extra.get("fishCount", 0),
                 "titles": extra.get("titles", []),
+                "activeTitleId": extra.get("activeTitleId"),
             }
         )
     return RankingEntry(

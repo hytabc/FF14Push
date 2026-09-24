@@ -161,6 +161,12 @@ class AutoSellRequest(BaseModel):
     rarities: list[str] = Field(default_factory=list)
 
 
+class ActiveTitleRequest(BaseModel):
+    """佩戴称号（设置页最多一个）；None 表示不佩戴。"""
+
+    titleId: str | None = Field(default=None, max_length=48)
+
+
 class RaidStartRequest(BaseModel):
     raidId: str
 

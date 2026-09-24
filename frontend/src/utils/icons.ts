@@ -1,4 +1,5 @@
 import data from '@shared/schema'
+import type { FishEntryKind as FishEntryKindShared, FishRarity } from '@shared/schema'
 
 import type { RarityId } from '@/game/types'
 
@@ -39,16 +40,32 @@ export function itemIconName(baseId: string): string {
   )
 }
 
-/** 鱼获稀有度：普通鱼 / 鱼王 / 鱼皇，用于图标光晕色调。 */
-export function fishKindRarity(kind: 'normal' | 'king' | 'emperor'): RarityId {
+/** 鱼获类别与普通鱼档位（与 @shared/schema 同源）。 */
+export type FishEntryKind = FishEntryKindShared
+export type FishRarityTier = FishRarity
+
+/** 鱼获稀有度：普通鱼 / 鱼王 / 鱼皇 / 困难鱼，用于图标光晕色调。 */
+export function fishKindRarity(kind: FishEntryKind): RarityId {
+  if (kind === 'legend') return 'mythic'
   if (kind === 'emperor') return 'mythic'
   if (kind === 'king') return 'legendary'
   return 'common'
 }
 
-/** 由鱼获 id 推断种类（普通 f{r}_{n} / 鱼王 k{r} / 鱼皇 e{r}）。 */
-export function fishKindFromId(id: string): 'normal' | 'king' | 'emperor' {
-  if (id.startsWith('k')) return 'king'
-  if (id.startsWith('e')) return 'emperor'
-  return 'normal'
+/** 普通鱼档位（白 / 蓝 / 紫）；特殊鱼或无记录时回落 white。 */
+export function fishRarityTier(fishId: string): FishRarityTier {
+  return data.fishById[fishId]?.rarity ?? 'white'
+}
+
+/** 由鱼获 id 推断图标光晕：普通鱼按档位，特殊鱼按类别。 */
+export function fishRarity(fishId: string): RarityId {
+  const info = data.fishById[fishId]
+  if (!info) return 'common'
+  if (info.kind !== 'normal') return fishKindRarity(info.kind)
+  return info.rarity === 'purple' ? 'rare' : info.rarity === 'blue' ? 'uncommon' : 'common'
+}
+
+/** 由鱼获 id 推断种类（普通 f{r}_{n} / 鱼王 k{r} / 鱼皇 e{r} / 困难鱼 l…）。 */
+export function fishKindFromId(id: string): FishEntryKind {
+  return data.fishById[id]?.kind ?? 'normal'
 }

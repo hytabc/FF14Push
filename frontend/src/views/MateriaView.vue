@@ -6,6 +6,7 @@ import { toApiError } from '@/api/client'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
+import { sound } from '@/game/audio'
 import type { MateriaSlotState, MateriaState, MateriaStockEntry, SlotId } from '@/game/types'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -91,8 +92,10 @@ async function socket(materiaId: string) {
     picker.value = null
     if (res.success) {
       toast.push(`${res.materia.name} 镶嵌成功！`, 'success')
+      sound.play('materia.ok')
     } else {
       toast.push(`镶嵌失败（成功率 ${Math.round(res.chance * 100)}%），${res.materia.name} 已消耗`, 'error')
+      sound.play('materia.fail')
     }
     await game.loadState()
   } catch (e) {
@@ -124,6 +127,7 @@ async function merge(entry: MateriaStockEntry) {
     const res = await api.materiaMerge(entry.id)
     state.value = res.state
     toast.push(`合成成功：${res.produced.name}`, 'success')
+    sound.play('ui.success')
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
   } finally {

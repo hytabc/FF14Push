@@ -404,6 +404,16 @@ export const api = {
     return (await http.post('/settings/auto-sell', { enabled, rarities })).data
   },
 
+  /** 佩戴称号（设置页最多一个）；titleId 传 null 取消佩戴。 */
+  async setActiveTitle(titleId: string | null) {
+    return (
+      await http.post<{ ok: boolean; activeTitleId: string | null; message?: string }>(
+        '/settings/active-title',
+        { titleId },
+      )
+    ).data
+  },
+
   async redeemState() {
     return (await http.get<{ enabled: boolean; canRedeem: boolean; rewardGold: number }>('/redeem')).data
   },
@@ -536,6 +546,7 @@ export const api = {
       await http.post<{
         sessionId: number
         regionId: number
+        conditions: import('@/game/types').FishConditionsView
         cycle: import('@/game/types').ActivityCycle
       }>('/fish/session/start', { regionId })
     ).data

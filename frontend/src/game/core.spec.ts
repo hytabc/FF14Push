@@ -1575,3 +1575,47 @@ describe('战斗难度等级', () => {
     expect(monsterExpMultiplier(1)).toBeCloseTo(2, 5)
   })
 })
+
+describe('绝技（招牌技能）', () => {
+  const dummy: MonsterStats = {
+    id: 'dummy', regionId: 0, name: '木桩', templateId: 'dummy', kind: 'boss',
+    hp: 1e12, attack: 0, defense: 0, attackInterval: 999, level: 100, resistancePct: 0,
+  }
+
+  it('冒险者无绝技；职业有绝技且充能状态可读', () => {
+    const adv = new BattleSimulator({ stats: makeStats({ jobId: 'adventurer' }), regionId: 1 })
+    expect(adv.signature).toBeNull()
+    expect(adv.signatureState).toBeNull()
+
+    const sam = new BattleSimulator({ stats: makeStats({ jobId: 'SAM' }), regionId: 1 })
+    expect(sam.signature?.name).toBe('纷乱雪月花')
+    expect(sam.signatureState?.charge).toBe(0)
+    expect(sam.signatureState?.ready).toBe(false)
+  })
+
+  it('绝技随战斗时间充能，满槽自动释放并清零', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'SAM', attack: 1000 }),
+      raid: { bosses: [{ ...dummy }], enrage: null },
+    })
+    sim.start()
+    const hp0 = sim.monsterHp
+    sim.signatureCharge = 100
+    sim.tick(0.1)
+    expect(sim.signatureCharge).toBeLessThan(5)
+    expect(sim.monsterHp).toBeLessThan(hp0)
+    expect(sim.log.some((e) => e.text.includes('绝技「纷乱雪月花」发动'))).toBe(true)
+  })
+
+  it('「锁血不死」（死斗 / 行尸走肉）持续期间英雄不会阵亡', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ jobId: 'WAR', maxHp: 1, physDef: 0, dodgePct: 0, tenacityPct: 0, hpRegen: 0 }),
+      raid: { bosses: [{ ...dummy, attack: 1e9, attackInterval: 1 }], enrage: null },
+    })
+    sim.start()
+    sim.undyingTimer = 5
+    sim.tick(1.5)
+    expect(sim.phase).not.toBe('dead')
+    expect(sim.heroHp).toBe(1)
+  })
+})

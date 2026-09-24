@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { findGatherTarget } from '@/game/core/gather'
+import { findGatherTarget, resolveGatherAvailability } from '@/game/core/gather'
 
 describe('findGatherTarget（生产页 → 采集跳转）', () => {
   it('地区专属材料定位到唯一的采集点', () => {
@@ -32,5 +32,29 @@ describe('findGatherTarget（生产页 → 采集跳转）', () => {
     expect(findGatherTarget('g_wood', () => true, 2)).toBeNull()
     // 不传等级时保持原行为（不受等级限制）
     expect(findGatherTarget('g_wood', () => true)).toMatchObject({ jobId: 'BTN' })
+  })
+})
+
+describe('resolveGatherAvailability（序列规划：采不了也要给采集点与原因）', () => {
+  it('可采集时 blocked 为 null，并给出所需等级', () => {
+    const avail = resolveGatherAvailability('g_wood', () => true, 6)
+    expect(avail).toMatchObject({ jobId: 'BTN', regionId: 3, blocked: null })
+    expect(avail?.requiredLevel).toBeLessThanOrEqual(6)
+  })
+
+  it('等级不足时回退到等级要求最低的已解锁采集点，并标记 level', () => {
+    const avail = resolveGatherAvailability('g_wood', () => true, 2)
+    expect(avail).toMatchObject({ blocked: 'level' })
+    expect(avail?.requiredLevel).toBeGreaterThan(2)
+  })
+
+  it('地区未解锁时标记 region', () => {
+    const avail = resolveGatherAvailability('ore40', () => false, 100)
+    expect(avail).toMatchObject({ blocked: 'region' })
+  })
+
+  it('非采集材料 / 无产出地返回 null', () => {
+    expect(resolveGatherAvailability('h_plank', () => true, 100)).toBeNull()
+    expect(resolveGatherAvailability('unknown', () => true, 100)).toBeNull()
   })
 })

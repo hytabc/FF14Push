@@ -172,6 +172,12 @@ export function estimateDps(
   const doubleCast = 1 + Math.max(0, stats.termMods.doubleCastPct ?? 0) / 100
   potencyPerSec *= doubleCast
 
+  // 绝技（招牌技能）：独立充能槽、不占 GCD，伤害型绝技按有效充能时间折算期望 DPS（与后端 combat_model 同源）。
+  const sig = data.jobById[stats.jobId]?.signature
+  if (sig && sig.potency > 0) {
+    potencyPerSec += sig.potency / Math.max(1, sig.chargeSeconds)
+  }
+
   // 普攻与技能完全独立：按自身冷却出手（受攻速缩短），不占用 GCD / 不受技能可用性影响。
   const basicCd = Math.max(
     0.2,

@@ -8,6 +8,7 @@ import { toApiError } from '@/api/client'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import Modal from '@/components/Modal.vue'
+import { sound } from '@/game/audio'
 import type { FarmPlotState, FarmState, Hero } from '@/game/types'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -104,6 +105,7 @@ async function expand() {
     farm.value = res.state
     syncAnchors()
     toast.push(`扩张成功，消耗 ${formatNumber(res.cost)} 金币`, 'success')
+    sound.play('ui.success')
     await game.loadState()
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
@@ -122,6 +124,7 @@ async function plant(seedId: string) {
     syncAnchors()
     plantAt.value = null
     toast.push(`已种下 ${seedsById.value[seedId] ?? '种子'}`, 'success')
+    sound.play('farm.plant')
   } catch (e) {
     toast.push(toApiError(e).message, 'error')
   } finally {
@@ -141,10 +144,13 @@ async function doHarvest(index: number, heroId: number | null, confirm: boolean)
     const result = res.result
     if (result.type === 'gold') {
       toast.push(`收获 ${formatNumber(result.amount ?? 0)} 金币`, 'loot')
+      sound.play('farm.harvest')
     } else if (result.noEffect) {
       toast.push(`${result.heroName} 已满级，本次收获无任何效果`, 'error')
+      sound.play('ui.error')
     } else {
       toast.push(`${result.heroName} 升到 ${result.level} 级！`, 'success')
+      sound.play('battle.levelup')
     }
     await game.loadState()
   } catch (e) {

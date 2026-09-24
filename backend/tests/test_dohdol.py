@@ -48,6 +48,11 @@ def _backdate(session, seconds: float) -> None:
     session.last_report_at = datetime.now(timezone.utc) - timedelta(seconds=seconds)
 
 
+def _special(region: dict, kind: str) -> dict:
+    """取钓场里指定类别的特殊鱼（king / emperor / legend）。"""
+    return next(s for s in region["specials"] if s["kind"] == kind)
+
+
 class TestSharedData:
     def test_jobs(self):
         jobs = CONFIG.dohdol_jobs["jobs"]
@@ -131,35 +136,79 @@ class TestSharedData:
         king_names: list[str] = []
         emperor_names: list[str] = []
         for region in CONFIG.fish["regions"]:
-            normal_ids = {f["id"] for f in region["normal"]}
             assert region["normal"], "钓场必须有普通鱼"
-            for key in ("king", "emperor"):
-                assert set(region[key]["prereqFishIds"]).issubset(normal_ids)
-                assert region[key]["chance"] > 0
-            assert region["emperor"]["chance"] < region["king"]["chance"], "鱼皇概率必须低于鱼王"
-            # 钓场带采集等级门槛，且与同地区采集点一致（1-100 线性铺满）
+            for f in region["normal"]:
+                assert f["rarity"] in ("white", "blue", "purple")
+                assert int(f["sizeMin"]) <= int(f["sizeMax"])
+            specials = region["specials"]
+            assert specials, "钓场必须有特殊鱼"
+            for s in specials:
+                assert s["kind"] in ("king", "emperor", "legend")
+                assert float(s["intuition"]["chance"]) > 0
+                assert s["intuition"]["requires"], "特殊鱼必须声明计数型前置"
+                for req in s["intuition"]["requires"]:
+                    assert req["fishId"] in CONFIG.fish_by_id, req["fishId"]
+                    assert int(req["count"]) >= 1
+            king = _special(region, "king")
+            emperor = _special(region, "emperor")
+            # 旧称号只统计 legacy：每地区恰有一条 legacy 鱼王 / 鱼皇
+            assert king["legacy"] is True and emperor["legacy"] is True
+            assert emperor["intuition"]["chance"] < king["intuition"]["chance"], "鱼皇概率必须低于鱼王"
             assert int(region["levelReq"]) >= 1
             assert int(region["levelReq"]) == int(
                 CONFIG.gather_node_by[(region["regionId"], "MIN")]["levelReq"]
             ), f"地区 {region['regionId']} 钓场门槛与采集点不一致"
-            king_names.append(region["king"]["name"])
-            emperor_names.append(region["emperor"]["name"])
+            king_names.append(king["name"])
+            emperor_names.append(emperor["name"])
         assert int(CONFIG.fish_region_by_id[1]["levelReq"]) == 1
         assert int(CONFIG.fish_region_by_id[40]["levelReq"]) == 100
-        # 鱼王 / 鱼皇每个地区各一条，名称互不重复
+        # 每地区各一条鱼王 / 鱼皇，名称互不重复
         assert len(set(king_names)) == 40
         assert len(set(emperor_names)) == 40
         # 鱼名参考 FF14，不应再是「地区名+鱼王」这种拼出来的名字
         for region in CONFIG.fish["regions"]:
-            assert not region["king"]["name"].startswith(region["name"])
-            assert not region["emperor"]["name"].startswith(region["name"])
+            assert not _special(region, "king")["name"].startswith(region["name"])
+            assert not _special(region, "emperor")["name"].startswith(region["name"])
+
+    def test_fish_weather_gates_are_reachable(self):
+        """每条鱼声明的天气门槛必须落在该钓场天气表内，否则永远钓不到。"""
+        weather_keys = {int(r["regionId"]): set(r["weights"]) for r in CONFIG.weather["regions"]}
+        windows = set(CONFIG.weather["timeOfDay"])
+        for region in CONFIG.fish["regions"]:
+            rid = int(region["regionId"])
+            assert rid in weather_keys, f"地区 {rid} 缺少天气权重表"
+            for fish in [*region["normal"], *region["specials"]]:
+                for w in fish.get("weather", []) or []:
+                    assert w in weather_keys[rid], f"{fish['id']} 的天气 {w} 不可达"
+                for tod in fish.get("timeOfDay", []) or []:
+                    assert tod in windows, f"{fish['id']} 的时段 {tod} 未定义"
+
+    def test_fish_has_difficult_legends(self):
+        """困难鱼（legend）存在，且包含七彩天主的多前置链。"""
+        legends = [
+            s for region in CONFIG.fish["regions"] for s in region["specials"] if s["kind"] == "legend"
+        ]
+        assert len(legends) >= 10, "应包含一批 FF14 闻名的困难鱼"
+        names = {s["name"] for s in legends}
+        assert {"镜中蝶", "七彩天主"} <= names
+        hue_lord = next(s for s in legends if s["name"] == "七彩天主")
+        assert sum(int(r["count"]) for r in hue_lord["intuition"]["requires"]) == 11
+        assert hue_lord.get("weather"), "七彩天主需要特定天气窗口"
 
     def test_consumables_and_titles(self):
         kinds = {c["kind"] for c in CONFIG.consumables["items"]}
         assert kinds == {"potion", "food"}
         for c in CONFIG.consumables["items"]:
             assert c["effects"]
-        assert len(CONFIG.titles["titles"]) == 2
+        titles = {t["id"]: t for t in CONFIG.titles["titles"]}
+        # 旧称号原样保留（本次更新不影响已有称号）
+        assert titles["fish_king_all"]["name"] == "鱼王猎手"
+        assert titles["fish_king_all"]["condition"] == {"type": "all_king"}
+        assert titles["fish_emperor_all"]["name"] == "海皇"
+        assert titles["fish_emperor_all"]["condition"] == {"type": "all_emperor"}
+        # 新增 FF14 钓鱼称号
+        assert titles["fish_grand_all"]["name"] == "烟波钓徒"
+        assert len(titles) > 2
 
     def test_craft_xp_rarity_multiplier(self):
         """制造经验系数：覆盖全部品阶，最低品阶为 1.0，且随品阶单调递增。"""
@@ -424,8 +473,8 @@ class TestDohdolSellBalance:
         for label, pick in (
             ("采集素材", self._region_mat_sell),
             ("普通渔获", lambda b: int(CONFIG.fish_region_by_id[b]["normal"][0]["sell"])),
-            ("鱼王", lambda b: int(CONFIG.fish_region_by_id[b]["king"]["sell"])),
-            ("鱼皇", lambda b: int(CONFIG.fish_region_by_id[b]["emperor"]["sell"])),
+            ("鱼王", lambda b: int(_special(CONFIG.fish_region_by_id[b], "king")["sell"])),
+            ("鱼皇", lambda b: int(_special(CONFIG.fish_region_by_id[b], "emperor")["sell"])),
         ):
             for prev, cur in zip(self.BANDS, self.BANDS[1:]):
                 assert pick(cur) > pick(prev), f"{label} 档位 {cur} 未高于 {prev}：{pick(prev)} → {pick(cur)}"
@@ -448,12 +497,14 @@ class TestDohdolSellBalance:
         cast_seconds = float(CONFIG.fish["castSeconds"])
         for band in self.CHECKED_BANDS:
             region = CONFIG.fish_region_by_id[band]
-            king_p = float(region["king"]["chance"])
-            emperor_p = (1.0 - king_p) * float(region["emperor"]["chance"])
+            king = _special(region, "king")
+            emperor = _special(region, "emperor")
+            king_p = float(king["intuition"]["chance"])
+            emperor_p = (1.0 - king_p) * float(emperor["intuition"]["chance"])
             per_cast = (
                 int(region["normal"][0]["sell"])
-                + king_p * int(region["king"]["sell"])
-                + emperor_p * int(region["emperor"]["sell"])
+                + king_p * int(king["sell"])
+                + emperor_p * int(emperor["sell"])
             )
             total = per_cast / cast_seconds
             cap = self._combat_gold_floor_per_sec(band)
@@ -1482,3 +1533,386 @@ class TestExtendedDedicatedTerms:
         )
         bonus = dohdol_util.equipped_bonus([item])
         assert bonus.get("craftMaterialSavePct") == pytest.approx(12.0)
+
+
+# ─────────────────────────────────────────── 钓鱼 2.0：天气 / 时间 / 直觉 / 称号
+
+def _cond(weather_id: str = "clear", tod: str = "day") -> dict:
+    return {
+        "weather": weather_id, "weatherName": weather_id, "weatherHex": "#000000",
+        "etHour": 10, "etClock": "10:00", "timeOfDay": tod, "timeOfDayName": tod,
+    }
+
+
+def _one_special_region(weather_ids=None, time_ids=None, requires=None) -> dict:
+    return {
+        "regionId": 999, "name": "测试钓场", "levelReq": 1,
+        "normal": [
+            {"id": "ft_1", "name": "测试鱼", "rarity": "white", "weight": 1,
+             "sizeMin": 1, "sizeMax": 2, "exp": 1, "sell": 1},
+        ],
+        "specials": [
+            {
+                "id": "lt_1", "name": "测试大鱼", "kind": "legend",
+                **({"weather": weather_ids} if weather_ids else {}),
+                **({"timeOfDay": time_ids} if time_ids else {}),
+                "intuition": {
+                    "name": "测试之识",
+                    "requires": requires or [{"fishId": "ft_1", "count": 3}],
+                    "durationSec": [100, 100], "chance": 0.5,
+                },
+                "sizeMin": 10, "sizeMax": 20, "exp": 5, "sell": 5,
+            },
+        ],
+    }
+
+
+class TestWeather:
+    """天气 / ET：服务端时间的纯函数，且与前端 weather.ts 同值。"""
+
+    def test_hash_matches_frontend_snapshot(self):
+        from app.services import weather
+
+        # 与 frontend/src/game/weather.ts::hash01 的固定快照一致（改动算法会同时失败）。
+        assert round(weather.hash01(12345, 1), 9) == 0.865077992
+        assert round(weather.hash01(999999, 1), 9) == 0.400823007
+
+    def test_weather_is_deterministic_and_varies(self):
+        from app.services import weather
+
+        t = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        assert weather.weather_for(1, t) == weather.weather_for(1, t)
+        period = weather.weather_period_sec()
+        seen = {weather.weather_for(1, t + timedelta(seconds=i * period)) for i in range(40)}
+        assert len(seen) > 1, "同一地区应随时间出现不同天气"
+
+    def test_weather_always_reachable_for_every_region(self):
+        from app.services import weather
+
+        t = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        period = weather.weather_period_sec()
+        for region in CONFIG.weather["regions"]:
+            rid = int(region["regionId"])
+            seen = {weather.weather_for(rid, t + timedelta(seconds=i * period)) for i in range(120)}
+            assert seen <= set(region["weights"]), f"地区 {rid} 出现未声明的天气 {seen}"
+
+    def test_time_of_day_windows_wrap(self):
+        from app.services import weather
+
+        windows = CONFIG.weather["timeOfDay"]
+        for hour in range(24):
+            assert weather.time_of_day  # sanity
+        # 深夜窗口跨零点：[20,4]
+        assert windows["night"][0] > windows["night"][1]
+
+    def test_gate_matches(self):
+        from app.services import weather
+
+        cond = _cond("clear", "day")
+        assert weather.gate_matches(cond, None, None)
+        assert weather.gate_matches(cond, ["clear"], ["day"])
+        assert not weather.gate_matches(cond, ["rain"], None)
+        assert not weather.gate_matches(cond, None, ["night"])
+
+
+class TestFishIntuition:
+    """捕鱼人之识：一鱼一 BUFF、计数型前置、不刷新、结束后才可再次触发。"""
+
+    def _rng(self):
+        return random.Random(20260924)
+
+    def test_counted_prereq_triggers_only_when_complete(self):
+        from app.services import fishing
+
+        region = _one_special_region(requires=[{"fishId": "ft_1", "count": 3}])
+        cond = _cond()
+        now = datetime.now(timezone.utc)
+        insights: dict = {}
+        intuition: dict = {}
+        rng = self._rng()
+        for _ in range(2):
+            fishing._advance_intuition(region, cond, "ft_1", 1, insights, intuition, 0.0, rng, now)
+        assert "lt_1" not in insights, "前置未满不应开启"
+        fishing._advance_intuition(region, cond, "ft_1", 1, insights, intuition, 0.0, rng, now)
+        assert "lt_1" in insights, "前置齐备应开启"
+        assert intuition["lt_1"] == {}, "触发即消耗前置"
+
+    def test_never_refreshes_while_active(self):
+        from app.services import fishing
+
+        region = _one_special_region(requires=[{"fishId": "ft_1", "count": 1}])
+        cond = _cond()
+        now = datetime.now(timezone.utc)
+        insights: dict = {}
+        intuition: dict = {}
+        rng = self._rng()
+        fishing._advance_intuition(region, cond, "ft_1", 1, insights, intuition, 0.0, rng, now)
+        first = insights["lt_1"]
+        # 已激活：即便再钓齐前置、即便有洞察加成，也绝不延长
+        fishing._advance_intuition(region, cond, "ft_1", 5, insights, intuition, 999.0, rng, now)
+        assert insights["lt_1"] == first
+
+    def test_retrigger_allowed_only_after_expiry(self):
+        from app.services import fishing
+
+        region = _one_special_region(requires=[{"fishId": "ft_1", "count": 1}])
+        cond = _cond()
+        now = datetime.now(timezone.utc)
+        insights: dict = {}
+        intuition: dict = {}
+        rng = self._rng()
+        fishing._advance_intuition(region, cond, "ft_1", 1, insights, intuition, 0.0, rng, now)
+        assert insights["lt_1"] == now + timedelta(seconds=100)
+
+        # 未到期：重新钓齐也无法再次触发
+        mid = now + timedelta(seconds=50)
+        fishing._advance_intuition(region, cond, "ft_1", 1, insights, intuition, 0.0, rng, mid)
+        assert insights["lt_1"] == now + timedelta(seconds=100)
+
+        # 到期后：重新钓齐前置即可再次触发
+        later = now + timedelta(seconds=200)
+        fishing._advance_intuition(region, cond, "ft_1", 1, insights, intuition, 0.0, rng, later)
+        assert insights["lt_1"] >= later
+
+    def test_weather_gate_blocks_prereq_and_trigger(self):
+        from app.services import fishing
+
+        region = _one_special_region(weather_ids=["clear"], requires=[{"fishId": "ft_1", "count": 1}])
+        now = datetime.now(timezone.utc)
+        insights: dict = {}
+        intuition: dict = {}
+        rng = self._rng()
+        # 非窗口天气：不计前置、不触发
+        fishing._advance_intuition(region, _cond("fog"), "ft_1", 3, insights, intuition, 0.0, rng, now)
+        assert "lt_1" not in insights and not intuition.get("lt_1")
+        # 窗口天气：正常触发
+        fishing._advance_intuition(region, _cond("clear"), "ft_1", 1, insights, intuition, 0.0, rng, now)
+        assert "lt_1" in insights
+
+    def test_special_not_catchable_outside_window(self):
+        from app.services import fishing
+
+        region = _one_special_region(weather_ids=["clear"], time_ids=["night"])
+        now = datetime.now(timezone.utc)
+        insights = {"lt_1": now + timedelta(seconds=100)}
+        assert fishing._special_candidates(region, _cond("clear", "day"), insights, now) == []
+        assert fishing._special_candidates(region, _cond("clear", "night"), insights, now)
+        assert fishing._special_candidates(region, _cond("fog", "night"), insights, now) == []
+
+    def test_special_not_catchable_without_insight(self):
+        from app.services import fishing
+
+        region = _one_special_region()
+        now = datetime.now(timezone.utc)
+        assert fishing._special_candidates(region, _cond(), {}, now) == []
+
+    def test_normal_pool_respects_weather_gate(self):
+        from app.services import fishing
+
+        region = {
+            "regionId": 998, "name": "t", "levelReq": 1,
+            "normal": [
+                {"id": "fa", "name": "always", "rarity": "white", "weight": 100,
+                 "sizeMin": 1, "sizeMax": 2, "exp": 1, "sell": 1},
+                {"id": "fb", "name": "rainonly", "rarity": "blue", "weight": 100,
+                 "weather": ["rain"], "sizeMin": 1, "sizeMax": 2, "exp": 1, "sell": 1},
+            ],
+            "specials": [],
+        }
+        rng = self._rng()
+        picks = {fishing._pick_normal(region, _cond("clear"), rng)["id"] for _ in range(50)}
+        assert picks == {"fa"}, "非窗口天气不应钓到受门槛限制的鱼"
+
+
+class TestTitleConditions:
+    """称号条件判定：legacy 范围不受新困难鱼影响。"""
+
+    def _ctx(self, ids, **kw):
+        kind: dict[str, int] = {}
+        rarity: dict[str, int] = {}
+        for fish_id in ids:
+            info = CONFIG.fish_by_id.get(fish_id)
+            if not info:
+                continue
+            kind[info["kind"]] = kind.get(info["kind"], 0) + 1
+            if info.get("rarity"):
+                rarity[info["rarity"]] = rarity.get(info["rarity"], 0) + 1
+        return {
+            "ids": set(ids), "kind": kind, "rarity": rarity,
+            "species": len(ids), "count": kw.get("count", len(ids)),
+        }
+
+    def test_count_and_specific(self):
+        from app.services import titles
+
+        ctx = self._ctx(["k1"], count=5)
+        assert titles.matches({"type": "count_kind", "kind": "king", "count": 1}, ctx)
+        assert not titles.matches({"type": "count_kind", "kind": "king", "count": 2}, ctx)
+        assert titles.matches({"type": "fish_count", "count": 5}, ctx)
+        assert not titles.matches({"type": "fish_count", "count": 6}, ctx)
+        assert titles.matches({"type": "specific_fish", "fishIds": ["k1"]}, ctx)
+        assert not titles.matches({"type": "specific_fish", "fishIds": ["k2"]}, ctx)
+
+    def test_all_king_is_scoped_to_legacy(self):
+        from app.services import titles
+
+        legacy_kings = {
+            s["id"] for region in CONFIG.fish["regions"] for s in region["specials"]
+            if s["kind"] == "king" and s.get("legacy")
+        }
+        assert titles.matches({"type": "all_king"}, self._ctx(legacy_kings))
+        # 少了任何一条 legacy 鱼王都不成立
+        assert not titles.matches({"type": "all_king"}, self._ctx(list(legacy_kings)[:-1]))
+        # 新增困难鱼不计入旧称号
+        assert not titles.matches({"type": "all_king"}, self._ctx(list(legacy_kings)[:-1] + ["l21_hue_lord"]))
+
+
+class TestFishingMechanicsApi:
+    @pytest.mark.asyncio
+    async def test_fish_report_exposes_conditions_and_insights(self, auth_client, session_factory):
+        start = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 1})
+        assert start.status_code == 200, start.text
+        assert start.json()["conditions"]["weather"]
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 60)
+            await db.commit()
+        rep = await auth_client.post("/api/v1/fish/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        body = rep.json()
+        assert "conditions" in body and "insights" in body
+        assert isinstance(body["insights"], list)
+        for catch in body["caught"]:
+            assert catch["kind"] in ("normal", "king", "emperor", "legend")
+
+    @pytest.mark.asyncio
+    async def test_fish_stats_include_legend_totals(self, auth_client):
+        state = (await auth_client.get("/api/v1/dohdol/state")).json()
+        stats = state["fishStats"]
+        assert stats["kingTotal"] == 40 and stats["emperorTotal"] == 40
+        assert stats["legendTotal"] >= 10
+        assert stats["legend"] == 0
+
+
+class TestActiveTitleApi:
+    @pytest.mark.asyncio
+    async def test_set_reject_and_clear(self, auth_client, session_factory):
+        from app.models import UserTitle
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            db.add(UserTitle(user_id=me["id"], title_id="fish_king_all"))
+            await db.commit()
+
+        ok = await auth_client.post("/api/v1/settings/active-title", json={"titleId": "fish_king_all"})
+        assert ok.status_code == 200, ok.text
+        assert ok.json()["ok"] is True and ok.json()["activeTitleId"] == "fish_king_all"
+
+        state = (await auth_client.get("/api/v1/game/state")).json()
+        assert state["user"]["activeTitleId"] == "fish_king_all"
+
+        # 未拥有 → 拒绝
+        denied = await auth_client.post("/api/v1/settings/active-title", json={"titleId": "fish_grand_all"})
+        assert denied.json()["ok"] is False
+        assert denied.json()["activeTitleId"] == "fish_king_all"
+
+        # 未知称号 → 拒绝
+        unknown = await auth_client.post("/api/v1/settings/active-title", json={"titleId": "nope"})
+        assert unknown.json()["ok"] is False
+
+        # 清除
+        cleared = await auth_client.post("/api/v1/settings/active-title", json={"titleId": None})
+        assert cleared.json()["activeTitleId"] is None
+        assert (await auth_client.get("/api/v1/game/state")).json()["user"]["activeTitleId"] is None
+
+    @pytest.mark.asyncio
+    async def test_specific_fish_title_unlocks_from_record(self, auth_client, session_factory):
+        from app.models import FishRecord
+        from app.services import titles as titles_service
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            db.add(FishRecord(user_id=me["id"], fish_id="l21_hue_lord", region_id=21,
+                              kind="legend", count=1, max_size=1))
+            await db.commit()
+            new = await titles_service.evaluate_titles(db, me["id"])
+            await db.commit()
+        assert "fish_specific_hue" in new
+
+
+class TestEggTitles:
+    """彩蛋称号：挖宝下底 / 采集时的极低概率掉落（非确定性条件）。"""
+
+    EVENTS = {"treasure_bottom": 5, "gather": 5}
+
+    def test_egg_titles_defined(self):
+        from app.services import titles as titles_service
+
+        for event, count in self.EVENTS.items():
+            eggs = titles_service.random_drop_titles(event)
+            assert len(eggs) == count, f"{event} 应有 {count} 个彩蛋称号"
+            for title in eggs:
+                assert title.get("egg") is True
+                assert title["condition"]["type"] == "random_drop"
+                assert 0 < float(title["condition"]["chance"]) < 0.05, "彩蛋概率必须极低"
+
+    def test_title_ids_unique(self):
+        ids = [t["id"] for t in CONFIG.titles["titles"]]
+        assert len(ids) == len(set(ids))
+
+    def test_deterministic_engine_never_awards_eggs(self):
+        """彩蛋称号不能由确定性条件引擎（按鱼获记录）发放。"""
+        from app.services import titles as titles_service
+
+        ctx = {"ids": set(), "kind": {}, "rarity": {}, "species": 0, "count": 0}
+        for title in CONFIG.titles["titles"]:
+            if title["condition"].get("type") == "random_drop":
+                assert titles_service.matches(title["condition"], ctx) is False
+
+    @pytest.mark.asyncio
+    async def test_no_rolls_no_title(self, auth_client, session_factory):
+        from app.services import titles as titles_service
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            assert await titles_service.roll_random_titles(db, me["id"], "gather", rolls=0) == []
+            assert await titles_service.roll_random_titles(db, me["id"], "nope", rolls=10) == []
+
+    @pytest.mark.asyncio
+    async def test_many_rolls_unlock_then_stop_repeating(self, auth_client, session_factory):
+        from app.models import UserTitle
+        from app.services import titles as titles_service
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            new = await titles_service.roll_random_titles(db, me["id"], "gather", rolls=1_000_000)
+            await db.commit()
+            assert len(new) == len(titles_service.random_drop_titles("gather"))
+            owned = set(
+                (await db.execute(
+                    select(UserTitle.title_id).where(UserTitle.user_id == me["id"])
+                )).scalars().all()
+            )
+            assert set(new) <= owned
+            # 已拥有 → 不再重复发放
+            assert await titles_service.roll_random_titles(db, me["id"], "gather", rolls=1_000_000) == []
+            # 另一事件的彩蛋不受影响
+            assert await titles_service.roll_random_titles(db, me["id"], "treasure_bottom", rolls=0) == []
+
+    @pytest.mark.asyncio
+    async def test_gather_report_carries_new_titles(self, auth_client, session_factory):
+        start = await auth_client.post("/api/v1/gather/session/start", json={"jobId": "MIN", "regionId": 1})
+        assert start.status_code == 200, start.text
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            from app.models import ActivitySession
+
+            row = (await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))).scalar_one()
+            _backdate(row, 20)
+            await db.commit()
+        rep = await auth_client.post("/api/v1/gather/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        assert isinstance(rep.json()["newTitles"], list)

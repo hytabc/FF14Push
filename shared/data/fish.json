@@ -1,7 +1,12 @@
 {
-  "$comment": "钓场。每个地区一个钓场：普通鱼按权重、随机尺寸；鱼王/鱼皇需先钓起指定普通鱼以开启「捕鱼人之识」，期间才有小概率出现。鱼皇概率低于鱼王。levelReq 为采集等级门槛（与采集点一致，40 个地区线性铺满 1-100）。sell 为出售单价（金币）：普通渔获按 FISH_SELL 递增且维持原价；鱼王/鱼皇按 KING_SELL / EMPEROR_SELL 全档位陡增（每档约 3~3.75×），100 级地区鱼皇单价 30W。",
+  "$comment": "钓场。普通鱼分白/蓝/紫三档（rarity），可带天气(weather)/时间(timeOfDay)门槛；special: 鱼王/鱼皇(legacy)与困难鱼(legend)共用统一的 intuition 结构——每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。旧 king/emperor 已迁入 specials[]，id 与数值保持不变。",
   "castSeconds": 3.0,
   "insightBuffName": "捕鱼人之识",
+  "rarityNames": {
+    "white": "白鱼",
+    "blue": "蓝鱼",
+    "purple": "紫鱼"
+  },
   "regions": [
     {
       "regionId": 1,
@@ -15,7 +20,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f1_2",
@@ -24,7 +30,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f1_3",
@@ -33,7 +40,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f1_4",
@@ -42,45 +50,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f1_5",
+          "name": "珊瑚蝶鱼",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 8,
+          "sell": 32
+        },
+        {
+          "id": "f1_6",
+          "name": "银鳞鲳",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 8,
+          "sell": 32
+        },
+        {
+          "id": "f1_7",
+          "name": "月光水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 16,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k1",
-        "name": "涅普特之龙",
-        "prereqFishIds": [
-          "f1_1",
-          "f1_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 41,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e1",
-        "name": "海皇利维亚桑",
-        "prereqFishIds": [
-          "f1_1",
-          "f1_2",
-          "f1_3",
-          "f1_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 122,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k1",
+          "name": "涅普特之龙",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f1_1",
+                "count": 1
+              },
+              {
+                "fishId": "f1_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 41,
+          "sell": 160
+        },
+        {
+          "id": "e1",
+          "name": "海皇利维亚桑",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f1_1",
+                "count": 1
+              },
+              {
+                "fishId": "f1_2",
+                "count": 1
+              },
+              {
+                "fishId": "f1_3",
+                "count": 1
+              },
+              {
+                "fishId": "f1_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 122,
+          "sell": 640
+        }
+      ]
     },
     {
       "regionId": 2,
@@ -94,7 +172,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f2_2",
@@ -103,7 +182,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f2_3",
@@ -112,7 +192,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f2_4",
@@ -121,45 +202,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f2_5",
+          "name": "蓝鳍梭鱼",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 8,
+          "sell": 32
+        },
+        {
+          "id": "f2_6",
+          "name": "浪花鲹",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 8,
+          "sell": 32
+        },
+        {
+          "id": "f2_7",
+          "name": "海月水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 16,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k2",
-        "name": "利维亚桑的眷属",
-        "prereqFishIds": [
-          "f2_1",
-          "f2_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 42,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e2",
-        "name": "神龙之影",
-        "prereqFishIds": [
-          "f2_1",
-          "f2_2",
-          "f2_3",
-          "f2_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 124,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k2",
+          "name": "利维亚桑的眷属",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f2_1",
+                "count": 1
+              },
+              {
+                "fishId": "f2_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 42,
+          "sell": 160
+        },
+        {
+          "id": "e2",
+          "name": "神龙之影",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f2_1",
+                "count": 1
+              },
+              {
+                "fishId": "f2_2",
+                "count": 1
+              },
+              {
+                "fishId": "f2_3",
+                "count": 1
+              },
+              {
+                "fishId": "f2_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 124,
+          "sell": 640
+        }
+      ]
     },
     {
       "regionId": 3,
@@ -173,7 +324,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f3_2",
@@ -182,7 +334,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f3_3",
@@ -191,7 +344,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f3_4",
@@ -200,45 +354,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 4,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f3_5",
+          "name": "斑点鲼",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 8,
+          "sell": 32
+        },
+        {
+          "id": "f3_6",
+          "name": "石首鱼",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 8,
+          "sell": 32
+        },
+        {
+          "id": "f3_7",
+          "name": "深渊提灯鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 16,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k3",
-        "name": "蓝宝石恶魔",
-        "prereqFishIds": [
-          "f3_1",
-          "f3_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 43,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e3",
-        "name": "世界蛇",
-        "prereqFishIds": [
-          "f3_1",
-          "f3_2",
-          "f3_3",
-          "f3_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 126,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k3",
+          "name": "蓝宝石恶魔",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f3_1",
+                "count": 1
+              },
+              {
+                "fishId": "f3_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 43,
+          "sell": 160
+        },
+        {
+          "id": "e3",
+          "name": "世界蛇",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f3_1",
+                "count": 1
+              },
+              {
+                "fishId": "f3_2",
+                "count": 1
+              },
+              {
+                "fishId": "f3_3",
+                "count": 1
+              },
+              {
+                "fishId": "f3_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 126,
+          "sell": 640
+        },
+        {
+          "id": "l3_sea_god",
+          "name": "海神",
+          "kind": "legend",
+          "weather": [
+            "rain"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "海神之识",
+            "requires": [
+              {
+                "fishId": "f3_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.0012
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 100,
+          "sell": 480
+        }
+      ]
     },
     {
       "regionId": 4,
@@ -252,7 +505,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f4_2",
@@ -261,7 +515,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f4_3",
@@ -270,7 +525,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f4_4",
@@ -279,45 +535,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f4_5",
+          "name": "沙漠鲹",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "heat"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f4_6",
+          "name": "沙丘鳅",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "dust"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f4_7",
+          "name": "赤沙王鲷",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 20,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k4",
-        "name": "红玉蛇",
-        "prereqFishIds": [
-          "f4_1",
-          "f4_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 44,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e4",
-        "name": "太古利维坦",
-        "prereqFishIds": [
-          "f4_1",
-          "f4_2",
-          "f4_3",
-          "f4_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 128,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k4",
+          "name": "红玉蛇",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f4_1",
+                "count": 1
+              },
+              {
+                "fishId": "f4_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 44,
+          "sell": 160
+        },
+        {
+          "id": "e4",
+          "name": "太古利维坦",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f4_1",
+                "count": 1
+              },
+              {
+                "fishId": "f4_2",
+                "count": 1
+              },
+              {
+                "fishId": "f4_3",
+                "count": 1
+              },
+              {
+                "fishId": "f4_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 128,
+          "sell": 640
+        }
+      ]
     },
     {
       "regionId": 5,
@@ -331,7 +657,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f5_2",
@@ -340,7 +667,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f5_3",
@@ -349,7 +677,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f5_4",
@@ -358,45 +687,142 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f5_5",
+          "name": "灼热鲈",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "heat"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f5_6",
+          "name": "砂砾鲶",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "dust"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f5_7",
+          "name": "幻影蜥鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 20,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k5",
-        "name": "熔岩王",
-        "prereqFishIds": [
-          "f5_1",
-          "f5_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 45,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e5",
-        "name": "群星之鲸",
-        "prereqFishIds": [
-          "f5_1",
-          "f5_2",
-          "f5_3",
-          "f5_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 130,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k5",
+          "name": "熔岩王",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f5_1",
+                "count": 1
+              },
+              {
+                "fishId": "f5_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 45,
+          "sell": 160
+        },
+        {
+          "id": "e5",
+          "name": "群星之鲸",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f5_1",
+                "count": 1
+              },
+              {
+                "fishId": "f5_2",
+                "count": 1
+              },
+              {
+                "fishId": "f5_3",
+                "count": 1
+              },
+              {
+                "fishId": "f5_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 130,
+          "sell": 640
+        },
+        {
+          "id": "l5_mirage",
+          "name": "幻影王鲷",
+          "kind": "legend",
+          "weather": [
+            "heat",
+            "dust"
+          ],
+          "intuition": {
+            "name": "幻影王鲷之识",
+            "requires": [
+              {
+                "fishId": "f5_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.0012
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 125,
+          "sell": 480
+        }
+      ]
     },
     {
       "regionId": 6,
@@ -410,7 +836,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f6_2",
@@ -419,7 +846,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f6_3",
@@ -428,7 +856,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f6_4",
@@ -437,45 +866,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f6_5",
+          "name": "苔藓鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f6_6",
+          "name": "林间鳜",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f6_7",
+          "name": "幽林木灵鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 20,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k6",
-        "name": "冰霜帝王",
-        "prereqFishIds": [
-          "f6_1",
-          "f6_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 46,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e6",
-        "name": "混沌之鱼",
-        "prereqFishIds": [
-          "f6_1",
-          "f6_2",
-          "f6_3",
-          "f6_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 132,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k6",
+          "name": "冰霜帝王",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f6_1",
+                "count": 1
+              },
+              {
+                "fishId": "f6_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 46,
+          "sell": 160
+        },
+        {
+          "id": "e6",
+          "name": "混沌之鱼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f6_1",
+                "count": 1
+              },
+              {
+                "fishId": "f6_2",
+                "count": 1
+              },
+              {
+                "fishId": "f6_3",
+                "count": 1
+              },
+              {
+                "fishId": "f6_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 132,
+          "sell": 640
+        },
+        {
+          "id": "l6_wood_catfish",
+          "name": "幽林巨鲶",
+          "kind": "legend",
+          "weather": [
+            "fog"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "幽林巨鲶之识",
+            "requires": [
+              {
+                "fishId": "f6_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.0012
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 125,
+          "sell": 480
+        }
+      ]
     },
     {
       "regionId": 7,
@@ -489,7 +1017,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f7_2",
@@ -498,7 +1027,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f7_3",
@@ -507,7 +1037,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f7_4",
@@ -516,45 +1047,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 5,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f7_5",
+          "name": "落叶鲑",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f7_6",
+          "name": "树影鲫",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 10,
+          "sell": 32
+        },
+        {
+          "id": "f7_7",
+          "name": "夜枭鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 20,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k7",
-        "name": "沙海之主",
-        "prereqFishIds": [
-          "f7_1",
-          "f7_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 47,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e7",
-        "name": "终焉之鲟",
-        "prereqFishIds": [
-          "f7_1",
-          "f7_2",
-          "f7_3",
-          "f7_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 134,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k7",
+          "name": "沙海之主",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f7_1",
+                "count": 1
+              },
+              {
+                "fishId": "f7_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 47,
+          "sell": 160
+        },
+        {
+          "id": "e7",
+          "name": "终焉之鲟",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f7_1",
+                "count": 1
+              },
+              {
+                "fishId": "f7_2",
+                "count": 1
+              },
+              {
+                "fishId": "f7_3",
+                "count": 1
+              },
+              {
+                "fishId": "f7_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 134,
+          "sell": 640
+        }
+      ]
     },
     {
       "regionId": 8,
@@ -568,7 +1169,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 6,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f8_2",
@@ -577,7 +1179,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 6,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f8_3",
@@ -586,7 +1189,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 6,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
         },
         {
           "id": "f8_4",
@@ -595,45 +1199,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 6,
-          "sell": 8
+          "sell": 8,
+          "rarity": "white"
+        },
+        {
+          "id": "f8_5",
+          "name": "风蚀鲤",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "dust"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 32
+        },
+        {
+          "id": "f8_6",
+          "name": "旱地鳅",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "heat"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 32
+        },
+        {
+          "id": "f8_7",
+          "name": "金沙鳞鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 24,
+          "sell": 96
         }
       ],
-      "king": {
-        "id": "k8",
-        "name": "苍天霸主",
-        "prereqFishIds": [
-          "f8_1",
-          "f8_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 48,
-        "sell": 160
-      },
-      "emperor": {
-        "id": "e8",
-        "name": "苍穹之翼",
-        "prereqFishIds": [
-          "f8_1",
-          "f8_2",
-          "f8_3",
-          "f8_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 136,
-        "sell": 640
-      }
+      "specials": [
+        {
+          "id": "k8",
+          "name": "苍天霸主",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f8_1",
+                "count": 1
+              },
+              {
+                "fishId": "f8_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 48,
+          "sell": 160
+        },
+        {
+          "id": "e8",
+          "name": "苍穹之翼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f8_1",
+                "count": 1
+              },
+              {
+                "fishId": "f8_2",
+                "count": 1
+              },
+              {
+                "fishId": "f8_3",
+                "count": 1
+              },
+              {
+                "fishId": "f8_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 136,
+          "sell": 640
+        }
+      ]
     },
     {
       "regionId": 9,
@@ -647,7 +1321,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f9_2",
@@ -656,7 +1331,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f9_3",
@@ -665,7 +1341,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f9_4",
@@ -674,45 +1351,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f9_5",
+          "name": "沙暴鲈",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "dust"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 80
+        },
+        {
+          "id": "f9_6",
+          "name": "绿洲鳟",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 80
+        },
+        {
+          "id": "f9_7",
+          "name": "蜃楼鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "weather": [
+            "heat"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 24,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k9",
-        "name": "深渊恐惧",
-        "prereqFishIds": [
-          "f9_1",
-          "f9_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 49,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e9",
-        "name": "大地之脾",
-        "prereqFishIds": [
-          "f9_1",
-          "f9_2",
-          "f9_3",
-          "f9_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 138,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k9",
+          "name": "深渊恐惧",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f9_1",
+                "count": 1
+              },
+              {
+                "fishId": "f9_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 49,
+          "sell": 600
+        },
+        {
+          "id": "e9",
+          "name": "大地之脾",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f9_1",
+                "count": 1
+              },
+              {
+                "fishId": "f9_2",
+                "count": 1
+              },
+              {
+                "fishId": "f9_3",
+                "count": 1
+              },
+              {
+                "fishId": "f9_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 138,
+          "sell": 2400
+        }
+      ]
     },
     {
       "regionId": 10,
@@ -726,7 +1473,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f10_2",
@@ -735,7 +1483,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f10_3",
@@ -744,7 +1493,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f10_4",
@@ -753,45 +1503,141 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f10_5",
+          "name": "迷雾鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 80
+        },
+        {
+          "id": "f10_6",
+          "name": "高地鲈",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 80
+        },
+        {
+          "id": "f10_7",
+          "name": "星尘水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 24,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k10",
-        "name": "幽灵船长",
-        "prereqFishIds": [
-          "f10_1",
-          "f10_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 50,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e10",
-        "name": "月读的守望",
-        "prereqFishIds": [
-          "f10_1",
-          "f10_2",
-          "f10_3",
-          "f10_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 140,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k10",
+          "name": "幽灵船长",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f10_1",
+                "count": 1
+              },
+              {
+                "fishId": "f10_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 50,
+          "sell": 600
+        },
+        {
+          "id": "e10",
+          "name": "月读的守望",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f10_1",
+                "count": 1
+              },
+              {
+                "fishId": "f10_2",
+                "count": 1
+              },
+              {
+                "fishId": "f10_3",
+                "count": 1
+              },
+              {
+                "fishId": "f10_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 140,
+          "sell": 2400
+        },
+        {
+          "id": "l10_skull",
+          "name": "骷髅王鲶",
+          "kind": "legend",
+          "weather": [
+            "wind"
+          ],
+          "intuition": {
+            "name": "骷髅王鲶之识",
+            "requires": [
+              {
+                "fishId": "f10_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 150,
+          "sell": 1200
+        }
+      ]
     },
     {
       "regionId": 11,
@@ -805,7 +1651,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f11_2",
@@ -814,7 +1661,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f11_3",
@@ -823,7 +1671,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f11_4",
@@ -832,45 +1681,141 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 6,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f11_5",
+          "name": "冰晶鲑",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "snow"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 80
+        },
+        {
+          "id": "f11_6",
+          "name": "寒霜鳕",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "blizzard"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 12,
+          "sell": 80
+        },
+        {
+          "id": "f11_7",
+          "name": "极光蝶鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 24,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k11",
-        "name": "千年鲟",
-        "prereqFishIds": [
-          "f11_1",
-          "f11_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 51,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e11",
-        "name": "火神之鳞",
-        "prereqFishIds": [
-          "f11_1",
-          "f11_2",
-          "f11_3",
-          "f11_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 142,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k11",
+          "name": "千年鲟",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f11_1",
+                "count": 1
+              },
+              {
+                "fishId": "f11_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 51,
+          "sell": 600
+        },
+        {
+          "id": "e11",
+          "name": "火神之鳞",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f11_1",
+                "count": 1
+              },
+              {
+                "fishId": "f11_2",
+                "count": 1
+              },
+              {
+                "fishId": "f11_3",
+                "count": 1
+              },
+              {
+                "fishId": "f11_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 142,
+          "sell": 2400
+        },
+        {
+          "id": "l11_glacier_sturgeon",
+          "name": "冰川鲟",
+          "kind": "legend",
+          "weather": [
+            "blizzard"
+          ],
+          "intuition": {
+            "name": "冰川鲟之识",
+            "requires": [
+              {
+                "fishId": "f11_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 150,
+          "sell": 1200
+        }
+      ]
     },
     {
       "regionId": 12,
@@ -884,7 +1829,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f12_2",
@@ -893,7 +1839,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f12_3",
@@ -902,7 +1849,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f12_4",
@@ -911,45 +1859,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f12_5",
+          "name": "雪原鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "snow"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f12_6",
+          "name": "霜牙梭子鱼",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "blizzard"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f12_7",
+          "name": "冬夜鲟",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 28,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k12",
-        "name": "湖之主",
-        "prereqFishIds": [
-          "f12_1",
-          "f12_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 52,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e12",
-        "name": "风神之息",
-        "prereqFishIds": [
-          "f12_1",
-          "f12_2",
-          "f12_3",
-          "f12_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 144,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k12",
+          "name": "湖之主",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f12_1",
+                "count": 1
+              },
+              {
+                "fishId": "f12_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 52,
+          "sell": 600
+        },
+        {
+          "id": "e12",
+          "name": "风神之息",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f12_1",
+                "count": 1
+              },
+              {
+                "fishId": "f12_2",
+                "count": 1
+              },
+              {
+                "fishId": "f12_3",
+                "count": 1
+              },
+              {
+                "fishId": "f12_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 144,
+          "sell": 2400
+        },
+        {
+          "id": "l12_aurora_whale",
+          "name": "极光鲸",
+          "kind": "legend",
+          "weather": [
+            "blizzard"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "极光鲸之识",
+            "requires": [
+              {
+                "fishId": "f12_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              60,
+              90
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 1200
+        }
+      ]
     },
     {
       "regionId": 13,
@@ -963,7 +2010,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f13_2",
@@ -972,7 +2020,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f13_3",
@@ -981,7 +2030,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f13_4",
@@ -990,45 +2040,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f13_5",
+          "name": "苍穹旗鱼",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f13_6",
+          "name": "云海鳟",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f13_7",
+          "name": "龙鳞鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 28,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k13",
-        "name": "雷鸣鲶",
-        "prereqFishIds": [
-          "f13_1",
-          "f13_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 53,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e13",
-        "name": "水神之泪",
-        "prereqFishIds": [
-          "f13_1",
-          "f13_2",
-          "f13_3",
-          "f13_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 146,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k13",
+          "name": "雷鸣鲶",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f13_1",
+                "count": 1
+              },
+              {
+                "fishId": "f13_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 53,
+          "sell": 600
+        },
+        {
+          "id": "e13",
+          "name": "水神之泪",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f13_1",
+                "count": 1
+              },
+              {
+                "fishId": "f13_2",
+                "count": 1
+              },
+              {
+                "fishId": "f13_3",
+                "count": 1
+              },
+              {
+                "fishId": "f13_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 146,
+          "sell": 2400
+        },
+        {
+          "id": "l13_cloud_butterfly",
+          "name": "云蝶",
+          "kind": "legend",
+          "weather": [
+            "wind"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "云蝶之识",
+            "requires": [
+              {
+                "fishId": "f13_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              40,
+              60
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 1200
+        }
+      ]
     },
     {
       "regionId": 14,
@@ -1042,7 +2191,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f14_2",
@@ -1051,7 +2201,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f14_3",
@@ -1060,7 +2211,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f14_4",
@@ -1069,45 +2221,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f14_5",
+          "name": "云雾鲳",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f14_6",
+          "name": "风语鳟",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f14_7",
+          "name": "天穹水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 28,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k14",
-        "name": "白银之鳞",
-        "prereqFishIds": [
-          "f14_1",
-          "f14_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 54,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e14",
-        "name": "雷神之怒",
-        "prereqFishIds": [
-          "f14_1",
-          "f14_2",
-          "f14_3",
-          "f14_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 148,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k14",
+          "name": "白银之鳞",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f14_1",
+                "count": 1
+              },
+              {
+                "fishId": "f14_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 54,
+          "sell": 600
+        },
+        {
+          "id": "e14",
+          "name": "雷神之怒",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f14_1",
+                "count": 1
+              },
+              {
+                "fishId": "f14_2",
+                "count": 1
+              },
+              {
+                "fishId": "f14_3",
+                "count": 1
+              },
+              {
+                "fishId": "f14_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 148,
+          "sell": 2400
+        }
+      ]
     },
     {
       "regionId": 15,
@@ -1121,7 +2343,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f15_2",
@@ -1130,7 +2353,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f15_3",
@@ -1139,7 +2363,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f15_4",
@@ -1148,45 +2373,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 7,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f15_5",
+          "name": "苔原鲈",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f15_6",
+          "name": "溪谷虹鳟",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 14,
+          "sell": 80
+        },
+        {
+          "id": "f15_7",
+          "name": "古龙鳕",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 28,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k15",
-        "name": "黄金鲷",
-        "prereqFishIds": [
-          "f15_1",
-          "f15_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 55,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e15",
-        "name": "冰神之牙",
-        "prereqFishIds": [
-          "f15_1",
-          "f15_2",
-          "f15_3",
-          "f15_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 150,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k15",
+          "name": "黄金鲷",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f15_1",
+                "count": 1
+              },
+              {
+                "fishId": "f15_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 55,
+          "sell": 600
+        },
+        {
+          "id": "e15",
+          "name": "冰神之牙",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f15_1",
+                "count": 1
+              },
+              {
+                "fishId": "f15_2",
+                "count": 1
+              },
+              {
+                "fishId": "f15_3",
+                "count": 1
+              },
+              {
+                "fishId": "f15_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 150,
+          "sell": 2400
+        }
+      ]
     },
     {
       "regionId": 16,
@@ -1200,7 +2495,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f16_2",
@@ -1209,7 +2505,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f16_3",
@@ -1218,7 +2515,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
         },
         {
           "id": "f16_4",
@@ -1227,45 +2525,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 20
+          "sell": 20,
+          "rarity": "white"
+        },
+        {
+          "id": "f16_5",
+          "name": "田园鲫",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 80
+        },
+        {
+          "id": "f16_6",
+          "name": "牧草鲑",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 80
+        },
+        {
+          "id": "f16_7",
+          "name": "萤火提灯鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 32,
+          "sell": 240
         }
       ],
-      "king": {
-        "id": "k16",
-        "name": "黑曜石鲨",
-        "prereqFishIds": [
-          "f16_1",
-          "f16_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 56,
-        "sell": 600
-      },
-      "emperor": {
-        "id": "e16",
-        "name": "土神之核",
-        "prereqFishIds": [
-          "f16_1",
-          "f16_2",
-          "f16_3",
-          "f16_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 152,
-        "sell": 2400
-      }
+      "specials": [
+        {
+          "id": "k16",
+          "name": "黑曜石鲨",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f16_1",
+                "count": 1
+              },
+              {
+                "fishId": "f16_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 56,
+          "sell": 600
+        },
+        {
+          "id": "e16",
+          "name": "土神之核",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f16_1",
+                "count": 1
+              },
+              {
+                "fishId": "f16_2",
+                "count": 1
+              },
+              {
+                "fishId": "f16_3",
+                "count": 1
+              },
+              {
+                "fishId": "f16_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 152,
+          "sell": 2400
+        },
+        {
+          "id": "l16_pegasus",
+          "name": "天马",
+          "kind": "legend",
+          "weather": [
+            "clear"
+          ],
+          "timeOfDay": [
+            "dawn"
+          ],
+          "intuition": {
+            "name": "天马之识",
+            "requires": [
+              {
+                "fishId": "f16_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              40,
+              70
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 200,
+          "sell": 1200
+        }
+      ]
     },
     {
       "regionId": 17,
@@ -1279,7 +2676,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f17_2",
@@ -1288,7 +2686,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f17_3",
@@ -1297,7 +2696,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f17_4",
@@ -1306,45 +2706,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
+        },
+        {
+          "id": "f17_5",
+          "name": "高原鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 160
+        },
+        {
+          "id": "f17_6",
+          "name": "岩壁鲈",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 160
+        },
+        {
+          "id": "f17_7",
+          "name": "翡翠水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 32,
+          "sell": 480
         }
       ],
-      "king": {
-        "id": "k17",
-        "name": "翡翠巨龙",
-        "prereqFishIds": [
-          "f17_1",
-          "f17_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 57,
-        "sell": 2200
-      },
-      "emperor": {
-        "id": "e17",
-        "name": "圣兽白虎",
-        "prereqFishIds": [
-          "f17_1",
-          "f17_2",
-          "f17_3",
-          "f17_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 154,
-        "sell": 9000
-      }
+      "specials": [
+        {
+          "id": "k17",
+          "name": "翡翠巨龙",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f17_1",
+                "count": 1
+              },
+              {
+                "fishId": "f17_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 57,
+          "sell": 2200
+        },
+        {
+          "id": "e17",
+          "name": "圣兽白虎",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f17_1",
+                "count": 1
+              },
+              {
+                "fishId": "f17_2",
+                "count": 1
+              },
+              {
+                "fishId": "f17_3",
+                "count": 1
+              },
+              {
+                "fishId": "f17_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 154,
+          "sell": 9000
+        }
+      ]
     },
     {
       "regionId": 18,
@@ -1358,7 +2828,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f18_2",
@@ -1367,7 +2838,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f18_3",
@@ -1376,7 +2848,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f18_4",
@@ -1385,45 +2858,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
+        },
+        {
+          "id": "f18_5",
+          "name": "山涧虹鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 160
+        },
+        {
+          "id": "f18_6",
+          "name": "峭壁鲶",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 160
+        },
+        {
+          "id": "f18_7",
+          "name": "石纹鲵",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 32,
+          "sell": 480
         }
       ],
-      "king": {
-        "id": "k18",
-        "name": "紫电鳗",
-        "prereqFishIds": [
-          "f18_1",
-          "f18_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 58,
-        "sell": 2200
-      },
-      "emperor": {
-        "id": "e18",
-        "name": "朱雀之羽",
-        "prereqFishIds": [
-          "f18_1",
-          "f18_2",
-          "f18_3",
-          "f18_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 156,
-        "sell": 9000
-      }
+      "specials": [
+        {
+          "id": "k18",
+          "name": "紫电鳗",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f18_1",
+                "count": 1
+              },
+              {
+                "fishId": "f18_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 58,
+          "sell": 2200
+        },
+        {
+          "id": "e18",
+          "name": "朱雀之羽",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f18_1",
+                "count": 1
+              },
+              {
+                "fishId": "f18_2",
+                "count": 1
+              },
+              {
+                "fishId": "f18_3",
+                "count": 1
+              },
+              {
+                "fishId": "f18_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 156,
+          "sell": 9000
+        }
+      ]
     },
     {
       "regionId": 19,
@@ -1437,7 +2980,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f19_2",
@@ -1446,7 +2990,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f19_3",
@@ -1455,7 +3000,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f19_4",
@@ -1464,45 +3010,141 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 8,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
+        },
+        {
+          "id": "f19_5",
+          "name": "红玉鲷",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 160
+        },
+        {
+          "id": "f19_6",
+          "name": "碧波旗鱼",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 16,
+          "sell": 160
+        },
+        {
+          "id": "f19_7",
+          "name": "珊瑚夜光鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 32,
+          "sell": 480
         }
       ],
-      "king": {
-        "id": "k19",
-        "name": "苍翼飞鱼",
-        "prereqFishIds": [
-          "f19_1",
-          "f19_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 59,
-        "sell": 2200
-      },
-      "emperor": {
-        "id": "e19",
-        "name": "青龙之鳞",
-        "prereqFishIds": [
-          "f19_1",
-          "f19_2",
-          "f19_3",
-          "f19_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 158,
-        "sell": 9000
-      }
+      "specials": [
+        {
+          "id": "k19",
+          "name": "苍翼飞鱼",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f19_1",
+                "count": 1
+              },
+              {
+                "fishId": "f19_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 59,
+          "sell": 2200
+        },
+        {
+          "id": "e19",
+          "name": "青龙之鳞",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f19_1",
+                "count": 1
+              },
+              {
+                "fishId": "f19_2",
+                "count": 1
+              },
+              {
+                "fishId": "f19_3",
+                "count": 1
+              },
+              {
+                "fishId": "f19_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 158,
+          "sell": 9000
+        },
+        {
+          "id": "l19_megalodon",
+          "name": "巨齿鲨",
+          "kind": "legend",
+          "weather": [
+            "thunder"
+          ],
+          "intuition": {
+            "name": "巨齿鲨之识",
+            "requires": [
+              {
+                "fishId": "f19_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 200,
+          "sell": 2400
+        }
+      ]
     },
     {
       "regionId": 20,
@@ -1516,7 +3158,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f20_2",
@@ -1525,7 +3168,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f20_3",
@@ -1534,7 +3178,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f20_4",
@@ -1543,45 +3188,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
+        },
+        {
+          "id": "f20_5",
+          "name": "樱花鲑",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 160
+        },
+        {
+          "id": "f20_6",
+          "name": "潮汐鲳",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "thunder"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 160
+        },
+        {
+          "id": "f20_7",
+          "name": "月下章鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 36,
+          "sell": 480
         }
       ],
-      "king": {
-        "id": "k20",
-        "name": "血月鳐",
-        "prereqFishIds": [
-          "f20_1",
-          "f20_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 60,
-        "sell": 2200
-      },
-      "emperor": {
-        "id": "e20",
-        "name": "玄武之甲",
-        "prereqFishIds": [
-          "f20_1",
-          "f20_2",
-          "f20_3",
-          "f20_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 160,
-        "sell": 9000
-      }
+      "specials": [
+        {
+          "id": "k20",
+          "name": "血月鳐",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f20_1",
+                "count": 1
+              },
+              {
+                "fishId": "f20_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 60,
+          "sell": 2200
+        },
+        {
+          "id": "e20",
+          "name": "玄武之甲",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f20_1",
+                "count": 1
+              },
+              {
+                "fishId": "f20_2",
+                "count": 1
+              },
+              {
+                "fishId": "f20_3",
+                "count": 1
+              },
+              {
+                "fishId": "f20_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 160,
+          "sell": 9000
+        },
+        {
+          "id": "l20_sail",
+          "name": "帆",
+          "kind": "legend",
+          "weather": [
+            "thunder"
+          ],
+          "timeOfDay": [
+            "dusk"
+          ],
+          "intuition": {
+            "name": "帆之识",
+            "requires": [
+              {
+                "fishId": "f20_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              70
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 225,
+          "sell": 2400
+        }
+      ]
     },
     {
       "regionId": 21,
@@ -1595,7 +3339,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f21_2",
@@ -1604,7 +3349,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f21_3",
@@ -1613,7 +3359,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f21_4",
@@ -1622,45 +3369,264 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
+        },
+        {
+          "id": "f21_5",
+          "name": "草原鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 160
+        },
+        {
+          "id": "f21_6",
+          "name": "疾风鲈",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 160
+        },
+        {
+          "id": "f21_7",
+          "name": "草原夜光鲤",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 36,
+          "sell": 480
         }
       ],
-      "king": {
-        "id": "k21",
-        "name": "星辉水母",
-        "prereqFishIds": [
-          "f21_1",
-          "f21_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 61,
-        "sell": 2200
-      },
-      "emperor": {
-        "id": "e21",
-        "name": "森罗万象",
-        "prereqFishIds": [
-          "f21_1",
-          "f21_2",
-          "f21_3",
-          "f21_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 162,
-        "sell": 9000
-      }
+      "specials": [
+        {
+          "id": "k21",
+          "name": "星辉水母",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f21_1",
+                "count": 1
+              },
+              {
+                "fishId": "f21_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 61,
+          "sell": 2200
+        },
+        {
+          "id": "e21",
+          "name": "森罗万象",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f21_1",
+                "count": 1
+              },
+              {
+                "fishId": "f21_2",
+                "count": 1
+              },
+              {
+                "fishId": "f21_3",
+                "count": 1
+              },
+              {
+                "fishId": "f21_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 162,
+          "sell": 9000
+        },
+        {
+          "id": "l21_purple",
+          "name": "紫彩鱼",
+          "kind": "legend",
+          "intuition": {
+            "name": "紫彩鱼之识",
+            "requires": [
+              {
+                "fishId": "f21_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              40,
+              60
+            ],
+            "chance": 0.06
+          },
+          "sizeMin": 135,
+          "sizeMax": 210,
+          "exp": 72,
+          "sell": 480
+        },
+        {
+          "id": "l21_blue",
+          "name": "蓝彩鱼",
+          "kind": "legend",
+          "intuition": {
+            "name": "蓝彩鱼之识",
+            "requires": [
+              {
+                "fishId": "l21_purple",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              40,
+              60
+            ],
+            "chance": 0.05
+          },
+          "sizeMin": 135,
+          "sizeMax": 210,
+          "exp": 72,
+          "sell": 560
+        },
+        {
+          "id": "l21_red",
+          "name": "红彩鱼",
+          "kind": "legend",
+          "intuition": {
+            "name": "红彩鱼之识",
+            "requires": [
+              {
+                "fishId": "f21_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              40,
+              60
+            ],
+            "chance": 0.06
+          },
+          "sizeMin": 135,
+          "sizeMax": 210,
+          "exp": 72,
+          "sell": 480
+        },
+        {
+          "id": "l21_orange",
+          "name": "橙彩鱼",
+          "kind": "legend",
+          "intuition": {
+            "name": "橙彩鱼之识",
+            "requires": [
+              {
+                "fishId": "l21_red",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              40,
+              60
+            ],
+            "chance": 0.05
+          },
+          "sizeMin": 135,
+          "sizeMax": 210,
+          "exp": 72,
+          "sell": 560
+        },
+        {
+          "id": "l21_green",
+          "name": "绿彩鱼",
+          "kind": "legend",
+          "intuition": {
+            "name": "绿彩鱼之识",
+            "requires": [
+              {
+                "fishId": "f21_5",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              40,
+              60
+            ],
+            "chance": 0.05
+          },
+          "sizeMin": 135,
+          "sizeMax": 210,
+          "exp": 72,
+          "sell": 560
+        },
+        {
+          "id": "l21_hue_lord",
+          "name": "七彩天主",
+          "kind": "legend",
+          "weather": [
+            "clear"
+          ],
+          "intuition": {
+            "name": "七彩天主之识",
+            "requires": [
+              {
+                "fishId": "l21_blue",
+                "count": 3
+              },
+              {
+                "fishId": "l21_orange",
+                "count": 3
+              },
+              {
+                "fishId": "l21_green",
+                "count": 5
+              }
+            ],
+            "durationSec": [
+              60,
+              90
+            ],
+            "chance": 0.0004
+          },
+          "sizeMin": 450,
+          "sizeMax": 675,
+          "exp": 540,
+          "sell": 8000
+        }
+      ]
     },
     {
       "regionId": 22,
@@ -1674,7 +3640,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f22_2",
@@ -1683,7 +3650,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f22_3",
@@ -1692,7 +3660,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
         },
         {
           "id": "f22_4",
@@ -1701,45 +3670,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 40
+          "sell": 40,
+          "rarity": "white"
+        },
+        {
+          "id": "f22_5",
+          "name": "黄金鲹",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 160
+        },
+        {
+          "id": "f22_6",
+          "name": "港町鲭",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 160
+        },
+        {
+          "id": "f22_7",
+          "name": "宵灯水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 36,
+          "sell": 480
         }
       ],
-      "king": {
-        "id": "k22",
-        "name": "虚空鲸",
-        "prereqFishIds": [
-          "f22_1",
-          "f22_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 62,
-        "sell": 2200
-      },
-      "emperor": {
-        "id": "e22",
-        "name": "时间之鱼",
-        "prereqFishIds": [
-          "f22_1",
-          "f22_2",
-          "f22_3",
-          "f22_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 164,
-        "sell": 9000
-      }
+      "specials": [
+        {
+          "id": "k22",
+          "name": "虚空鲸",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f22_1",
+                "count": 1
+              },
+              {
+                "fishId": "f22_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 62,
+          "sell": 2200
+        },
+        {
+          "id": "e22",
+          "name": "时间之鱼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f22_1",
+                "count": 1
+              },
+              {
+                "fishId": "f22_2",
+                "count": 1
+              },
+              {
+                "fishId": "f22_3",
+                "count": 1
+              },
+              {
+                "fishId": "f22_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 164,
+          "sell": 9000
+        }
+      ]
     },
     {
       "regionId": 23,
@@ -1753,7 +3792,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 9,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f23_2",
@@ -1762,7 +3802,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 9,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f23_3",
@@ -1771,7 +3812,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 9,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f23_4",
@@ -1780,45 +3822,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 9,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
+        },
+        {
+          "id": "f23_5",
+          "name": "雾岛鲑",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 320
+        },
+        {
+          "id": "f23_6",
+          "name": "湖光鳟",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 18,
+          "sell": 320
+        },
+        {
+          "id": "f23_7",
+          "name": "幽谷大鲵",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 36,
+          "sell": 960
         }
       ],
-      "king": {
-        "id": "k23",
-        "name": "太古腔棘鱼",
-        "prereqFishIds": [
-          "f23_1",
-          "f23_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 63,
-        "sell": 8000
-      },
-      "emperor": {
-        "id": "e23",
-        "name": "虚空之王",
-        "prereqFishIds": [
-          "f23_1",
-          "f23_2",
-          "f23_3",
-          "f23_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 166,
-        "sell": 33000
-      }
+      "specials": [
+        {
+          "id": "k23",
+          "name": "太古腔棘鱼",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f23_1",
+                "count": 1
+              },
+              {
+                "fishId": "f23_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 63,
+          "sell": 8000
+        },
+        {
+          "id": "e23",
+          "name": "虚空之王",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f23_1",
+                "count": 1
+              },
+              {
+                "fishId": "f23_2",
+                "count": 1
+              },
+              {
+                "fishId": "f23_3",
+                "count": 1
+              },
+              {
+                "fishId": "f23_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 166,
+          "sell": 33000
+        }
+      ]
     },
     {
       "regionId": 24,
@@ -1832,7 +3944,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f24_2",
@@ -1841,7 +3954,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f24_3",
@@ -1850,7 +3964,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f24_4",
@@ -1859,45 +3974,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
+        },
+        {
+          "id": "f24_5",
+          "name": "灼沙鲈",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "heat"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f24_6",
+          "name": "荒漠鲶",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "dust"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f24_7",
+          "name": "沙海幻鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 40,
+          "sell": 960
         }
       ],
-      "king": {
-        "id": "k24",
-        "name": "沸腾章鱼",
-        "prereqFishIds": [
-          "f24_1",
-          "f24_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 64,
-        "sell": 8000
-      },
-      "emperor": {
-        "id": "e24",
-        "name": "星海之主",
-        "prereqFishIds": [
-          "f24_1",
-          "f24_2",
-          "f24_3",
-          "f24_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 168,
-        "sell": 33000
-      }
+      "specials": [
+        {
+          "id": "k24",
+          "name": "沸腾章鱼",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f24_1",
+                "count": 1
+              },
+              {
+                "fishId": "f24_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 64,
+          "sell": 8000
+        },
+        {
+          "id": "e24",
+          "name": "星海之主",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f24_1",
+                "count": 1
+              },
+              {
+                "fishId": "f24_2",
+                "count": 1
+              },
+              {
+                "fishId": "f24_3",
+                "count": 1
+              },
+              {
+                "fishId": "f24_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 168,
+          "sell": 33000
+        }
+      ]
     },
     {
       "regionId": 25,
@@ -1911,7 +4096,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f25_2",
@@ -1920,7 +4106,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f25_3",
@@ -1929,7 +4116,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f25_4",
@@ -1938,45 +4126,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
+        },
+        {
+          "id": "f25_5",
+          "name": "蝶翼鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f25_6",
+          "name": "仙灵鲑",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f25_7",
+          "name": "妖精湖灯鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 40,
+          "sell": 960
         }
       ],
-      "king": {
-        "id": "k25",
-        "name": "极光鲑",
-        "prereqFishIds": [
-          "f25_1",
-          "f25_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 65,
-        "sell": 8000
-      },
-      "emperor": {
-        "id": "e25",
-        "name": "永劫之鲛",
-        "prereqFishIds": [
-          "f25_1",
-          "f25_2",
-          "f25_3",
-          "f25_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 170,
-        "sell": 33000
-      }
+      "specials": [
+        {
+          "id": "k25",
+          "name": "极光鲑",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f25_1",
+                "count": 1
+              },
+              {
+                "fishId": "f25_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 65,
+          "sell": 8000
+        },
+        {
+          "id": "e25",
+          "name": "永劫之鲛",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f25_1",
+                "count": 1
+              },
+              {
+                "fishId": "f25_2",
+                "count": 1
+              },
+              {
+                "fishId": "f25_3",
+                "count": 1
+              },
+              {
+                "fishId": "f25_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 170,
+          "sell": 33000
+        },
+        {
+          "id": "l25_mirror_butterfly",
+          "name": "镜中蝶",
+          "kind": "legend",
+          "weather": [
+            "clear"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "镜中蝶之识",
+            "requires": [
+              {
+                "fishId": "f25_7",
+                "count": 2
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 250,
+          "sell": 4800
+        }
+      ]
     },
     {
       "regionId": 26,
@@ -1990,7 +4277,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f26_2",
@@ -1999,7 +4287,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f26_3",
@@ -2008,7 +4297,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f26_4",
@@ -2017,45 +4307,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
+        },
+        {
+          "id": "f26_5",
+          "name": "雷云鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f26_6",
+          "name": "雪岭鳕",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "snow"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f26_7",
+          "name": "永夜鲟",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 40,
+          "sell": 960
         }
       ],
-      "king": {
-        "id": "k26",
-        "name": "沙漠鲵",
-        "prereqFishIds": [
-          "f26_1",
-          "f26_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 66,
-        "sell": 8000
-      },
-      "emperor": {
-        "id": "e26",
-        "name": "创世之鲲",
-        "prereqFishIds": [
-          "f26_1",
-          "f26_2",
-          "f26_3",
-          "f26_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 172,
-        "sell": 33000
-      }
+      "specials": [
+        {
+          "id": "k26",
+          "name": "沙漠鲵",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f26_1",
+                "count": 1
+              },
+              {
+                "fishId": "f26_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 66,
+          "sell": 8000
+        },
+        {
+          "id": "e26",
+          "name": "创世之鲲",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f26_1",
+                "count": 1
+              },
+              {
+                "fishId": "f26_2",
+                "count": 1
+              },
+              {
+                "fishId": "f26_3",
+                "count": 1
+              },
+              {
+                "fishId": "f26_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 172,
+          "sell": 33000
+        }
+      ]
     },
     {
       "regionId": 27,
@@ -2069,7 +4429,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f27_2",
@@ -2078,7 +4439,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f27_3",
@@ -2087,7 +4449,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f27_4",
@@ -2096,45 +4459,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 10,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
+        },
+        {
+          "id": "f27_5",
+          "name": "雨林鳜",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f27_6",
+          "name": "藤蔓鲶",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 20,
+          "sell": 320
+        },
+        {
+          "id": "f27_7",
+          "name": "丛林幽光鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 40,
+          "sell": 960
         }
       ],
-      "king": {
-        "id": "k27",
-        "name": "沼泽之主",
-        "prereqFishIds": [
-          "f27_1",
-          "f27_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 67,
-        "sell": 8000
-      },
-      "emperor": {
-        "id": "e27",
-        "name": "灭世之鲸",
-        "prereqFishIds": [
-          "f27_1",
-          "f27_2",
-          "f27_3",
-          "f27_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 174,
-        "sell": 33000
-      }
+      "specials": [
+        {
+          "id": "k27",
+          "name": "沼泽之主",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f27_1",
+                "count": 1
+              },
+              {
+                "fishId": "f27_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 67,
+          "sell": 8000
+        },
+        {
+          "id": "e27",
+          "name": "灭世之鲸",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f27_1",
+                "count": 1
+              },
+              {
+                "fishId": "f27_2",
+                "count": 1
+              },
+              {
+                "fishId": "f27_3",
+                "count": 1
+              },
+              {
+                "fishId": "f27_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 174,
+          "sell": 33000
+        }
+      ]
     },
     {
       "regionId": 28,
@@ -2148,7 +4581,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f28_2",
@@ -2157,7 +4591,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f28_3",
@@ -2166,7 +4601,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
         },
         {
           "id": "f28_4",
@@ -2175,45 +4611,142 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 80
+          "sell": 80,
+          "rarity": "white"
+        },
+        {
+          "id": "f28_5",
+          "name": "黑风旗鱼",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 320
+        },
+        {
+          "id": "f28_6",
+          "name": "雷暴鲹",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "thunder"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 320
+        },
+        {
+          "id": "f28_7",
+          "name": "深渊灯笼鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 44,
+          "sell": 960
         }
       ],
-      "king": {
-        "id": "k28",
-        "name": "森林守卫",
-        "prereqFishIds": [
-          "f28_1",
-          "f28_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 68,
-        "sell": 8000
-      },
-      "emperor": {
-        "id": "e28",
-        "name": "天启之鳞",
-        "prereqFishIds": [
-          "f28_1",
-          "f28_2",
-          "f28_3",
-          "f28_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 176,
-        "sell": 33000
-      }
+      "specials": [
+        {
+          "id": "k28",
+          "name": "森林守卫",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f28_1",
+                "count": 1
+              },
+              {
+                "fishId": "f28_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 68,
+          "sell": 8000
+        },
+        {
+          "id": "e28",
+          "name": "天启之鳞",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f28_1",
+                "count": 1
+              },
+              {
+                "fishId": "f28_2",
+                "count": 1
+              },
+              {
+                "fishId": "f28_3",
+                "count": 1
+              },
+              {
+                "fishId": "f28_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 176,
+          "sell": 33000
+        },
+        {
+          "id": "l28_kraken",
+          "name": "大王乌贼",
+          "kind": "legend",
+          "weather": [
+            "wind",
+            "thunder"
+          ],
+          "intuition": {
+            "name": "大王乌贼之识",
+            "requires": [
+              {
+                "fishId": "f28_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 275,
+          "sell": 4800
+        }
+      ]
     },
     {
       "regionId": 29,
@@ -2227,7 +4760,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f29_2",
@@ -2236,7 +4770,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f29_3",
@@ -2245,7 +4780,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f29_4",
@@ -2254,45 +4790,141 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
+        },
+        {
+          "id": "f29_5",
+          "name": "象鲷",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 640
+        },
+        {
+          "id": "f29_6",
+          "name": "遗辉鲳",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 640
+        },
+        {
+          "id": "f29_7",
+          "name": "神殿夜光鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 44,
+          "sell": 1920
         }
       ],
-      "king": {
-        "id": "k29",
-        "name": "遗迹守护者",
-        "prereqFishIds": [
-          "f29_1",
-          "f29_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 69,
-        "sell": 25000
-      },
-      "emperor": {
-        "id": "e29",
-        "name": "究极神鱼",
-        "prereqFishIds": [
-          "f29_1",
-          "f29_2",
-          "f29_3",
-          "f29_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 178,
-        "sell": 100000
-      }
+      "specials": [
+        {
+          "id": "k29",
+          "name": "遗迹守护者",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f29_1",
+                "count": 1
+              },
+              {
+                "fishId": "f29_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 69,
+          "sell": 25000
+        },
+        {
+          "id": "e29",
+          "name": "究极神鱼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f29_1",
+                "count": 1
+              },
+              {
+                "fishId": "f29_2",
+                "count": 1
+              },
+              {
+                "fishId": "f29_3",
+                "count": 1
+              },
+              {
+                "fishId": "f29_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 178,
+          "sell": 100000
+        },
+        {
+          "id": "l29_phantom_dragon",
+          "name": "幻龙",
+          "kind": "legend",
+          "weather": [
+            "rain"
+          ],
+          "intuition": {
+            "name": "幻龙之识",
+            "requires": [
+              {
+                "fishId": "f29_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 275,
+          "sell": 9600
+        }
+      ]
     },
     {
       "regionId": 30,
@@ -2306,7 +4938,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f30_2",
@@ -2315,7 +4948,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f30_3",
@@ -2324,7 +4958,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f30_4",
@@ -2333,45 +4968,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
+        },
+        {
+          "id": "f30_5",
+          "name": "寒钢鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "wind"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 640
+        },
+        {
+          "id": "f30_6",
+          "name": "军港鲈",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 640
+        },
+        {
+          "id": "f30_7",
+          "name": "冰宫水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 44,
+          "sell": 1920
         }
       ],
-      "king": {
-        "id": "k30",
-        "name": "巨型三角鱼",
-        "prereqFishIds": [
-          "f30_1",
-          "f30_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 70,
-        "sell": 25000
-      },
-      "emperor": {
-        "id": "e30",
-        "name": "完美之鱼",
-        "prereqFishIds": [
-          "f30_1",
-          "f30_2",
-          "f30_3",
-          "f30_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 180,
-        "sell": 100000
-      }
+      "specials": [
+        {
+          "id": "k30",
+          "name": "巨型三角鱼",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f30_1",
+                "count": 1
+              },
+              {
+                "fishId": "f30_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 70,
+          "sell": 25000
+        },
+        {
+          "id": "e30",
+          "name": "完美之鱼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f30_1",
+                "count": 1
+              },
+              {
+                "fishId": "f30_2",
+                "count": 1
+              },
+              {
+                "fishId": "f30_3",
+                "count": 1
+              },
+              {
+                "fishId": "f30_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 180,
+          "sell": 100000
+        }
+      ]
     },
     {
       "regionId": 31,
@@ -2385,7 +5090,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f31_2",
@@ -2394,7 +5100,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f31_3",
@@ -2403,7 +5110,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f31_4",
@@ -2412,45 +5120,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 11,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
+        },
+        {
+          "id": "f31_5",
+          "name": "悲叹鲹",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 640
+        },
+        {
+          "id": "f31_6",
+          "name": "泪海旗鱼",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "thunder"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 22,
+          "sell": 640
+        },
+        {
+          "id": "f31_7",
+          "name": "深海幽灵鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 44,
+          "sell": 1920
         }
       ],
-      "king": {
-        "id": "k31",
-        "name": "风暴旗鱼",
-        "prereqFishIds": [
-          "f31_1",
-          "f31_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 71,
-        "sell": 25000
-      },
-      "emperor": {
-        "id": "e31",
-        "name": "无瑕之鳞",
-        "prereqFishIds": [
-          "f31_1",
-          "f31_2",
-          "f31_3",
-          "f31_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 182,
-        "sell": 100000
-      }
+      "specials": [
+        {
+          "id": "k31",
+          "name": "风暴旗鱼",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f31_1",
+                "count": 1
+              },
+              {
+                "fishId": "f31_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 71,
+          "sell": 25000
+        },
+        {
+          "id": "e31",
+          "name": "无瑕之鳞",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f31_1",
+                "count": 1
+              },
+              {
+                "fishId": "f31_2",
+                "count": 1
+              },
+              {
+                "fishId": "f31_3",
+                "count": 1
+              },
+              {
+                "fishId": "f31_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 182,
+          "sell": 100000
+        },
+        {
+          "id": "l31_abyss_king",
+          "name": "深渊王",
+          "kind": "legend",
+          "weather": [
+            "thunder"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "深渊王之识",
+            "requires": [
+              {
+                "fishId": "f31_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              60,
+              90
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 275,
+          "sell": 9600
+        }
+      ]
     },
     {
       "regionId": 32,
@@ -2464,7 +5271,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f32_2",
@@ -2473,7 +5281,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f32_3",
@@ -2482,7 +5291,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f32_4",
@@ -2491,45 +5301,142 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
+        },
+        {
+          "id": "f32_5",
+          "name": "星霜鳕",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "snow"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 640
+        },
+        {
+          "id": "f32_6",
+          "name": "天外鲑",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "blizzard"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 640
+        },
+        {
+          "id": "f32_7",
+          "name": "极星水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 48,
+          "sell": 1920
         }
       ],
-      "king": {
-        "id": "k32",
-        "name": "冰海巨兽",
-        "prereqFishIds": [
-          "f32_1",
-          "f32_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 72,
-        "sell": 25000
-      },
-      "emperor": {
-        "id": "e32",
-        "name": "黄金之王",
-        "prereqFishIds": [
-          "f32_1",
-          "f32_2",
-          "f32_3",
-          "f32_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 184,
-        "sell": 100000
-      }
+      "specials": [
+        {
+          "id": "k32",
+          "name": "冰海巨兽",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f32_1",
+                "count": 1
+              },
+              {
+                "fishId": "f32_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 72,
+          "sell": 25000
+        },
+        {
+          "id": "e32",
+          "name": "黄金之王",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f32_1",
+                "count": 1
+              },
+              {
+                "fishId": "f32_2",
+                "count": 1
+              },
+              {
+                "fishId": "f32_3",
+                "count": 1
+              },
+              {
+                "fishId": "f32_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 184,
+          "sell": 100000
+        },
+        {
+          "id": "l32_white_whale",
+          "name": "白鲸",
+          "kind": "legend",
+          "weather": [
+            "snow",
+            "blizzard"
+          ],
+          "intuition": {
+            "name": "白鲸之识",
+            "requires": [
+              {
+                "fishId": "f32_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 300,
+          "sell": 9600
+        }
+      ]
     },
     {
       "regionId": 33,
@@ -2543,7 +5450,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f33_2",
@@ -2552,7 +5460,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f33_3",
@@ -2561,7 +5470,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f33_4",
@@ -2570,45 +5480,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
+        },
+        {
+          "id": "f33_5",
+          "name": "乐园鲷",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 640
+        },
+        {
+          "id": "f33_6",
+          "name": "花海鳟",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 640
+        },
+        {
+          "id": "f33_7",
+          "name": "神域灯鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 48,
+          "sell": 1920
         }
       ],
-      "king": {
-        "id": "k33",
-        "name": "火焰鲡",
-        "prereqFishIds": [
-          "f33_1",
-          "f33_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 73,
-        "sell": 25000
-      },
-      "emperor": {
-        "id": "e33",
-        "name": "极乐鸟鱼",
-        "prereqFishIds": [
-          "f33_1",
-          "f33_2",
-          "f33_3",
-          "f33_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 186,
-        "sell": 100000
-      }
+      "specials": [
+        {
+          "id": "k33",
+          "name": "火焰鲡",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f33_1",
+                "count": 1
+              },
+              {
+                "fishId": "f33_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 73,
+          "sell": 25000
+        },
+        {
+          "id": "e33",
+          "name": "极乐鸟鱼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f33_1",
+                "count": 1
+              },
+              {
+                "fishId": "f33_2",
+                "count": 1
+              },
+              {
+                "fishId": "f33_3",
+                "count": 1
+              },
+              {
+                "fishId": "f33_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 186,
+          "sell": 100000
+        },
+        {
+          "id": "l33_holy_dragon",
+          "name": "圣龙",
+          "kind": "legend",
+          "weather": [
+            "clear"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "圣龙之识",
+            "requires": [
+              {
+                "fishId": "f33_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 300,
+          "sell": 9600
+        }
+      ]
     },
     {
       "regionId": 34,
@@ -2622,7 +5631,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f34_2",
@@ -2631,7 +5641,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f34_3",
@@ -2640,7 +5651,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
         },
         {
           "id": "f34_4",
@@ -2649,45 +5661,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 160
+          "sell": 160,
+          "rarity": "white"
+        },
+        {
+          "id": "f34_5",
+          "name": "迷宫鳜",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "fog"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 640
+        },
+        {
+          "id": "f34_6",
+          "name": "幽径鲶",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 640
+        },
+        {
+          "id": "f34_7",
+          "name": "幻境水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 48,
+          "sell": 1920
         }
       ],
-      "king": {
-        "id": "k34",
-        "name": "云端鲲",
-        "prereqFishIds": [
-          "f34_1",
-          "f34_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 74,
-        "sell": 25000
-      },
-      "emperor": {
-        "id": "e34",
-        "name": "幻海之主",
-        "prereqFishIds": [
-          "f34_1",
-          "f34_2",
-          "f34_3",
-          "f34_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 188,
-        "sell": 100000
-      }
+      "specials": [
+        {
+          "id": "k34",
+          "name": "云端鲲",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f34_1",
+                "count": 1
+              },
+              {
+                "fishId": "f34_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 74,
+          "sell": 25000
+        },
+        {
+          "id": "e34",
+          "name": "幻海之主",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f34_1",
+                "count": 1
+              },
+              {
+                "fishId": "f34_2",
+                "count": 1
+              },
+              {
+                "fishId": "f34_3",
+                "count": 1
+              },
+              {
+                "fishId": "f34_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 188,
+          "sell": 100000
+        },
+        {
+          "id": "l34_star_whale",
+          "name": "星鲸",
+          "kind": "legend",
+          "weather": [
+            "fog"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "星鲸之识",
+            "requires": [
+              {
+                "fishId": "f34_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              70
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 300,
+          "sell": 9600
+        }
+      ]
     },
     {
       "regionId": 35,
@@ -2701,7 +5812,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 12,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f35_2",
@@ -2710,7 +5822,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 12,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f35_3",
@@ -2719,7 +5832,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 12,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f35_4",
@@ -2728,45 +5842,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 12,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
+        },
+        {
+          "id": "f35_5",
+          "name": "图拉尔旗鱼",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 1280
+        },
+        {
+          "id": "f35_6",
+          "name": "礁湖鲳",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 24,
+          "sell": 1280
+        },
+        {
+          "id": "f35_7",
+          "name": "浅海夜光鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 48,
+          "sell": 3840
         }
       ],
-      "king": {
-        "id": "k35",
-        "name": "幽谷潜者",
-        "prereqFishIds": [
-          "f35_1",
-          "f35_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 75,
-        "sell": 75000
-      },
-      "emperor": {
-        "id": "e35",
-        "name": "万象之鱼",
-        "prereqFishIds": [
-          "f35_1",
-          "f35_2",
-          "f35_3",
-          "f35_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 190,
-        "sell": 300000
-      }
+      "specials": [
+        {
+          "id": "k35",
+          "name": "幽谷潜者",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f35_1",
+                "count": 1
+              },
+              {
+                "fishId": "f35_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 75,
+          "sell": 75000
+        },
+        {
+          "id": "e35",
+          "name": "万象之鱼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f35_1",
+                "count": 1
+              },
+              {
+                "fishId": "f35_2",
+                "count": 1
+              },
+              {
+                "fishId": "f35_3",
+                "count": 1
+              },
+              {
+                "fishId": "f35_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 190,
+          "sell": 300000
+        }
+      ]
     },
     {
       "regionId": 36,
@@ -2780,7 +5964,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f36_2",
@@ -2789,7 +5974,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f36_3",
@@ -2798,7 +5984,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f36_4",
@@ -2807,45 +5994,115 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
+        },
+        {
+          "id": "f36_5",
+          "name": "雨林象鱼",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f36_6",
+          "name": "藤桥鲶",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "thunder"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f36_7",
+          "name": "密林幽光鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 52,
+          "sell": 3840
         }
       ],
-      "king": {
-        "id": "k36",
-        "name": "圣泉之鱼",
-        "prereqFishIds": [
-          "f36_1",
-          "f36_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 76,
-        "sell": 75000
-      },
-      "emperor": {
-        "id": "e36",
-        "name": "万物之始",
-        "prereqFishIds": [
-          "f36_1",
-          "f36_2",
-          "f36_3",
-          "f36_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 192,
-        "sell": 300000
-      }
+      "specials": [
+        {
+          "id": "k36",
+          "name": "圣泉之鱼",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f36_1",
+                "count": 1
+              },
+              {
+                "fishId": "f36_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 76,
+          "sell": 75000
+        },
+        {
+          "id": "e36",
+          "name": "万物之始",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f36_1",
+                "count": 1
+              },
+              {
+                "fishId": "f36_2",
+                "count": 1
+              },
+              {
+                "fishId": "f36_3",
+                "count": 1
+              },
+              {
+                "fishId": "f36_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 192,
+          "sell": 300000
+        }
+      ]
     },
     {
       "regionId": 37,
@@ -2859,7 +6116,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f37_2",
@@ -2868,7 +6126,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f37_3",
@@ -2877,7 +6136,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f37_4",
@@ -2886,45 +6146,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
+        },
+        {
+          "id": "f37_5",
+          "name": "遗迹鲈",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "dust"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f37_6",
+          "name": "王墓鳅",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "heat"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f37_7",
+          "name": "王都夜光鱼",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 52,
+          "sell": 3840
         }
       ],
-      "king": {
-        "id": "k37",
-        "name": "王都锦鲤",
-        "prereqFishIds": [
-          "f37_1",
-          "f37_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 77,
-        "sell": 75000
-      },
-      "emperor": {
-        "id": "e37",
-        "name": "终末之鲛",
-        "prereqFishIds": [
-          "f37_1",
-          "f37_2",
-          "f37_3",
-          "f37_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 194,
-        "sell": 300000
-      }
+      "specials": [
+        {
+          "id": "k37",
+          "name": "王都锦鲤",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f37_1",
+                "count": 1
+              },
+              {
+                "fishId": "f37_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 77,
+          "sell": 75000
+        },
+        {
+          "id": "e37",
+          "name": "终末之鲛",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f37_1",
+                "count": 1
+              },
+              {
+                "fishId": "f37_2",
+                "count": 1
+              },
+              {
+                "fishId": "f37_3",
+                "count": 1
+              },
+              {
+                "fishId": "f37_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 194,
+          "sell": 300000
+        },
+        {
+          "id": "l37_golden_god",
+          "name": "黄金神鱼",
+          "kind": "legend",
+          "weather": [
+            "dust"
+          ],
+          "timeOfDay": [
+            "dusk"
+          ],
+          "intuition": {
+            "name": "黄金神鱼之识",
+            "requires": [
+              {
+                "fishId": "f37_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 325,
+          "sell": 19200
+        }
+      ]
     },
     {
       "regionId": 38,
@@ -2938,7 +6297,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f38_2",
@@ -2947,7 +6307,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f38_3",
@@ -2956,7 +6317,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f38_4",
@@ -2965,45 +6327,142 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
+        },
+        {
+          "id": "f38_5",
+          "name": "熔岩鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "heat"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f38_6",
+          "name": "火山鲶",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f38_7",
+          "name": "熔核水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 52,
+          "sell": 3840
         }
       ],
-      "king": {
-        "id": "k38",
-        "name": "熔心鲟",
-        "prereqFishIds": [
-          "f38_1",
-          "f38_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 78,
-        "sell": 75000
-      },
-      "emperor": {
-        "id": "e38",
-        "name": "原初之鱼",
-        "prereqFishIds": [
-          "f38_1",
-          "f38_2",
-          "f38_3",
-          "f38_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 196,
-        "sell": 300000
-      }
+      "specials": [
+        {
+          "id": "k38",
+          "name": "熔心鲟",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f38_1",
+                "count": 1
+              },
+              {
+                "fishId": "f38_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 78,
+          "sell": 75000
+        },
+        {
+          "id": "e38",
+          "name": "原初之鱼",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f38_1",
+                "count": 1
+              },
+              {
+                "fishId": "f38_2",
+                "count": 1
+              },
+              {
+                "fishId": "f38_3",
+                "count": 1
+              },
+              {
+                "fishId": "f38_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 196,
+          "sell": 300000
+        },
+        {
+          "id": "l38_lava_leviathan",
+          "name": "熔岩鲲",
+          "kind": "legend",
+          "weather": [
+            "heat",
+            "clear"
+          ],
+          "intuition": {
+            "name": "熔岩鲲之识",
+            "requires": [
+              {
+                "fishId": "f38_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              50,
+              80
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 325,
+          "sell": 19200
+        }
+      ]
     },
     {
       "regionId": 39,
@@ -3017,7 +6476,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f39_2",
@@ -3026,7 +6486,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f39_3",
@@ -3035,7 +6496,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f39_4",
@@ -3044,45 +6506,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 13,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
+        },
+        {
+          "id": "f39_5",
+          "name": "王都鲷",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f39_6",
+          "name": "护城旗鱼",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "clouds"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 26,
+          "sell": 1280
+        },
+        {
+          "id": "f39_7",
+          "name": "星芒水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 52,
+          "sell": 3840
         }
       ],
-      "king": {
-        "id": "k39",
-        "name": "天外怪兽",
-        "prereqFishIds": [
-          "f39_1",
-          "f39_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 79,
-        "sell": 75000
-      },
-      "emperor": {
-        "id": "e39",
-        "name": "十二神之鳞",
-        "prereqFishIds": [
-          "f39_1",
-          "f39_2",
-          "f39_3",
-          "f39_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 198,
-        "sell": 300000
-      }
+      "specials": [
+        {
+          "id": "k39",
+          "name": "天外怪兽",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f39_1",
+                "count": 1
+              },
+              {
+                "fishId": "f39_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 79,
+          "sell": 75000
+        },
+        {
+          "id": "e39",
+          "name": "十二神之鳞",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f39_1",
+                "count": 1
+              },
+              {
+                "fishId": "f39_2",
+                "count": 1
+              },
+              {
+                "fishId": "f39_3",
+                "count": 1
+              },
+              {
+                "fishId": "f39_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 198,
+          "sell": 300000
+        },
+        {
+          "id": "l39_black_tortoise",
+          "name": "玄武巨龟",
+          "kind": "legend",
+          "weather": [
+            "rain"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "玄武巨龟之识",
+            "requires": [
+              {
+                "fishId": "f39_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              60,
+              90
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 325,
+          "sell": 19200
+        }
+      ]
     },
     {
       "regionId": 40,
@@ -3096,7 +6657,8 @@
           "sizeMin": 20,
           "sizeMax": 60,
           "exp": 14,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f40_2",
@@ -3105,7 +6667,8 @@
           "sizeMin": 30,
           "sizeMax": 90,
           "exp": 14,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f40_3",
@@ -3114,7 +6677,8 @@
           "sizeMin": 50,
           "sizeMax": 130,
           "exp": 14,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
         },
         {
           "id": "f40_4",
@@ -3123,45 +6687,144 @@
           "sizeMin": 60,
           "sizeMax": 150,
           "exp": 14,
-          "sell": 320
+          "sell": 320,
+          "rarity": "white"
+        },
+        {
+          "id": "f40_5",
+          "name": "圣域鳟",
+          "rarity": "blue",
+          "weight": 5,
+          "weather": [
+            "clear"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 28,
+          "sell": 1280
+        },
+        {
+          "id": "f40_6",
+          "name": "天启鲑",
+          "rarity": "blue",
+          "weight": 3,
+          "weather": [
+            "rain"
+          ],
+          "sizeMin": 75,
+          "sizeMax": 135,
+          "exp": 28,
+          "sell": 1280
+        },
+        {
+          "id": "f40_7",
+          "name": "原初水母",
+          "rarity": "purple",
+          "weight": 2,
+          "timeOfDay": [
+            "night"
+          ],
+          "sizeMin": 105,
+          "sizeMax": 172,
+          "exp": 56,
+          "sell": 3840
         }
       ],
-      "king": {
-        "id": "k40",
-        "name": "终末鲸",
-        "prereqFishIds": [
-          "f40_1",
-          "f40_2"
-        ],
-        "insightSeconds": [
-          30,
-          45
-        ],
-        "chance": 0.014,
-        "sizeMin": 160,
-        "sizeMax": 240,
-        "exp": 80,
-        "sell": 75000
-      },
-      "emperor": {
-        "id": "e40",
-        "name": "艾欧泽亚之王",
-        "prereqFishIds": [
-          "f40_1",
-          "f40_2",
-          "f40_3",
-          "f40_4"
-        ],
-        "insightSeconds": [
-          45,
-          60
-        ],
-        "chance": 0.004,
-        "sizeMin": 240,
-        "sizeMax": 360,
-        "exp": 200,
-        "sell": 300000
-      }
+      "specials": [
+        {
+          "id": "k40",
+          "name": "终末鲸",
+          "kind": "king",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f40_1",
+                "count": 1
+              },
+              {
+                "fishId": "f40_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              45
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 160,
+          "sizeMax": 240,
+          "exp": 80,
+          "sell": 75000
+        },
+        {
+          "id": "e40",
+          "name": "艾欧泽亚之王",
+          "kind": "emperor",
+          "legacy": true,
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f40_1",
+                "count": 1
+              },
+              {
+                "fishId": "f40_2",
+                "count": 1
+              },
+              {
+                "fishId": "f40_3",
+                "count": 1
+              },
+              {
+                "fishId": "f40_4",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              45,
+              60
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 200,
+          "sell": 300000
+        },
+        {
+          "id": "l40_creator",
+          "name": "创世神鱼",
+          "kind": "legend",
+          "weather": [
+            "thunder"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "创世神鱼之识",
+            "requires": [
+              {
+                "fishId": "f40_7",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              60,
+              90
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 350,
+          "sell": 19200
+        }
+      ]
     }
   ]
 }

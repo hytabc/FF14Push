@@ -115,6 +115,12 @@ const skillStates = computed<Record<string, { remaining: number; pct: number }>>
   return out
 })
 
+/** 绝技充能槽（由 0.1s 节拍驱动刷新）。 */
+const signature = computed(() => {
+  void game.uiTick
+  return sim.value?.signatureState ?? null
+})
+
 /** 阵亡复活倒计时：剩余秒数与进度（由 0.1s 节拍驱动刷新）。总时长随「归魂 / 沉魂」词条变化。 */
 const reviveDelay = data.heroes.reviveDelaySeconds
 const reviveTimer = computed(() => {
@@ -395,6 +401,26 @@ function dodgeInfo() {
         </div>
       </section>
     </div>
+
+    <!-- 绝技（充能槽） -->
+    <section v-if="signature" class="card p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-white">绝技 · {{ signature.name }}</h3>
+        <span :class="signature.ready ? 'text-amber-300' : 'text-ink-500'" class="text-[11px]">
+          {{ signature.ready ? '就绪！' : `充能中 ${Math.floor(signature.charge)}%` }}
+        </span>
+      </div>
+      <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-ink-900">
+        <div
+          class="h-full rounded-full transition-[width] duration-100 ease-linear"
+          :class="signature.ready ? 'bg-amber-400' : 'bg-sky-500'"
+          :style="{ width: `${signature.charge}%` }"
+        />
+      </div>
+      <p class="mt-2 text-[10px] text-ink-600">
+        战斗中充能、满槽自动释放（不占 GCD / 不耗魔力）；纯时间约 {{ signature.chargeSeconds }}s。
+      </p>
+    </section>
 
     <!-- 技能条 -->
     <section class="card p-4">

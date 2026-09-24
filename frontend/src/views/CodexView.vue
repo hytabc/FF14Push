@@ -17,7 +17,7 @@ import {
   roleOfBaseId,
   type EquipGroup,
 } from '@/utils/itemFilters'
-import { fishKindRarity } from '@/utils/icons'
+import { fishRarity } from '@/utils/icons'
 
 type Entry = Record<string, any>
 
@@ -192,11 +192,43 @@ const TABS = [
   { id: 'term', label: '词条图鉴' },
 ] as const
 
-const FISH_KIND_LABEL: Record<string, string> = { normal: '普通鱼', king: '鱼王', emperor: '鱼皇' }
+const FISH_KIND_LABEL: Record<string, string> = { normal: '普通鱼', king: '鱼王', emperor: '鱼皇', legend: '困难鱼' }
 const FISH_KIND_CLASS: Record<string, string> = {
   normal: 'bg-ink-700/60 text-ink-200',
   king: 'bg-amber-500/20 text-amber-200',
   emperor: 'bg-fuchsia-500/20 text-fuchsia-200',
+  legend: 'bg-rose-500/20 text-rose-200',
+}
+const FISH_RARITY_LABEL: Record<string, string> = { white: '白鱼', blue: '蓝鱼', purple: '紫鱼' }
+const FISH_RARITY_CLASS: Record<string, string> = {
+  white: 'bg-ink-700/60 text-ink-300',
+  blue: 'bg-sky-500/20 text-sky-200',
+  purple: 'bg-violet-500/20 text-violet-200',
+}
+const WEATHER_NAME: Record<string, string> = Object.fromEntries(
+  data.weather.types.map((t) => [t.id, t.name]),
+)
+const TOD_NAME: Record<string, string> = data.weather.timeOfDayNames
+
+/** 天气 / 时间门槛文案。 */
+function gateText(entry: Entry): string {
+  const parts: string[] = []
+  if (Array.isArray(entry.weather) && entry.weather.length) {
+    parts.push(entry.weather.map((w: string) => WEATHER_NAME[w] ?? w).join(' / '))
+  }
+  if (Array.isArray(entry.timeOfDay) && entry.timeOfDay.length) {
+    parts.push(entry.timeOfDay.map((t: string) => TOD_NAME[t] ?? t).join(' / '))
+  }
+  return parts.join(' · ')
+}
+
+/** 计数型前置文案（如「蓝彩鱼 ×3、橙彩鱼 ×3、绿彩鱼 ×5」）。 */
+function requiresText(entry: Entry): string {
+  const req = entry.requires
+  if (!Array.isArray(req)) return ''
+  return req
+    .map((r: { fishId: string; count: number }) => `${data.fishById[r.fishId]?.name ?? r.fishId} ×${r.count}`)
+    .join('、')
 }
 const MATERIAL_KIND_LABEL: Record<string, string> = { gather: '采集材料', half: '半成品' }
 
@@ -626,7 +658,7 @@ function entryRarity(entry: Entry): RarityId {
       >
         <div class="flex items-start justify-between gap-2">
           <div class="flex min-w-0 items-start gap-2">
-            <ItemIcon :base-id="entry.fishId" :rarity="fishKindRarity(entry.kind)" :size="32" :silhouette="!entry.unlocked" />
+            <ItemIcon :base-id="entry.fishId" :rarity="fishRarity(entry.fishId)" :size="32" :silhouette="!entry.unlocked" />
             <div class="min-w-0">
               <p class="truncate text-sm font-medium" :class="entry.unlocked ? 'text-ink-100' : 'text-ink-500'">
                 {{ entry.unlocked ? entry.name : '未钓起' }}
@@ -639,16 +671,32 @@ function entryRarity(entry: Entry): RarityId {
           </span>
         </div>
 
+        <div class="mt-1 flex flex-wrap gap-1">
+          <span
+            v-if="entry.kind === 'normal'"
+            class="rounded px-1.5 py-0.5 text-[10px]"
+            :class="FISH_RARITY_CLASS[entry.rarity] ?? FISH_RARITY_CLASS.white"
+          >
+            {{ FISH_RARITY_LABEL[entry.rarity] ?? '白鱼' }}
+          </span>
+          <span v-if="gateText(entry)" class="rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-sky-200">
+            {{ gateText(entry) }}
+          </span>
+        </div>
+
         <p class="mt-2 text-[10px] text-ink-500">
           尺寸 {{ entry.sizeMin }} ~ {{ entry.sizeMax }} cm · 出售 {{ entry.sell }} 金币 · 经验 {{ entry.exp }}
         </p>
         <p v-if="entry.chance" class="text-[10px] text-ink-500">
-          出现概率 {{ (entry.chance * 100).toFixed(1) }}%（仅在「捕鱼人之识」期间判定）
+          出现概率 {{ (entry.chance * 100).toFixed(2) }}%（仅在「{{ entry.buffName || '捕鱼人之识' }}」期间判定）
+        </p>
+        <p v-if="requiresText(entry)" class="text-[10px] text-ink-500">
+          直觉前置：{{ requiresText(entry) }}
         </p>
 
         <p v-if="!entry.unlocked" class="mt-2 text-[10px] text-amber-300">
           钓场：{{ entry.regionName }}
-          <span v-if="entry.kind !== 'normal'">（需先钓起前置普通鱼开启捕鱼人之识）</span>
+          <span v-if="entry.kind !== 'normal'">（需先钓齐前置开启「{{ entry.buffName || '捕鱼人之识' }}」）</span>
         </p>
         <p v-else class="mt-2 text-[10px] text-ink-600">
           累计钓起 {{ entry.count }} 条 · 最大 {{ entry.maxSize }} cm · 首次 {{ entry.firstCaughtAt?.slice(0, 10) }}

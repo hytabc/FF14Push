@@ -5,8 +5,10 @@
  * （装备只能通过抽箱获取，怪物不掉落装备）。
  */
 import data from '@shared/schema'
+import type { SignatureSkillDef } from '@shared/schema'
 
 import type { BossSkill, HeroStats, MonsterStats, RaidBossEntry, RaidEnrage, RegionDef } from '../types'
+import type { SoundCue } from '../audio'
 import {
   ADVENTURER_SKILL,
   attackSpeedFactor,
@@ -188,6 +190,11 @@ export class BattleSimulator {
   /** 彩蛋技能「水群」剩余次数：接下来 N 次技能释放的魔力消耗减半。 */
   halfMpCharges = 0
 
+  /** 绝技充能槽（0~100）：战斗中按 chargeSeconds 匀速充能、每次击杀额外充能，满槽自动释放。 */
+  signatureCharge = 0
+  /** 绝技「锁血不死」（死斗 / 行尸走肉）剩余秒数：>0 时英雄生命不会低于 1。 */
+  undyingTimer = 0
+
   log: LogEntry[] = []
   floating: FloatingText[] = []
   cooldowns: Record<string, number> = {}
@@ -250,6 +257,8 @@ export class BattleSimulator {
   readonly penalty: LevelPenalty
   /** 地区战斗难度等级（0 = 当前各地区数值）；高难副本恒为 0。 */
   readonly difficulty: number
+  /** 战斗事件的音效回调（由调用方注入；缺省时静默，保持模拟器与表现形式解耦）。 */
+  private readonly onSound?: (cue: SoundCue) => void
 
   constructor(options: {
     stats: HeroStats
@@ -263,7 +272,10 @@ export class BattleSimulator {
     raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null }
     /** 彩蛋英雄 id：命中对应职业时追加/替换技能。 */
     eggId?: string | null
+    /** 音效回调：语义明确时被调用（暴击 / 技能 / 击杀 / 阵亡 / BOSS 技能等）。 */
+    onSound?: (cue: SoundCue) => void
   }) {
+    this.onSound = options.onSound
     this.difficulty = Math.max(0, Math.floor(options.difficulty ?? 0))
     this.baseStats = scalePlayerStats(options.stats, this.difficulty)
     this.eggId = options.eggId ?? null
@@ -469,6 +481,19 @@ export class BattleSimulator {
     return egg.replace ? egg.skills : [...egg.skills, ...base]
   }
 
+  /** 当前职业的绝技（招牌技能）；冒险者等无绝技职业返回 null。 */
+  get signature(): SignatureSkillDef | null {
+    return (data.jobById[this.baseStats.jobId]?.signature as SignatureSkillDef | undefined) ?? null
+  }
+
+  /** 绝技充能状态，供 UI 画充能条。 */
+  get signatureState(): { id: string; name: string; charge: number; ready: boolean; chargeSeconds: number } | null {
+    const sig = this.signature
+    if (!sig) return null
+    const charge = Math.max(0, Math.min(100, this.signatureCharge))
+    return { id: sig.id, name: sig.name, charge, ready: charge >= 100, chargeSeconds: sig.chargeSeconds }
+  }
+
   get monsterName(): string {
     return this.monster?.name ?? '—'
   }
@@ -517,6 +542,7 @@ export class BattleSimulator {
 
     this.gcd = Math.max(0, this.gcd - dt)
     this.sleepTimer = Math.max(0, this.sleepTimer - dt)
+    this.undyingTimer = Math.max(0, this.undyingTimer - dt)
     this.basicAttackTimer = Math.max(0, this.basicAttackTimer - dt)
     for (const key of Object.keys(this.cooldowns)) {
       this.cooldowns[key] = Math.max(0, this.cooldowns[key] - dt)
@@ -580,6 +606,7 @@ export class BattleSimulator {
     if (this.phase === 'boss') this.bossFightMs += dt * 1000
     this.monsterElapsed += dt
 
+    this.tickSignature(dt)
     this.castIfReady()
     this.tickBasicAttack()
     this.tickMonster(dt)
@@ -615,12 +642,14 @@ export class BattleSimulator {
     }
     this.setMonster(monsterStats(this.region!, templateId, this.difficulty))
     this.pushLog(`遭遇 ${this.monster!.name}`, 'normal')
+    this.sfx('battle.spawn')
   }
 
   private spawnBoss(): void {
     this.setMonster({ ...this.boss! })
     this.bossFightMs = 0
     this.pushLog(`关底 BOSS「${this.boss!.name}」出现！`, 'boss')
+    this.sfx('battle.boss.spawn')
   }
 
   /** 构造敌方单位：初始化共享技能冷却与自身增益容器。 */
@@ -697,6 +726,34 @@ export class BattleSimulator {
     this.cast(this.pickSkill(castable))
   }
 
+  /** 绝技充能：战斗中按 chargeSeconds 匀速累积，满槽自动释放。 */
+  private tickSignature(dt: number): void {
+    const sig = this.signature
+    if (!sig) return
+    this.signatureCharge = Math.min(100, this.signatureCharge + (100 / Math.max(1, sig.chargeSeconds)) * dt)
+    this.castSignatureIfReady()
+  }
+
+  /** 绝技满槽释放：不占 GCD、不耗魔力，结算后充能清零。 */
+  private castSignatureIfReady(): void {
+    const sig = this.signature
+    if (!sig || this.signatureCharge < 100 || this.sleepTimer > 0 || !this.monster) return
+    this.signatureCharge = 0
+    this.pushLog(`绝技「${sig.name}」发动！`, 'skill')
+    this.sfx('battle.signature')
+    this.resolveSkillBody({
+      id: sig.id,
+      name: sig.name,
+      cd: 0,
+      mpCost: 0,
+      potency: sig.potency,
+      damageType: sig.damageType,
+      target: sig.target,
+      priority: 3,
+      effects: sig.effects as unknown as Array<Record<string, unknown>>,
+    })
+  }
+
   /** 普攻冷却（秒）：受攻速缩短（PRD 2.7.3「攻击速度 影响普攻频率」）。 */
   private basicAttackCooldown(): number {
     const base = skillCooldown(this.stats, ADVENTURER_SKILL.cd)
@@ -745,7 +802,10 @@ export class BattleSimulator {
   /** 一次技能结算的「伤害 + 效果」部分（不含魔力 / CD / GCD）；双重施法时复用。 */
   private resolveSkillBody(skill: SkillLike): void {
     if (skill.potency > 0 && this.monster) this.resolveDamage(skill, true)
-    else this.pushLog(`施放 ${skill.name}`, 'skill')
+    else {
+      this.pushLog(`施放 ${skill.name}`, 'skill')
+      this.sfx('battle.skill')
+    }
     this.applyEffects(skill)
   }
 
@@ -844,6 +904,7 @@ export class BattleSimulator {
     if (roll.missed) {
       this.pushFloat('未命中', 'monster', 'miss')
       this.pushLog(`${skill.name} 未命中`, 'damage')
+      this.sfx('battle.miss')
       return
     }
     const amount = this.capBossHit(roll.amount)
@@ -856,6 +917,7 @@ export class BattleSimulator {
     )
     if (mark) this.pushLog(`${skill.name} 造成 ${amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
     else this.pushLog(`${skill.name} 造成 ${amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+    this.sfx(mark ? 'battle.crit' : 'battle.hit')
     // 动态成长「锐意」：每次命中叠加攻速层数。
     if (mods.hitStackSpeedPct) {
       const max = EQUIP.growth?.hitStackSpeedPct?.maxStacks ?? 10
@@ -1014,6 +1076,7 @@ export class BattleSimulator {
         case 'fullHeal': {
           const amount = (type === 'fullHeal' ? stats.maxHp : Math.floor(stats.maxHp * value)) * this.healMultiplier
           this.restoreHealth(amount, skill.name)
+          this.sfx('battle.heal')
           break
         }
         case 'healOverTime':
@@ -1068,6 +1131,10 @@ export class BattleSimulator {
         case 'immunity':
           this.immunityCharges += Math.max(0, Math.floor(value))
           this.pushLog(`获得免疫，接下来 ${this.immunityCharges} 次伤害无效`, 'skill')
+          break
+        case 'undying':
+          this.undyingTimer = Math.max(this.undyingTimer, duration)
+          this.pushLog(`获得「不死」，生命不会低于 1（${duration}s）`, 'skill')
           break
         case 'doublePowerCharges':
           this.doublePowerCharges += Math.max(0, Math.floor(value))
@@ -1302,6 +1369,8 @@ export class BattleSimulator {
   private castBossSkill(enemy: EnemyState, skill: BossSkill): void {
     const effect = String(skill.effect ?? '')
     const duration = Math.max(0, Number(skill.duration ?? 0))
+    // 蓄力与直接释放用不同的提示音；仅副本 / 挖宝 BOSS 会走这里（地区战斗无 BOSS 技能）。
+    this.sfx(effect === 'charge' ? 'battle.boss.charge' : 'battle.boss.skill')
     switch (effect) {
       case 'charge': {
         const seconds = Number(skill.chargeSeconds ?? 2) * (this.penalty.windowMultiplier ?? 1)
@@ -1439,6 +1508,7 @@ export class BattleSimulator {
     if (!monster) return
     const isBoss = monster.kind === 'boss'
     this.pushLog(`击败「${monster.name}」！`, 'boss')
+    this.sfx('battle.kill')
     // 动态成长「战意」：击杀叠加攻击层数。
     if (this.baseStats.termMods.killStackAttackPct) {
       const max = EQUIP.growth?.killStackAttackPct?.maxStacks ?? 10
@@ -1449,6 +1519,9 @@ export class BattleSimulator {
     if (killMp > 0) {
       this.heroMp = Math.min(this.stats.maxMp, this.heroMp + Math.floor(this.stats.maxMp * (killMp / 100)))
     }
+    // 绝技充能：每次击杀额外充能。
+    const sig = this.signature
+    if (sig) this.signatureCharge = Math.min(100, this.signatureCharge + Math.max(0, sig.chargePerKill))
 
     if (!this.isRaid) {
       // 地区战斗：小怪计入上报，BOSS 触发通关
@@ -1478,6 +1551,7 @@ export class BattleSimulator {
       if (this.enemies.length === 0) {
         this.pendingBossKill = true
         this.phase = 'cleared'
+        this.sfx('battle.clear')
       } else {
         this.enrageSurvivors()
       }
@@ -1486,6 +1560,7 @@ export class BattleSimulator {
 
     if (isBoss) {
       this.phase = 'cleared'
+      this.sfx('battle.clear')
       return
     }
 
@@ -1500,6 +1575,12 @@ export class BattleSimulator {
   }
 
   private heroDies(): void {
+    // 绝技「锁血不死」（死斗 / 行尸走肉）：持续期间生命不会低于 1。
+    if (this.undyingTimer > 0) {
+      this.heroHp = 1
+      this.pushLog('绝技「不死」生效，生命保留 1 点', 'danger')
+      return
+    }
     // 「不死」：受致命伤害时概率免死并保留 1 点生命（每场战斗 1 次）。
     const cheat = this.baseStats.termMods.cheatDeathPct ?? 0
     if (cheat > 0 && !this.cheatDeathUsed && Math.random() * 100 < cheat) {
@@ -1509,6 +1590,9 @@ export class BattleSimulator {
       return
     }
     this.phase = 'dead'
+    // 阵亡清空绝技充能与锁血状态。
+    this.signatureCharge = 0
+    this.undyingTimer = 0
     // 「归魂」缩短 / 「沉魂」延长复活等待，最短 1 秒。
     const mods = this.baseStats.termMods
     const factor = 1 - ((mods.reviveHastePct ?? 0) - (mods.reviveDelayPct ?? 0)) / 100
@@ -1532,6 +1616,7 @@ export class BattleSimulator {
       return
     }
     this.pushLog(this.isRaid ? '英雄阵亡！副本挑战失败' : '英雄阵亡！小怪阶段进度重置', 'danger')
+    this.sfx('battle.death')
   }
 
   /** 复活 / 免死后重置战斗内成长与累计计数。 */
@@ -1552,8 +1637,11 @@ export class BattleSimulator {
     this.spawnTimer = this.spawnInterval
     this.basicAttackTimer = 0
     this.cheatDeathUsed = false
+    this.signatureCharge = 0
+    this.undyingTimer = 0
     this.resetCombatGrowth()
     this.pushLog('英雄已复活，生命值回满', 'system')
+    this.sfx('battle.revive')
   }
 
   private rollGold(kind: 'normal' | 'elite' | 'boss'): number {
@@ -1706,6 +1794,7 @@ export class BattleSimulator {
       skill ? `「${source}」的 ${skill} 造成 ${damage} 点伤害` : `「${source}」造成 ${damage} 点伤害`,
       'danger',
     )
+    this.sfx('battle.hurt')
   }
 
   recordReward(text: string): void {
@@ -1715,6 +1804,11 @@ export class BattleSimulator {
   private pushLog(text: string, tone: LogEntry['tone']): void {
     this.log.push({ id: nextId(), text, tone })
     if (this.log.length > MAX_LOG) this.log.splice(0, this.log.length - MAX_LOG)
+  }
+
+  /** 触发一次音效（未注入回调时为静默 no-op）。 */
+  private sfx(cue: SoundCue): void {
+    this.onSound?.(cue)
   }
 
   get isMagicalJob(): boolean {

@@ -28,6 +28,13 @@ const title = computed(() => (profile.value ? `${profile.value.nickname} 的装�
 const dohdolGroups = computed(() => dohdolSlotGroups())
 const dohdolBonusNames: Record<string, string> = data.dohdolEquipment.bonusNames
 
+/** 该玩家佩戴中的称号名（未佩戴为 null）。 */
+const activeTitleName = computed(() => {
+  const id = profile.value?.activeTitleId
+  if (!id) return null
+  return data.titles.titles.find((t) => t.id === id)?.name ?? id
+})
+
 function dohdolBonusName(attr: string): string {
   return dohdolBonusNames[attr] ?? attr
 }
@@ -60,6 +67,10 @@ watch(
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-sm font-medium text-ink-100">{{ profile.nickname }}</span>
           <span class="text-ink-500">#{{ profile.username }}</span>
+          <span
+            v-if="activeTitleName"
+            class="rounded bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-100"
+          >{{ activeTitleName }}</span>
           <span class="ml-auto font-mono text-amber-300">战力 {{ formatNumber(profile.power) }}</span>
         </div>
         <p class="mt-1 text-ink-400">游玩时间 {{ formatPlaytime(profile.playSeconds) }}</p>

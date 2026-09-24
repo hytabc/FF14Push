@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Hero, Item, TreasureRun, User
 from app.models.treasure import STATUS_CLEARED, STATUS_ENDED, STATUS_FIGHTING
-from app.services import consumables, dohdol_util
+from app.services import consumables, dohdol_util, titles
 from app.services.difficulty import monster_exp_multiplier, monster_gold_multiplier
 from app.services.game_config import CONFIG
 from app.services.playtime import add_play_ms
@@ -365,6 +365,10 @@ async def open_chest(
             rewards.append({"kind": "bonusGold", "amount": bonus_gold})
             run.status = STATUS_ENDED
             run.ended_reason = "completed"
+        # 彩蛋称号：下底（通关第 5 层）时极低概率掉落。
+        new_titles = (
+            await titles.roll_random_titles(db, user.id, "treasure_bottom") if completed else []
+        )
         await db.flush()
         return {
             "floor": floor,
@@ -377,6 +381,7 @@ async def open_chest(
             "bonusGold": bonus_gold,
             "completed": completed,
             "cleared": True,
+            "newTitles": new_titles,
             "run": run_view(run),
         }
 
@@ -451,6 +456,10 @@ async def open_chest(
     if completed:
         run.status = STATUS_ENDED
         run.ended_reason = "completed"
+    # 彩蛋称号：下底（通关第 5 层）时极低概率掉落。
+    new_titles = (
+        await titles.roll_random_titles(db, user.id, "treasure_bottom") if completed else []
+    )
     await db.flush()
 
     return {
@@ -463,6 +472,7 @@ async def open_chest(
         "level": level_info,
         "bonusGold": bonus_gold,
         "completed": completed,
+        "newTitles": new_titles,
         "run": run_view(run),
     }
 

@@ -54,6 +54,9 @@ const rows = computed(() =>
 /** 运行中的当前步下标；未运行时 -1。 */
 const runningIndex = computed(() => (dohdol.seqActive ? dohdol.seqIndex : -1))
 const total = computed(() => dohdol.sequence.length)
+
+/** 步骤 id → 无法执行的原因（等级不足 / 地区未解锁 / 配方未解锁）。 */
+const issueById = computed(() => new Map(dohdol.sequenceIssues.map((i) => [i.id, i.reason])))
 </script>
 
 <template>
@@ -85,8 +88,9 @@ const total = computed(() => dohdol.sequence.length)
         <button
           v-if="!dohdol.seqActive"
           class="rounded-md px-3 py-1 text-xs font-semibold transition"
-          :class="total ? 'bg-emerald-500/20 text-emerald-300' : 'bg-ink-800 text-ink-500'"
-          :disabled="!total"
+          :class="total && !dohdol.sequenceBlocked ? 'bg-emerald-500/20 text-emerald-300' : 'bg-ink-800 text-ink-500'"
+          :disabled="!total || dohdol.sequenceBlocked"
+          :title="dohdol.sequenceBlocked ? '序列中存在无法执行的步骤，请先处理' : ''"
           @click="dohdol.startSequence()"
         >
           开始序列
@@ -118,13 +122,25 @@ const total = computed(() => dohdol.sequence.length)
         v-for="(row, i) in rows"
         :key="row.step.id"
         class="flex flex-wrap items-center gap-2 rounded border px-2 py-1"
-        :class="i === runningIndex ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-ink-800 bg-ink-950/40'"
+        :class="
+          i === runningIndex
+            ? 'border-emerald-500/60 bg-emerald-500/10'
+            : issueById.has(row.step.id)
+              ? 'border-rose-500/60 bg-rose-500/10'
+              : 'border-ink-800 bg-ink-950/40'
+        "
       >
         <span class="w-5 text-right font-mono text-[10px] text-ink-500">{{ i + 1 }}</span>
         <ItemIcon :base-id="row.iconId" variant="plain" :size="18" />
         <span class="truncate text-ink-200">{{ row.step.name }}</span>
         <span class="text-ink-500">×{{ row.step.target }}</span>
         <span class="text-[10px] text-ink-500">{{ row.sub }}</span>
+        <span
+          v-if="issueById.get(row.step.id)"
+          class="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] text-rose-300"
+        >
+          无法执行：{{ issueById.get(row.step.id) }}
+        </span>
         <span v-if="i === runningIndex" class="text-[10px] font-mono text-emerald-300">
           {{ row.step.kind === 'gather' ? `${dohdol.seqGained}/${row.step.target}` : '进行中' }}
         </span>
@@ -157,6 +173,16 @@ const total = computed(() => dohdol.sequence.length)
       </li>
     </ol>
     <p v-else class="mt-2 text-[11px] text-ink-500">尚未添加步骤。</p>
+
+    <div
+      v-if="dohdol.sequenceIssues.length"
+      class="mt-2 rounded border border-rose-500/40 bg-rose-500/10 p-2 text-[11px] text-rose-200"
+    >
+      <p class="mb-1 font-semibold">以下步骤当前无法执行，请先提升等级或解锁地区：</p>
+      <ul class="space-y-0.5">
+        <li v-for="issue in dohdol.sequenceIssues" :key="issue.id">{{ issue.name }}：{{ issue.reason }}</li>
+      </ul>
+    </div>
 
     <div v-if="dohdol.seqActive" class="mt-3">
       <div class="mb-1 flex justify-between text-[11px] text-ink-400">

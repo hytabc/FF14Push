@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 
 import data from '@shared/schema'
 import ItemIcon from '@/components/ItemIcon.vue'
+import { sound } from '@/game/audio'
 import type { Category, Item, RarityId } from '@/game/types'
 import { rarityHex } from '@/utils/format'
 
@@ -29,6 +30,18 @@ const props = withDefaults(
 /** 转盘格数（尾部留几格作为减速缓冲）。 */
 const SLOT_COUNT = 30
 const TARGET_INDEX = SLOT_COUNT - 4
+
+/** 品阶越高，停下时的揭晓音越亮。 */
+const RARITY_GAIN: Partial<Record<RarityId, number>> = {
+  uncommon: 0.9,
+  rare: 1.05,
+  epic: 1.2,
+  legendary: 1.35,
+  mythic: 1.5,
+}
+
+const REDUCED_MOTION =
+  typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 interface ReelSlot {
   baseId: string
@@ -101,6 +114,14 @@ async function spin() {
   const jitter = (Math.random() - 0.5) * slotW * 0.6
   target.value = -(TARGET_INDEX * slotW + slotW / 2 - width / 2) + jitter
   ready.value = true
+  sound.play('chest.spin')
+  // 尊重「减少动态效果」时不播放 CSS 动画，也就不会有 animationend，直接揭晓。
+  if (REDUCED_MOTION) reveal()
+}
+
+/** 滚轮停住（或跳过动画）时揭晓：音高随品阶。 */
+function reveal() {
+  sound.play('chest.reveal', { gain: RARITY_GAIN[props.item.rarity] ?? 1 })
 }
 
 onMounted(() => {
@@ -114,6 +135,7 @@ onMounted(() => {
       v-if="ready"
       class="reel-strip"
       :style="stripStyle"
+      @animationend="reveal"
     >
       <div
         v-for="(slot, index) in slots"

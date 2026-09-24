@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ActivitySession, Item, RegionProgress, User
-from app.services import consumables, dohdol_util
+from app.services import consumables, dohdol_util, titles
 from app.services.game_config import CONFIG
 from app.services.playtime import add_play_ms
 
@@ -154,6 +154,9 @@ async def report_gather(
     xp = round(base_xp * (1.0 + bonus_pct / 100.0))
     level_info = dohdol_util.apply_level_exp(progress, xp)
 
+    # 彩蛋称号：按本次采集动作数极低概率掉落（每动作独立概率，合并为一次判定）。
+    new_titles = await titles.roll_random_titles(db, user.id, "gather", rolls=actions, rng=rng)
+
     return {
         "gained": [
             {"itemId": m, "name": dohdol_util.material_name(m), "count": c}
@@ -163,6 +166,7 @@ async def report_gather(
         "xp": xp,
         "xpBreakdown": dohdol_util.xp_breakdown(base_xp, 1.0, bonus_pct, xp, xp_sources),
         "level": level_info,
+        "newTitles": new_titles,
         "cycle": dohdol_util.cycle_info(seconds_per, float(session.credit), now),
     }
 

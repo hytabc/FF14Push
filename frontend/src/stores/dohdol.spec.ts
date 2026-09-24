@@ -195,6 +195,25 @@ describe('采集 / 制作序列', () => {
     await vi.advanceTimersByTimeAsync(1500)
     expect(store.seqResults[0]).toMatchObject({ done: 3, target: 3, status: 'done' })
   })
+
+  it('序列含无法采集的步骤时拒绝开始', async () => {
+    ;(mocks.game as { state: unknown }).state = {
+      dohdol: { progress: { dol: { level: 1 } }, recipes: [] },
+      regionProgress: { '32': { unlocked: true } },
+    }
+    try {
+      const store = useDohDolStore()
+      store.addStep({ kind: 'gather', id: 'a', materialId: 'flora32', name: '花', jobId: 'BTN', regionId: 32, target: 1 })
+      expect(store.sequenceBlocked).toBe(true)
+      expect(store.sequenceIssues).toHaveLength(1)
+
+      await store.startSequence()
+      expect(store.seqActive).toBe(false)
+      expect(mocks.api.gatherStart).not.toHaveBeenCalled()
+    } finally {
+      ;(mocks.game as { state: unknown }).state = null
+    }
+  })
 })
 
 describe('序列循环', () => {
