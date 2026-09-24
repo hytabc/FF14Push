@@ -268,7 +268,17 @@ async def report(
 
     # 击杀计数（服务端权威）
     required = kills_required(payload.regionId)
-    hero.region_kill_count = min(required, int(hero.region_kill_count) + len(result.kills))
+    credited = len(result.kills)
+    if payload.bossKilled:
+        # 客户端本地计数达到 required 才会刷出 BOSS，而服务端按窗口额度取整入账：
+        # 遇到爆发式击杀（暴击/技能/多目标）时本批会被截断，服务端计数便滞后于客户端。
+        # 客户端计数 = 服务端计数 + 本批在途击杀，故缺口恰好不超过本批上报的击杀数。
+        # 若仍按截断后的计数判定，_settle_boss 会静默丢弃 BOSS 结算，客户端会停在
+        # cleared 阶段不再产生事件，从而永远无法进入下一地区。
+        # 这里仅对 BOSS 上报按客户端本批实际击杀补齐；凭空虚报的击杀仍受 validate_report
+        # 的「超过额度 2 倍即整单拒绝」约束，因此无法借此加速刷 BOSS。
+        credited = len(payload.kills)
+    hero.region_kill_count = min(required, int(hero.region_kill_count) + credited)
 
     if payload.died:
         hero.region_kill_count = 0  # PRD 地区 3.2：阵亡后小怪击杀计数归零

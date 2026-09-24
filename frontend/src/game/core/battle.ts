@@ -1593,6 +1593,24 @@ export class BattleSimulator {
     this.pushLog('留在当前地区，继续挂机', 'system')
   }
 
+  /** 服务端未结算本次 BOSS（小怪计数尚未对齐）：从 cleared 退回小怪阶段继续上报，
+   *  保留服务端已认可的计数。否则模拟会停在 cleared 且不再产生事件，永远无法推进。
+   *  仅地区战斗可用。 */
+  resumeAfterDroppedBoss(): void {
+    if (this.isRaid || this.phase !== 'cleared') return
+    this.enemies = []
+    this.dots = []
+    this.enemyDebuffs = []
+    if (this.killCount >= this.killsRequired) {
+      this.phase = 'boss'
+      this.bossTimer = data.heroes.bossSpawnDelaySeconds
+    } else {
+      this.phase = 'mob'
+      this.spawnTimer = this.spawnInterval
+    }
+    this.pushLog('BOSS 结算未完成，继续战斗…', 'system')
+  }
+
   /** 取出并清空待上报的事件。 */
   drainPending(): {
     kills: KillRecord[]

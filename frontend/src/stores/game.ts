@@ -287,6 +287,9 @@ export const useGameStore = defineStore('game', () => {
       if (gen !== generation) return
       lastReportAt = performance.now()
       applyReport(res)
+      // 上报了 BOSS 击杀但服务端未结算（小怪计数尚未对齐）：模拟会停在 cleared 且不再
+      // 产生事件，若不恢复将永远无法进入下一地区。退回小怪阶段继续上报直至结算成功。
+      if (pending.bossKilled && !res.boss) current.resumeAfterDroppedBoss()
     } catch (e) {
       const err = toApiError(e)
       // 会话已被服务端结束（开始远征/竞技场/切换英雄/其它标签页等）：本地静默停战，

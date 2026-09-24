@@ -528,6 +528,40 @@ class TestBattleLoop:
         assert by_id[2]["missingConditions"]
         assert "试炼" not in by_id[2]["lockedHint"]
 
+    async def test_boss_settles_when_kill_batch_is_truncated(self, auth_client, session_factory) -> None:
+        """服务端按窗口额度取整会截断爆发击杀，使计数滞后于客户端。
+
+        旧逻辑按截断后的计数判定，会把 BOSS 结算静默丢弃，客户端停在 cleared
+        阶段不再产生事件，从而永远无法进入下一地区。缺口恰好不超过本批上报的击杀数。
+        """
+        started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
+        session_id = started.json()["sessionId"]
+        current = (await auth_client.get(f"{API}/region/current")).json()
+        required = current["killsRequired"]
+
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            hero = (await db.execute(select(Hero).where(Hero.user_id == me["id"]))).scalar_one()
+            hero.region_kill_count = required - 1
+            await db.commit()
+
+        # 窗口仅 1 秒：额度不足 1 只，本批击杀会被截断为 0（旧逻辑据此丢弃 BOSS 结算）
+        resp = await _report(
+            auth_client,
+            session_factory,
+            session_id,
+            1,
+            [{"monsterId": "normal", "gold": 20, "exp": 30}],
+            elapsed_ms=1000,
+            bossKilled=True,
+            bossFightMs=1000,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["boss"] is not None, "击杀被截断不应导致 BOSS 结算被丢弃"
+        assert body["boss"]["firstClear"] is True
+        assert body["killCount"] == 0
+
     async def test_stop_session(self, auth_client) -> None:
         started = await auth_client.post(f"{API}/battle/session/start", json={"regionId": 1})
         session = started.json()["sessionId"]

@@ -467,6 +467,52 @@ describe('战斗模拟器', () => {
     expect(sim.monster).not.toBeNull()
   })
 
+  it('BOSS 结算被服务端丢弃时退回小怪阶段，不会卡死在 cleared', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 100000, maxHp: 200000 }),
+      regionId: 1,
+      killsRequired: 3,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    let guard = 0
+    while (sim.phase !== 'cleared' && guard < 20000) {
+      sim.tick(0.1)
+      guard += 1
+    }
+    expect(sim.phase).toBe('cleared')
+
+    // 服务端把计数纠正为未达标：必须能恢复，否则 cleared 阶段不再产生任何事件
+    sim.applyServerKillCount(1, 3)
+    sim.resumeAfterDroppedBoss()
+    expect(sim.phase).toBe('mob')
+    expect(sim.killCount).toBe(1)
+    sim.tick(2)
+    expect(sim.monster).not.toBeNull()
+  })
+
+  it('服务端已认可达标但 BOSS 未结算时，恢复到 BOSS 阶段重试', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 100000, maxHp: 200000 }),
+      regionId: 1,
+      killsRequired: 3,
+      spawnInterval: 1,
+      killCount: 0,
+    })
+    sim.start()
+    let guard = 0
+    while (sim.phase !== 'cleared' && guard < 20000) {
+      sim.tick(0.1)
+      guard += 1
+    }
+    expect(sim.phase).toBe('cleared')
+
+    sim.applyServerKillCount(3, 3)
+    sim.resumeAfterDroppedBoss()
+    expect(sim.phase).toBe('boss')
+  })
+
   it('普攻与技能完全独立：技能全都不可用时普攻照常出手并进入日志', () => {
     const sim = new BattleSimulator({
       stats: makeStats({ jobId: 'PLD', attack: 2000, attackSpeedPct: 0 }),
