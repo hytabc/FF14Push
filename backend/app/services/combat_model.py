@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.damage import hit_chance
+from app.services.difficulty import monster_gold_multiplier, scale_player_stats
 from app.services.egg_heroes import dps_uplift, normal_mob_potency100_bonus, skills_for
 from app.services.game_config import CONFIG
 from app.services.regions_util import (
@@ -223,16 +224,17 @@ def theoretical_kill_seconds(
     region_id: int,
     template_id: str = "normal",
     penalty: dict[str, float] | None = None,
+    difficulty: int = 0,
 ) -> float:
-    monster = monster_stats(region_id, template_id)
+    monster = monster_stats(region_id, template_id, difficulty)
     dps = theoretical_dps(stats, float(monster["defense"]), penalty, mob_kind=template_id)
     return max(0.05, float(monster["hp"]) / dps)
 
 
 def theoretical_boss_seconds(
-    stats: HeroStats, region_id: int, penalty: dict[str, float] | None = None
+    stats: HeroStats, region_id: int, penalty: dict[str, float] | None = None, difficulty: int = 0
 ) -> float:
-    boss = boss_stats(region_id)
+    boss = boss_stats(region_id, difficulty)
     dps = theoretical_dps(stats, float(boss["defense"]), penalty, mob_kind="boss")
     return max(0.05, float(boss["hp"]) / dps)
 
@@ -243,14 +245,20 @@ def max_kills_in_seconds(
     seconds: float,
     tolerance: float = 1.0,
     hero_level: int | None = None,
+    difficulty: int = 0,
 ) -> float:
     """击杀数上限 = min(刷怪速率, 击杀速率) × 时间 × 容差。
 
     hero_level 用于纳入等级压制，避免越级英雄上报到等级匹配才有的击杀速率。
+    difficulty 用于地区战斗的难度等级：怪物血量按难度放大、玩家攻击按难度缩小。
     """
-    penalty = effective_penalty(stats,region_id)
+    penalty = effective_penalty(stats, region_id)
+    # 难度只缩小玩家的战斗输出；战力口径（effective_penalty）仍用未缩放的 stats。
+    scaled = scale_player_stats(stats, difficulty)
     spawn_limited = seconds / max(0.1, spawn_interval(region_id))
-    kill_limited = seconds / theoretical_kill_seconds(stats, region_id, penalty=penalty)
+    kill_limited = seconds / theoretical_kill_seconds(
+        scaled, region_id, penalty=penalty, difficulty=difficulty
+    )
     return min(spawn_limited, kill_limited) * tolerance
 
 
@@ -262,14 +270,17 @@ def survival_seconds(stats: HeroStats, region_id: int, template_id: str = "norma
     return hits_to_die * float(monster["attackInterval"])
 
 
-def max_gold_for_kill(region_id: int, kind: str, hero_stats: HeroStats) -> float:
-    """单只怪物的金币理论上限（含浮动上限与金币 Buff 上限）。"""
+def max_gold_for_kill(
+    region_id: int, kind: str, hero_stats: HeroStats, difficulty: int = 0
+) -> float:
+    """单只怪物的金币理论上限（含浮动上限、金币 Buff 上限与难度加成）。"""
     region = CONFIG.region_by_id[region_id]
     multiplier = float(CONFIG.regions["goldMultipliers"].get(kind, 1.0))
     spread = float(CONFIG.regions["goldFloat"])
     bonus = gold_bonus_from_terms(hero_stats.term_mods, kind)
     bonus = min(float(CONFIG.regions["maxGoldBonus"]) * 100.0, max(0.0, bonus))
-    return float(region["baseGold"]) * multiplier * (1.0 + spread) * (1.0 + bonus / 100.0) * 1.05 + 1.0
+    base = float(region["baseGold"]) * multiplier * (1.0 + spread) * (1.0 + bonus / 100.0) * 1.05 + 1.0
+    return base * monster_gold_multiplier(difficulty)
 
 
 def region_requirements(region_id: int) -> dict[str, Any]:

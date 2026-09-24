@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BattleSimulator } from '@/game/core/battle'
 import { eggSkillSet } from '@/game/core/egg'
 import { attackSpeedFactor, estimateDps, rollDamage, rollIncoming, secondsToKill, skillCooldown, ADVENTURER_SKILL } from '@/game/core/combat'
+import {
+  monsterExpMultiplier,
+  monsterGoldMultiplier,
+  monsterHpMultiplier,
+  scalePlayerStats,
+} from '@/game/core/difficulty'
 import { bossStats, getRegion, goldRange, levelPenalty, monsterStats } from '@/game/core/regions'
 import type { HeroStats, MonsterStats } from '@/game/types'
 
@@ -1437,5 +1443,71 @@ describe('Lv80+ 地区强化与战斗日志', () => {
     expect(sim.floating).toHaveLength(1)
     sim.tick(0.6)
     expect(sim.floating).toHaveLength(0)
+  })
+})
+
+describe('战斗难度等级', () => {
+  it('难度 0 与基础数值逐位一致', () => {
+    for (const regionId of [1, 20, 40]) {
+      expect(monsterStats(getRegion(regionId), 'normal', 0)).toEqual(
+        monsterStats(getRegion(regionId), 'normal'),
+      )
+      expect(bossStats(getRegion(regionId), 0)).toEqual(bossStats(getRegion(regionId)))
+    }
+  })
+
+  it('怪物按加法放大：1 级 +100%、2 级 +200%（×3 而非 ×4）', () => {
+    const base = monsterStats(getRegion(10), 'normal', 0)
+    const d1 = monsterStats(getRegion(10), 'normal', 1)
+    const d2 = monsterStats(getRegion(10), 'normal', 2)
+    expect(d1.hp).toBeCloseTo(base.hp * 2, 0)
+    expect(d1.attack).toBeCloseTo(base.attack * 1.5, 0)
+    expect(d1.defense).toBeCloseTo(base.defense * 2, 0)
+    expect(d2.hp).toBeCloseTo(base.hp * 3, 0)
+    expect(d2.attack).toBeCloseTo(base.attack * 2, 0)
+  })
+
+  it('关底 BOSS 同样受难度影响', () => {
+    const base = bossStats(getRegion(10), 0)
+    const d3 = bossStats(getRegion(10), 3)
+    expect(d3.hp).toBeCloseTo(base.hp * 4, 0)
+    expect(d3.attack).toBeCloseTo(base.attack * 2.5, 0)
+    expect(d3.defense).toBeCloseTo(base.defense * 4, 0)
+  })
+
+  it('玩家攻击/防御按乘法缩小，生命不缩放', () => {
+    const stats = makeStats({ attack: 100, magicAttack: 100, physDef: 100, magicDef: 100, maxHp: 500 })
+    const scaled = scalePlayerStats(stats, 1)
+    expect(scaled.attack).toBeCloseTo(85, 5)
+    expect(scaled.magicAttack).toBeCloseTo(85, 5)
+    expect(scaled.physDef).toBeCloseTo(90, 5)
+    expect(scaled.magicDef).toBeCloseTo(90, 5)
+    expect(scaled.maxHp).toBe(500)
+    expect(scalePlayerStats(stats, 0)).toBe(stats)
+  })
+
+  it('模拟器按难度生成更肉的怪物并降低玩家攻击', () => {
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.1)
+    try {
+      const opts = { killsRequired: 99, spawnInterval: 1, killCount: 0, stats: makeStats({ attack: 1000, maxHp: 1e6 }) }
+      const base = new BattleSimulator({ ...opts, regionId: 5, difficulty: 0 })
+      const hard = new BattleSimulator({ ...opts, regionId: 5, difficulty: 2 })
+      base.start()
+      hard.start()
+      base.tick(1)
+      hard.tick(1)
+      expect(hard.stats.attack).toBeCloseTo(base.stats.attack * 0.85 ** 2, 5)
+      expect(hard.monster!.hp).toBeCloseTo(base.monster!.hp * 3, 0)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('难度 0 时金币/经验无加成', () => {
+    expect(monsterHpMultiplier(0)).toBe(1)
+    expect(monsterGoldMultiplier(0)).toBe(1)
+    expect(monsterExpMultiplier(0)).toBe(1)
+    expect(monsterGoldMultiplier(1)).toBeCloseTo(1.1, 5)
+    expect(monsterExpMultiplier(1)).toBeCloseTo(2, 5)
   })
 })

@@ -25,10 +25,17 @@ from app.models import (
     RegionProgress,
     User,
 )
-from app.schemas.game import BattleReportRequest, BattleStartRequest, BattleStopRequest
+from app.schemas.game import BattleReportRequest, BattleStartRequest, BattleStopRequest, DifficultyRequest
 from app.services.codex import unlock_monster
 from app.services.combat_model import effective_penalty, boss_stats, max_kills_in_seconds, resolve_job_skills
 from app.services import consumables
+from app.services.difficulty import (
+    MAX_LEVEL,
+    active_difficulty,
+    clamp_level,
+    monster_exp_multiplier,
+    monster_gold_multiplier,
+)
 from app.services.drop_luck import chest_rarity_luck
 from app.services.egg_heroes import charge_grants, exp_bonus_pct
 from app.services.game_config import CONFIG
@@ -41,7 +48,7 @@ from app.services.regions_util import apply_exp_bonus, kills_required, roll_gold
 from app.services.stats import compute_stats
 from app.services.validator import MAX_ELAPSED_MS, MIN_ELAPSED_MS, validate_report
 
-from app.services.qualification import require_region, region_access
+from app.services.qualification import ensure_region_progress, require_region, region_access
 from app.services.balance import BALANCE, soft_penalty
 from app.services.valuation import hero_power
 
@@ -49,14 +56,22 @@ router = APIRouter(prefix="/battle", tags=["battle"])
 settings = get_settings()
 
 
-async def _progress(db: DbSession, user_id: int, region_id: int) -> RegionProgress | None:
+async def _progress(
+    db: DbSession, user_id: int, difficulty: int, region_id: int
+) -> RegionProgress | None:
     return (
         await db.execute(
             select(RegionProgress).where(
-                RegionProgress.user_id == user_id, RegionProgress.region_id == region_id
+                RegionProgress.user_id == user_id,
+                RegionProgress.difficulty == difficulty,
+                RegionProgress.region_id == region_id,
             )
         )
     ).scalar_one_or_none()
+
+
+def _max_region_id() -> int:
+    return max(CONFIG.region_by_id)
 
 
 async def _end_active_sessions(db: DbSession, user_id: int) -> None:
@@ -78,10 +93,10 @@ async def start_session(
     if payload.regionId not in CONFIG.region_by_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="地区不存在")
 
-    progress = await _progress(db, user.id, payload.regionId)
-    await require_region(db,user.id,hero,items,payload.regionId)
-    if progress is not None:
-        progress.unlocked = True
+    difficulty = active_difficulty(user)
+    await require_region(db,user.id,hero,items,payload.regionId,difficulty)
+    progress = await ensure_region_progress(db, user.id, difficulty, payload.regionId)
+    progress.unlocked = True
 
     await _end_active_sessions(db, user.id)
     # 四活动互斥：开始战斗即停止进行中的采集/生产/钓鱼
@@ -92,7 +107,14 @@ async def start_session(
     hero.current_region_id = payload.regionId
     hero.region_kill_count = 0  # PRD 地区 6.2：切换地区后计数从 0 开始
 
-    session = BattleSession(user_id=user.id, hero_id=hero.id, region_id=payload.regionId, active=True, kill_credit=0.0)
+    session = BattleSession(
+        user_id=user.id,
+        hero_id=hero.id,
+        region_id=payload.regionId,
+        difficulty=difficulty,
+        active=True,
+        kill_credit=0.0,
+    )
     db.add(session)
     await db.commit()
 
@@ -101,9 +123,10 @@ async def start_session(
         "sessionId": session.id,
         "penalty": effective_penalty(compute_stats(hero,items),payload.regionId),
         "regionId": payload.regionId,
+        "difficulty": difficulty,
         "killsRequired": kills_required(payload.regionId),
         "spawnInterval": spawn_interval(payload.regionId),
-        "boss": boss_stats(payload.regionId),
+        "boss": boss_stats(payload.regionId, difficulty),
         "region": region,
     }
 
@@ -131,7 +154,8 @@ async def report(
     if session.region_id != payload.regionId:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="地区与会话不一致")
 
-    await require_region(db,user.id,hero,items,payload.regionId)
+    difficulty = int(session.difficulty or 0)
+    await require_region(db,user.id,hero,items,payload.regionId,difficulty)
     stats = compute_stats(hero, items)
 
     # 彩蛋技能「拔豆芽」：本次上报释放的充能技能 → 累加奖励翻倍怪物数（上限 20，可跨上报保留）。
@@ -160,7 +184,7 @@ async def report(
     # 击杀额度：按理论上限随上报累积，跨上报保留余额，避免短上报把合法击杀全部截断。
     # 传入英雄等级，使越级英雄的额度同步受等级压制收紧。
     allowance = float(session.kill_credit) + max_kills_in_seconds(
-        stats, payload.regionId, window_ms / 1000.0, settings.report_tolerance, hero.level
+        stats, payload.regionId, window_ms / 1000.0, settings.report_tolerance, hero.level, difficulty
     )
 
     result = validate_report(
@@ -171,6 +195,7 @@ async def report(
         allowance=allowance,
         tolerance=settings.report_tolerance,
         double_charges=double_charges,
+        difficulty=difficulty,
     )
 
     if not result.accepted:
@@ -246,7 +271,9 @@ async def report(
 
     boss_result = None
     if payload.bossKilled:
-        boss_result = await _settle_boss(db, user, hero, items, payload, rng, merged_mods, window_ms)
+        boss_result = await _settle_boss(
+            db, user, hero, items, payload, rng, merged_mods, window_ms, difficulty
+        )
 
     session.last_report_at = now
     session.total_kills = int(session.total_kills) + len(result.kills)
@@ -280,19 +307,27 @@ async def _settle_boss(
     rng: random.Random,
     term_mods: dict[str, float] | None = None,
     window_ms: int = 0,
+    difficulty: int = 0,
 ) -> dict | None:
     required = kills_required(payload.regionId)
     if int(hero.region_kill_count) < required:
         return None
 
-    progress = await _progress(db, user.id, payload.regionId)
+    progress = await _progress(db, user.id, difficulty, payload.regionId)
     if progress is None:
-        return None
+        progress = await ensure_region_progress(db, user.id, difficulty, payload.regionId)
 
     region = CONFIG.region_by_id[payload.regionId]
     gold_potion = float((term_mods or {}).get("goldGainPct", 0.0)) / 100.0
-    boss_gold = int(roll_gold(payload.regionId, "boss", 0.0, rng) * effective_penalty(compute_stats(hero,items),payload.regionId)["rewardMultiplier"] * (1.0 + gold_potion))
-    base_boss_exp = max(1, int(boss_gold * float(CONFIG.monsters["xpPerGold"])))
+    boss_gold = int(
+        roll_gold(payload.regionId, "boss", 0.0, rng)
+        * effective_penalty(compute_stats(hero,items),payload.regionId)["rewardMultiplier"]
+        * (1.0 + gold_potion)
+        * monster_gold_multiplier(difficulty)
+    )
+    base_boss_exp = max(
+        1, int(boss_gold * float(CONFIG.monsters["xpPerGold"]) * monster_exp_multiplier(difficulty))
+    )
     boss_exp = apply_exp_bonus(base_boss_exp, term_mods or {})
     after_bonus_exp = boss_exp
 
@@ -311,6 +346,7 @@ async def _settle_boss(
     grant = await grant_generated_items(db, user, generated, source="boss", rng=rng)
 
     first_clear = not progress.cleared
+    unlocked_difficulty = None
     if first_clear:
         progress.cleared = True
         progress.cleared_at = datetime.now(timezone.utc)
@@ -319,10 +355,20 @@ async def _settle_boss(
             progress.best_clear_ms = max(0, min(int(payload.bossFightMs), window_ms))
         next_region = payload.regionId + 1
         if next_region in CONFIG.region_by_id:
-            nxt = await _progress(db, user.id, next_region)
-            if nxt and not nxt.unlocked:
-                access = await region_access(db,user.id,hero,items)
+            nxt = await _progress(db, user.id, difficulty, next_region)
+            if nxt is None:
+                nxt = await ensure_region_progress(db, user.id, difficulty, next_region)
+            if not nxt.unlocked:
+                access = await region_access(db,user.id,hero,items,difficulty)
                 nxt.unlocked = not access[next_region]
+        # 周目制：通关当前难度最后一个地区 → 解锁下一难度
+        if (
+            payload.regionId == _max_region_id()
+            and difficulty < MAX_LEVEL
+            and int(user.battle_difficulty_max) < difficulty + 1
+        ):
+            user.battle_difficulty_max = difficulty + 1
+            unlocked_difficulty = difficulty + 1
 
     hero.region_kill_count = 0
 
@@ -333,6 +379,7 @@ async def _settle_boss(
         "level": level_info,
         "firstClear": first_clear,
         "nextRegionId": payload.regionId + 1 if payload.regionId + 1 in CONFIG.region_by_id else None,
+        "unlockedDifficulty": unlocked_difficulty,
         "box": box["name"] if box else None,
         "items": grant["items"],
         "autoSold": grant["autoSold"],
@@ -361,3 +408,43 @@ async def report_death(db: DbSession, user: CurrentUser, hero: CurrentHero) -> d
     hero.region_kill_count = 0
     await db.commit()
     return {"ok": True, "killCount": 0, "message": "英雄阵亡，小怪阶段进度已重置"}
+
+
+@router.post("/difficulty")
+async def set_difficulty(
+    payload: DifficultyRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, items: CurrentItems
+) -> dict:
+    """切换地区战斗难度（仅限已解锁范围）。周目制：切换后落回该难度下「已通关最高地区 +1」。
+
+    难度 0 = 当前各地区数值。解锁下一难度需在当前难度通关最后一个地区（见 `_settle_boss`）。
+    """
+    level = int(payload.level)
+    unlocked = clamp_level(user.battle_difficulty_max)
+    if level < 0 or level > MAX_LEVEL or level > unlocked:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该难度尚未解锁")
+
+    await _end_active_sessions(db, user.id)
+    user.battle_difficulty = level
+
+    cleared_rows = (
+        await db.execute(
+            select(RegionProgress.region_id).where(
+                RegionProgress.user_id == user.id,
+                RegionProgress.difficulty == level,
+                RegionProgress.cleared.is_(True),
+            )
+        )
+    ).scalars().all()
+    cleared_max = max([int(r) for r in cleared_rows], default=0)
+    target = min(cleared_max + 1, _max_region_id())
+    await ensure_region_progress(db, user.id, level, target)
+    hero.current_region_id = target
+    hero.region_kill_count = 0
+    await db.commit()
+
+    return {
+        "difficulty": level,
+        "unlocked": int(user.battle_difficulty_max),
+        "maxLevel": MAX_LEVEL,
+        "currentRegionId": target,
+    }

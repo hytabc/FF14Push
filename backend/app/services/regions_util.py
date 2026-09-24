@@ -8,6 +8,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from app.services.difficulty import monster_multipliers
 from app.services.game_config import CONFIG
 
 REF = CONFIG.monsters["reference"]
@@ -78,12 +79,13 @@ def monster_base_stats(level: float) -> dict[str, float]:
     }
 
 
-def monster_stats(region_id: int, template_id: str) -> dict[str, Any]:
+def monster_stats(region_id: int, template_id: str, difficulty: int = 0) -> dict[str, Any]:
     region = CONFIG.region_by_id[region_id]
     template = TEMPLATE_BY_ID[template_id]
     level = region_level(region)
     base = monster_base_stats(level)
     hp_scale, atk_scale, def_scale = region_scale(level)
+    hp_mult, atk_mult, def_mult = monster_multipliers(difficulty)
     m = template["multipliers"]
     return {
         "id": f"{template_id}",
@@ -91,9 +93,9 @@ def monster_stats(region_id: int, template_id: str) -> dict[str, Any]:
         "name": f"{region['name']}·{template['examples'][0]}",
         "templateId": template_id,
         "kind": "elite" if template_id == "elite" else "normal",
-        "hp": round(base["hp"] * float(m["hp"]) * hp_scale, 1),
-        "attack": round(base["attack"] * float(m["attack"]) * atk_scale, 1),
-        "defense": round(base["defense"] * float(m["defense"]) * def_scale, 1),
+        "hp": round(base["hp"] * float(m["hp"]) * hp_scale * hp_mult, 1),
+        "attack": round(base["attack"] * float(m["attack"]) * atk_scale * atk_mult, 1),
+        "defense": round(base["defense"] * float(m["defense"]) * def_scale * def_mult, 1),
         "attackInterval": round(MONSTER_INTERVAL / float(m["attackSpeed"]), 2),
         "level": round(region_level(region), 1),
     }
@@ -103,15 +105,16 @@ def _mid(rng_range: list[float]) -> float:
     return (float(rng_range[0]) + float(rng_range[1])) / 2.0
 
 
-def boss_stats(region_id: int) -> dict[str, Any]:
+def boss_stats(region_id: int, difficulty: int = 0) -> dict[str, Any]:
     """BOSS 属性取配置区间中值，保证前后端一致。"""
     region = CONFIG.region_by_id[region_id]
     level = region_level(region)
     base = monster_base_stats(level)
     hp_scale, atk_scale, def_scale = region_scale(level)
-    hp_mult = _mid(CONFIG.bosses["hpMultiplierRange"])
-    atk_mult = _mid(CONFIG.bosses["attackMultiplierRange"])
-    def_mult = _mid(CONFIG.bosses["defenseMultiplierRange"])
+    hp_mult, atk_mult, def_mult = monster_multipliers(difficulty)
+    hp_mult_cfg = _mid(CONFIG.bosses["hpMultiplierRange"])
+    atk_mult_cfg = _mid(CONFIG.bosses["attackMultiplierRange"])
+    def_mult_cfg = _mid(CONFIG.bosses["defenseMultiplierRange"])
     boss_type = BOSS_TYPE_BY_ID[region["bossType"]]
     return {
         "id": f"boss_r{region_id}",
@@ -119,9 +122,9 @@ def boss_stats(region_id: int) -> dict[str, Any]:
         "name": region["bossName"],
         "bossType": region["bossType"],
         "kind": BOSS_KIND,
-        "hp": round(base["hp"] * hp_mult * hp_scale, 1),
-        "attack": round(base["attack"] * atk_mult * atk_scale, 1),
-        "defense": round(base["defense"] * def_mult * def_scale, 1),
+        "hp": round(base["hp"] * hp_mult_cfg * hp_scale * hp_mult, 1),
+        "attack": round(base["attack"] * atk_mult_cfg * atk_scale * atk_mult, 1),
+        "defense": round(base["defense"] * def_mult_cfg * def_scale * def_mult, 1),
         "attackInterval": float(CONFIG.bosses["attackInterval"]),
         "level": round(region_level(region), 1),
         "skills": boss_type["skills"],

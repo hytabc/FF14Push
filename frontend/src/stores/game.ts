@@ -29,6 +29,7 @@ export interface BossResult {
   exp: number
   firstClear: boolean
   nextRegionId: number | null
+  unlockedDifficulty: number | null
   box: string | null
   items: Item[]
 }
@@ -181,6 +182,7 @@ export const useGameStore = defineStore('game', () => {
         killsRequired: session.killsRequired,
         spawnInterval: session.spawnInterval,
         killCount: 0,
+        difficulty: session.difficulty,
         eggId: state.value.hero.eggId,
       })
       sim.value.start()
@@ -332,6 +334,10 @@ export const useGameStore = defineStore('game', () => {
       showLoot(res.boss.items)
       showAutoSold(res.boss.autoSold)
 
+      if (res.boss.unlockedDifficulty) {
+        toast.push(`已解锁难度 ${res.boss.unlockedDifficulty}！`, 'loot')
+      }
+
       if (autoAdvance.value && res.boss.nextRegionId) {
         bossResult.value = null
         pendingAdvance = true
@@ -346,6 +352,7 @@ export const useGameStore = defineStore('game', () => {
           exp: res.boss.exp,
           firstClear: res.boss.firstClear,
           nextRegionId: res.boss.nextRegionId,
+          unlockedDifficulty: res.boss.unlockedDifficulty,
           box: res.boss.box,
           items: res.boss.items,
         }
@@ -689,6 +696,21 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /** 切换地区战斗难度（仅限已解锁范围）；切换后落回该难度下「已通关最高地区 +1」。 */
+  async function setDifficulty(level: number): Promise<boolean> {
+    if (state.value?.difficulty?.level === level) return true
+    try {
+      if (running.value) await stopBattle(true)
+      const res = await api.setDifficulty(level)
+      await loadState()
+      await startBattle(res.currentRegionId)
+      return true
+    } catch (e) {
+      pushError(e)
+      return false
+    }
+  }
+
   // ---------- 生命周期 ----------
 
   function reset() {
@@ -762,6 +784,7 @@ export const useGameStore = defineStore('game', () => {
     enchant,
     enterRegion,
     advanceRegion,
+    setDifficulty,
     refreshAfterGearChange,
     reset,
     TICK_MS,

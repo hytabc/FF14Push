@@ -28,6 +28,10 @@ class User(Base, TimestampMixin):
     friend_code: Mapped[str | None] = mapped_column(sa.String(12), unique=True, index=True, nullable=True)
     # 最近活跃时间：好友在线状态依据（前端心跳刷新）。在线 = now - last_seen_at < 阈值。
     last_seen_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    # 地区战斗难度等级（0 = 当前各地区数值）。battle_difficulty 为当前选择，battle_difficulty_max 为已解锁上限。
+    # 见 services/difficulty.py 与 shared/data/combat.json:difficulty。
+    battle_difficulty: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
+    battle_difficulty_max: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
 
     active_hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL", use_alter=True, name="fk_users_active_hero"), nullable=True)
     hero: Mapped["Hero | None"] = relationship(foreign_keys=[active_hero_id], post_update=True)

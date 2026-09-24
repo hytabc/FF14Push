@@ -8,6 +8,15 @@ import InfoTip from '@/components/InfoTip.vue'
 import JobFigure from '@/components/JobFigure.vue'
 import JobIcon from '@/components/JobIcon.vue'
 import Modal from '@/components/Modal.vue'
+import {
+  maxDifficultyLevel,
+  monsterAttackMultiplier,
+  monsterExpMultiplier,
+  monsterGoldMultiplier,
+  monsterHpMultiplier,
+  playerAttackMultiplier,
+  playerDefenseMultiplier,
+} from '@/game/core/difficulty'
 import { dodgeExplain, threeAttrExplain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { jobName, rarityClass, rarityName } from '@/utils/format'
@@ -20,6 +29,39 @@ const hero = computed(() => game.hero)
 const region = computed(() => game.state?.currentRegion ?? null)
 
 const stats = computed(() => hero.value?.stats ?? null)
+
+// ---- 难度等级 ----
+const difficultyLevel = computed(() => game.state?.difficulty?.level ?? 0)
+const difficultyUnlocked = computed(() => game.state?.difficulty?.unlocked ?? 0)
+/** 已解锁难度选项（0..unlocked）。 */
+const difficultyOptions = computed(() =>
+  Array.from({ length: difficultyUnlocked.value + 1 }, (_, index) => index),
+)
+const playerAtkMult = computed(() => playerAttackMultiplier(difficultyLevel.value))
+const playerDefMult = computed(() => playerDefenseMultiplier(difficultyLevel.value))
+
+/** 难度修正后的有效面板值（攻击/防御随难度下降）。 */
+const displayAttack = computed(() => (stats.value?.attack ?? 0) * playerAtkMult.value)
+const displayMagicAttack = computed(() => (stats.value?.magicAttack ?? 0) * playerAtkMult.value)
+const displayPhysDef = computed(() => (stats.value?.physDef ?? 0) * playerDefMult.value)
+
+const difficultyTitle = computed(() => {
+  const lv = difficultyLevel.value
+  if (lv === 0) return '默认难度：数值与各地区基础一致。通关最后一个地区的 BOSS 可解锁更高难度。'
+  return (
+    `难度 ${difficultyLevel.value} 修正：\n` +
+    `玩家攻击 ×${playerAtkMult.value.toFixed(2)}、防御 ×${playerDefMult.value.toFixed(2)}\n` +
+    `怪物生命 ×${monsterHpMultiplier(lv).toFixed(2)}、攻击 ×${monsterAttackMultiplier(lv).toFixed(2)}\n` +
+    `怪物金币 ×${monsterGoldMultiplier(lv).toFixed(2)}、经验 ×${monsterExpMultiplier(lv).toFixed(2)}`
+  )
+})
+
+async function onDifficultyChange(event: Event) {
+  const level = Number((event.target as HTMLSelectElement).value)
+  if (level === difficultyLevel.value) return
+  await game.setDifficulty(level)
+}
+
 
 const expPct = computed(() => {
   if (!hero.value || !game.state) return 0
@@ -139,6 +181,33 @@ function dodgeInfo() {
 
         <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
           <span class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-200">{{ phaseLabel }}</span>
+          <label
+            class="flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs"
+            :class="
+              difficultyLevel > 0
+                ? 'border-amber-400 bg-amber-500/15 text-amber-200'
+                : 'border-ink-600 text-ink-300'
+            "
+            :title="difficultyTitle"
+          >
+            难度
+            <select
+              class="cursor-pointer bg-transparent text-xs font-medium text-inherit outline-none disabled:cursor-not-allowed"
+              :value="difficultyLevel"
+              :disabled="difficultyUnlocked === 0"
+              @change="onDifficultyChange"
+            >
+              <option
+                v-for="lv in difficultyOptions"
+                :key="lv"
+                :value="lv"
+                class="bg-ink-900 text-ink-100"
+              >
+                {{ lv }}
+              </option>
+            </select>
+            <span class="text-ink-500">/ {{ maxDifficultyLevel }}</span>
+          </label>
           <button
             class="rounded-md border px-3 py-1.5 text-xs transition"
             :class="
@@ -211,9 +280,9 @@ function dodgeInfo() {
 
         <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-ink-400 sm:grid-cols-3">
           <div><dt>战力</dt><dd class="font-mono text-amber-200">{{ game.state?.power ?? 0 }}</dd></div>
-          <div><dt>攻击力</dt><dd class="font-mono text-ink-200">{{ stats?.attack?.toFixed(0) }}</dd></div>
-          <div><dt>魔法攻击</dt><dd class="font-mono text-ink-200">{{ stats?.magicAttack?.toFixed(0) }}</dd></div>
-          <div><dt>物理防御</dt><dd class="font-mono text-ink-200">{{ stats?.physDef?.toFixed(0) }}</dd></div>
+          <div><dt>攻击力</dt><dd class="font-mono text-ink-200">{{ displayAttack.toFixed(0) }}</dd></div>
+          <div><dt>魔法攻击</dt><dd class="font-mono text-ink-200">{{ displayMagicAttack.toFixed(0) }}</dd></div>
+          <div><dt>物理防御</dt><dd class="font-mono text-ink-200">{{ displayPhysDef.toFixed(0) }}</dd></div>
           <div><dt>暴击率</dt><dd class="font-mono text-sky-300">{{ stats?.critRatePct?.toFixed(1) }}%<InfoTip :title="critRateInfo().title"><p v-for="(line, i) in critRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
           <div><dt>暴击伤害</dt><dd class="font-mono text-sky-300">{{ stats?.critDamagePct?.toFixed(0) }}%<InfoTip :title="critDamageInfo().title"><p v-for="(line, i) in critDamageInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
           <div><dt>直击率</dt><dd class="font-mono text-sky-300">{{ stats?.dhRatePct?.toFixed(1) }}%<InfoTip :title="dhRateInfo().title"><p v-for="(line, i) in dhRateInfo().lines" :key="i">{{ line }}</p></InfoTip></dd></div>
@@ -378,6 +447,9 @@ function dodgeInfo() {
         <p class="text-ink-200">
           击败了「{{ game.bossResult.bossName }}」
           <span v-if="game.bossResult.firstClear" class="ml-1 text-amber-300">（首次通关）</span>
+        </p>
+        <p v-if="game.bossResult.unlockedDifficulty" class="rounded bg-amber-500/15 px-2 py-1 text-xs text-amber-200">
+          已解锁难度 {{ game.bossResult.unlockedDifficulty }}！可在顶部难度选择处切换。
         </p>
         <ul class="space-y-1 text-xs text-ink-300">
           <li>金币：<span class="font-mono text-amber-300">+{{ game.bossResult.gold }}</span></li>

@@ -50,11 +50,21 @@ from app.services.recruiting import (
 )
 from app.services.regions_util import (
     apply_exp_bonus,
+    boss_stats,
     exp_bonus_from_terms,
     level_penalty,
     level_penalty_for_level,
     monster_base_stats,
+    monster_stats,
     region_scale,
+)
+from app.services.difficulty import (
+    MAX_LEVEL,
+    monster_exp_multiplier,
+    monster_gold_multiplier,
+    monster_multipliers,
+    player_attack_multiplier,
+    scale_player_stats,
 )
 from app.services.raid_util import (
     all_raids,
@@ -1470,3 +1480,78 @@ class TestEnchantExpansion:
         stats = compute_stats(FakeHero(level=50), [])
         boosted = replace(stats, term_mods={**stats.term_mods, "bleedProcPct": 40.0})
         assert theoretical_dps(boosted, 0.0, None) > theoretical_dps(stats, 0.0, None)
+
+
+class TestBattleDifficulty:
+    """战斗难度：怪物按「加法」放大、玩家攻击/防御按「乘法」缩小；难度 0 与现状逐位一致。"""
+
+    def test_difficulty_zero_matches_baseline(self) -> None:
+        for region_id in (1, 20, 40):
+            for template in ("normal", "elite"):
+                assert monster_stats(region_id, template, 0) == monster_stats(region_id, template)
+            assert boss_stats(region_id, 0) == boss_stats(region_id)
+
+    def test_monster_scaling_is_additive(self) -> None:
+        base = monster_stats(10, "normal", 0)
+        d1 = monster_stats(10, "normal", 1)
+        d2 = monster_stats(10, "normal", 2)
+        # 属性在每级按 1 位小数取整，比较放宽容差
+        assert d1["hp"] == pytest.approx(base["hp"] * 2, abs=0.5)
+        assert d1["attack"] == pytest.approx(base["attack"] * 1.5, abs=0.5)
+        assert d1["defense"] == pytest.approx(base["defense"] * 2, abs=0.5)
+        # 加法而非指数：2 级 = +200% → ×3（不是 ×4）
+        assert d2["hp"] == pytest.approx(base["hp"] * 3, abs=0.5)
+        assert d2["attack"] == pytest.approx(base["attack"] * 2.0, abs=0.5)
+
+    def test_boss_scaling_follows_difficulty(self) -> None:
+        base = boss_stats(10, 0)
+        d3 = boss_stats(10, 3)
+        assert d3["hp"] == pytest.approx(base["hp"] * 4, abs=0.5)
+        assert d3["attack"] == pytest.approx(base["attack"] * 2.5, abs=0.5)
+        assert d3["defense"] == pytest.approx(base["defense"] * 4, abs=0.5)
+
+    def test_player_attack_and_defense_scale(self) -> None:
+        stats = compute_stats(FakeHero(level=60), _expected_gear(60))
+        scaled = scale_player_stats(stats, 1)
+        assert scaled.attack == pytest.approx(stats.attack * 0.85)
+        assert scaled.magic_attack == pytest.approx(stats.magic_attack * 0.85)
+        assert scaled.phys_def == pytest.approx(stats.phys_def * 0.9)
+        assert scaled.magic_def == pytest.approx(stats.magic_def * 0.9)
+        assert scaled.max_hp == stats.max_hp  # 生命不缩放
+        assert scale_player_stats(stats, 0) is stats
+
+    def test_higher_difficulty_reduces_kill_allowance(self) -> None:
+        stats = compute_stats(FakeHero(level=60), _expected_gear(60))
+        base = max_kills_in_seconds(stats, 20, 10.0, 1.0, 60, 0)
+        harder = max_kills_in_seconds(stats, 20, 10.0, 1.0, 60, 2)
+        assert harder < base
+
+    def test_gold_and_exp_caps_scale_with_difficulty(self) -> None:
+        stats = compute_stats(FakeHero(level=60), _expected_gear(60))
+        base = max_gold_for_kill(20, "normal", stats, 0)
+        assert max_gold_for_kill(20, "normal", stats, 1) == pytest.approx(base * 1.1)
+        assert monster_exp_multiplier(1) == pytest.approx(2.0)
+        assert monster_gold_multiplier(2) == pytest.approx(1.2)
+
+    def test_validate_report_accepts_difficulty_scaled_rewards(self) -> None:
+        """高难度的金币/经验上限同步放大，合法上报不会被截断或拒绝。"""
+        stats = compute_stats(FakeHero(level=60), _expected_gear(60))
+        difficulty = 1
+        gold = int(max_gold_for_kill(20, "normal", stats, difficulty))
+        exp = int(gold * float(CONFIG.monsters["xpPerGold"]) * monster_exp_multiplier(difficulty))
+        result = validate_report(
+            stats=stats,
+            region_id=20,
+            elapsed_ms=1000,
+            kills=[{"monsterId": "normal", "gold": gold, "exp": exp}],
+            allowance=5.0,
+            difficulty=difficulty,
+        )
+        assert result.accepted
+        assert result.total_gold == gold
+        assert result.total_exp == exp
+
+    def test_max_level_and_zero_multipliers(self) -> None:
+        assert MAX_LEVEL == 15
+        assert player_attack_multiplier(0) == 1.0
+        assert monster_multipliers(0) == (1.0, 1.0, 1.0)

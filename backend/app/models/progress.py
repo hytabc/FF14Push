@@ -10,11 +10,15 @@ from app.models.base import Base, JsonType, TimestampMixin
 
 class RegionProgress(Base, TimestampMixin):
     __tablename__ = "region_progress"
-    __table_args__ = (sa.UniqueConstraint("user_id", "region_id", name="uq_progress_user_region"),)
+    __table_args__ = (
+        sa.UniqueConstraint("user_id", "difficulty", "region_id", name="uq_progress_user_region_difficulty"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
     region_id: Mapped[int] = mapped_column(sa.Integer)
+    # 地区战斗难度等级：每个难度独立记录解锁/通关（周目制）。0 = 基础难度。
+    difficulty: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
     unlocked: Mapped[bool] = mapped_column(sa.Boolean, default=False)
     cleared: Mapped[bool] = mapped_column(sa.Boolean, default=False)
     cleared_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)

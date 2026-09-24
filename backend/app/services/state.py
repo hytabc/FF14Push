@@ -21,8 +21,9 @@ from app.models import (
     User,
 )
 from app.services.codex import codex_progress
+from app.services.difficulty import MAX_LEVEL, active_difficulty
 from app.services.dohdol_state import build_dohdol_state
-from app.services.drop_luck import chest_luck_max, chest_rarity_luck
+from app.services.drop_luck import chest_luck_max, chest_rarity_luck, cleared_region_count
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
 from app.services.loot import drop_rate_multiplier
@@ -65,23 +66,31 @@ async def build_game_state(
         hero = _placeholder_hero(user.id)
 
     stats = compute_stats(hero, items)
+    difficulty = active_difficulty(user)
 
     progress_rows = (
         await db.execute(select(RegionProgress).where(RegionProgress.user_id == user.id))
     ).scalars().all()
-    access = await region_access(db,user.id,hero,items)
+    # 生活职业 / 采集钓鱼按「跨难度历史进度」解锁；战斗列表走 /region（按当前难度隔离）。
+    access = await region_access(db,user.id,hero,items,None)
+    by_region: dict[int, RegionProgress] = {}
+    for row in progress_rows:
+        current = by_region.get(row.region_id)
+        if current is None or (not current.cleared and row.cleared):
+            by_region[row.region_id] = row
     progress = {
-        row.region_id: {
-            "regionId": row.region_id,
-            "unlocked": not access[row.region_id],
-            "missingConditions": access[row.region_id],
+        region_id: {
+            "regionId": region_id,
+            "unlocked": not access[region_id],
+            "missingConditions": access[region_id],
             "cleared": row.cleared,
             "clearedAt": row.cleared_at.isoformat() if row.cleared_at else None,
             "bestClearMs": row.best_clear_ms,
         }
-        for row in progress_rows
+        for region_id, row in by_region.items()
     }
-    cleared_count = sum(1 for row in progress_rows if row.cleared)
+    # 通关地区数按「全难度去重」统计（周目制下不因切换难度回退），用于爆率与生产状态。
+    cleared_count = await cleared_region_count(db, user.id)
     chest_luck, chest_luck_sources = await chest_rarity_luck(db, user.id, hero, items)
 
     pity_rows = (await db.execute(select(ChestPity).where(ChestPity.user_id == user.id))).scalars().all()
@@ -124,8 +133,10 @@ async def build_game_state(
             **region,
             "killsRequired": kills_required(region["id"]),
             "spawnInterval": spawn_interval(region["id"]),
-            "boss": boss_stats(region["id"]),
-            "monsters": [monster_stats(region["id"], t["id"]) for t in CONFIG.monsters["templates"]],
+            "boss": boss_stats(region["id"], difficulty),
+            "monsters": [
+                monster_stats(region["id"], t["id"], difficulty) for t in CONFIG.monsters["templates"]
+            ],
         }
 
     return {
@@ -144,6 +155,11 @@ async def build_game_state(
         "tags": [tag_to_dict(t) for t in tag_rows],
         "regionProgress": progress,
         "currentRegion": region_detail,
+        "difficulty": {
+            "level": difficulty,
+            "unlocked": int(user.battle_difficulty_max),
+            "maxLevel": MAX_LEVEL,
+        },
         "clearedRegions": cleared_count,
         "dropRateMultiplier": drop_rate_multiplier(cleared_count),
         "chestRarityLuck": {

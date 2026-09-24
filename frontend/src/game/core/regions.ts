@@ -2,6 +2,7 @@
 import data from '@shared/schema'
 
 import type { BossSkill, MonsterStats, RegionDef } from '../types'
+import { monsterMultipliers } from './difficulty'
 
 const REF = data.monsters.reference as {
   heroAttack: { base: number; perLevel: number }
@@ -97,11 +98,12 @@ export function levelPenalty(heroLevel: number, region: RegionDef): LevelPenalty
   }
 }
 
-export function monsterStats(region: RegionDef, templateId: string): MonsterStats {
+export function monsterStats(region: RegionDef, templateId: string, difficulty = 0): MonsterStats {
   const template = TEMPLATE_BY_ID.get(templateId)!
   const level = regionLevel(region)
   const base = monsterBaseStats(level)
   const scale = regionScale(level)
+  const diff = monsterMultipliers(difficulty)
   const m = template.multipliers
   return {
     id: templateId,
@@ -109,18 +111,19 @@ export function monsterStats(region: RegionDef, templateId: string): MonsterStat
     name: `${region.name}·${template.examples[0]}`,
     templateId,
     kind: templateId === 'elite' ? 'elite' : 'normal',
-    hp: round(base.hp * m.hp * scale.hp),
-    attack: round(base.attack * m.attack * scale.atk),
-    defense: round(base.defense * m.defense * scale.def),
+    hp: round(base.hp * m.hp * scale.hp * diff.hp),
+    attack: round(base.attack * m.attack * scale.atk * diff.attack),
+    defense: round(base.defense * m.defense * scale.def * diff.defense),
     attackInterval: round(MONSTER_INTERVAL / m.attackSpeed, 2),
     level: regionLevel(region),
   }
 }
 
-export function bossStats(region: RegionDef): MonsterStats {
+export function bossStats(region: RegionDef, difficulty = 0): MonsterStats {
   const level = regionLevel(region)
   const base = monsterBaseStats(level)
   const scale = regionScale(level)
+  const diff = monsterMultipliers(difficulty)
   const mid = (range: [number, number]) => (range[0] + range[1]) / 2
   const bossType = BOSS_TYPE_BY_ID.get(region.bossType)
   return {
@@ -130,9 +133,9 @@ export function bossStats(region: RegionDef): MonsterStats {
     templateId: 'boss',
     bossType: region.bossType,
     kind: 'boss',
-    hp: round(base.hp * mid(data.bosses.hpMultiplierRange as [number, number]) * scale.hp),
-    attack: round(base.attack * mid(data.bosses.attackMultiplierRange as [number, number]) * scale.atk),
-    defense: round(base.defense * mid(data.bosses.defenseMultiplierRange as [number, number]) * scale.def),
+    hp: round(base.hp * mid(data.bosses.hpMultiplierRange as [number, number]) * scale.hp * diff.hp),
+    attack: round(base.attack * mid(data.bosses.attackMultiplierRange as [number, number]) * scale.atk * diff.attack),
+    defense: round(base.defense * mid(data.bosses.defenseMultiplierRange as [number, number]) * scale.def * diff.defense),
     attackInterval: data.bosses.attackInterval,
     level: regionLevel(region),
     skills: (bossType?.skills ?? []) as unknown as BossSkill[],

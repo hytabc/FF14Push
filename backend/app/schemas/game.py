@@ -133,6 +133,12 @@ class RegionEnterRequest(BaseModel):
     regionId: int
 
 
+class DifficultyRequest(BaseModel):
+    """切换地区战斗难度（0 = 当前各地区数值，仅限已解锁范围）。"""
+
+    level: int = Field(ge=0)
+
+
 class TavernRefreshRequest(BaseModel):
     useGold: bool = True
 

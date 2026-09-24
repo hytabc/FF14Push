@@ -121,5 +121,16 @@
   "$commentDetBase": "PRD 3.1：Lv.100 时信念公式使用基准 390，而暴击/直击为 420，故此处对信念基准做偏移。",
   "detBaseAdjust": -30,
   "$commentCatchUp": "浏览器切到后台（页面仍存活）时按真实墙钟补算的上限（秒）：切回前台后客户端最多追赶这么多模拟时间，服务端也据此放宽单次上报窗口，使后台产出不被截断。关闭页面后不再上报，因此不产生离线收益。同时限制单次系统时钟跳变最多换取这么多补算，作为防作弊上限。",
-  "catchUpSeconds": 300
+  "catchUpSeconds": 300,
+  "$commentDifficulty": "战斗难度等级（地区战斗专用）。怪物数值按 **加法** 叠加：难度 N 的乘数 = 1 + 单级加成 × N（如怪物生命 2 级 = +200% → ×3）；玩家攻击/防御按 **乘法** 逐级相乘（0.85^N / 0.9^N），因为玩家侧加法会在 6-7 级就归零。难度 0 时全部乘数 = 1（等于当前各地区数值）。前后端必须同步：regions_util.py / combat_model.py / difficulty.py ⟷ regions.ts / combat.ts / difficulty.ts。",
+  "difficulty": {
+    "maxLevel": 15,
+    "playerAttackMultiplierPerLevel": 0.85,
+    "playerDefenseMultiplierPerLevel": 0.9,
+    "monsterHpBonusPerLevel": 1.0,
+    "monsterAttackBonusPerLevel": 0.5,
+    "monsterDefenseBonusPerLevel": 1.0,
+    "monsterGoldBonusPerLevel": 0.1,
+    "monsterExpBonusPerLevel": 1.0
+  }
 }

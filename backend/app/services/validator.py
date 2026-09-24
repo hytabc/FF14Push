@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.combat_model import max_gold_for_kill
+from app.services.difficulty import monster_exp_multiplier
 from app.services.game_config import CONFIG
 from app.services.regions_util import kills_required
 from app.services.stats import HeroStats
@@ -53,11 +54,13 @@ def validate_report(
     allowance: float,
     tolerance: float = 1.10,
     double_charges: int = 0,
+    difficulty: int = 0,
 ) -> ValidationResult:
     """allowance 为本次上报可用的击杀额度（含跨上报累积的余额）。
 
     double_charges 为彩蛋技能「拔豆芽」剩余的奖励翻倍怪物数：前 min(double_charges, N)
     只被接受击杀的金币/经验上限放宽为 2 倍，并计入 `doubled_kills` 供调用方扣减。
+    difficulty 为地区战斗难度：金币/经验上限同步按难度放大，合法上报才不会被截断。
     """
     issues: list[str] = []
     double_charges = max(0, int(double_charges))
@@ -95,7 +98,7 @@ def validate_report(
     for index, kill in enumerate(kills[:accepted_count]):
         template_id = str(kill.get("monsterId", "normal"))
         kind = "elite" if template_id == "elite" else "normal"
-        cap = max_gold_for_kill(region_id, kind, stats)
+        cap = max_gold_for_kill(region_id, kind, stats, difficulty)
         if index < double_charges:
             # 彩蛋「拔豆芽」：该只怪物经验/金币翻倍，放宽上限
             cap *= 2
@@ -108,7 +111,8 @@ def validate_report(
             issues.append(f"金币 {gold} 超过上限 {cap:.0f}，已截断")
             gold = int(cap)
         exp = int(kill.get("exp", 0))
-        max_exp = int(cap * 2) + 10
+        # 经验上限 = 金币上限 × 2（覆盖 xpPerGold=1.5）× 难度经验加成；难度 0 时与旧的 cap*2+10 一致
+        max_exp = int(cap * 2 * monster_exp_multiplier(difficulty)) + 10
         if exp > max_exp:
             issues.append(f"经验 {exp} 超过上限 {max_exp}，已截断")
             exp = max_exp

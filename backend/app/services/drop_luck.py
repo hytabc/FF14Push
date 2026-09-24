@@ -37,8 +37,9 @@ def chest_luck_max() -> float:
 
 
 async def cleared_region_count(db: AsyncSession, user_id: int) -> int:
+    """已通关地区数（按 region_id 去重）：难度分级后跨难度只计一次，进度不因切换回退。"""
     total = await db.scalar(
-        select(func.count())
+        select(func.count(func.distinct(RegionProgress.region_id)))
         .select_from(RegionProgress)
         .where(RegionProgress.user_id == user_id, RegionProgress.cleared.is_(True))
     )

@@ -21,6 +21,15 @@ import {
 } from './combat'
 import { eggNormalMobPotency100Bonus, eggSkillSet } from './egg'
 import {
+  monsterAttackMultiplier,
+  monsterExpMultiplier,
+  monsterGoldMultiplier,
+  monsterHpMultiplier,
+  playerAttackMultiplier,
+  playerDefenseMultiplier,
+  scalePlayerStats,
+} from './difficulty'
+import {
   bossStats,
   eliteChance,
   getRegion,
@@ -228,6 +237,8 @@ export class BattleSimulator {
   private regenTimer = 0
   /** 越级时的等级压制惩罚（英雄等级 ≥ 地区下限则为全 0）。 */
   readonly penalty: LevelPenalty
+  /** 地区战斗难度等级（0 = 当前各地区数值）；高难副本恒为 0。 */
+  readonly difficulty: number
 
   constructor(options: {
     stats: HeroStats
@@ -236,11 +247,14 @@ export class BattleSimulator {
     killsRequired?: number
     spawnInterval?: number
     killCount?: number
+    /** 地区战斗难度等级：怪物数值放大、玩家攻击/防御缩小。高难副本不传。 */
+    difficulty?: number
     raid?: { bosses: MonsterStats[]; enrage: RaidEnrage | null }
     /** 彩蛋英雄 id：命中对应职业时追加/替换技能。 */
     eggId?: string | null
   }) {
-    this.baseStats = options.stats
+    this.difficulty = Math.max(0, Math.floor(options.difficulty ?? 0))
+    this.baseStats = scalePlayerStats(options.stats, this.difficulty)
     this.eggId = options.eggId ?? null
     this.normalMobPotency100Bonus = eggNormalMobPotency100Bonus(this.eggId)
     this.isRaid = options.raid !== undefined
@@ -262,9 +276,19 @@ export class BattleSimulator {
     }
 
     this.region = getRegion(options.regionId ?? 1)
-    this.boss = bossStats(this.region)
+    this.boss = bossStats(this.region, this.difficulty)
     this.penalty = options.penalty ?? NO_LEVEL_PENALTY
     this.pushLog(`进入「${this.region.name}」· Lv.${this.region.levelMin}-${this.region.levelMax}`, 'system')
+    if (this.difficulty > 0) {
+      this.pushLog(
+        `难度 ${this.difficulty}：玩家攻击 ×${playerAttackMultiplier(this.difficulty).toFixed(2)}、` +
+          `防御 ×${playerDefenseMultiplier(this.difficulty).toFixed(2)}；` +
+          `怪物生命 ×${monsterHpMultiplier(this.difficulty).toFixed(2)}、` +
+          `攻击 ×${monsterAttackMultiplier(this.difficulty).toFixed(2)}、` +
+          `金币 ×${monsterGoldMultiplier(this.difficulty).toFixed(2)}`,
+        'system',
+      )
+    }
     if (this.penalty.hitRatePenaltyPct > 0) {
       this.pushLog(
         `战力差距惩罚，命中 -${this.penalty.hitRatePenaltyPct.toFixed(0)}%、` +
@@ -578,7 +602,7 @@ export class BattleSimulator {
       const pool = templates.filter((t) => t.id !== 'elite')
       templateId = pool[Math.floor(Math.random() * pool.length)].id
     }
-    this.setMonster(monsterStats(this.region!, templateId))
+    this.setMonster(monsterStats(this.region!, templateId, this.difficulty))
     this.pushLog(`遭遇 ${this.monster!.name}`, 'normal')
   }
 
@@ -1424,7 +1448,10 @@ export class BattleSimulator {
         gold *= 2
         doubled = true
       }
-      const exp = Math.max(1, Math.floor(gold * data.monsters.xpPerGold))
+      const exp = Math.max(
+        1,
+        Math.floor(gold * data.monsters.xpPerGold * monsterExpMultiplier(this.difficulty)),
+      )
       if (isBoss) {
         this.pendingBossKill = true
       } else {
@@ -1533,7 +1560,7 @@ export class BattleSimulator {
           (kind === 'boss' ? this.baseStats.termMods.goldBossPct ?? 0 : 0),
       ),
     )
-    return Math.max(1, Math.floor(value * (1 + bonus / 100)))
+    return Math.max(1, Math.floor(value * (1 + bonus / 100) * monsterGoldMultiplier(this.difficulty)))
   }
 
   start(): void {
@@ -1592,7 +1619,7 @@ export class BattleSimulator {
   /** 英雄属性变化（升级 / 换装）后同步，避免模拟使用过期数值。 */
   updateStats(stats: HeroStats): void {
     const ratio = this.baseStats.maxHp > 0 ? this.heroHp / this.baseStats.maxHp : 1
-    this.baseStats = stats
+    this.baseStats = scalePlayerStats(stats, this.difficulty)
     this.heroHp = Math.max(1, Math.min(stats.maxHp, stats.maxHp * ratio))
     this.heroMp = Math.min(stats.maxMp, this.heroMp)
   }

@@ -184,6 +184,7 @@ export const api = {
         regions: RegionListEntry[]
         currentRegionId: number
         killCount: number
+        difficulty: { level: number; unlocked: number; maxLevel: number }
       }>('/region')
     ).data
   },
@@ -194,6 +195,16 @@ export const api = {
 
   async advanceRegion() {
     return (await http.post('/region/advance', {})).data
+  },
+
+  /** 切换地区战斗难度（仅限已解锁范围）。 */
+  async setDifficulty(level: number) {
+    return (
+      await http.post<{ difficulty: number; unlocked: number; maxLevel: number; currentRegionId: number }>(
+        '/battle/difficulty',
+        { level },
+      )
+    ).data
   },
 
   async tavern() {

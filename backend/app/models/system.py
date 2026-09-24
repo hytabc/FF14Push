@@ -15,6 +15,8 @@ class BattleSession(Base):
     hero_id: Mapped[int | None] = mapped_column(sa.ForeignKey("heroes.id", ondelete="SET NULL"), nullable=True)
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
     region_id: Mapped[int] = mapped_column(sa.Integer)
+    # 建立会话时快照的地区战斗难度：上报校验一律按此值，避免中途切换难度导致额度错配。
+    difficulty: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
     started_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
     last_report_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
     ended_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)

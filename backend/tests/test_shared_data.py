@@ -481,3 +481,18 @@ def test_world_boss_phases_escalate() -> None:
     potency = [float(p["skillPotencyMultiplier"]) for p in table]
     assert defense == sorted(defense) and defense[0] == 1.0 and defense[-1] > defense[0]
     assert potency == sorted(potency) and potency[0] == 1.0 and potency[-1] > potency[0]
+
+
+def test_battle_difficulty_config() -> None:
+    """难度配置：最高 15；怪物按加法（1 + 单级加成×N）、玩家按乘法（0.85^N / 0.9^N）。"""
+    cfg = CONFIG.combat["difficulty"]
+    assert int(cfg["maxLevel"]) == 15
+    # 1 级加成符合需求：HP / 防御 / 经验 +100%、攻击 +50%、金币 +10%
+    assert 1 + float(cfg["monsterHpBonusPerLevel"]) == pytest.approx(2.0)
+    assert 1 + float(cfg["monsterDefenseBonusPerLevel"]) == pytest.approx(2.0)
+    assert 1 + float(cfg["monsterExpBonusPerLevel"]) == pytest.approx(2.0)
+    assert 1 + float(cfg["monsterAttackBonusPerLevel"]) == pytest.approx(1.5)
+    assert 1 + float(cfg["monsterGoldBonusPerLevel"]) == pytest.approx(1.1)
+    # 玩家攻击 / 防御为逐级相乘的系数
+    assert float(cfg["playerAttackMultiplierPerLevel"]) == pytest.approx(0.85)
+    assert float(cfg["playerDefenseMultiplierPerLevel"]) == pytest.approx(0.9)

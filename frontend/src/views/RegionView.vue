@@ -13,6 +13,7 @@ import { formatNumber } from '@/utils/format'
 const game = useGameStore()
 const regions = ref<RegionListEntry[]>([])
 const chapters = ref<Array<{ id: number; name: string; regionIds: number[] }>>([])
+const difficulty = ref<{ level: number; unlocked: number; maxLevel: number } | null>(null)
 const loading = ref(false)
 const switching = ref<number | null>(null)
 
@@ -24,6 +25,7 @@ async function load() {
     const res = await api.regions()
     regions.value = res.regions
     chapters.value = res.chapters
+    difficulty.value = res.difficulty
   } finally {
     loading.value = false
   }
@@ -66,11 +68,13 @@ const eliteBasePct = computed(() => (data.monsters.eliteBaseChance * 100).toFixe
           当前所在：{{ regions.find((r) => r.id === currentId)?.name ?? '—' }}
         </span>
         <span class="ml-auto text-xs text-ink-400">
-          击杀进度 {{ game.sim?.killCount ?? 0 }} / {{ game.sim?.killsRequired ?? 0 }}
+          难度 {{ difficulty?.level ?? 0 }}（已解锁 {{ difficulty?.unlocked ?? 0 }} / {{ difficulty?.maxLevel ?? 0 }}）
+          · 击杀进度 {{ game.sim?.killCount ?? 0 }} / {{ game.sim?.killsRequired ?? 0 }}
         </span>
       </div>
       <p class="mt-1 text-[11px] text-ink-500">
         按顺序解锁，不可跳关；切换地区后当前地区的小怪击杀计数从 0 重新计算。已击败的 BOSS 不会重复出现。
+        <b class="text-amber-300">每个难度需重新通关</b>：切换难度后本难度的地区 1 起重新解锁。在「战斗」页可切换已解锁难度。
         区域内普通怪有小概率替换为<b class="text-amber-300">精英怪</b>，基础概率 {{ eliteBasePct }}%（金币与经验翻倍）。
         <InfoTip :title="eliteInfo.title">
           <p v-for="(line, i) in eliteInfo.lines" :key="i">{{ line }}</p>

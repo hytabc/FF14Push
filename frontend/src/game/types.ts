@@ -613,6 +613,8 @@ export interface GameState {
   tags: ItemTag[]
   regionProgress: Record<string, RegionProgressEntry>
   currentRegion: CurrentRegion | null
+  /** 地区战斗难度：当前等级、已解锁上限与最高等级。 */
+  difficulty: { level: number; unlocked: number; maxLevel: number }
   /** 已通关地区数。 */
   clearedRegions: number
   /** 品阶爆率倍率（随通关进度提升，仅影响装备品阶）。 */
@@ -632,6 +634,8 @@ export interface BattleSessionStart {
   penalty: import("./core/regions").LevelPenalty
   sessionId: number
   regionId: number
+  /** 地区战斗难度等级（0 = 当前各地区数值）。 */
+  difficulty: number
   killsRequired: number
   spawnInterval: number
   boss: MonsterStats
@@ -656,6 +660,8 @@ export interface BattleReportResponse {
     level: { levelsGained: number; exp: number; level: number }
     firstClear: boolean
     nextRegionId: number | null
+    /** 通关当前难度最后一个地区时解锁的下一难度等级；否则 null。 */
+    unlockedDifficulty: number | null
     box: string | null
     items: Item[]
     autoSold: AutoSoldItem[]

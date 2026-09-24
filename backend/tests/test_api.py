@@ -2378,3 +2378,50 @@ class TestAbuseGuards:
                 )
 
         assert statuses == [200, 200, 429], "第 3 个小号必须被同 IP 兑换上限拦下"
+
+
+class TestBattleDifficulty:
+    """地区战斗难度：默认 0、仅限已解锁、周目制按难度隔离地区进度。"""
+
+    async def test_default_difficulty_zero(self, auth_client) -> None:
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        assert state["difficulty"] == {"level": 0, "unlocked": 0, "maxLevel": 15}
+
+    async def test_locked_difficulty_rejected(self, auth_client) -> None:
+        res = await auth_client.post(f"{API}/battle/difficulty", json={"level": 1})
+        assert res.status_code == 400
+
+    async def test_switch_scopes_progress_per_difficulty(self, auth_client, session_factory) -> None:
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            user = (await db.execute(select(User).where(User.id == me["id"]))).scalar_one()
+            user.battle_difficulty_max = 1  # 模拟已在难度 0 通关最后一个地区
+            for rid in (1, 2, 3):
+                row = (
+                    await db.execute(
+                        select(RegionProgress).where(
+                            RegionProgress.user_id == me["id"],
+                            RegionProgress.difficulty == 0,
+                            RegionProgress.region_id == rid,
+                        )
+                    )
+                ).scalar_one()
+                row.cleared = True
+            await db.commit()
+
+        # 难度 1 是全新周目：落回地区 1，地区 2 仍锁定
+        res = await auth_client.post(f"{API}/battle/difficulty", json={"level": 1})
+        assert res.status_code == 200, res.text
+        assert res.json() == {"difficulty": 1, "unlocked": 1, "maxLevel": 15, "currentRegionId": 1}
+
+        listing = (await auth_client.get(f"{API}/region")).json()
+        assert listing["difficulty"]["level"] == 1
+        by_id = {r["id"]: r for r in listing["regions"]}
+        assert by_id[1]["unlocked"] is True and by_id[1]["cleared"] is False
+        assert by_id[2]["unlocked"] is False
+
+        # 切回难度 0：保留进度，落在已通关最高地区 +1
+        back = await auth_client.post(f"{API}/battle/difficulty", json={"level": 0})
+        assert back.status_code == 200
+        assert back.json()["currentRegionId"] == 4
+        assert (await auth_client.get(f"{API}/game/state")).json()["difficulty"]["level"] == 0
