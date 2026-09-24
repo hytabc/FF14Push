@@ -2462,3 +2462,40 @@ class TestBattleDifficulty:
         assert result["firstClear"] is False
         assert result["unlockedDifficulty"] == 1
         assert (await auth_client.get(f"{API}/game/state")).json()["difficulty"]["unlocked"] == 1
+
+    async def test_stage_board_ranks_difficulty_first(self, auth_client, session_factory) -> None:
+        """关卡榜以难度为主序：难度 1 第 20 关排在难度 0 第 40 关之上。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        async with session_factory() as db:
+            now = datetime.now(timezone.utc)
+            row40 = (
+                await db.execute(
+                    select(RegionProgress).where(
+                        RegionProgress.user_id == me["id"],
+                        RegionProgress.difficulty == 0,
+                        RegionProgress.region_id == 40,
+                    )
+                )
+            ).scalar_one()
+            row40.cleared = True
+            row40.cleared_at = now
+            # 难度 1 只通关到第 20 关
+            db.add(
+                RegionProgress(
+                    user_id=me["id"],
+                    difficulty=1,
+                    region_id=20,
+                    unlocked=True,
+                    cleared=True,
+                    cleared_at=now,
+                )
+            )
+            await db.commit()
+            await refresh_all_rankings(db)
+            await db.commit()
+
+        entries = (await auth_client.get(f"{API}/ranking", params={"board": "stage"})).json()["entries"]
+        mine = next(e for e in entries if e["userId"] == me["id"])
+        # 编码 value = 难度 × 1000 + 地区 → 1×1000+20 > 0×1000+40
+        assert mine["value"] == 1 * 1000 + 20
+        assert entries == sorted(entries, key=lambda e: e["value"], reverse=True)

@@ -21,7 +21,7 @@ const TITLE_NAMES: Record<string, string> = Object.fromEntries(
 
 const BOARDS = [
   { id: 'level', label: '等级榜', hint: '同等级按经验降序' },
-  { id: 'stage', label: '关卡榜', hint: '同关卡按通关时间升序（越早越靠前）' },
+  { id: 'stage', label: '关卡榜', hint: '难度优先；同难度按关卡降序，同关卡按通关时间升序（越早越靠前）' },
   { id: 'power', label: '战力榜', hint: '英雄总战力降序' },
   { id: 'gold', label: '金币榜', hint: '当前持有金币降序' },
   { id: 'playtime', label: '游玩时间榜', hint: '累计在线时长降序' },
@@ -97,9 +97,17 @@ async function refreshAll() {
 onMounted(load)
 watch([board, page], load)
 
+/** 关卡榜 value = 难度 × 基数 + 地区（与后端 `ranking.STAGE_REGION_BASE` 一致）。 */
+const STAGE_REGION_BASE = 1000
+
 function valueText(boardId: string, entry: RankingEntry): string {
   if (boardId === 'gold') return formatNumber(entry.value)
-  if (boardId === 'stage') return entry.value > 0 ? `第 ${entry.value} 关` : '未通关'
+  if (boardId === 'stage') {
+    if (entry.value <= 0) return '未通关'
+    const difficulty = Math.floor(entry.value / STAGE_REGION_BASE)
+    const region = entry.value % STAGE_REGION_BASE
+    return `难度 ${difficulty} · 第 ${region} 关`
+  }
   if (boardId === 'playtime') return formatPlaytime(entry.value)
   if (boardId === 'fish_species') return `${entry.value} 种`
   if (boardId === 'fish_count') return `${formatNumber(entry.value)} 条`

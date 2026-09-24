@@ -43,6 +43,10 @@ COOP_BOARDS = ("coop",)
 # 对外暴露的全部榜单
 BOARDS = CACHED_BOARDS + FISH_BOARDS + DOHDOL_BOARDS + COOP_BOARDS
 
+# 关卡榜：value = 难度 × STAGE_REGION_BASE + 地区（地区上限 40 < base）。
+# 这样既保留「value 降序」的既有排序，又让难度成为主序：难度 1-20 关排在难度 0-40 关之上。
+STAGE_REGION_BASE = 1000
+
 
 async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
     users = (
@@ -73,13 +77,22 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
 
         stats = compute_stats(hero, user.items)
         cleared_list = cleared.get(user.id, [])
-        max_region = max((r.region_id for r in cleared_list), default=0)
-        cleared_at = max((r.cleared_at for r in cleared_list if r.cleared_at), default=None)
+        # 关卡榜以「难度优先」为主序：取最高难度，再取该难度下已通关的最大地区。
+        best = max(cleared_list, key=lambda row: (row.difficulty, row.region_id), default=None)
+        stage_value = best.difficulty * STAGE_REGION_BASE + best.region_id if best else 0
+        stage_cleared_at = best.cleared_at if best else None
         extra = {"titles": title_map.get(user.id, [])}
 
         entries = [
             _entry(user, hero, "level", hero.level, hero.exp, extra),
-            _entry(user, hero, "stage", max_region, -int((cleared_at or datetime.now(timezone.utc)).timestamp()), extra),
+            _entry(
+                user,
+                hero,
+                "stage",
+                stage_value,
+                -int((stage_cleared_at or datetime.now(timezone.utc)).timestamp()),
+                extra,
+            ),
             _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
             _entry(user, hero, "gold", int(user.gold), 0, extra),
             _entry(user, hero, "playtime", _play_seconds(user), 0, extra),
