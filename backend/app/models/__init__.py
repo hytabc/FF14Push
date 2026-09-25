@@ -28,7 +28,7 @@ from app.models.progress import (
 )
 from app.models.raid import RaidProgress, RaidSession
 from app.models.redeem import RedeemRecord
-from app.models.system import AuditLog, BattleSession, RankingEntry, SecurityEvent
+from app.models.system import AdminGrant, AuditLog, BattleSession, RankingEntry, SecurityEvent
 from app.models.treasure import STATUS_CLEARED, STATUS_ENDED, STATUS_FIGHTING, TreasureRun
 
 __all__ = [
@@ -66,6 +66,7 @@ __all__ = [
     "BattleSession",
     "RankingEntry",
     "AuditLog",
+    "AdminGrant",
     "SecurityEvent",
     "DohDolProgress",
     "StackItem",

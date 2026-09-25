@@ -1,6 +1,6 @@
 """管理员账号：账号名与密码来自环境变量。
 
-管理员用于协助用户找回密码（见 `api/v1/admin.py`）：
+管理员用于协助用户找回密码与发放补偿（见 `api/v1/admin.py`、`api/v1/grants.py`）：
 - 密码以环境变量为准：启动时若账号不存在则创建，若密码不一致则覆盖；
 - 不创建初始英雄，因此不会出现在任何排行榜上（另见 `ranking.refresh_all_rankings` 的显式跳过）；
 - 不能用改密接口修改管理员自己的密码，避免被环境变量覆盖回去。
@@ -10,15 +10,20 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.security import hash_password, verify_password
-from app.models import User
+from app.models import AdminGrant, User
+from app.services.roster import lock_user
 
 ADMIN_NICKNAME = "管理员"
+
+# 单次发放金币上限（与 economy.json 转账 maxAmount 对齐）。
+GRANT_MAX_AMOUNT = 2_000_000_000
 
 
 def admin_username() -> str:
@@ -70,3 +75,38 @@ async def ensure_admin_user(db: AsyncSession) -> str:
         await db.commit()
         return "password-synced"
     return "unchanged"
+
+
+async def grant_gold(
+    db: AsyncSession, *, admin: User, target: User, amount: int, reason: str = ""
+) -> int:
+    """给指定玩家发放金币（管理员补偿）。只增不减，返回发放后的余额。
+
+    金额须为正整数且不超过 `GRANT_MAX_AMOUNT`；改写前对目标账号加行锁，避免与其它结算并发丢更新。
+    每次发放都写一条 `AdminGrant`（公示数据源，事由对玩家公开）。
+    """
+    amount = int(amount)
+    if amount <= 0 or amount > GRANT_MAX_AMOUNT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"发放金额需为 1 ~ {GRANT_MAX_AMOUNT} 的整数",
+        )
+
+    locked = await lock_user(db, target.id)
+    if locked is None:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    before = int(locked.gold)
+    after = before + amount
+    locked.gold = after
+    db.add(
+        AdminGrant(
+            user_id=locked.id,
+            nickname=locked.nickname,
+            amount=amount,
+            note=(reason or "").strip()[:200],
+            admin_id=admin.id,
+        )
+    )
+    await db.commit()
+    return after

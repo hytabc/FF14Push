@@ -54,6 +54,24 @@ class AuditLog(Base, TimestampMixin):
     rejected: Mapped[bool] = mapped_column(sa.Boolean, default=False)
 
 
+class AdminGrant(Base, TimestampMixin):
+    """管理员发放金币补偿记录（「补偿公示」的数据源，对全服玩家公开）。
+
+    与 `AuditLog` 分开：公示要长期保留，而审计日志会被 retention 清理。
+    这里保存发放时的昵称快照，避免玩家改名后公示随之变化；`note`（事由）对玩家公开。
+    """
+
+    __tablename__ = "admin_grant_records"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    nickname: Mapped[str] = mapped_column(sa.String(64), default="", server_default="")
+    amount: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default="0")
+    note: Mapped[str] = mapped_column(sa.String(200), default="", server_default="")
+    # 操作管理员 id：仅内部追溯，不对外返回。
+    admin_id: Mapped[int] = mapped_column(sa.Integer, default=0, server_default="0")
+
+
 class SecurityEvent(Base):
     """反滥用限流事件：按 (scope, key) 做滑动窗口计数，key 通常是客户端 IP。
 

@@ -329,6 +329,25 @@ export const api = {
     return (await http.post('/ranking/refresh', {})).data
   },
 
+  /** 补偿公示：管理员发放金币的记录（公开只读，含事由）。 */
+  async compensationRecords(page = 1) {
+    return (
+      await http.get<{
+        page: number
+        pageSize: number
+        total: number
+        records: Array<{
+          id: number
+          userId: number
+          nickname: string
+          amount: number
+          note: string
+          createdAt: string | null
+        }>
+      }>('/grants', { params: { page } })
+    ).data
+  },
+
   async playerProfile(userId: number) {
     return (await http.get<PlayerProfile>(`/ranking/players/${userId}`)).data
   },
@@ -555,6 +574,17 @@ export const api = {
 
   async adminBanUser(userId: number, banned: boolean) {
     return (await http.post<{ ok: boolean; banned: boolean; message: string }>('/admin/ban', { userId, banned })).data
+  },
+
+  /** 给指定玩家发放金币补偿（管理员）。金额与事由会记入公开的「补偿公示」。 */
+  async adminGrantGold(userId: number, amount: number, reason = '') {
+    return (
+      await http.post<{ ok: boolean; gold: number; message: string }>('/admin/grant-gold', {
+        userId,
+        amount,
+        reason,
+      })
+    ).data
   },
 
   /** 在线玩家列表 + 按设备 / IP 的关联分组（反多开排查，仅管理员）。 */

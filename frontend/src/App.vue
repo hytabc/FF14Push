@@ -52,6 +52,7 @@ const NAV = [
   { to: '/tavern', label: '酒馆', icon: '🍺' },
   { to: '/codex', label: '图鉴', icon: '📖' },
   { to: '/ranking', label: '排行', icon: '🏆' },
+  { to: '/grants', label: '补偿公示', icon: '📢' },
   { to: '/friends', label: '好友', icon: '🤝' },
   { to: '/chat', label: '聊天室', icon: '💬' },
   { to: '/settings', label: '设置', icon: '⚙' },

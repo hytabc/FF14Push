@@ -204,6 +204,12 @@ class AdminBanRequest(BaseModel):
     banned: bool = True
 
 
+class AdminGrantGoldRequest(BaseModel):
+    userId: int
+    amount: int = Field(gt=0)
+    reason: str = Field(default="", max_length=200)
+
+
 class ApiMessage(BaseModel):
     ok: bool = True
     message: str = "ok"

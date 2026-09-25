@@ -14,6 +14,7 @@ from app.api.v1 import (
     farm,
     friends,
     game,
+    grants,
     inventory,
     market,
     materia,
@@ -31,6 +32,7 @@ from app.api.v1 import (
 api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(game.router)
+api_router.include_router(grants.router)
 api_router.include_router(battle.router)
 api_router.include_router(inventory.router)
 api_router.include_router(friends.router)

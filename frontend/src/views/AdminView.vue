@@ -34,6 +34,19 @@ const target = ref<AdminUser | null>(null)
 const newPassword = ref('')
 const confirmPassword = ref('')
 
+/** 单次发放上限（与后端 `services/admin.GRANT_MAX_AMOUNT` 一致）。 */
+const GRANT_MAX = 2_000_000_000
+const grantTarget = ref<AdminUser | null>(null)
+const grantAmount = ref('')
+const grantReason = ref('')
+const granting = ref(false)
+
+const grantAmountValue = computed(() => Number(grantAmount.value.trim()))
+const canGrant = computed(() => {
+  const amount = grantAmountValue.value
+  return Number.isInteger(amount) && amount > 0 && amount <= GRANT_MAX && !granting.value
+})
+
 const tab = ref<'accounts' | 'online'>('accounts')
 const TABS = [
   { key: 'accounts', label: '账号管理' },
@@ -138,6 +151,29 @@ async function toggleBan(user: AdminUser) {
     banning.value = null
   }
 }
+
+function openGrant(user: AdminUser) {
+  if (user.isAdmin) return
+  grantTarget.value = user
+  grantAmount.value = ''
+  grantReason.value = ''
+}
+
+async function submitGrant() {
+  const user = grantTarget.value
+  if (!user || !canGrant.value) return
+  granting.value = true
+  try {
+    const res = await api.adminGrantGold(user.id, grantAmountValue.value, grantReason.value.trim())
+    user.gold = res.gold
+    toast.push(res.message, 'success')
+    grantTarget.value = null
+  } catch (e) {
+    toast.push(toApiError(e).message, 'error')
+  } finally {
+    granting.value = false
+  }
+}
 </script>
 
 <template>
@@ -200,7 +236,7 @@ async function toggleBan(user: AdminUser) {
                 <th class="px-3 py-2 text-left">昵称</th>
                 <th class="px-3 py-2 text-left">英雄等级</th>
                 <th class="px-3 py-2 text-right">金币</th>
-                <th class="w-40 px-3 py-2 text-right">操作</th>
+                <th class="w-56 px-3 py-2 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -233,6 +269,13 @@ async function toggleBan(user: AdminUser) {
                     @click="toggleBan(user)"
                   >
                     {{ user.banned ? '解封' : '封禁' }}
+                  </button>
+                  <button
+                    class="ml-1 rounded bg-amber-600/80 px-2 py-1 text-[11px] text-white hover:bg-amber-500 disabled:opacity-40"
+                    :disabled="user.isAdmin"
+                    @click="openGrant(user)"
+                  >
+                    发放金币
                   </button>
                 </td>
               </tr>
@@ -403,6 +446,47 @@ async function toggleBan(user: AdminUser) {
           @click="submitReset"
         >
           {{ resetting ? '处理中…' : '确认重置' }}
+        </button>
+      </template>
+    </Modal>
+
+    <Modal :open="!!grantTarget" title="发放金币" @close="grantTarget = null">
+      <div v-if="grantTarget" class="space-y-3 text-sm">
+        <p class="text-ink-200">
+          向
+          <b class="text-white">{{ grantTarget.nickname }}</b>
+          <span class="text-ink-500">（{{ grantTarget.username }}）</span>
+          发放金币，当前持有
+          <span class="font-mono text-amber-200">{{ formatNumber(grantTarget.gold) }}</span>。
+        </p>
+        <input
+          v-model="grantAmount"
+          inputmode="numeric"
+          class="w-full rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs"
+          placeholder="发放金额（正整数，上限 20 亿）"
+        />
+        <input
+          v-model="grantReason"
+          class="w-full rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs"
+          placeholder="发放事由（将对全服公开）"
+        />
+        <p v-if="grantAmount && !canGrant && !granting" class="text-[11px] text-rose-300">
+          金额需为 1 ~ 20 亿之间的整数
+        </p>
+        <p class="text-[11px] text-ink-500">
+          发放后立即到账，并记入「补偿公示」对全服公开（含事由），请勿填写内部信息。
+        </p>
+      </div>
+      <template #footer>
+        <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="grantTarget = null">
+          取消
+        </button>
+        <button
+          class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950 disabled:opacity-50"
+          :disabled="!canGrant"
+          @click="submitGrant"
+        >
+          {{ granting ? '处理中…' : '确认发放' }}
         </button>
       </template>
     </Modal>

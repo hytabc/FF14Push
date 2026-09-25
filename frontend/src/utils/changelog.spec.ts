@@ -40,4 +40,16 @@ describe('真实 CHANGELOG.md', () => {
     expect(CHANGELOG.length).toBeGreaterThan(0)
     expect(APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/)
   })
+
+  // 更新公告面向玩家：条目里不能出现文件名 / 路径等实现细节（见 AGENT.md「协作约定」）。
+  it('版本条目不含内部技术信息', () => {
+    const forbidden = ['.md', '.json', '.ts', '.py', '.vue', 'changelog', 'localstorage', 'package', 'frontend/', 'backend/']
+    for (const entry of CHANGELOG) {
+      for (const item of entry.items) {
+        for (const token of forbidden) {
+          expect(item.toLowerCase()).not.toContain(token)
+        }
+      }
+    }
+  })
 })

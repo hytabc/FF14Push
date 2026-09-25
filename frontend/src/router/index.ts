@@ -28,6 +28,7 @@ const router = createRouter({
     { path: '/tavern', name: 'tavern', component: () => import('@/views/TavernView.vue') },
     { path: '/codex', name: 'codex', component: () => import('@/views/CodexView.vue') },
     { path: '/ranking', name: 'ranking', component: () => import('@/views/RankingView.vue'), meta: { public: true } },
+    { path: '/grants', name: 'grants', component: () => import('@/views/GrantView.vue'), meta: { public: true } },
     { path: '/friends', name: 'friends', component: () => import('@/views/FriendsView.vue') },
     { path: '/chat', name: 'chat', component: () => import('@/views/ChatView.vue') },
     { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },

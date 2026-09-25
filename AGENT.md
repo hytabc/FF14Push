@@ -24,8 +24,10 @@
 ## 协作约定
 
 - **对话语言**：与用户的所有交流（回复、计划、说明、提问）一律使用中文。
-- **更新日志（必须执行，勿遗漏）**：根目录 `CHANGELOG.md` 是「所有版本更新内容」的单一事实来源，也是前端顶栏版本号与「更新公告」弹窗的数据源（前端经 `frontend/src/version.ts` 读取，`App.vue` / `components/VersionAnnouncementModal.vue` 展示）。
-  - 每次功能 / 数值 / 界面 / 接口 / 文档变动，都要在**最新版本**条目下追加一条中文更新概要，尽量一句话表述清晰。
+- **更新日志（面向玩家的公告，必须执行，勿遗漏）**：根目录 `CHANGELOG.md` 是「所有版本更新内容」的单一事实来源，也是前端顶栏版本号与「更新公告」弹窗的数据源（前端经 `frontend/src/version.ts` 读取，`App.vue` / `components/VersionAnnouncementModal.vue` 展示）。**该文件内容会原样展示给玩家**。
+  - 只写**玩家可感知**的内容（新玩法、数值与平衡调整、界面与体验变化、问题修复等），用玩家能看懂的语言，尽量一句话表述清晰。
+  - **禁止**写入任何实现细节或内部信息：文件名 / 路径 / 类名 / 函数名 / 常量 / 数据库迁移 / 依赖 / 脚本 / 测试 / 重构 / 文档 / 部署等。
+  - 每次**玩家可感知**的变动都要在**最新版本**条目下追加一条概要；纯内部技术变动不要写入本文件。
   - 发布新版本时，在最上方新增一条 `## Vx.y.z — YYYY-MM-DD` 条目，并同步 `package.json`、`frontend/package.json`、`backend/pyproject.toml`、`backend/app/main.py` 的版本号；前端顶栏版本号与公告弹窗会随之自动更新（公告按 localStorage 已读版本判定，用户下次进入即看到）。
   - 维护者可能手动补充更新简报，保留其内容，不要覆盖或重排。
 
@@ -84,6 +86,8 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
   - **关联账号（同设备 / 同 IP）**之间的好友转账按 pair 双向 24h 累计受 `antiAlt.transferDailyLimit` 限制，交易板寄售成交受单笔 + pair 24h 累计（`antiAlt.marketDailyLimit`）限制，收购单成交只受单笔上限（`MarketBuyOrder` 不记录卖家、无逐笔成交归属）。
   - 管理端排查入口：`GET /admin/online`（`services/admin_monitor.py`，**只读**）返回当前在线账号（`users.last_seen_at` 在 `devices.ONLINE_WINDOW_SECONDS` = 45s 内）及其最近 / 注册 IP、设备指纹，并按「同设备 / 同 IP」做**连通分量分组**（只保留含在线账号的组，组内附共享的设备 / IP），供管理员识别多开；不写库、不改变任何拦截 / 额度逻辑。前端入口在「管理」页的「在线玩家」标签（**手动刷新**，不轮询）。
   - 改判定或额度时同步回归 `tests/test_anti_alt.py`、`tests/test_session_limits.py`、`tests/test_admin_monitor.py` 与 `services/devices.py`。
+
+- **补偿公示（对全服公开的数据）**：管理员用 `POST /admin/grant-gold`（`api/v1/admin.py`）为指定玩家发放金币补偿，单次上限 `services/admin.GRANT_MAX_AMOUNT`（20 亿）、只增不减、禁用给管理员账号发放，改写前用 `lock_user` 加行锁。每次发放写一行 `AdminGrant`（表 `admin_grant_records`，迁移 `z3a5c7e9b1d3`）。该表**与 `audit_logs` 分开、且不被 retention 清理**——因为 `GET /grants`（`api/v1/grants.py`，公开只读、无需登录）把它作为「补偿公示」展示给全服玩家（前端 `GrantView.vue` + 导航「补偿公示」）。公示**包含事由**（管理员填写，即对玩家公开）但**不返回操作管理员的账号 / id**；新增公示字段前先确认不会泄露内部信息，且发放入口要提示「事由将对全服公开」。
 - **并发降载（大量用户长时间挂机时的负载约束）**：
   - **WS 广播是「每进程一次轮询 + 内存分发」**（`services/broadcast.py`）：聊天室 / 远征房间不再「每个连接各查一次库」，改由每 channel 一个生产者读一次后投递给订阅队列；每个进程各自轮询，因此仍多 worker 安全。**不要退回「每连接轮询 DB」**。世界BOSS 的伤害榜走进程内短 TTL 缓存（`world_boss.cached_contribution_rows`，仅 WS 经 `leaderboard_view(use_cache=True)` 使用）；HTTP 接口与测试必须走不带缓存的读取，否则刚写入的贡献会被缓存挡住（`test_world_boss.py` 有断言）。
   - **挂机热路径禁止 N+1**：采集 / 生产 / 钓鱼 / 战斗上报一律用批量接口（`dohdol_util.stack_add_many` / `stack_consume_many`、`codex.unlock_monsters` / `unlock_materials`），不要退回「按件 / 按怪逐条 select」。

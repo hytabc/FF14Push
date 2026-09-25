@@ -9,8 +9,8 @@ from app.core.deps import CurrentUser, DbSession
 from app.core.security import hash_password
 from app.models import Hero, User
 from app.models.base import utcnow
-from app.schemas.game import AdminBanRequest, AdminResetPasswordRequest
-from app.services.admin import admin_enabled, is_admin
+from app.schemas.game import AdminBanRequest, AdminGrantGoldRequest, AdminResetPasswordRequest
+from app.services.admin import admin_enabled, grant_gold as admin_grant_gold, is_admin
 from app.services.admin_monitor import online_overview
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -107,6 +107,32 @@ async def set_ban(payload: AdminBanRequest, db: DbSession, _: User = AdminUser) 
         "ok": True,
         "banned": payload.banned,
         "message": f"已{'封禁' if payload.banned else '解封'}「{target.username}」",
+    }
+
+
+@router.post("/grant-gold")
+async def grant_gold(
+    payload: AdminGrantGoldRequest,
+    db: DbSession,
+    admin: User = AdminUser,
+) -> dict:
+    """给指定玩家发放金币补偿。金额与事由会记入「补偿公示」，对全服玩家公开。"""
+    target = (await db.execute(select(User).where(User.id == payload.userId))).scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    if is_admin(target):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不能给管理员账号发放金币",
+        )
+
+    gold = await admin_grant_gold(
+        db, admin=admin, target=target, amount=payload.amount, reason=payload.reason
+    )
+    return {
+        "ok": True,
+        "gold": gold,
+        "message": f"已向「{target.nickname}」发放 {payload.amount:,} 金币",
     }
 
 
