@@ -405,21 +405,14 @@ def invalidate_contribution_rows() -> None:
     _ROWS_CACHE.clear()
 
 
-async def leaderboard_view(
-    db: AsyncSession,
-    cycle: int,
-    user_id: int | None = None,
-    page: int = 1,
-    page_size: int = 50,
-    *,
-    use_cache: bool = False,
+def build_leaderboard(
+    rows: list[dict], cycle: int, user_id: int | None = None, page: int = 1, page_size: int = 50
 ) -> dict:
-    rows = (
-        await cached_contribution_rows(db, cycle)
-        if use_cache
-        else await contribution_rows(db, cycle)
-    )
-    rows = _qualified(rows)
+    """把「已达标、已按伤害降序」的贡献行格式化成榜单视图（纯函数）。
+
+    拆出来是为了让 WS 广播的共享生产者只做一次全表聚合，各连接再用本函数拼自己的
+    `entries` / `me`（纯 CPU，无额外查询）。
+    """
     offset = max(0, (page - 1) * page_size)
     entries = [
         {
@@ -456,6 +449,28 @@ async def leaderboard_view(
         "entries": entries,
         "me": me,
     }
+
+
+async def qualified_rows(db: AsyncSession, cycle: int) -> list[dict]:
+    """当前周期的「已达标」贡献行（走进程内短 TTL 缓存），供 WS 共享生产者复用。"""
+    return _qualified(await cached_contribution_rows(db, cycle))
+
+
+async def leaderboard_view(
+    db: AsyncSession,
+    cycle: int,
+    user_id: int | None = None,
+    page: int = 1,
+    page_size: int = 50,
+    *,
+    use_cache: bool = False,
+) -> dict:
+    rows = (
+        await cached_contribution_rows(db, cycle)
+        if use_cache
+        else await contribution_rows(db, cycle)
+    )
+    return build_leaderboard(_qualified(rows), cycle, user_id, page, page_size)
 
 
 async def _settled_cycles(db: AsyncSession, user_id: int, boss: WorldBoss) -> list[int]:

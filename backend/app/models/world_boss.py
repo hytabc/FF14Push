@@ -60,6 +60,9 @@ class WorldBossSession(Base):
     sequence: Mapped[int] = mapped_column(default=0)
     damage: Mapped[int] = mapped_column(sa.BigInteger, default=0)
     heartbeat_at: Mapped[float] = mapped_column(sa.Float, default=0)
+    # 客户端模拟下放：上报窗口与幂等游标（窗口一律由服务端时钟计算，不采信客户端 elapsedMs）。
+    last_report_at: Mapped[float] = mapped_column(sa.Float, default=0)
+    last_report_seq: Mapped[int] = mapped_column(default=0)
     lease_owner: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
     lease_until: Mapped[float] = mapped_column(sa.Float, default=0)
     updated_at: Mapped[float] = mapped_column(sa.Float, default=0)

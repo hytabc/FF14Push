@@ -159,8 +159,9 @@ async def report(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="地区与会话不一致")
 
     difficulty = int(session.difficulty or 0)
-    await require_region(db,user.id,hero,items,payload.regionId,difficulty)
+    # 面板只算一次并透传：require_region 与 BOSS 结算都需要它，原先各处重复 compute_stats。
     stats = compute_stats(hero, items, sockets)
+    await require_region(db,user.id,hero,items,payload.regionId,difficulty,stats=stats)
 
     # 彩蛋技能「拔豆芽」：本次上报释放的充能技能 → 累加奖励翻倍怪物数（上限 20，可跨上报保留）。
     # 先在本地计算，等上报通过校验后再写回，避免被拒绝的上报也能累积充能。
@@ -298,7 +299,7 @@ async def report(
     boss_result = None
     if payload.bossKilled:
         boss_result = await _settle_boss(
-            db, user, hero, items, payload, rng, merged_mods, window_ms, difficulty, sockets
+            db, user, hero, items, payload, rng, merged_mods, window_ms, difficulty, sockets, stats
         )
 
     session.last_report_at = now
@@ -336,6 +337,7 @@ async def _settle_boss(
     window_ms: int = 0,
     difficulty: int = 0,
     socket_mods: dict[str, float] | None = None,
+    stats=None,  # 调用方已算好的面板（同一 hero + items + socket_mods），避免重复 compute_stats
 ) -> dict | None:
     required = kills_required(payload.regionId)
     if int(hero.region_kill_count) < required:
@@ -349,7 +351,9 @@ async def _settle_boss(
     gold_potion = float((term_mods or {}).get("goldGainPct", 0.0)) / 100.0
     gold_raw = roll_gold(payload.regionId, "boss", 0.0, rng)
     gold_diff_mult = monster_gold_multiplier(difficulty)
-    gold_reward_mult = effective_penalty(compute_stats(hero,items,socket_mods),payload.regionId)["rewardMultiplier"]
+    gold_reward_mult = effective_penalty(
+        stats if stats is not None else compute_stats(hero, items, socket_mods), payload.regionId
+    )["rewardMultiplier"]
     boss_gold = int(gold_raw * gold_reward_mult * (1.0 + gold_potion) * gold_diff_mult)
     # 金币明细：难度计入「结算基础」（与地区小怪上报口径一致），末项吸收四舍五入残差。
     gold_base = int(gold_raw * gold_diff_mult)

@@ -69,6 +69,17 @@ def _shared(
 
 
 async def online_overview(db: AsyncSession) -> dict:
+    """在线账号概览 + 反多开关联分组。
+
+    **为什么这里是全表扫描、且不要「优化」成 `WHERE last_seen_at >= cutoff`**：
+    分组结果是「含至少一个在线账号的全局连通分量」，组内**同时包含与之关联的离线小号**——
+    这正是管理员要看的。若先按 `last_seen_at` 缩小候选，这些离线小号会被丢掉，
+    等于破坏反多开的排查能力（`services/devices.py` 的判定口径也会随之不一致）。
+    真正要降内存只能改成「以在线账号为种子做设备/IP 有界扩张」，属于后续项。
+
+    另外：`users.last_seen_at` **故意不加索引**——它在每次心跳都会被 UPDATE，
+    而当前没有任何 SQL 按它过滤（在线判定在 Python 侧），加索引只会给写路径添成本。
+    """
     now = utcnow()
 
     users = (await db.execute(select(User))).scalars().all()

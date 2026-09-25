@@ -147,14 +147,16 @@ docker compose logs -f backend
 | 服务 | 说明 | 端口 |
 | --- | --- | --- |
 | `frontend` | nginx 托管前端静态资源，并把 `/api` 反代到后端（同源，无需 CORS） | `${FRONTEND_PORT}` → 80 |
-| `backend` | FastAPI，入口脚本会等数据库就绪 → `alembic upgrade head` → 启动 uvicorn（默认 2 个 worker） | `127.0.0.1:${BACKEND_PORT}` → 8000 |
+| `backend` | FastAPI，入口脚本会等数据库就绪 → `alembic upgrade head` → 启动 uvicorn（默认 1 个 worker） | `127.0.0.1:${BACKEND_PORT}` → 8000 |
 | `coop-worker` | 远征（团队副本）推进进程，复用后端镜像 | — |
-| `worldboss-worker` | 世界BOSS 推进进程（共享血量递减），复用后端镜像 | — |
-| `ranking-worker` | 排行榜缓存榜刷新进程（每 5 分钟批量重算），复用后端镜像 | — |
+| `worldboss-worker` | 世界BOSS **全局时间**推进进程（周期换轮 / 短休整复活）；战斗由客户端本地模拟并上报 | — |
+| `ranking-worker` | 缓存榜刷新（按 `RANKING_REFRESH_SECONDS`）+ **数据保留清理**，复用后端镜像 | — |
 | `db` | PostgreSQL 16，数据持久化在 `${POSTGRES_DATA_DIR}`（默认 `./data/postgres`，bind mount 到本机） | `127.0.0.1:${POSTGRES_PORT}` → 5432 |
 | `db-backup` | 定时把数据库导出为 tar.gz 压缩包存到 `${BACKUP_DIR}`（默认 `./data/backups`） | — |
 
-> `coop-worker` / `worldboss-worker` / `ranking-worker` 均为独立进程：缺少前两者时远征 / 世界BOSS 不会推进，缺少 `ranking-worker` 时缓存榜（等级 / 关卡 / 战力 / 金币 / 游玩时间）不再刷新（均不影响其它玩法）。
+> `coop-worker` / `worldboss-worker` / `ranking-worker` 均为独立进程：缺少 `coop-worker` 时远征不会推进；缺少 `worldboss-worker` 时世界BOSS 的**全局时间**（周期换轮 / 短休整复活）不再推进（玩家伤害仍由客户端上报正常结算）；缺少 `ranking-worker` 时缓存榜（等级 / 关卡 / 战力 / 金币 / 游玩时间）不再刷新、**数据保留清理也不再执行**（均不影响其它玩法）。
+
+> 各服务已设 `mem_limit`，`db` 也已按小内存调参（`shared_buffers=192MB` / `max_connections=40` / `shm_size=128m`）；连接池按进程角色分档（`DB_POOL_PROFILE`）。详见 `docs/server-resource-optimization-design.md`。
 
 ### 端口与变量（`.env`）
 
@@ -182,12 +184,21 @@ BACKUP_PREFIX=eorzea             # 压缩包文件名前缀
 JWT_SECRET=请替换为随机值（openssl rand -hex 32）
 CORS_ORIGINS=http://localhost:8080
 
-# 并发降载（可选）
-UVICORN_WORKERS=2        # 后端工作进程数
-DB_POOL_SIZE=10          # PostgreSQL 连接池（仅 PG 生效）
-DB_MAX_OVERFLOW=20
+# 并发降载（默认为 2 核 / 2 GB 小服务器调优后的值）
+UVICORN_WORKERS=1        # 后端工作进程数（内存优先；压测后如需可调到 2）
+DB_POOL_SIZE=5           # PostgreSQL 连接池（api 档；worker 进程由 compose 固定为 2+0）
+DB_MAX_OVERFLOW=5
+RANKING_REFRESH_SECONDS=600   # 缓存榜刷新间隔（秒）
+RANKING_LIVE_CACHE_SECONDS=10 # 实时榜（钓鱼/生活/远征）聚合缓存秒数
 GZIP_ENABLED=true        # 直连后端时的响应体压缩（nginx 侧另有 gzip）
+BROTLI_ENABLED=true      # 响应 brotli（客户端支持 br 时优先，gzip 兜底）
 COOKIE_SECURE=false      # 后端走 HTTPS 时设为 true
+
+# 数据保留（由 ranking-worker 周期执行；榜单真相与反多开判定依据永不清理）
+RETENTION_ENABLED=true
+RETENTION_SESSIONS_DAYS=7   # 已结束的会话/挖宝
+RETENTION_AUDIT_DAYS=30     # 反作弊审计
+RETENTION_RATELIMIT_DAYS=2  # 限流事件（必须大于所有限流窗口，最长 1 天）
 
 # 兑换码（留空关闭该功能；每个账号对同一码只能兑换一次）
 REDEEM_CODE=
@@ -302,8 +313,8 @@ cd frontend && npm install && npm run dev
 
 - **上报/状态请求**：客户端只在有事件时批量上报（`elapsedMs` 窗口以服务端时钟为准）；`/game/state` 是最重的读接口，前端已做**单飞 + 合并**（`stores/game.ts:loadState`，400ms 窗口内的突发调用共享同一次请求），采集 / 生产 / 钓鱼在**后台标签页降频上报**（服务端按真实窗口结算，产出不变）。
 - **服务端写路径禁止 N+1**：采集 / 生产 / 钓鱼 / 战斗上报的库存与图鉴更新一律批量落库（一次查询 + 内存累加）。
-- **WebSocket**：聊天室 / 远征房间的广播改为**每进程一次轮询 + 内存分发**（`services/broadcast.py`），数据库查询量不随连接数增长；世界BOSS 的伤害榜走进程内短 TTL 缓存。每进程各自轮询，多 worker 仍安全。
-- **压缩与部署**：大响应启用 gzip（后端 `GZIP_ENABLED`，nginx `gzip_proxied any`）；`backend` 默认 2 个 uvicorn worker、PostgreSQL 连接池可配（`DB_POOL_SIZE` / `DB_MAX_OVERFLOW`）；排行榜刷新由独立 `ranking-worker` 进程 + advisory lock 保证单实例执行。
+- **WebSocket**：聊天室 / 远征房间 / 世界BOSS 的广播均为**每进程一次轮询 + 内存分发**（`services/broadcast.py`），数据库查询量不随连接数增长；世界BOSS 的伤害榜另走进程内短 TTL 缓存。每进程各自轮询，多 worker 仍安全。
+- **压缩与部署**：响应优先 brotli（`BROTLI_ENABLED`）、gzip 兜底，请求体支持 gzip，WS 启用 permessage-deflate；nginx 必须保留 `gzip_proxied any`。`backend` 默认 **1 个** uvicorn worker（2 核 / 2 GB 服务器内存优先，可配 `UVICORN_WORKERS`）；连接池按进程角色分档（`DB_POOL_PROFILE`，api 5+5 / worker 2+0），与 `db` 的 `max_connections=40` 对齐；排行榜刷新由独立 `ranking-worker` 进程 + advisory lock 保证单实例执行；`/game/config` 响应进程内构造一次、`/game/state` 与 `/game/config` 均带 ETag（304 省带宽）；世界BOSS 的 WebSocket 为「每进程一次轮询 + 内存分发」；数据保留清理（`RETENTION_*`）也在 `ranking-worker` 中周期执行。
 
 ### 不做离线收益
 
@@ -390,7 +401,7 @@ monsterHp = refAttack(level) × refGearAttackMultiplier × (refPotencyPerSecond 
 | 图鉴 | 装备（按底材 × 品阶）、怪物、词条（战斗装备 + 生产/采集专用装备，各按普通/稀有/太古三档解锁）、材料（采集材料 + 半成品）、鱼获（普通鱼（白/蓝/紫）/ 鱼王 / 鱼皇 / 困难鱼，按钓场，含天气 / 时间 / 前置条件）。**分维度筛选**：全分类支持名称搜索与「仅看已解锁」；装备可按分组 / 种类 / 部位 / 武器种类 / 职能 / 等级 / 副词条 / 词条筛，词条可按来源 / 类别 / 类型 / 已解锁品质筛，**鱼获可按钓场 / 种类 / 品质 / 天气 / 时段 / 直觉前置 / 尺寸筛**（天气与时段为严格匹配：只显示把该条件列为要求的鱼；尺寸按「可钓范围与输入区间有交集」判定）。**「当前可钓」标记**：鱼获图鉴会实时标出此刻就能钓起的鱼（天气 / 时段条件命中 **且** 该钓场已解锁、采集等级达标，判定与钓鱼页 / 钓鱼结算同源），绿色高亮并**与是否已收集无关**；不可钓时区分标出「地区未解锁」与「采集等级不足（需 Lv.N）」，条件本就不满足的鱼不做标记；特殊鱼另附「需捕鱼人之识」。另有「只看当前可钓」筛选。标记每 30s 随天气 / ET 自动刷新，未登录时不做标记。长列表首批渲染 60 条并按批追加 |
 | 排行榜 | 等级榜 / 关卡榜（必做）+ 战力榜 / 金币榜 / **游玩时间榜**，每 5 分钟服务端刷新；昵称后以 0.6 透明度显示 `#登录账号`（如 `ABCD#zhangsan`）便于区分重名（昵称可重复，账号唯一）。**点击任意玩家可查看其当前装备**（只读，仅已装备栏位；需登录，封禁/无英雄账号返回 404）。弹窗内含「战斗装备 / 生产采集装备」页签，可查看对方的生产 / 采集专用装备，并显示其累计游玩时间 |
 | 远征榜 | 排行榜页新增**远征榜**页签：按**副本下拉筛选**，列出各玩家该副本的**最快通关时长**（越小越快，升序），行内展示该次通关的**阵容**；点击任意行弹出**分角色输出图表**（伤害 / 承伤 / 治疗 / 死亡 / 最低血量，手写条形图）。个人 / 离线 / 在线统一榜，行内标注模式与是否含克隆。数据来自服务端权威模拟：每次通关由 `coop_worker` 写入 `coop_records`（每个真实参战账号一行），**实时聚合**、刚通关即可见 |
-| 世界BOSS | 全服共享血量的 BOSS「黄金巴哈姆特」（初始 **20 亿**血量、第一阶段攻击力 **20000**）。入口「世界BOSS」页。**讨伐周期制**：`worldboss.json:periodSeconds`（默认 **5 小时**）是唯一结算单位 —— 周期内 BOSS 被击杀只进入 `respawnSeconds`（60s）短休整、到点满血重生且周期号不变、可反复讨伐；周期到时无论存亡都重置满血并换轮结算。所有在线玩家各自上阵最多 **8 名英雄**同时削弱同一血量：由独立进程 `worldboss-worker` 服务端权威推进（`worldboss_engine`，100ms tick），BOSS 普攻对全体存活英雄、**技能按固定间隔随机独立释放**（技能池 ≥20 个），每个英雄**独立死亡 / 复活**（`worldboss.json:reviveSeconds`）。**英雄需 80 级以上**，80–99 级输出/治疗按线性削弱，满级（100）解除。**阶段（P1→P2→P3）**按全服剩余血量占比自动进入（≤60% 进 P2、≤30% 进 P3）：血量越低 **BOSS 防御越厚**（英雄输出按 `1/defenseMultiplier` 折算）、**技能威力越高**（`skillPotencyMultiplier`，**不影响普攻**），血条上标出阶段分界。按**周期**结算：奖励 = **档位 + 名次加成**（档位按周期累计伤害 500 万 / 5000 万 / 2 亿 / 6 亿 / 15 亿 → 1/2/4/7/10 件；名次加成仅前 10 名 10→1 件）—— 第 1 名打满顶档 20 件、达标弱玩家**保底 1 件**，别人打得再快也不影响你的奖励；**点击榜单任一行可展开**查看该玩家本周期**各英雄的伤害与百分比**（堆叠占比条 + 明细）。血量 / 周期 / 总伤害榜**不随版本更新重置**。配置：`shared/data/worldboss.json`、`shared/data/exclusive-equipment.json` |
+| 世界BOSS | 全服共享血量的 BOSS「黄金巴哈姆特」（初始 **20 亿**血量、第一阶段攻击力 **20000**）。入口「世界BOSS」页。**讨伐周期制**：`worldboss.json:periodSeconds`（默认 **5 小时**）是唯一结算单位 —— 周期内 BOSS 被击杀只进入 `respawnSeconds`（60s）短休整、到点满血重生且周期号不变、可反复讨伐；周期到时无论存亡都重置满血并换轮结算。所有在线玩家各自上阵最多 **8 名英雄**同时削弱同一血量：**战斗运算下放客户端** —— 前端 `game/core/worldboss.ts` 复刻 `worldboss_engine`（100ms tick）在本地模拟，按窗口把伤害增量上报 `POST /worldboss/report`；服务端只做**上限夹取**（`worldboss_model`：理论上界 × 窗口 × 容差，窗口只认服务端时钟，`reportSeq` 幂等）与共享结算（全局血量原子递减、贡献累计、周期换轮、奖励），`worldboss-worker` 仅推进全局时间。本地模拟中 BOSS 普攻对全体存活英雄、**技能按固定间隔随机独立释放**（技能池 ≥20 个），每个英雄**独立死亡 / 复活**（`worldboss.json:reviveSeconds`）。**英雄需 80 级以上**，80–99 级输出/治疗按线性削弱，满级（100）解除。**阶段（P1→P2→P3）**按全服剩余血量占比自动进入（≤60% 进 P2、≤30% 进 P3）：血量越低 **BOSS 防御越厚**（英雄输出按 `1/defenseMultiplier` 折算）、**技能威力越高**（`skillPotencyMultiplier`，**不影响普攻**），血条上标出阶段分界。按**周期**结算：奖励 = **档位 + 名次加成**（档位按周期累计伤害 500 万 / 5000 万 / 2 亿 / 6 亿 / 15 亿 → 1/2/4/7/10 件；名次加成仅前 10 名 10→1 件）—— 第 1 名打满顶档 20 件、达标弱玩家**保底 1 件**，别人打得再快也不影响你的奖励；**点击榜单任一行可展开**查看该玩家本周期**各英雄的伤害与百分比**（堆叠占比条 + 明细）。血量 / 周期 / 总伤害榜**不随版本更新重置**。配置：`shared/data/worldboss.json`、`shared/data/exclusive-equipment.json` |
 | 绝境龙神系列 | 世界BOSS 专属掉落（**不可抽奖 / 打造 / 合成**）：固定**红色（神话）品质**、固定 **100 级**，覆盖**武器每职业 1 件 + 防具每部位 2 件 + 饰品每部位 2 件 = 39 件**，各带独立像素建模（`npm run gen:icons`）。主属性 / 副属性上限高于同等级其他装备（锚定值约 1.4×）。**可重造 / 附魔**，但成本 ×`economy.json:exclusiveCostMultiplier`（默认 10，远高于其他装备）。已入图鉴（来源标注 `worldBoss`）并带「绝境龙神」标签 |
 | 游玩时间 | **累计在线时长**：由战斗 / 采集 / 生产 / 钓鱼 / 副本的**服务端**上报窗口累加（`users.play_ms`，毫秒精度）。客户端时间不可信、离开页面即停，因此不含挂机与离线时间。排行榜新增**独立「游玩时间榜」**，同时**每个榜单的行内都显示游玩时间** |
 | 新手指引 | 15 步可操作引导：自动前往对应页面、定位并高亮操作区域；PC 右侧栏、手机可收起底部面板（预留空间），不遮挡操作弹窗。可先了解后继续、跳过（无奖励）及设置内重播（奖励只发一次） |

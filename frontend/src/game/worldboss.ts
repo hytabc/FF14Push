@@ -130,10 +130,23 @@ export interface WorldBossState {
   phases: WorldBossPhase[]
   reward: WorldBossRewardConfig
   session: WorldBossSessionView | null
+  /** 上阵英雄快照：客户端本地模拟的输入（运算下放，见 `game/core/worldboss.ts`）。 */
+  party: import('./core/worldboss').WorldBossSnapshot[] | null
   sequence: number
   myDamage: number
   unclaimedCycle: number | null
   leaderboard: WorldBossLeaderboard
+}
+
+/** `POST /worldboss/report` 的响应：服务端对本地模拟伤害的夹取结果。 */
+export interface WorldBossReportResult {
+  boss: WorldBossBoss
+  damageAccepted: number
+  myDamage: number
+  /** 同一 reportSeq 重放（幂等）。 */
+  duplicate: boolean
+  /** BOSS 休整中：本次未结算。 */
+  paused?: boolean
 }
 
 export interface WorldBossReceipt {

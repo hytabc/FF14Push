@@ -1,10 +1,49 @@
-import axios, { type AxiosResponse } from 'axios'
+import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import { gzipSync } from 'fflate'
 
 import { getDeviceId } from '@/utils/device'
 
 const baseURL = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000/api/v1'
 
 export const TOKEN_KEY = 'eorzea.token'
+
+/** 请求体压缩阈值（字节）：小于此体积压了反而更大，故不压；与后端 `gzip_min_size` 对齐。 */
+const COMPRESS_MIN_BYTES = 1024
+
+/**
+ * 大 JSON 请求体走 gzip（`Content-Encoding: gzip`），由后端 `RequestDecompressMiddleware` 解压。
+ * 仅处理对象 / 字符串 body；FormData、URLSearchParams、二进制与 GET 一律跳过。
+ */
+function compressLargeJsonBody(config: InternalAxiosRequestConfig) {
+  const method = (config.method ?? 'get').toLowerCase()
+  if (method === 'get' || method === 'head') return
+  const data = config.data
+  if (data === undefined || data === null) return
+  if (typeof FormData !== 'undefined' && data instanceof FormData) return
+  if (typeof URLSearchParams !== 'undefined' && data instanceof URLSearchParams) return
+  if (typeof Blob !== 'undefined' && data instanceof Blob) return
+  if (typeof ArrayBuffer !== 'undefined' && (data instanceof ArrayBuffer || ArrayBuffer.isView(data))) return
+
+  let text: string
+  if (typeof data === 'string') {
+    text = data
+  } else {
+    try {
+      text = JSON.stringify(data)
+    } catch {
+      return
+    }
+  }
+
+  const bytes = new TextEncoder().encode(text)
+  if (bytes.byteLength < COMPRESS_MIN_BYTES) return
+
+  config.data = gzipSync(bytes)
+  config.headers['Content-Encoding'] = 'gzip'
+  config.headers['Content-Type'] = config.headers['Content-Type'] ?? 'application/json'
+  // 已是二进制：跳过 axios 默认 transformRequest 的序列化
+  config.transformRequest = [(body: unknown) => body]
+}
 
 export const http = axios.create({
   baseURL,
@@ -27,6 +66,9 @@ http.interceptors.request.use((config) => {
   if (deviceId) {
     config.headers['X-Device-Id'] = deviceId
   }
+
+  // 大请求体（如批量上架 / 战斗上报）走 gzip，降低上行带宽。
+  compressLargeJsonBody(config)
 
   if ((config.method ?? 'get').toLowerCase() === 'get') {
     const key = `${config.url}::${JSON.stringify(config.params ?? {})}`

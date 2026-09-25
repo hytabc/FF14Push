@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -17,6 +18,7 @@ from sqlalchemy import and_, delete, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.models import (
     DohDolProgress,
     FishRecord,
@@ -48,6 +50,43 @@ BOARDS = CACHED_BOARDS + FISH_BOARDS + DOHDOL_BOARDS + COOP_BOARDS
 # 这样既保留「value 降序」的既有排序，又让难度成为主序：难度 1-20 关排在难度 0-40 关之上。
 STAGE_REGION_BASE = 1000
 
+# 全量刷新时的用户批大小：峰值内存与批大小成正比，而不是与全库规模成正比（小内存服务器关键）。
+REFRESH_USER_CHUNK = 500
+
+
+# ---------------------------------------------------------------- 实时榜底层聚合的短 TTL 缓存
+#
+# 实时榜（钓鱼 / 生活 / 远征）每次请求都要做一次全表聚合，且「榜单页」与「我的排名」
+# 原先是**各算一遍**。这里缓存底层聚合结果：
+#   - 同一请求内的两次调用自然合并为一次；
+#   - 跨请求在 TTL 内复用（默认 10s，见 settings.ranking_live_cache_seconds）。
+# 写入侧（钓鱼 / 采集 / 生产 / 远征通关）调用 `invalidate_live_rankings()` 立即失效，
+# 因此「刚钓完看不到自己」不会发生。缓存键数量有界（fish / dohdol / coop:<副本>）。
+_LIVE_CACHE: dict[str, tuple[float, list[dict[str, Any]]]] = {}
+
+
+def invalidate_live_rankings() -> None:
+    """实时榜底层数据变更后调用：清空进程内缓存，下一次读取即为最新。"""
+    _LIVE_CACHE.clear()
+
+
+def _live_cached(key: str) -> list[dict[str, Any]] | None:
+    entry = _LIVE_CACHE.get(key)
+    if entry is None:
+        return None
+    stamp, rows = entry
+    ttl = float(get_settings().ranking_live_cache_seconds)
+    if ttl <= 0 or time.monotonic() - stamp >= ttl:
+        return None
+    # 返回浅拷贝：调用方会就地排序，不能污染缓存里的顺序。
+    return list(rows)
+
+
+def _live_store(key: str, rows: list[dict[str, Any]]) -> None:
+    if float(get_settings().ranking_live_cache_seconds) <= 0:
+        return
+    _LIVE_CACHE[key] = (time.monotonic(), rows)
+
 
 async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
     """全量重算缓存榜（level / stage / power / gold / playtime）。
@@ -64,61 +103,98 @@ async def refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
 
 
 async def _refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
-    users = (
-        await db.execute(select(User).options(selectinload(User.hero), selectinload(User.items)))
-    ).scalars().all()
+    """全量重算缓存榜（分批进行，峰值内存有界）。
 
-    progress_rows = (await db.execute(select(RegionProgress))).scalars().all()
-    cleared: dict[int, list[RegionProgress]] = {}
-    for row in progress_rows:
-        if row.cleared:
-            cleared.setdefault(row.user_id, []).append(row)
+    小内存服务器上的两条关键约束：
 
+    1. **不把全库装备读进内存**：面板属性只依赖「已装备」的装备——`stats.aggregate_equipment`
+       对 `equipped_slot is None` 的装备直接跳过，`stats.hero_items` 也只会保留
+       `equipped_hero_id in (None, hero.id)` 的行。因此数据源改为「只取已装备装备」，
+       结论与旧实现逐位相同（数量级 = 账号数 × 席位 × 11，而非全库装备）。
+    2. **按批处理用户并逐批写入**：全程仍在同一个事务里（调用方 commit），但每批 `flush()`
+       释放待写缓冲，峰值内存与 `REFRESH_USER_CHUNK` 成正比而非与用户总数成正比。
+    """
     await db.execute(delete(RankingEntry))
 
-    # 账号级魔晶石镶嵌加成：战力榜需与玩家面板一致，故一并计入。
-    mods_map = await socket_mods_map(db, [int(u.id) for u in users])
+    # 通关进度：只取已通关行（旧实现也只使用 cleared 为真的行）。
+    progress_rows = (
+        await db.execute(select(RegionProgress).where(RegionProgress.cleared.is_(True)))
+    ).scalars().all()
+    cleared: dict[int, list[RegionProgress]] = {}
+    for row in progress_rows:
+        cleared.setdefault(row.user_id, []).append(row)
+
+    user_ids = [
+        int(uid) for uid in (await db.execute(select(User.id).order_by(User.id))).scalars().all()
+    ]
 
     counts = {board: 0 for board in CACHED_BOARDS}
-    rows_to_insert: list[dict[str, Any]] = []
-    for user in users:
-        # 管理员与已封禁账号不参与排行榜（管理员另有「不创建英雄」双重保险）
-        if is_admin(user) or user.banned:
-            continue
-        hero = user.hero
-        if hero is None:
-            continue
+    for start in range(0, len(user_ids), REFRESH_USER_CHUNK):
+        chunk_ids = user_ids[start : start + REFRESH_USER_CHUNK]
+        chunk_users = (
+            await db.execute(
+                select(User).options(selectinload(User.hero)).where(User.id.in_(chunk_ids))
+            )
+        ).scalars().all()
+        # 本批「已装备」装备，按账号分组（不含背包装备；后者对面板无贡献）。
+        chunk_items = (
+            await db.execute(
+                select(Item).where(
+                    Item.equipped_slot.is_not(None), Item.user_id.in_(chunk_ids)
+                )
+            )
+        ).scalars().all()
+        items_by_user: dict[int, list[Item]] = {}
+        for item in chunk_items:
+            items_by_user.setdefault(int(item.user_id), []).append(item)
 
-        stats = compute_stats(hero, user.items, mods_map.get(int(user.id)))
-        cleared_list = cleared.get(user.id, [])
-        # 关卡榜以「难度优先」为主序：取最高难度，再取该难度下已通关的最大地区。
-        best = max(cleared_list, key=lambda row: (row.difficulty, row.region_id), default=None)
-        stage_value = best.difficulty * STAGE_REGION_BASE + best.region_id if best else 0
-        stage_cleared_at = best.cleared_at if best else None
-        extra = {"activeTitleId": user.active_title_id}
+        mods_map = await socket_mods_map(db, chunk_ids)
+        rows_to_insert: list[dict[str, Any]] = []
+        for user in chunk_users:
+            # 管理员与已封禁账号不参与排行榜（管理员另有「不创建英雄」双重保险）
+            if is_admin(user) or user.banned:
+                continue
+            hero = user.hero
+            if hero is None:
+                continue
 
-        entries = [
-            _entry(user, hero, "level", hero.level, hero.exp, extra),
-            _entry(
-                user,
-                hero,
-                "stage",
-                stage_value,
-                -int((stage_cleared_at or datetime.now(timezone.utc)).timestamp()),
-                extra,
-            ),
-            _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
-            _entry(user, hero, "gold", int(user.gold), 0, extra),
-            _entry(user, hero, "playtime", _play_seconds(user), 0, extra),
-        ]
-        for entry in entries:
-            rows_to_insert.append(entry)
-            counts[entry["board"]] += 1
+            # 与 stats.hero_items 同义：本人账号级装备（equipped_hero_id 为空）+ 该英雄的装备。
+            items = [
+                item
+                for item in items_by_user.get(int(user.id), [])
+                if getattr(item, "equipped_hero_id", None) in (None, hero.id)
+            ]
+            stats = compute_stats(hero, items, mods_map.get(int(user.id)))
+            cleared_list = cleared.get(user.id, [])
+            # 关卡榜以「难度优先」为主序：取最高难度，再取该难度下已通关的最大地区。
+            best = max(cleared_list, key=lambda row: (row.difficulty, row.region_id), default=None)
+            stage_value = best.difficulty * STAGE_REGION_BASE + best.region_id if best else 0
+            stage_cleared_at = best.cleared_at if best else None
+            extra = {"activeTitleId": user.active_title_id}
 
-    # 一次性 executemany 批量写入：原实现逐行 db.add + flush，用户量大时写放大明显。
-    if rows_to_insert:
-        await db.execute(insert(RankingEntry), rows_to_insert)
-    await db.flush()
+            entries = [
+                _entry(user, hero, "level", hero.level, hero.exp, extra),
+                _entry(
+                    user,
+                    hero,
+                    "stage",
+                    stage_value,
+                    -int((stage_cleared_at or datetime.now(timezone.utc)).timestamp()),
+                    extra,
+                ),
+                _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
+                _entry(user, hero, "gold", int(user.gold), 0, extra),
+                _entry(user, hero, "playtime", _play_seconds(user), 0, extra),
+            ]
+            for entry in entries:
+                rows_to_insert.append(entry)
+                counts[entry["board"]] += 1
+
+        # 逐批写入：一次性 executemany，并在批间 flush 释放缓冲（仍在同一事务内）。
+        if rows_to_insert:
+            await db.execute(insert(RankingEntry), rows_to_insert)
+            await db.flush()
+
     return counts
 
 
@@ -149,7 +225,7 @@ def _fish_sort_key(board: str) -> Callable[[dict[str, Any]], tuple[int, int]]:
     return lambda row: (row["fishSpecies"], row["fishCount"])
 
 
-async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
+async def _fish_rows_uncached(db: AsyncSession) -> list[dict[str, Any]]:
     agg = await _fish_stats_by_user(db)
     if not agg:
         return []
@@ -180,6 +256,16 @@ async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+async def _fish_rows(db: AsyncSession) -> list[dict[str, Any]]:
+    """钓鱼榜聚合（带短 TTL 缓存；两个钓鱼榜共用同一份聚合）。"""
+    cached = _live_cached("fish")
+    if cached is not None:
+        return cached
+    rows = await _fish_rows_uncached(db)
+    _live_store("fish", rows)
+    return list(rows)
 
 
 def _fish_value(row: dict[str, Any], board: str) -> int:
@@ -291,7 +377,7 @@ async def _dohdol_stats_by_user(db: AsyncSession) -> dict[int, dict[str, float]]
     return agg
 
 
-async def _dohdol_rows(db: AsyncSession) -> list[dict[str, Any]]:
+async def _dohdol_rows_uncached(db: AsyncSession) -> list[dict[str, Any]]:
     agg = await _dohdol_stats_by_user(db)
     if not agg:
         return []
@@ -322,6 +408,16 @@ async def _dohdol_rows(db: AsyncSession) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+async def _dohdol_rows(db: AsyncSession) -> list[dict[str, Any]]:
+    """生活职业榜聚合（带短 TTL 缓存；四个生活榜共用同一份聚合）。"""
+    cached = _live_cached("dohdol")
+    if cached is not None:
+        return cached
+    rows = await _dohdol_rows_uncached(db)
+    _live_store("dohdol", rows)
+    return list(rows)
 
 
 def _dohdol_sorted(rows: list[dict[str, Any]], board: str) -> list[dict[str, Any]]:
@@ -382,7 +478,7 @@ async def fetch_dohdol_user_rank(
 
 
 # ---------------------------------------------------------------- 远征榜（实时）
-async def _coop_rows(db: AsyncSession, dungeon_id: str) -> list[dict[str, Any]]:
+async def _coop_rows_uncached(db: AsyncSession, dungeon_id: str) -> list[dict[str, Any]]:
     """按账号聚合该副本的最快通关记录（刚通关即可见，不依赖缓存刷新）。
 
     通关时长越小越好，因此这里用升序；同一账号只取其最快的一次，
@@ -427,6 +523,17 @@ async def _coop_rows(db: AsyncSession, dungeon_id: str) -> list[dict[str, Any]]:
         )
     out.sort(key=lambda row: (row["clearMs"], row["createdAt"]))
     return out
+
+
+async def _coop_rows(db: AsyncSession, dungeon_id: str) -> list[dict[str, Any]]:
+    """远征榜聚合（带短 TTL 缓存；按副本分别缓存）。"""
+    key = f"coop:{dungeon_id}"
+    cached = _live_cached(key)
+    if cached is not None:
+        return cached
+    rows = await _coop_rows_uncached(db, dungeon_id)
+    _live_store(key, rows)
+    return list(rows)
 
 
 def _coop_payload(row: dict[str, Any]) -> dict[str, Any]:

@@ -86,3 +86,7 @@ async def record_clear(db: AsyncSession, room: CoopRoom, battle: CoopBattle, now
             )
         )
     await db.flush()
+    # 远征榜是实时聚合：通关记录写入后失效进程内缓存，刚通关即可见。
+    from app.services.ranking import invalidate_live_rankings
+
+    invalidate_live_rankings()

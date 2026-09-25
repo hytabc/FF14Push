@@ -15,6 +15,25 @@ services:
   db:
     image: ${DOCKER_IMAGE_MIRROR-docker.m.daocloud.io/library/}postgres:16-alpine
     restart: unless-stopped
+    # 小内存服务器（2 GB）上的保守参数：
+    #   effective_cache_size 默认 4GB 会误导 planner 选择不适合小机器的计划；这里按实际内存下调。
+    #   work_mem 是「每个排序/哈希节点」的内存，并发下会乘算，保持 4MB 不宜再大。
+    #   max_connections 与各进程连接池总上限对齐（见下面 backend / worker 的 DB_POOL_PROFILE）。
+    #   shm_size 供 Postgres 并行查询与大排序使用（容器默认 /dev/shm 仅 64MB）。
+    command:
+      - postgres
+      - -c
+      - shared_buffers=192MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=40
+    shm_size: 128m
+    mem_limit: 640m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-eorzea}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
@@ -40,6 +59,7 @@ services:
     # 只保留最近 BACKUP_KEEP 份；产物落在宿主机 ${BACKUP_DIR}（默认 ./data/backups）。
     image: ${DOCKER_IMAGE_MIRROR-docker.m.daocloud.io/library/}postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 128m
     environment:
       # pg_dump 连接参数（与 db 服务一致）。
       PGHOST: db
@@ -49,7 +69,7 @@ services:
       PGDATABASE: ${POSTGRES_DB:-eorzea}
       # 容器内备份目录固定挂载到 /backups（与上面 volumes 的宿主机路径无关）。
       BACKUP_DIR: /backups
-      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-6}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-12}
       BACKUP_KEEP: ${BACKUP_KEEP:-7}
       BACKUP_PREFIX: ${BACKUP_PREFIX:-eorzea}
     volumes:
@@ -88,18 +108,41 @@ services:
       # 迁移由容器入口脚本执行，避免与 alembic 冲突
       AUTO_CREATE_TABLES: "false"
       BACKEND_PORT: "8000"
-      # 并发降载：uvicorn 工作进程数（单进程在大量挂机连接下 CPU 序列化明显）。
-      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
-      # 数据库连接池（仅 PostgreSQL 生效）：默认 5+10 在并发挂机下会排队。
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
-      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      # 并发降载：uvicorn 工作进程数。2 GB 内存下默认 1 个（单进程 asyncio 足够处理 I/O 型挂机请求，
+      # 且省下一份 CONFIG + 连接池）；若压测确认 CPU 才是瓶颈，可设 UVICORN_WORKERS=2。
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
+      # 数据库连接池按进程角色分档：API 用 5+5，worker 进程（DB_POOL_PROFILE=worker）用 2+0，
+      # 使「进程数 × 连接上限」远低于 db 的 max_connections(40)。
+      DB_POOL_PROFILE: ${DB_POOL_PROFILE:-api}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-5}
       # 排行榜改由独立 ranking-worker 刷新（见下方服务），API 进程内不再跑。
       RANKING_IN_API: "false"
+      # 缓存榜刷新间隔（秒）与实时榜（钓鱼/生活/远征）进程内缓存秒数。
+      RANKING_REFRESH_SECONDS: ${RANKING_REFRESH_SECONDS:-600}
+      RANKING_LIVE_CACHE_SECONDS: ${RANKING_LIVE_CACHE_SECONDS:-10}
+      # 世界BOSS 全局时间兜底轮询是否留在 API 内：专用 worldboss-worker 已承担，默认关闭。
+      WORLDBOSS_LOOP_IN_API: "false"
+      # 数据保留清理：只清「终态 + 超期」的历史行；榜单真相与反多开判定依据永不清理。
+      RETENTION_ENABLED: ${RETENTION_ENABLED:-true}
+      RETENTION_INTERVAL_SECONDS: ${RETENTION_INTERVAL_SECONDS:-3600}
+      RETENTION_SESSIONS_DAYS: ${RETENTION_SESSIONS_DAYS:-7}
+      RETENTION_COOP_DAYS: ${RETENTION_COOP_DAYS:-7}
+      RETENTION_PVP_DAYS: ${RETENTION_PVP_DAYS:-30}
+      RETENTION_AUDIT_DAYS: ${RETENTION_AUDIT_DAYS:-30}
+      RETENTION_RATELIMIT_DAYS: ${RETENTION_RATELIMIT_DAYS:-2}
       # 响应体压缩（直连 API 时生效；nginx 侧已单独开启）。
       GZIP_ENABLED: ${GZIP_ENABLED:-true}
+      # 传输层：响应 brotli（客户端支持 br 时优先，gzip 兜底）+ 请求体 gzip 解压。
+      BROTLI_ENABLED: ${BROTLI_ENABLED:-true}
+      REQUEST_DECOMPRESS_ENABLED: ${REQUEST_DECOMPRESS_ENABLED:-true}
+      REQUEST_MAX_DECOMPRESSED_BYTES: ${REQUEST_MAX_DECOMPRESSED_BYTES:-8388608}
+      # 世界BOSS 客户端上报的伤害上限容差（越大越宽松）。
+      WORLDBOSS_REPORT_TOLERANCE: ${WORLDBOSS_REPORT_TOLERANCE:-1.15}
     ports:
       # 默认只绑定本机；前端已通过 nginx 反向代理 /api，通常无需对外暴露。
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    mem_limit: 384m
     depends_on:
       db:
         condition: service_healthy
@@ -108,8 +151,10 @@ services:
   coop-worker:
     image: eorzea-backend:latest
     restart: unless-stopped
-    entrypoint: ["python", "-m", "app.coop_worker"]
+    # DB_POOL_PROFILE=worker：worker 进程只需 2 条连接，避免「进程数 × 连接池」超过 max_connections。
+    entrypoint: ["env", "DB_POOL_PROFILE=worker", "python", "-m", "app.coop_worker"]
     environment: *backend-environment
+    mem_limit: 256m
     healthcheck:
       disable: true
     depends_on:
@@ -120,8 +165,9 @@ services:
   worldboss-worker:
     image: eorzea-backend:latest
     restart: unless-stopped
-    entrypoint: ["python", "-m", "app.worldboss_worker"]
+    entrypoint: ["env", "DB_POOL_PROFILE=worker", "python", "-m", "app.worldboss_worker"]
     environment: *backend-environment
+    mem_limit: 192m
     healthcheck:
       disable: true
     depends_on:
@@ -130,12 +176,14 @@ services:
     networks: [eorzea]
 
   ranking-worker:
-    # 排行榜缓存榜刷新：独立进程，避免全量重算（所有用户 + 装备 + 全表重写）与请求处理互相影响。
+    # 排行榜缓存榜刷新：独立进程，避免全量重算（所有用户 + 已装备 + 全表重写）与请求处理互相影响。
     # 多实例由 PostgreSQL advisory lock 互斥（见 services/locks.py）。
+    # 该进程同时承担「数据保留清理」（services/retention.py），故内存上限留得比其它 worker 宽。
     image: eorzea-backend:latest
     restart: unless-stopped
-    entrypoint: ["python", "-m", "app.ranking_worker"]
+    entrypoint: ["env", "DB_POOL_PROFILE=worker", "python", "-m", "app.ranking_worker"]
     environment: *backend-environment
+    mem_limit: 384m
     healthcheck:
       disable: true
     depends_on:
@@ -154,6 +202,7 @@ services:
         VITE_API_BASE: /api/v1
     image: eorzea-frontend:latest
     restart: unless-stopped
+    mem_limit: 64m
     ports:
       # 唯一需要公网开放的端口
       - "${FRONTEND_PORT:-8080}:80"

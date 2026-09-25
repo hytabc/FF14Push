@@ -1,7 +1,7 @@
 """Run with python -m app.coop_worker. Multiple workers safely share PostgreSQL leases."""
 import asyncio,logging,time,uuid
-from copy import deepcopy
 from sqlalchemy import select,or_
+from sqlalchemy.orm.attributes import flag_modified
 from app.core.database import SessionLocal
 from app.models import User
 from app.models.multiplayer import CoopRoom,CoopMember,CoopBattle,CoopCommand
@@ -23,7 +23,7 @@ async def tick_rooms(session_factory=SessionLocal,worker_id='worker',now=None):
             old_owner=battle.lease_owner
             battle.lease_owner=worker_id;battle.lease_until=now+2
             config=battle.config;dungeon=next(d for d in config['dungeons'] if d['id']==room.dungeon_id)
-            state=deepcopy(battle.state)
+            state=battle.state
             members=(await db.scalars(select(CoopMember).where(CoopMember.room_id==room.id))).all()
             ids=[m.user_id for m in members]
             banned=set((await db.scalars(select(User.id).where(User.id.in_(ids),User.banned.is_(True)))).all())
@@ -48,7 +48,7 @@ async def tick_rooms(session_factory=SessionLocal,worker_id='worker',now=None):
             ticks=min(10,int((elapsed+1e-7)*10))
             if ticks:advance(state,dungeon,config,ticks*100)
             battle.updated_at=now if elapsed==.1 else battle.updated_at+ticks*.1
-            battle.state=state;battle.sequence+=1;battle.status=state['status']
+            flag_modified(battle,'state');battle.sequence+=1;battle.status=state['status']
             if state['status']!='running':
                 room.status=state['status'];battle.lease_until=0
                 # Record the clear in the same transaction; room leaves 'running' so it runs once.

@@ -2,6 +2,7 @@
 
 > 状态：已确认并实现（讨伐周期制 + 档位/名次加成）
 > 关联实现：`shared/data/worldboss.json`、`backend/app/services/world_boss.py`、`backend/app/services/worldboss_engine.py`、`backend/app/worldboss_worker.py`、`backend/app/api/v1/worldboss.py`、`frontend/src/views/WorldBossView.vue`
+> **后续变更（运算下放客户端）**：战斗模拟已由服务端 worker 改为**客户端本地运行**（前端 `game/core/worldboss.ts` 复刻 `worldboss_engine.py`，经 `POST /worldboss/report` 上报伤害增量，服务端用 `services/worldboss_model.py` 夹取上限）；`worldboss_worker` 现仅推进全局时间（周期换轮 / 短休整复活）。本文中「由 worker 服务端权威推进」「前端只渲染快照」等描述以此为准已过时，详见 `docs/multiplayer-load-bandwidth-design.md`。周期制与奖励规则本身**未变**。
 
 ---
 

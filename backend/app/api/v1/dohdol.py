@@ -24,6 +24,7 @@ from app.schemas.game import (
 from app.services import consumables, dohdol_util, fishing, gathering, production
 from app.services.dohdol_state import build_dohdol_state
 from app.services.game_config import CONFIG
+from app.services.ranking import invalidate_live_rankings
 
 router = APIRouter(tags=["dohdol"])
 
@@ -102,6 +103,8 @@ async def produce_start(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
+    # 生活榜是实时聚合：产出变化后失效进程内缓存，避免「刚采集完榜单看不到自己」。
+    invalidate_live_rankings()
     return result
 
 
@@ -151,6 +154,8 @@ async def fish_report(payload: ActivityReportRequest, db: DbSession, user: Curre
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
+    # 钓鱼榜是实时聚合：渔获变化后失效进程内缓存。
+    invalidate_live_rankings()
     return result
 
 
@@ -238,6 +243,8 @@ async def dohdol_equip(payload: DohDolEquipRequest, db: DbSession, user: Current
         current.equipped_slot = None
     item.equipped_slot = payload.slot
     await db.commit()
+    # 生产/采集属性榜按「已装备专用装备」聚合，换装后需失效缓存。
+    invalidate_live_rankings()
     return {"ok": True, "slot": payload.slot, "itemId": item.id}
 
 
@@ -253,4 +260,5 @@ async def dohdol_unequip(payload: DohDolUnequipRequest, db: DbSession, user: Cur
     if current is not None:
         current.equipped_slot = None
         await db.commit()
+    invalidate_live_rankings()
     return {"ok": True, "slot": payload.slot}

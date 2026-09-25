@@ -6,7 +6,8 @@ import time
 
 from sqlalchemy import select
 
-from app.models import Hero, User
+from app.core.config import get_settings
+from app.models import AuditLog, Hero, User
 from app.models.world_boss import (
     SESSION_ENDED,
     SESSION_RUNNING,
@@ -36,6 +37,7 @@ from app.services.world_boss import (
     unclaimed_cycle,
 )
 from app.services.worldboss_engine import advance, damage_hero, new_state
+from app.services.worldboss_model import max_damage_in_seconds
 from app.worldboss_worker import tick_worldboss
 
 API = "/api/v1"
@@ -166,23 +168,24 @@ def test_engine_phase_escalation():
 # ---------------------------------------------------------------- 全局血量 / 刷新
 
 
-async def test_seed_worker_damages_and_kills_boss(session_factory):
-    uid, _ = await _seed_player(session_factory, "wb_player")
+async def test_worker_no_longer_advances_sessions(session_factory):
+    """运算已下放客户端：worker 只推进全局时间，不再扫描 / 推进玩家会话。"""
+    uid, _ = await _seed_player(session_factory, "wb_idle")
     async with session_factory() as db:
         boss = await ensure_world_boss(db)
-        assert boss.status == STATUS_ALIVE and boss.hp == boss.max_hp == 2_000_000_000
-        boss.hp = 500_000  # 便于在测试中击杀
-        state = new_state(WB, [_hero_snapshot(i) for i in range(8)], seed=11)
+        boss.hp = 500_000
         db.add(
             WorldBossSession(
                 boss_id=BOSS_ID,
                 cycle=boss.cycle,
                 user_id=uid,
                 status=SESSION_RUNNING,
-                state=state,
+                state=new_state(WB, [_hero_snapshot(i) for i in range(8)], seed=11),
                 sequence=1,
                 damage=0,
                 heartbeat_at=time.time(),
+                last_report_at=time.time(),
+                last_report_seq=0,
                 lease_until=0,
                 updated_at=time.time() - 1,
                 created_at=time.time(),
@@ -193,23 +196,14 @@ async def test_seed_worker_damages_and_kills_boss(session_factory):
     now = time.time()
     for step in range(40):
         await tick_worldboss(session_factory, "test", now + step)
-        async with session_factory() as db:
-            boss = await db.get(WorldBoss, BOSS_ID)
-            if boss.status == STATUS_DEAD:
-                break
 
     async with session_factory() as db:
         boss = await db.get(WorldBoss, BOSS_ID)
-        contribution = await db.scalar(select(WorldBossContribution).where(WorldBossContribution.user_id == uid))
-        sessions = (await db.scalars(select(WorldBossSession).where(WorldBossSession.user_id == uid))).all()
-    assert boss.status == STATUS_DEAD
-    assert boss.hp == 0
-    assert boss.respawn_at and boss.respawn_at > boss.killed_at
-    assert int(boss.kills) == 1, "周期内击杀只累加击杀数，不换轮"
-    assert 0 < boss.respawn_at - boss.killed_at <= 300, "击杀后应是短暂休整"
-    assert int(contribution.damage) > 0
-    assert contribution.party and contribution.party[0]["damage"] >= 0
-    assert all(s.status == SESSION_RUNNING for s in sessions), "击杀不结束会话，可继续讨伐下一个化身"
+        contribution = await db.scalar(
+            select(WorldBossContribution).where(WorldBossContribution.user_id == uid)
+        )
+    assert boss.status == STATUS_ALIVE and boss.hp == 500_000, "worker 不再会话推进，血量不变"
+    assert contribution is None, "worker 不再产生贡献"
 
 
 async def test_intra_period_kill_revives_without_new_cycle(session_factory):
@@ -484,6 +478,125 @@ async def test_enter_allowed_during_respawn_break(auth_client, session_factory):
     assert resp.json()["boss"]["status"] == STATUS_DEAD
     assert resp.json()["boss"]["kills"] == 1
     assert (await auth_client.post(f"{API}/worldboss/leave")).json()["ok"] is True
+
+
+# ---------------------------------------------------------------- 上报（运算下放客户端）
+
+
+async def _enter_ready(auth_client, session_factory) -> int:
+    """把当前账号的英雄拉到 100 级并进入世界BOSS，返回英雄 id。"""
+    roster = (await auth_client.get(f"{API}/heroes")).json()
+    hero_id = roster["activeHeroId"]
+    async with session_factory() as db:
+        hero = await db.get(Hero, hero_id)
+        hero.level = 100
+        await db.commit()
+    resp = await auth_client.post(f"{API}/worldboss/enter", json={"heroIds": [hero_id]})
+    assert resp.status_code == 200, resp.text
+    return hero_id
+
+
+async def _my_uid(auth_client) -> int:
+    return (await auth_client.get(f"{API}/auth/me")).json()["id"]
+
+
+async def _force_max_window(session_factory, user_id: int) -> None:
+    """把上次上报时间往前推，使服务端窗口稳定钳制到上限（cap 可复算）。"""
+    async with session_factory() as db:
+        session = await db.scalar(
+            select(WorldBossSession).where(WorldBossSession.user_id == user_id)
+        )
+        session.last_report_at = time.time() - 60
+        await db.commit()
+
+
+async def _session_cap(session_factory, user_id: int) -> float:
+    """按服务端上限模型复算本次窗口的伤害上限（窗口钳制到 max 秒）。"""
+    settings = get_settings()
+    seconds = settings.worldboss_report_max_ms / 1000.0
+    async with session_factory() as db:
+        session = await db.scalar(
+            select(WorldBossSession).where(WorldBossSession.user_id == user_id)
+        )
+        snapshots = [h["snapshot"] for h in session.state["heroes"]]
+    return max_damage_in_seconds(snapshots, seconds, settings.worldboss_report_tolerance)
+
+
+async def test_report_damage_reduces_global_hp(auth_client, session_factory):
+    hero_id = await _enter_ready(auth_client, session_factory)
+    uid = await _my_uid(auth_client)
+    await _force_max_window(session_factory, uid)
+    cap = await _session_cap(session_factory, uid)
+    damage = max(1, int(cap * 0.5))
+
+    resp = await auth_client.post(
+        f"{API}/worldboss/report",
+        json={"reportSeq": 1, "damage": damage, "perHero": [{"heroId": hero_id, "damage": damage}]},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["damageAccepted"] == damage
+    assert body["myDamage"] == damage
+    assert body["boss"]["hp"] == 2_000_000_000 - damage
+
+    async with session_factory() as db:
+        contribution = await db.scalar(
+            select(WorldBossContribution).where(WorldBossContribution.user_id == uid)
+        )
+    assert int(contribution.damage) == damage
+    assert contribution.party and contribution.party[0]["damage"] == damage
+
+
+async def test_report_clamps_to_cap(auth_client, session_factory):
+    """超过上限但未到 2 倍：按上限截断，不整单拒绝（不误伤强练度玩家）。"""
+    await _enter_ready(auth_client, session_factory)
+    uid = await _my_uid(auth_client)
+    await _force_max_window(session_factory, uid)
+    cap = await _session_cap(session_factory, uid)
+
+    requested = int(cap * 1.5) + 1
+    resp = await auth_client.post(
+        f"{API}/worldboss/report", json={"reportSeq": 1, "damage": requested}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["damageAccepted"] == int(cap)
+
+
+async def test_report_rejects_far_over_cap_and_audits(auth_client, session_factory):
+    """远超上限（> 2 倍）整单拒绝，并写审计日志。"""
+    await _enter_ready(auth_client, session_factory)
+    uid = await _my_uid(auth_client)
+    await _force_max_window(session_factory, uid)
+    cap = await _session_cap(session_factory, uid)
+
+    requested = int(cap * 3) + 100
+    resp = await auth_client.post(
+        f"{API}/worldboss/report", json={"reportSeq": 1, "damage": requested}
+    )
+    assert resp.status_code == 422, resp.text
+    async with session_factory() as db:
+        audit = await db.scalar(select(AuditLog).where(AuditLog.user_id == uid))
+    assert audit is not None and audit.rejected is True
+
+
+async def test_report_is_idempotent_by_seq(auth_client, session_factory):
+    """同一 reportSeq 重放不重复扣血 / 加贡献。"""
+    hero_id = await _enter_ready(auth_client, session_factory)
+    uid = await _my_uid(auth_client)
+    await _force_max_window(session_factory, uid)
+    cap = await _session_cap(session_factory, uid)
+    damage = max(1, int(cap * 0.5))
+    payload = {"reportSeq": 5, "damage": damage, "perHero": [{"heroId": hero_id, "damage": damage}]}
+
+    first = await auth_client.post(f"{API}/worldboss/report", json=payload)
+    assert first.status_code == 200, first.text
+    assert first.json()["damageAccepted"] == damage
+    hp_after_first = first.json()["boss"]["hp"]
+
+    again = await auth_client.post(f"{API}/worldboss/report", json=payload)
+    assert again.status_code == 200, again.text
+    assert again.json()["duplicate"] is True
+    assert again.json()["boss"]["hp"] == hp_after_first
 
 
 async def test_exclusive_items_not_in_loot_pools():

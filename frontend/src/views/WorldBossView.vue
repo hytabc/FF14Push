@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 
 import { api } from '@/api'
 import { http, toApiError } from '@/api/client'
@@ -9,12 +9,12 @@ import ItemIcon from '@/components/ItemIcon.vue'
 import JobIcon from '@/components/JobIcon.vue'
 import Modal from '@/components/Modal.vue'
 import { sound } from '@/game/audio'
+import { WorldBossSimulator, type WorldBossSnapshot } from '@/game/core/worldboss'
 import { useAuthStore } from '@/stores/auth'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import { jobName, formatNumber, rarityClass, rarityName } from '@/utils/format'
 import {
-  mergeEvents,
   periodIn,
   respawnIn,
   reviveIn,
@@ -31,6 +31,10 @@ const game = useGameStore()
 const auth = useAuthStore()
 const toast = useToastStore()
 
+/** 本地模拟的上报间隔（毫秒）与单帧最大推进（与地区战斗同一套墙钟预算策略）。 */
+const REPORT_MS = 1500
+const MAX_FRAME_MS = 400
+
 const uid = computed(() => game.state?.user.id ?? 0)
 const state = ref<WorldBossState | null>(null)
 const roster = ref<(Hero & { id: number })[]>([])
@@ -42,7 +46,15 @@ const notice = ref('')
 const busy = ref(false)
 /** 首次载入骨架屏。 */
 const loading = ref(true)
+/** 秒级节拍（倒计时）与 0.1s 节拍（战斗面板刷新，避免每帧重渲染）。 */
 const tick = ref(0)
+const frame = ref(0)
+
+/**
+ * 战斗运算下放客户端：本地跑与后端同一套引擎（`game/core/worldboss.ts`），
+ * 按窗口上报伤害增量；服务端用理论模型夹取并结算共享血量 / 贡献 / 奖励。
+ */
+const sim = shallowRef<WorldBossSimulator | null>(null)
 
 /** 榜单展开：各英雄占比条的颜色（按名次轮换）。 */
 const HERO_COLORS = ['bg-rose-400', 'bg-amber-400', 'bg-emerald-400', 'bg-sky-400', 'bg-violet-400', 'bg-orange-400', 'bg-teal-400', 'bg-pink-400']
@@ -50,17 +62,27 @@ const HERO_COLORS = ['bg-rose-400', 'bg-amber-400', 'bg-emerald-400', 'bg-sky-40
 let socket: WebSocket | undefined
 let interval: ReturnType<typeof setInterval> | undefined
 let clock: ReturnType<typeof setInterval> | undefined
+let uiTimer: ReturnType<typeof setInterval> | undefined
+let rafId = 0
 let disposed = false
 let connecting = false
 let polling = false
-/** 已播放过音效的最大事件序号：只对增量事件发声，避免快照重复触发。 */
-let lastEventSeq = 0
+let reporting = false
+let reportSeq = 0
+let reportAccum = 0
+let lastWallMs = 0
+let simBudgetMs = 0
+/** 已播放音效的最大事件序号（只对新增事件发声）。 */
+let playedEventSeq = 0
+/** 已上报的各英雄累计伤害：用于计算增量。 */
+const reportedHeroDamage = new Map<number, number>()
 
-/** 世界BOSS 由服务端权威推进：对新增事件（BOSS 技能 / 死亡 / 复活 / 阶段）播放对应音效。 */
-function playEventSounds(events: Array<{ seq: number; kind: string }>): void {
+/** 对本地模拟新增的事件播放音效（BOSS 技能 / 死亡 / 复活 / 阶段）。 */
+function playSimSounds(): void {
+  const events = sim.value?.events ?? []
   for (const event of events) {
-    if (event.seq <= lastEventSeq) continue
-    lastEventSeq = event.seq
+    if (event.seq <= playedEventSeq) continue
+    playedEventSeq = event.seq
     if (event.kind === 'bossSkill') sound.play('wb.bossSkill')
     else if (event.kind === 'death') sound.play('wb.death')
     else if (event.kind === 'revive') sound.play('wb.revive')
@@ -68,17 +90,49 @@ function playEventSounds(events: Array<{ seq: number; kind: string }>): void {
   }
 }
 
-/** 快照同步：把事件游标推到当前快照的最新序号，避免把历史事件当成新增来播放。 */
-function syncEventCursor(): void {
-  for (const event of state.value?.session?.events ?? []) {
-    if (event.seq > lastEventSeq) lastEventSeq = event.seq
-  }
-}
-
 const boss = computed(() => state.value?.boss ?? null)
-const session = computed(() => state.value?.session ?? null)
 const rules = computed(() => state.value?.rules ?? { heroSlots: 8, levelRequirement: 80, fullPowerLevel: 100, weaknessFloor: 0.1 })
 const leaderboard = computed<WorldBossLeaderboard | null>(() => state.value?.leaderboard ?? null)
+/** BOSS 存活时才推进本地模拟（休整期间战斗暂停，与全局状态一致）。 */
+const bossAlive = computed(() => (boss.value?.status ?? 'alive') === 'alive')
+/** 全局剩余血量占比：驱动本地模拟的阶段（防御越厚、技能越强）。 */
+const bossHpRatio = computed(() => {
+  const b = boss.value
+  return b && b.maxHp > 0 ? Math.max(0, Math.min(1, b.hp / b.maxHp)) : 1
+})
+
+/**
+ * 战斗面板数据：由**本地模拟**提供（服务端不再推进会话），沿用原会话视图的字段形状，
+ * 因此模板无需改动。依赖 0.1s 的 `frame` 而非每帧，避免整页 60fps 重渲染。
+ */
+const session = computed(() => {
+  void frame.value
+  const current = sim.value
+  if (!current) return null
+  return {
+    status: current.state.status,
+    elapsedMs: current.elapsedMs,
+    damageDealt: current.damageDealt,
+    eventSequence: current.state.eventSequence,
+    events: current.events,
+    heroes: current.heroes.map((hero) => ({
+      slot: hero.slot,
+      heroId: hero.snapshot.heroId,
+      name: hero.snapshot.name,
+      jobId: hero.snapshot.jobId,
+      level: hero.snapshot.level,
+      levelMultiplier: hero.levelMultiplier,
+      maxHp: hero.snapshot.stats.max_hp,
+      hp: hero.hp,
+      mp: hero.mp,
+      maxMp: hero.snapshot.stats.max_mp,
+      deadUntil: hero.deadUntil,
+      damage: Math.round(hero.damage),
+      deaths: hero.deaths,
+    })),
+  }
+})
+
 const hpPct = computed(() => {
   const b = boss.value
   return b && b.maxHp > 0 ? Math.max(0, Math.min(100, (b.hp / b.maxHp) * 100)) : 0
@@ -214,6 +268,101 @@ function selectedIndex(heroId: number): number {
   return selected.value.indexOf(heroId) + 1
 }
 
+/** 本地模拟的上报：把各英雄累计伤害的增量提交给服务端（服务端按上限夹取）。 */
+async function reportDamage(): Promise<void> {
+  const current = sim.value
+  if (!current || reporting) return
+  const perHero: Array<{ heroId: number; damage: number }> = []
+  const cumulative = new Map<number, number>()
+  for (const hero of current.heroes) {
+    const heroId = hero.snapshot.heroId
+    const total = Math.round(hero.damage)
+    cumulative.set(heroId, total)
+    const delta = total - (reportedHeroDamage.get(heroId) ?? 0)
+    if (delta > 0) perHero.push({ heroId, damage: delta })
+  }
+  const damage = perHero.reduce((sum, entry) => sum + entry.damage, 0)
+  if (damage <= 0) return
+
+  reporting = true
+  reportSeq += 1
+  try {
+    const res = await api.worldbossReport({ reportSeq, damage, perHero })
+    for (const [heroId, total] of cumulative) reportedHeroDamage.set(heroId, total)
+    if (state.value) {
+      state.value.boss = res.boss
+      state.value.myDamage = res.myDamage
+    }
+    current.setBossHpRatio(bossHpRatio.value)
+  } catch (e) {
+    const err = toApiError(e)
+    // 会话已结束（服务端结束了会话 / 换轮）：本地静默停战，不重试不弹窗。
+    if (err.status === 404) {
+      stopSim()
+      sim.value = null
+      return
+    }
+    // 被服务端拒绝（超出上限）或限速：停止推进，避免继续产生无法结算的伤害。
+    if (err.status === 422 || err.status === 429) {
+      notice.value = '已达服务端结算上限，战斗已暂停。'
+      stopSim()
+      return
+    }
+    error.value = err.message
+  } finally {
+    reporting = false
+  }
+}
+
+/** 本地战斗循环：墙钟预算推进模拟（防加速），按窗口上报伤害。 */
+function simStep(): void {
+  const wallNow = Date.now()
+  const wallDelta = Math.min(MAX_FRAME_MS, Math.max(0, wallNow - lastWallMs))
+  lastWallMs = wallNow
+  simBudgetMs = Math.min(MAX_FRAME_MS, simBudgetMs + wallDelta)
+  const dtMs = Math.min(MAX_FRAME_MS, simBudgetMs)
+  simBudgetMs -= dtMs
+
+  const current = sim.value
+  if (current && bossAlive.value) {
+    current.setBossHpRatio(bossHpRatio.value)
+    current.tick(dtMs)
+    reportAccum += dtMs
+    if (reportAccum >= REPORT_MS) {
+      reportAccum = 0
+      void reportDamage()
+    }
+  }
+  rafId = requestAnimationFrame(simStep)
+}
+
+function startSim(): void {
+  if (rafId) return
+  lastWallMs = Date.now()
+  simBudgetMs = 0
+  reportAccum = 0
+  rafId = requestAnimationFrame(simStep)
+}
+
+function stopSim(): void {
+  if (rafId) cancelAnimationFrame(rafId)
+  rafId = 0
+}
+
+/** 用服务端下发的英雄快照重建本地模拟（进入战场 / 刷新页面恢复）。 */
+function buildSim(party: WorldBossSnapshot[] | null | undefined): void {
+  stopSim()
+  reportedHeroDamage.clear()
+  reportSeq = 0
+  playedEventSeq = 0
+  if (!party || !party.length) {
+    sim.value = null
+    return
+  }
+  sim.value = new WorldBossSimulator(party, bossHpRatio.value)
+  startSim()
+}
+
 async function act(fn: () => Promise<unknown>) {
   busy.value = true
   error.value = ''
@@ -231,7 +380,8 @@ async function load() {
   const [st, ro] = await Promise.all([api.worldbossState(), http.get<{ heroes: (Hero & { id: number })[] }>('/heroes')])
   state.value = st
   roster.value = ro.data.heroes
-  syncEventCursor()
+  // 刷新页面后按服务端下发的快照恢复本地模拟（无会话则 party 为空）。
+  buildSim(st.party)
 }
 
 async function connect() {
@@ -249,17 +399,11 @@ async function connect() {
         type: string
         sequence: number
         boss: WorldBossState['boss']
-        session: WorldBossState['session']
         leaderboard?: WorldBossLeaderboard
       }
       if (!state.value) return
-      if (msg.session && state.value.session && msg.sequence < state.value.sequence) return
+      // 战斗由本地模拟驱动：WS 只用于同步全局 BOSS 状态与榜单。
       if (msg.boss) state.value.boss = msg.boss
-      if (msg.session) {
-        playEventSounds(msg.session.events ?? [])
-        msg.session.events = mergeEvents(state.value.session?.events ?? [], msg.session.events)
-        state.value.session = msg.session
-      }
       state.value.sequence = msg.sequence
       if (msg.leaderboard) state.value.leaderboard = msg.leaderboard
     }
@@ -287,13 +431,15 @@ async function enter() {
     await game.stopRaid(true)
     state.value = await api.worldbossEnter([...selected.value])
     receipt.value = null
-    syncEventCursor()
+    buildSim(state.value.party)
     await connect()
   })
 }
 
 async function leave() {
   await act(async () => {
+    stopSim()
+    sim.value = null
     await api.worldbossLeave()
     socket?.close()
     socket = undefined
@@ -318,14 +464,18 @@ async function heartbeat() {
   polling = true
   try {
     await api.worldbossHeartbeat()
-    // 状态已由 WebSocket 快照驱动：仅在 WS 未连通时用快照接口兜底，
-    // 避免每 5s 同时发心跳 + 全量状态两份请求。
+    // 状态已由 WebSocket 快照驱动：仅在 WS 未连通时用快照接口兜底。
+    // 注意只同步全局状态，**不重建本地模拟**，避免打断进行中的战斗。
     const live = socket !== undefined && socket.readyState === WebSocket.OPEN
     if (!live) {
       const fresh = await api.worldbossState()
-      if (state.value && session.value && fresh.session && fresh.sequence < state.value.sequence) return
-      state.value = fresh
-      syncEventCursor()
+      if (state.value) {
+        state.value.boss = fresh.boss
+        state.value.leaderboard = fresh.leaderboard
+        state.value.myDamage = fresh.myDamage
+        state.value.unclaimedCycle = fresh.unclaimedCycle
+        state.value.sequence = fresh.sequence
+      }
     }
     await connect()
   } catch (e) {
@@ -345,12 +495,19 @@ onMounted(() => {
   })
   interval = setInterval(() => void heartbeat(), 5000)
   clock = setInterval(() => (tick.value += 1), 1000)
+  // 0.1s 节拍：驱动战斗面板刷新（不随每帧重渲染）。
+  uiTimer = setInterval(() => {
+    frame.value += 1
+    playSimSounds()
+  }, 100)
 })
 
 onUnmounted(() => {
   disposed = true
   if (interval) clearInterval(interval)
   if (clock) clearInterval(clock)
+  if (uiTimer) clearInterval(uiTimer)
+  stopSim()
   socket?.close()
 })
 </script>

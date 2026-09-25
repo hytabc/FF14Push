@@ -26,6 +26,26 @@ def _disable_egg_heroes(monkeypatch):
     monkeypatch.setitem(CONFIG.egg_heroes, "eggChance", 0.0)
 
 
+@pytest.fixture(autouse=True)
+def _reset_live_ranking_cache():
+    """实时榜（钓鱼/生活/远征）的聚合缓存与 `/game/config` 的响应缓存都是**进程级**的。
+
+    生产由写入侧 `invalidate_live_rankings()` / 配置不变性保证；测试里每个用例用的是全新内存库，
+    必须显式清空，否则上一个用例的状态会串进下一个用例。
+    """
+    from app.api.v1 import game as game_module
+    from app.services import world_boss as world_boss_module
+    from app.services.ranking import invalidate_live_rankings
+
+    invalidate_live_rankings()
+    world_boss_module.invalidate_contribution_rows()
+    game_module._CONFIG_RESPONSE = None
+    yield
+    invalidate_live_rankings()
+    world_boss_module.invalidate_contribution_rows()
+    game_module._CONFIG_RESPONSE = None
+
+
 @pytest_asyncio.fixture
 async def db_engine():
     engine = create_async_engine(

@@ -1,5 +1,5 @@
 {
-  "$comment": "世界BOSS：全服共享血量，所有在线玩家各自上阵最多 8 名英雄同时削弱同一血量。服务端权威模拟（worldboss_worker 按 tickMs 推进），客户端只渲染。来源：需求「世界BOSS」。",
+  "$comment": "世界BOSS：全服共享血量，所有在线玩家各自上阵最多 8 名英雄同时削弱同一血量。运算下放客户端：前端 game/core/worldboss.ts 复刻本引擎本地模拟并上报伤害增量，服务端只做上限夹取（services/worldboss_model.py）+ 共享部分结算（全局血量 / 贡献 / 奖励）。来源：需求「世界BOSS」。",
   "$commentCycle": "按「讨伐周期」结算（periodSeconds，唯一结算单位）：周期内 BOSS 被击杀后只进入 respawnSeconds 的短暂休整，到点满血重生、cycle 不变，可反复讨伐；周期到时无论 BOSS 存亡都重置满血并 cycle+1，开启新周期。历史贡献/奖励行永久保留，不随版本更新清除。",
   "$commentSkills": "BOSS 技能池：≥20 个不同技能，每隔 skillIntervalSeconds 固定间隔随机抽取一个释放；技能结算与 BOSS 普攻完全独立（普攻按 attackIntervalSeconds 单独计时）。效果类型：nuke/aoe/dot/debuff/charge/enrage/shield。",
   "$commentLevel": "参战等级下限 levelRequirement；80~99 级英雄输出/治疗按线性削弱，满级 fullPowerLevel 不再削弱。",

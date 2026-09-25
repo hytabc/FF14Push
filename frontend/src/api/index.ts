@@ -360,6 +360,18 @@ export const api = {
     return (await http.post('/worldboss/heartbeat', {})).data
   },
 
+  /** 上报本地模拟的伤害增量（服务端按理论上限夹取，见 `game/core/worldboss.ts`）。 */
+  async worldbossReport(payload: {
+    reportSeq: number
+    damage: number
+    perHero: Array<{ heroId: number; damage: number }>
+    elapsedMs?: number
+  }) {
+    return (
+      await http.post<import('@/game/worldboss').WorldBossReportResult>('/worldboss/report', payload)
+    ).data
+  },
+
   async worldbossClaim(cycle?: number) {
     return (
       await http.post<import('@/game/worldboss').WorldBossReceipt>(

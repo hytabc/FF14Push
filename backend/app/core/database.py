@@ -12,16 +12,18 @@ settings = get_settings()
 
 
 def _engine_kwargs(url: str) -> dict:
-    """按方言构造引擎参数。
+    """按方言与进程角色构造引擎参数。
 
-    PostgreSQL 需要显式调大连接池：默认 pool_size=5 + max_overflow=10（合计 15）在大量玩家
-    同时挂机时会排长队。SQLite（本地开发 / 测试）不支持这些参数，保持默认行为。
+    PostgreSQL 需要显式指定连接池；但连接数必须**按角色分档**，否则
+    「进程数 × (pool_size + max_overflow)」会超过 PostgreSQL 的 `max_connections`：
+    API 进程用 `db_pool_size`/`db_max_overflow`，worker 进程（DB_POOL_PROFILE=worker）
+    只暴露 2 条连接即可。SQLite（本地开发 / 测试）不支持这些参数，保持默认行为。
     """
     kwargs: dict = {"pool_pre_ping": True}
     if not url.startswith("sqlite"):
         kwargs.update(
-            pool_size=settings.db_pool_size,
-            max_overflow=settings.db_max_overflow,
+            pool_size=settings.effective_pool_size,
+            max_overflow=settings.effective_max_overflow,
             pool_recycle=settings.db_pool_recycle,
             pool_timeout=settings.db_pool_timeout,
         )

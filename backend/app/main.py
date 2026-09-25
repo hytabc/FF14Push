@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
 from app.api.v1.router import api_router
+from app.core.compression import BrotliMiddleware, RequestDecompressMiddleware
 from app.core.config import get_settings
 from app.core.database import SessionLocal, engine
 from app.models import Base
@@ -24,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("eorzea")
 
 settings = get_settings()
-RANKING_REFRESH_SECONDS = 300  # PRD 排行榜 2.4：每 5 分钟刷新一次
+RANKING_REFRESH_SECONDS = settings.ranking_refresh_seconds  # 缓存榜刷新间隔（可配，见 core/config.py）
 WORLD_BOSS_RESPAWN_SECONDS = 30  # 世界BOSS 全局时间轮询间隔（换轮 / 短休整复活由 periodSeconds / respawnSeconds 决定）
 
 
@@ -74,14 +75,17 @@ async def lifespan(app: FastAPI):
     # （见 docker-compose 的 ranking-worker）。留在 API 内时由 advisory lock 保证只刷一次。
     if settings.ranking_in_api:
         ranking_tasks.append(asyncio.create_task(_ranking_loop()))
-    worldboss_task = asyncio.create_task(_worldboss_loop())
+    # 世界BOSS 全局时间兜底：默认关闭（专用 worldboss-worker 已承担），避免每个 API worker 空转打库。
+    loop_tasks = list(ranking_tasks)
+    if settings.worldboss_loop_in_api:
+        loop_tasks.append(asyncio.create_task(_worldboss_loop()))
     logger.info("艾欧泽亚放置录 后端已启动")
     try:
         yield
     finally:
-        for task in (*ranking_tasks, worldboss_task):
+        for task in loop_tasks:
             task.cancel()
-        for task in (*ranking_tasks, worldboss_task):
+        for task in loop_tasks:
             with contextlib.suppress(asyncio.CancelledError):
                 await task
         await hub.shutdown()
@@ -89,13 +93,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="艾欧泽亚放置录 API", version="0.1.0", lifespan=lifespan)
 
-# 响应体压缩：/game/state 等大响应在直连 API 时也走 gzip（nginx 已 gzip，但默认不压反代响应）。
-# 先加 GZip 再加 CORS，使 CORS 处于最外层，错误响应同样带上 CORS 头。
+# 传输层压缩/解压。`add_middleware` 后注册的在外层，故注册顺序决定嵌套：
+#   CORS（最外）→ GZip → Brotli → RequestDecompress → 应用
+# 响应方向：Brotli 命中 `Accept-Encoding: br` 时设 `Content-Encoding: br`，外层 GZip
+# 见到已有 `Content-Encoding` 即跳过；不支持 br 的客户端由 GZip 兜底。
+# 请求方向：以 gzip 压缩请求体（`Content-Encoding: gzip`）时先解压再交给下游。
+if settings.request_decompress_enabled:
+    app.add_middleware(
+        RequestDecompressMiddleware, max_decompressed_bytes=settings.request_max_decompressed_bytes
+    )
+
+if settings.brotli_enabled:
+    app.add_middleware(
+        BrotliMiddleware, minimum_size=settings.brotli_min_size, quality=settings.brotli_quality
+    )
+
 if settings.gzip_enabled:
     app.add_middleware(
         GZipMiddleware, minimum_size=settings.gzip_min_size, compresslevel=6
     )
 
+# CORS 置于最外层，错误响应（含压缩/解压中间件直接返回的 4xx）同样带上 CORS 头。
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
