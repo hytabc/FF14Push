@@ -13,7 +13,7 @@ export interface SearchOption {
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
 
@@ -32,8 +32,14 @@ const props = withDefaults(
 
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 
+const DROPDOWN_MIN_WIDTH = 288
+const DROPDOWN_MAX_HEIGHT = 256
+
 const query = ref('')
 const open = ref(false)
+const root = ref<HTMLElement | null>(null)
+/** 下拉面板的 fixed 定位（相对视口）；面板 Teleport 到 body，避免被 card 的 backdrop-filter 层叠上下文夹住。 */
+const pos = ref({ top: 0, left: 0, width: DROPDOWN_MIN_WIDTH })
 
 const selected = computed(() => props.options.find((o) => o.value === props.modelValue) ?? null)
 
@@ -44,6 +50,17 @@ const filtered = computed(() => {
     : props.options
   return list.slice(0, props.maxVisible)
 })
+
+/** 依据触发框位置计算面板坐标：水平夹进视口，下方空间不足时向上展开。 */
+function updatePos() {
+  const rect = root.value?.getBoundingClientRect()
+  if (!rect) return
+  const width = Math.max(rect.width, DROPDOWN_MIN_WIDTH)
+  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8))
+  const below = rect.bottom + 4
+  const flip = below + DROPDOWN_MAX_HEIGHT > window.innerHeight && rect.top - DROPDOWN_MAX_HEIGHT - 4 > 0
+  pos.value = { top: flip ? rect.top - DROPDOWN_MAX_HEIGHT - 4 : below, left, width }
+}
 
 function pick(option: SearchOption) {
   emit('update:modelValue', option.value)
@@ -58,12 +75,27 @@ function clear() {
 
 function onFocus() {
   if (props.disabled) return
+  updatePos()
   open.value = true
 }
+
+/** 滚动 / 缩放时让面板跟随触发框（在面板内部滚动也会触发，故只重算位置、不关闭）。 */
+function reposition() {
+  if (open.value) updatePos()
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', reposition, true)
+  window.addEventListener('resize', reposition)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', reposition, true)
+  window.removeEventListener('resize', reposition)
+})
 </script>
 
 <template>
-  <div class="relative">
+  <div ref="root" class="relative">
     <div
       class="flex items-center gap-1 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus-within:border-amber-400"
       :class="disabled ? 'opacity-40' : ''"
@@ -76,6 +108,7 @@ function onFocus() {
         :placeholder="selected ? selected.label : placeholder"
         :disabled="disabled"
         @focus="onFocus"
+        @click="onFocus"
         @keydown.esc="open = false"
       >
       <span v-if="selected && !open" class="truncate text-[11px] text-ink-400">{{ selected.label }}</span>
@@ -90,10 +123,12 @@ function onFocus() {
       </button>
     </div>
 
-    <template v-if="open">
-      <div class="fixed inset-0 z-10" @click="open = false" />
+    <Teleport to="body">
+      <div v-if="open" class="fixed inset-0 z-[45]" @click="open = false" />
       <div
-        class="absolute left-0 top-full z-20 mt-1 max-h-64 w-full min-w-72 overflow-y-auto overscroll-contain rounded-lg border border-ink-600 bg-ink-900 p-1 shadow-xl"
+        v-if="open"
+        class="fixed z-[46] max-h-64 overflow-y-auto overscroll-contain rounded-lg border border-ink-600 bg-ink-900 p-1 shadow-xl"
+        :style="{ top: `${pos.top}px`, left: `${pos.left}px`, width: `${pos.width}px` }"
       >
         <button
           v-for="o in filtered"
@@ -116,6 +151,6 @@ function onFocus() {
         </button>
         <p v-if="!filtered.length" class="px-2 py-1 text-[11px] text-ink-500">{{ emptyText }}</p>
       </div>
-    </template>
+    </Teleport>
   </div>
 </template>
