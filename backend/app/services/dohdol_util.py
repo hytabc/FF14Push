@@ -131,6 +131,20 @@ def sellable_kind(item_id: str) -> str | None:
     return None
 
 
+_FISH_IDS: frozenset[str] | None = None
+
+
+def fish_item_ids() -> frozenset[str]:
+    """全部鱼获的 id 集合。
+
+    鱼与采集材料同存 `kind="material"` 的堆叠，市场据此把「鱼获」与「素材」分开过滤。
+    """
+    global _FISH_IDS
+    if _FISH_IDS is None:
+        _FISH_IDS = frozenset(CONFIG.fish_by_id.keys())
+    return _FISH_IDS
+
+
 # ------------------------------------------------------------------ 专用装备加成
 def equipped_bonus(items: Iterable[Any]) -> dict[str, float]:
     """汇总已穿戴的生产/采集专用装备加成（固定加成 + Buff/Debuff 词条）。"""

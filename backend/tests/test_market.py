@@ -552,6 +552,35 @@ async def test_listings_expose_purchase_level_requirement(client, session_factor
     assert equip["levelMet"] is True
 
 
+async def test_fish_is_separated_from_materials(client, session_factory):
+    """交易板把「鱼获」与「素材」分开过滤：kind=fish 只看鱼，kind=material 排除鱼。"""
+    token_a = await _register(client, "mkt_fish_a")
+    uid_a = await _user_id(session_factory, "mkt_fish_a")
+    await _seed_stack(session_factory, uid_a, "material", "f1_1", 5)
+    await _seed_stack(session_factory, uid_a, "material", "g_ore", 5)
+    _auth(client, token_a)
+    resp = await client.post(
+        f"{API}/market/list",
+        json={
+            "entries": [
+                {"type": "stack", "stackKind": "material", "stackItemId": "f1_1", "count": 5, "unitPrice": 10},
+                {"type": "stack", "stackKind": "material", "stackItemId": "g_ore", "count": 5, "unitPrice": 10},
+            ]
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+    token_b = await _register(client, "mkt_fish_b")
+    _auth(client, token_b)
+
+    fish = (await client.get(f"{API}/market/listings", params={"kind": "fish"})).json()
+    assert {row["itemKey"] for row in fish["listings"]} == {"f1_1"}
+
+    mats = (await client.get(f"{API}/market/listings", params={"kind": "material"})).json()
+    keys = {row["itemKey"] for row in mats["listings"]}
+    assert "f1_1" not in keys and "g_ore" in keys
+
+
 # ------------------------------------------------------------------ 魔晶石 / 种子交易
 async def test_materia_listing_and_buy(client, session_factory):
     """魔晶石可在交易板上架 / 购买（此前被 schema 与 sellable_kind 双重拦截）。"""

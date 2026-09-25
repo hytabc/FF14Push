@@ -144,7 +144,7 @@
       "signature": { "id": "panhaima", "name": "泛输血", "desc": "贤者的群体护盾——「人人都有一份」。", "chargeSeconds": 120, "chargePerKill": 5, "potency": 0, "damageType": "magical", "target": "self", "effects": [{ "type": "shield", "value": 0.12, "duration": 12 }, { "type": "damageReduction", "value": 0.20, "duration": 10 }] }
     },
     {
-      "id": "MNK", "name": "武僧", "enName": "Monk", "role": "melee", "weaponType": "fist", "mainAttr": "dex",
+      "id": "MNK", "name": "武僧", "enName": "Monk", "role": "melee", "weaponType": "fist", "mainAttr": "str",
       "skills": [
         { "id": "bootshine", "name": "连击", "cd": 3, "mpCost": 15, "potency": 100, "damageType": "physical", "target": "single", "priority": 3, "effects": [] },
         { "id": "twinSnakes", "name": "双掌打", "cd": 15, "mpCost": 25, "potency": 150, "damageType": "physical", "target": "single", "priority": 2, "effects": [] },

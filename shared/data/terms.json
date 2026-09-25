@@ -42,7 +42,7 @@
     { "id": "scavenger", "name": "拾荒者", "category": "economy", "type": "buff", "trigger": "常驻", "stat": "eliteChancePct", "range": [3, 12], "slots": ["bracelet", "ring1", "ring2"], "desc": "精英怪出现概率 +{v}%" },
     { "id": "lucky", "name": "幸运", "category": "economy", "type": "buff", "trigger": "常驻", "stat": "goldLuckPct", "range": [5, 15], "slots": ["ring1", "ring2", "earring"], "desc": "金币随机浮动下限提升 {v}%" },
     { "id": "rarityLuck", "name": "品阶幸运", "category": "economy", "type": "buff", "trigger": "常驻", "stat": "chestRarityPct", "range": [2, 10], "slots": ["mainHand", "head", "body", "hands", "legs", "feet", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "抽箱品阶概率 +{v}%" },
-    { "id": "expGain", "name": "经验获取效率", "category": "economy", "type": "buff", "trigger": "常驻", "stat": "expGainPct", "range": [3, 18], "slots": ["necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "击败怪物获得的经验 +{v}%" },
+    { "id": "expGain", "name": "经验获取效率", "category": "economy", "type": "buff", "trigger": "常驻", "stat": "expGainPct", "range": [3, 18], "slots": ["necklace", "earring", "bracelet", "ring1", "ring2"], "maxItemLevel": 99, "desc": "击败怪物获得的经验 +{v}%" },
 
     { "id": "critMastery", "name": "暴击精通", "category": "attribute", "type": "buff", "trigger": "常驻", "stat": "critStatPct", "range": [5, 20], "slots": ["mainHand", "head", "body"], "desc": "暴击属性 +{v}%" },
     { "id": "dhMastery", "name": "直击精通", "category": "attribute", "type": "buff", "trigger": "常驻", "stat": "dhStatPct", "range": [5, 18], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "直击属性 +{v}%" },
@@ -138,7 +138,7 @@
     { "id": "frailty", "name": "重创", "category": "defense", "type": "debuff", "trigger": "常驻", "stat": "damageTakenPct", "range": [4, 15], "desc": "受到伤害 +{v}%" },
     { "id": "weakPoint", "name": "暴击破绽", "category": "attribute", "type": "debuff", "trigger": "常驻", "stat": "critDamagePct", "range": [-12, -3], "desc": "暴击伤害 {v}%" },
     { "id": "cdDelayed", "name": "迟滞", "category": "attribute", "type": "debuff", "trigger": "常驻", "stat": "cdReducePct", "range": [-8, -2], "desc": "技能冷却 {v}%（负值即延长）" },
-    { "id": "expDrain", "name": "惰怠", "category": "economy", "type": "debuff", "trigger": "常驻", "stat": "expGainPct", "range": [-18, -3], "desc": "击败怪物获得的经验 {v}%" },
+    { "id": "expDrain", "name": "惰怠", "category": "economy", "type": "debuff", "trigger": "常驻", "stat": "expGainPct", "range": [-18, -3], "maxItemLevel": 99, "desc": "击败怪物获得的经验 {v}%" },
     { "id": "miserly", "name": "吝啬", "category": "economy", "type": "debuff", "trigger": "常驻", "stat": "goldGainPct", "range": [-15, -3], "desc": "击杀怪物获得的金币 {v}%" },
     { "id": "bloodless", "name": "失血", "category": "attribute", "type": "debuff", "trigger": "常驻", "stat": "lifestealPct", "range": [-5, -1], "desc": "吸血 {v}%" },
     { "id": "dulled", "name": "钝锋", "category": "attribute", "type": "debuff", "trigger": "常驻", "stat": "skillDamagePct", "range": [-10, -2], "desc": "技能伤害 {v}%" }

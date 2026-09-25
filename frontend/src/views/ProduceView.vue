@@ -70,7 +70,13 @@ const recipes = computed(() => {
     .sort((a, b) => a.requiredLevel - b.requiredLevel)
 })
 
-const materials = computed(() => dohdol.state?.materials ?? [])
+const materials = computed(() =>
+  (dohdol.state?.materials ?? []).filter((m) => m.materialKind !== 'fish'),
+)
+/** 鱼获与采集材料分开显示（鱼以 materialKind === 'fish' 标注）。 */
+const fishBag = computed(() =>
+  (dohdol.state?.materials ?? []).filter((m) => m.materialKind === 'fish'),
+)
 const consumables = computed(() => dohdol.state?.consumables ?? [])
 const bonus = computed(() => dohdol.state?.bonus ?? {})
 
@@ -546,6 +552,30 @@ function expandToSequence(r: RecipeView) {
             </span>
           </div>
           <p v-if="!materials.length" class="text-ink-500">暂无材料。</p>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
+        <h2 class="mb-2 text-xs font-semibold text-ink-300">鱼获库存</h2>
+        <div class="max-h-56 space-y-1 overflow-y-auto text-xs">
+          <div v-for="f in fishBag" :key="f.itemId" class="flex items-center justify-between text-ink-200">
+            <span class="flex min-w-0 items-center gap-1.5">
+              <ItemIcon :base-id="f.itemId" variant="plain" :size="18" />
+              <span class="truncate">{{ f.name }}</span>
+            </span>
+            <span class="flex shrink-0 items-center gap-2">
+              <span class="font-mono text-ink-400">×{{ f.count }}</span>
+              <span class="font-mono text-ink-500">{{ (f.sell ?? 0) * f.count }}</span>
+              <button
+                class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
+                :disabled="(f.sell ?? 0) <= 0"
+                @click="dohdol.sellStack(f.kind, f.itemId, f.count)"
+              >
+                出售
+              </button>
+            </span>
+          </div>
+          <p v-if="!fishBag.length" class="text-ink-500">暂无鱼获。</p>
         </div>
       </div>
 

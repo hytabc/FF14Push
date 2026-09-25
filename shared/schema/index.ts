@@ -114,6 +114,8 @@ export interface TermDef {
   stat: string
   range: [number, number]
   slots?: SlotId[]
+  /** 可出现的最高装备等级（缺省不限）；如经验类词条满级（100 级）装备不再出现。 */
+  maxItemLevel?: number
   /** 风险代价类词条的副作用；desc 中的 {c} 为折算后的副作用值。 */
   cost?: TermCostDef
   desc: string
@@ -129,6 +131,8 @@ export interface ProductionTermDef {
   stat: string
   range: [number, number]
   slots: string[]
+  /** 可出现的最高装备等级（缺省不限）；如经验类词条满级（100 级）装备不再出现。 */
+  maxItemLevel?: number
   desc: string
 }
 
@@ -625,6 +629,7 @@ interface BaseItemVariant {
 const baseItemsDataRaw = baseItemsJson as unknown as {
   tiers: Array<{ index: number; name: string; levelReq: number; weaponAttack: number; defense: number; hp: number; mainAttr: number; subAttrScale: number }>
   subAttrPools: Record<string, AttrId[]>
+  jobAffixes?: Record<string, string>
   variants?: { weapon?: BaseItemVariant[]; armor?: BaseItemVariant[]; accessory?: BaseItemVariant[] }
   baseAttrFloat: number
   subAttrFloat: number
@@ -661,6 +666,7 @@ export function expandBaseItems(
   exclusive = false,
 ): BaseItem[] {
   const jobMainAttr = new Map(jobsData.jobs.map((j) => [j.id, j.mainAttr]))
+  const jobAffixes = d.jobAffixes ?? {}
   const weaponVariants = d.variants?.weapon ?? [BASE_VARIANT]
   const armorVariants = d.variants?.armor ?? [BASE_VARIANT]
   const accessoryVariants = d.variants?.accessory ?? [BASE_VARIANT]
@@ -669,8 +675,11 @@ export function expandBaseItems(
   for (const fam of d.weaponFamilies) {
     const isMagical = jobMainAttr.get(fam.jobId) === 'int'
     const basePool = d.subAttrPools[fam.pool]
+    // 武器只保留「基础型（id 为空，随机）」+ 该职业自身职能词缀那一个变体。
+    const wantedAffix = jobAffixes[fam.jobId] ?? ''
     for (const t of d.tiers) {
       for (const v of weaponVariants) {
+        if (v.id && v.id !== wantedAffix) continue
         if (v.minTier > t.index) continue
         out.push({
           id: `w_${fam.weaponType}${variantIdSuffix(v)}_${t.index}`,

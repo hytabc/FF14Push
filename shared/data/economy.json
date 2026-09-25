@@ -6,7 +6,8 @@
     "randomFloat": 0.10,
     "scoreHalf": 1200,
     "attrBonusMax": 0.6,
-    "autoSellRarities": ["common", "uncommon"]
+    "autoSellRarities": ["common", "uncommon"],
+    "fishAutoSellKinds": ["normal"]
   },
   "market": {
     "$comment": "玩家间交易板：上架即从背包/库存扣除进入托管，整单买断成交，成交价抽取手续费（feePct，金币直接销毁回收），未售出到期自动退回卖家。价格完全由玩家自定，仅以 minPrice/maxPrice 做边界保护。",

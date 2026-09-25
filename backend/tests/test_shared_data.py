@@ -193,16 +193,27 @@ def test_mp_regen_sources_are_bounded() -> None:
 
 
 def test_base_items_expanded() -> None:
-    """底材 = 族 × 档位 × 变体(minTier ≤ 档位)，且 id 唯一。"""
+    """底材 = 族 × 档位 × 变体(minTier ≤ 档位)，且 id 唯一；武器只展开「基础型 + 自身职能词缀」。"""
     raw = CONFIG.raw["baseItems"]
     tiers = raw["tiers"]
     variants = raw.get("variants", {})
+    affixes = raw.get("jobAffixes", {})
 
     def per_family(specs) -> int:
         return sum(sum(1 for v in specs if v["minTier"] <= t["index"]) for t in tiers)
 
+    weapon_expected = sum(
+        per_family(
+            [
+                v
+                for v in variants["weapon"]
+                if not v.get("id") or v["id"] == affixes.get(fam["jobId"], "")
+            ]
+        )
+        for fam in raw["weaponFamilies"]
+    )
     expected = (
-        len(raw["weaponFamilies"]) * per_family(variants["weapon"])
+        weapon_expected
         + len(raw["armorFamilies"]) * per_family(variants["armor"])
         + len(raw["accessoryFamilies"]) * per_family(variants["accessory"])
     )
@@ -214,6 +225,47 @@ def test_base_items_expanded() -> None:
         assert item.sub_attr_pool, item.id
         for entry in item.base_attrs:
             assert entry["base"] > 0
+
+
+def test_job_affixes_cover_all_jobs() -> None:
+    """jobAffixes 覆盖全部战斗职业，且取值都是武器侧登记的职能变体 id。"""
+    raw = CONFIG.raw["baseItems"]
+    affixes = raw["jobAffixes"]
+    assert set(affixes) == {j["id"] for j in CONFIG.jobs["jobs"]}
+    weapon_affix_ids = {v["id"] for v in raw["variants"]["weapon"] if v["id"]}
+    assert set(affixes.values()) == weapon_affix_ids
+
+
+def test_weapon_uses_only_its_own_affix() -> None:
+    """每种武器每档只出现「基础型 + 自身职业职能」两个变体（不再有跨职能变体）。"""
+    raw = CONFIG.raw["baseItems"]
+    affixes = raw["jobAffixes"]
+    for fam in raw["weaponFamilies"]:
+        want = affixes[fam["jobId"]]
+        variant_ids = {
+            b.variant_id for b in CONFIG.base_items if b.weapon_type == fam["weaponType"]
+        }
+        assert variant_ids == {"", want}, (fam["weaponType"], variant_ids)
+
+
+def test_role_affix_pools_are_role_locked() -> None:
+    """职能词缀只 roll 本职可用主属性：力量系（御敌/强袭/制敌）不出敏捷·智力，
+    敏捷系（游击/精准）不出力量·智力，智力系（咏咒/治愈）不出力量·敏捷；基础型不设限。"""
+    str_affixes = {"tank", "str", "det", "vit"}
+    dex_affixes = {"dex", "crit", "gold"}
+    int_affixes = {"int", "bal"}
+    for item in CONFIG.base_items:
+        if not item.variant_id:
+            continue
+        pool = set(item.sub_attr_pool)
+        if item.variant_id in str_affixes:
+            assert "str" in pool and not (pool & {"dex", "int"}), (item.id, pool)
+        elif item.variant_id in dex_affixes:
+            assert "dex" in pool and not (pool & {"str", "int"}), (item.id, pool)
+        elif item.variant_id in int_affixes:
+            assert "int" in pool and not (pool & {"str", "dex"}), (item.id, pool)
+        else:
+            raise AssertionError(f"未登记的职能变体 {item.variant_id}（{item.id}）")
 
 
 def test_regions_are_ordered_and_linked() -> None:
@@ -457,6 +509,15 @@ def test_exp_gain_term_covers_all_accessories() -> None:
     accessory_slots = {s["id"] for s in CONFIG.slots if s["category"] == "accessory"}
     assert accessory_slots == {"necklace", "earring", "bracelet", "ring1", "ring2"}
     assert set(CONFIG.term_by_id["expGain"]["slots"]) == accessory_slots
+
+
+def test_exp_terms_excluded_at_max_level() -> None:
+    """所有经验类词条都设置 maxItemLevel=99：100 级装备不再出现经验加成。"""
+    for term_id in ("expGain", "expDrain"):
+        assert int(CONFIG.term_by_id[term_id]["maxItemLevel"]) == 99, term_id
+    for term_id in ("dohInspiration", "dolKeenSense"):
+        term = next(t for t in CONFIG.dohdol_equipment["terms"] if t["id"] == term_id)
+        assert int(term["maxItemLevel"]) == 99, term_id
 
 
 def test_consumable_tiers_keep_durations() -> None:

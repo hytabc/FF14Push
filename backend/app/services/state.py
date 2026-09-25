@@ -204,6 +204,12 @@ async def build_game_state(
                 if auto_sell
                 else list(CONFIG.economy["sell"]["autoSellRarities"]),
             },
+            "autoSellFish": {
+                "enabled": bool(auto_sell.fish_enabled) if auto_sell else False,
+                "kinds": list(auto_sell.fish_kinds)
+                if auto_sell and auto_sell.fish_kinds
+                else list(CONFIG.economy["sell"].get("fishAutoSellKinds", ["normal"])),
+            },
             # 已一次性金币解锁的连抽档位（如 50 / 100 连）；账号级。
             "chestUnlocks": sorted(int(row.draw_count) for row in chest_unlocks),
         },

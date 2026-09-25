@@ -1099,6 +1099,9 @@ function entryRarity(entry: Entry): RarityId {
         <p v-if="entry.slots?.length" class="text-[10px] text-ink-500">
           可出现部位：{{ entry.slots.map((s: string) => slotName(s)).join('、') }}
         </p>
+        <p v-if="entry.maxItemLevel" class="text-[10px] text-ink-500">
+          {{ entry.maxItemLevel }} 级以下装备才可出现（满级装备不再出现）。
+        </p>
 
         <div class="mt-2 flex gap-1">
           <span

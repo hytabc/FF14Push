@@ -1421,8 +1421,13 @@ function listBaseItems(data) {
     }
   }
   for (const family of data.weaponFamilies) {
+    // 武器只展开「基础型 + 自身职能词缀」变体（与 shared/schema 的展开规则一致）。
+    const wantedAffix = (data.jobAffixes ?? {})[family.jobId] ?? ''
+    const weaponVariants = (variants.weapon ?? [BASE_VARIANT]).filter(
+      (v) => !v.id || v.id === wantedAffix,
+    )
     for (const tier of data.tiers) {
-      forEachVariant(variants.weapon, tier.index, (v) =>
+      forEachVariant(weaponVariants, tier.index, (v) =>
         push(`w_${family.weaponType}${v.id ? `_${v.id}` : ''}_${tier.index}`, family.weaponType, tier.index, v.name ?? ''),
       )
     }
@@ -1447,13 +1452,19 @@ function listBaseItems(data) {
 /** 与 listBaseItems 同源的期望数量（用于断言镜像未漂移） */
 function expectedBaseCount(data) {
   const variants = data.variants ?? {}
+  const affixes = data.jobAffixes ?? {}
   const perFamily = (list) =>
     data.tiers.reduce(
       (sum, t) => sum + (list ?? [BASE_VARIANT]).filter((v) => (v.minTier ?? 0) <= t.index).length,
       0,
     )
+  const weaponCount = data.weaponFamilies.reduce((sum, family) => {
+    const wanted = affixes[family.jobId] ?? ''
+    const list = (variants.weapon ?? [BASE_VARIANT]).filter((v) => !v.id || v.id === wanted)
+    return sum + perFamily(list)
+  }, 0)
   return (
-    data.weaponFamilies.length * perFamily(variants.weapon) +
+    weaponCount +
     data.armorFamilies.length * perFamily(variants.armor) +
     data.accessoryFamilies.length * perFamily(variants.accessory)
   )

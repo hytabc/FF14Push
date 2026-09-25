@@ -79,6 +79,15 @@ async def listings(
     if kind and kind != "all":
         if kind == "consumable":
             conditions.append(MarketListing.kind.in_(("potion", "food")))
+        elif kind in ("material", "fish"):
+            # 鱼与采集材料同存 kind="material"：把「鱼获」与「素材」分开过滤。
+            conditions.append(MarketListing.kind == "material")
+            fish_ids = dohdol_util.fish_item_ids()
+            conditions.append(
+                MarketListing.item_key.in_(fish_ids)
+                if kind == "fish"
+                else MarketListing.item_key.notin_(fish_ids)
+            )
         else:
             conditions.append(MarketListing.kind == kind)
     if rarity:
@@ -310,6 +319,15 @@ async def buy_orders(
     if kind and kind != "all":
         if kind == "consumable":
             conditions.append(MarketBuyOrder.kind.in_(("potion", "food")))
+        elif kind in ("material", "fish"):
+            # 与 /listings 同口径：鱼获与素材分开。
+            conditions.append(MarketBuyOrder.kind == "material")
+            fish_ids = dohdol_util.fish_item_ids()
+            conditions.append(
+                MarketBuyOrder.item_key.in_(fish_ids)
+                if kind == "fish"
+                else MarketBuyOrder.item_key.notin_(fish_ids)
+            )
         else:
             conditions.append(MarketBuyOrder.kind == kind)
 

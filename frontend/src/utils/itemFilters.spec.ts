@@ -66,19 +66,25 @@ describe('equipGroup', () => {
 })
 
 describe('roleOfBaseId', () => {
-  it('武器按 jobId 精确取职能（长枪 = 龙骑士 = 近战）', () => {
+  it('武器按 jobId 精确取职能（长枪 = 龙骑士 = 近战，咒杖 = 黑魔 = 法系）', () => {
     expect(roleOfBaseId('w_lance_4')).toBe('melee')
+    expect(roleOfBaseId('w_lance_det_4')).toBe('melee')
+    expect(roleOfBaseId('w_rod_int_4')).toBe('magicalRanged')
   })
 
-  it('防具按职能词缀近似映射', () => {
+  it('防具/饰品按职能词缀映射（FF14 国服：游击=忍者近战、精准=远敏）', () => {
     expect(roleOfBaseId('a_body_tank_4')).toBe('tank')
     expect(roleOfBaseId('a_body_bal_4')).toBe('healer')
     expect(roleOfBaseId('a_body_str_4')).toBe('melee')
+    expect(roleOfBaseId('a_body_det_4')).toBe('melee')
+    expect(roleOfBaseId('a_body_dex_4')).toBe('melee')
+    expect(roleOfBaseId('a_body_crit_4')).toBe('physicalRanged')
+    expect(roleOfBaseId('c_ring_gold_4')).toBe('physicalRanged')
+    expect(roleOfBaseId('c_ring_vit_4')).toBe('tank')
   })
 
-  it('基础型与精准/制敌型视为通用（null）', () => {
+  it('基础型（无前缀）视为通用（null）', () => {
     expect(roleOfBaseId('a_body_4')).toBeNull()
-    expect(roleOfBaseId('a_body_crit_4')).toBeNull()
   })
 
   it('专用装备与未知/空 id 返回 null', () => {

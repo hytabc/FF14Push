@@ -306,6 +306,16 @@ export interface FishCatch {
   exp: number
 }
 
+/** 自动卖鱼的结算行（按鱼种聚合）。 */
+export interface FishAutoSold {
+  itemId: string
+  name: string
+  kind: 'normal' | 'king' | 'emperor' | 'legend'
+  count: number
+  unitPrice: number
+  total: number
+}
+
 /** 生效中的「捕鱼人之识」：每种直觉只绑定一条鱼。 */
 export interface FishInsightView {
   fishId: string
@@ -340,6 +350,9 @@ export interface FishReportResponse {
   conditions: FishConditionsView
   /** 本次生效中的「捕鱼人之识」列表（一鱼一 BUFF，各自倒计时）。 */
   insights: FishInsightView[]
+  /** 本次被自动出售的鱼（按鱼种聚合）与获得金币。 */
+  autoSold: FishAutoSold[]
+  autoGold: number
   newTitles: string[]
   cycle: ActivityCycle
 }
@@ -726,7 +739,11 @@ export interface GameState {
   codex: CodexProgress
   tutorial: { currentStep: number; completed: boolean; skipped: boolean }
   tavern: { candidate: TavernCandidate | null }
-  settings: { autoSell: { enabled: boolean; rarities: RarityId[] }; chestUnlocks?: number[] }
+  settings: {
+    autoSell: { enabled: boolean; rarities: RarityId[] }
+    autoSellFish: { enabled: boolean; kinds: string[] }
+    chestUnlocks?: number[]
+  }
   dohdol: DohDolState
 }
 

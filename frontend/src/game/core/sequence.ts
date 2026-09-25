@@ -54,6 +54,14 @@ export function nextStepId(): string {
   return `step-${stepCounter}`
 }
 
+/** 恢复持久化队列时调用：把 id 计数器抬到已有 `step-N` 的最大值，避免新增步骤与恢复的步骤 id 冲突。 */
+export function seedStepIds(steps: SequenceStep[]): void {
+  for (const step of steps) {
+    const match = /^step-(\d+)$/.exec(step.id)
+    if (match) stepCounter = Math.max(stepCounter, Number(match[1]))
+  }
+}
+
 /** 序列步骤的稳定 key（同种目标合并时也据此判断）。 */
 export function stepKey(step: SequenceStep): string {
   return step.kind === 'gather' ? `gather:${step.materialId}` : `produce:${step.recipeId}`

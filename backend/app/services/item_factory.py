@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, Iterable
 
 from app.services.game_config import CONFIG, BaseItem
 from app.services.loot import RARITY_ORDER, rarity_tier
@@ -236,6 +236,15 @@ def _extreme_value(lo: float, hi: float) -> float:
     return hi if abs(hi) >= abs(lo) else lo
 
 
+def _level_allows_term(term: dict[str, Any], level: int) -> bool:
+    """词条是否可用于该等级的装备：`maxItemLevel` 限定词条出现的最高装备等级。
+
+    用于让「经验加成」等词条不再出现在满级（100 级）装备上（低等级仍保留）。
+    """
+    cap = term.get("maxItemLevel")
+    return cap is None or level <= int(cap)
+
+
 def roll_terms(
     base: BaseItem,
     rarity: str,
@@ -248,10 +257,11 @@ def roll_terms(
     force_ancient>0 时，保证其中至少这么多条 Buff 为太古（制造装备的「必带太古词条」）。
     """
     slots = set(possible_slots(base))
+    level = int(base.level_req)
     eligible = [
         t
         for t in CONFIG.terms["terms"]
-        if not t.get("slots") or slots & set(t["slots"])
+        if (not t.get("slots") or slots & set(t["slots"])) and _level_allows_term(t, level)
     ]
     return _roll_terms_from_pool(eligible, rarity, rng, quality_bonus, force_ancient)
 
@@ -262,16 +272,18 @@ def roll_dedicated_terms(
     rng: random.Random,
     quality_bonus: float = 0.0,
     force_ancient: int = 0,
+    level: int = 0,
 ) -> list[dict[str, Any]]:
     """生成生产/采集专用装备的 0-4 个 Buff/Debuff。
 
     词条池为 `dohdol-equipment.json:terms`，按专用栏位过滤；品质规则与战斗词条一致
-    （普通/稀有/太古，Debuff 恒为普通）。
+    （普通/稀有/太古，Debuff 恒为普通）。`level` 为该专用装备的等级需求，用于
+    剔除仅低等级可出现的词条（如满级不再提供经验加成）。
     """
     eligible = [
         t
         for t in CONFIG.dohdol_equipment.get("terms", [])
-        if not t.get("slots") or slot in t["slots"]
+        if (not t.get("slots") or slot in t["slots"]) and _level_allows_term(t, int(level))
     ]
     return _roll_terms_from_pool(eligible, rarity, rng, quality_bonus, force_ancient)
 
@@ -533,7 +545,7 @@ def generate_crafted_item(
             "baseAttrs": base_attrs,
             "subAttrs": [],
             "terms": roll_dedicated_terms(
-                dohdol["slot"], rarity, rng, quality_bonus, force_ancient
+                dohdol["slot"], rarity, rng, quality_bonus, force_ancient, int(dohdol["levelReq"])
             ),
         }
 
@@ -666,11 +678,11 @@ def _ensure_ancient_floor(terms: list[dict[str, Any]], floor: int, rng: random.R
 
 
 def float_terms_based_on_current(
-    item: Any, rng: random.Random, down_pct: float, up_pct: float
+    terms: Iterable[dict[str, Any]], rng: random.Random, down_pct: float, up_pct: float
 ) -> list[dict[str, Any]]:
-    """就地浮动词条：保留种类与品质，Debuff 恒为普通，值夹进该品质的数值带。"""
+    """浮动词条：保留种类与品质，Debuff 恒为普通，值夹进该品质的数值带。"""
     out: list[dict[str, Any]] = []
-    for term in item.terms or []:
+    for term in terms:
         quality = "common" if term.get("type") == "debuff" else term.get("quality", "common")
         lo, hi = term_range(term["id"])
         value = float_near_current(rng, float(term["value"]), lo, hi, quality, down_pct, up_pct)
@@ -686,9 +698,14 @@ def float_terms_based_on_current(
 def _roll_terms_based_on_current(
     item: Any, rng: random.Random, down_pct: float, up_pct: float, upgrade_chance: float
 ) -> list[dict[str, Any]]:
-    """「基于当前」词条处理：就地浮动 + 太古保底 + 概率升级普通 Buff 为太古。"""
-    floor = _ancient_count(item.terms or [])
-    out = float_terms_based_on_current(item, rng, down_pct, up_pct)
+    """「基于当前」词条处理：就地浮动 + 太古保底 + 概率升级普通 Buff 为太古。
+
+    会先剔除当前等级不允许再出现的词条（如满级装备的经验加成），再做浮动 / 保底。
+    """
+    level = int(getattr(item, "level_req", 0) or 0)
+    kept = [t for t in (item.terms or []) if _level_allows_term(t, level)]
+    floor = _ancient_count(kept)
+    out = float_terms_based_on_current(kept, rng, down_pct, up_pct)
     _ensure_ancient_floor(out, floor, rng)
     if upgrade_chance > 0 and rng.random() < upgrade_chance:
         _upgrade_random_common_buff(out, rng)

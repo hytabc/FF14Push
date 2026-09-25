@@ -56,7 +56,18 @@ async function submitChangeNickname() {
 const enabled = ref(false)
 const rarities = ref<string[]>([])
 const saving = ref(false)
+/** 自动卖鱼：按鱼的档位多选（普通鱼 / 鱼王 / 鱼皇 / 困难鱼）。 */
+const fishEnabled = ref(false)
+const fishKinds = ref<string[]>([])
+const savingFish = ref(false)
 const confirmRestart = ref(false)
+
+const FISH_KIND_OPTIONS: { id: string; label: string }[] = [
+  { id: 'normal', label: '普通鱼' },
+  { id: 'king', label: '鱼王' },
+  { id: 'emperor', label: '鱼皇' },
+  { id: 'legend', label: '困难鱼' },
+]
 
 // 称号：每位玩家最多佩戴一个（展示在排行榜 / 玩家资料）。
 const activeTitleId = ref<string | null>(null)
@@ -108,6 +119,9 @@ onMounted(async () => {
   const settings = game.state?.settings.autoSell
   enabled.value = settings?.enabled ?? false
   rarities.value = settings?.rarities ?? [...autoSellOptions]
+  const fishSettings = game.state?.settings.autoSellFish
+  fishEnabled.value = fishSettings?.enabled ?? false
+  fishKinds.value = fishSettings?.kinds ?? ['normal']
   activeTitleId.value = game.state?.dohdol?.activeTitleId ?? null
   await loadRedeem()
 })
@@ -179,6 +193,12 @@ function toggleRarity(rarity: string) {
     : [...rarities.value, rarity]
 }
 
+function toggleFishKind(kind: string) {
+  fishKinds.value = fishKinds.value.includes(kind)
+    ? fishKinds.value.filter((k) => k !== kind)
+    : [...fishKinds.value, kind]
+}
+
 async function save() {
   saving.value = true
   try {
@@ -189,6 +209,23 @@ async function save() {
     toast.push('保存失败', 'error')
   } finally {
     saving.value = false
+  }
+}
+
+async function saveFish() {
+  savingFish.value = true
+  try {
+    const res = await api.setAutoSellFish(fishEnabled.value, fishKinds.value)
+    if (res.ok === false) {
+      toast.push(res.message ?? '保存失败', 'error')
+      return
+    }
+    toast.push('设置已保存', 'success')
+    await game.loadState()
+  } catch {
+    toast.push('保存失败', 'error')
+  } finally {
+    savingFish.value = false
   }
 }
 
@@ -316,6 +353,42 @@ async function replayFromSettings() {
         @click="save"
       >
         {{ saving ? '保存中…' : '保存设置' }}
+      </button>
+    </section>
+
+    <section class="card p-4">
+      <h3 class="text-sm font-semibold text-white">自动卖鱼</h3>
+      <p class="mt-1 text-[11px] text-ink-500">
+        开启后，钓到指定档位的鱼会立即出售换取金币（不入背包，图鉴与钓鱼统计照常记录）。
+      </p>
+
+      <label class="mt-3 flex items-center gap-2 text-xs text-ink-200">
+        <input v-model="fishEnabled" type="checkbox" />
+        开启自动卖鱼
+      </label>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button
+          v-for="option in FISH_KIND_OPTIONS"
+          :key="option.id"
+          class="rounded border px-2 py-1 text-[11px] transition"
+          :class="
+            fishKinds.includes(option.id)
+              ? 'border-amber-400 bg-amber-400/15 text-amber-200'
+              : 'border-ink-600 text-ink-400 hover:border-ink-400'
+          "
+          @click="toggleFishKind(option.id)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+
+      <button
+        class="mt-4 rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+        :disabled="savingFish"
+        @click="saveFish"
+      >
+        {{ savingFish ? '保存中…' : '保存设置' }}
       </button>
     </section>
 

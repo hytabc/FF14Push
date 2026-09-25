@@ -13,20 +13,61 @@ vi.mock('@/api', () => ({ api: mocks.api }))
 vi.mock('@/stores/game', () => ({ useGameStore: () => mocks.game }))
 vi.mock('@/stores/toast', () => ({ useToastStore: () => ({ push: vi.fn() }) }))
 
+import { nextStepId } from '@/game/core/sequence'
+import { sequenceKey, type PersistedSequence } from '@/utils/sequenceStorage'
 import { useDohDolStore } from './dohdol'
+
+const cycle = (seconds: number, credit = 0) => ({ seconds, credit, at: 0 })
+
+let storage: Map<string, string>
+
+/** 注入内存版 localStorage（Node 环境默认没有）。 */
+function stubStorage() {
+  storage = new Map<string, string>()
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => storage.get(k) ?? null,
+    setItem: (k: string, v: string) => void storage.set(k, String(v)),
+    removeItem: (k: string) => void storage.delete(k),
+    clear: () => storage.clear(),
+  })
+}
+
+/** 写入一份序列快照（默认「运行中且刚保存」）。 */
+function seedSnapshot(userId: number, overrides: Partial<PersistedSequence> = {}) {
+  const data: PersistedSequence = {
+    v: 1,
+    steps: [],
+    loopMode: 'once',
+    loopTotal: 3,
+    active: false,
+    index: -1,
+    round: 1,
+    gatherGained: 0,
+    produceDone: 0,
+    results: [],
+    savedAt: Date.now(),
+    ...overrides,
+  }
+  storage.set(sequenceKey(userId), JSON.stringify(data))
+}
+
+const gatherStep = {
+  kind: 'gather' as const, id: 'step-1', materialId: 'ore7', name: '铁矿石',
+  jobId: 'MIN', regionId: 7, target: 3,
+}
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'performance'] })
   vi.stubGlobal('window', globalThis)
+  stubStorage()
   setActivePinia(createPinia())
   vi.resetAllMocks()
 })
 afterEach(() => {
+  ;(mocks.game as { state: unknown }).state = null
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
-
-const cycle = (seconds: number, credit = 0) => ({ seconds, credit, at: 0 })
 
 describe('活动结算与进度同步', () => {
   it.each(['gather', 'produce', 'fish'] as const)('%s 在实际动作截止时结算', async (mode) => {
@@ -348,5 +389,117 @@ describe('生产 / 采集日志', () => {
     await store.startGather('MIN', 1)
     expect(store.logEntries.length).toBe(0)
     await store.stop()
+  })
+})
+
+describe('序列断点续传', () => {
+  function setUser(userId: number) {
+    ;(mocks.game as { state: unknown }).state = {
+      user: { id: userId, nickname: 'n', gold: 0, activeTitleId: null },
+      dohdol: { progress: { dol: { level: 99 }, doh: { level: 99 } }, recipes: [] },
+      regionProgress: {},
+    }
+  }
+
+  it('队列写入本地后可在新实例恢复（不自动运行）', async () => {
+    setUser(1)
+    const first = useDohDolStore()
+    first.addStep({ ...gatherStep })
+
+    setActivePinia(createPinia())
+    const second = useDohDolStore()
+    expect(second.sequence).toHaveLength(1)
+    expect(second.sequence[0]).toMatchObject({ kind: 'gather', materialId: 'ore7', target: 3 })
+    expect(second.seqActive).toBe(false)
+    expect(mocks.api.gatherStart).not.toHaveBeenCalled()
+  })
+
+  it('采集步从断点自动续传并完成', async () => {
+    mocks.api.gatherStart.mockResolvedValue({ sessionId: 5, cycle: cycle(2) })
+    mocks.api.gatherReport.mockResolvedValue({
+      gained: [{ itemId: 'ore7', name: '铁矿石', count: 1 }],
+      cycle: cycle(2),
+    })
+    seedSnapshot(1, { steps: [{ ...gatherStep }], active: true, index: 0, gatherGained: 2 })
+    setUser(1)
+    const store = useDohDolStore()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(store.seqActive).toBe(true)
+    expect(store.seqGained).toBe(2)
+    expect(mocks.api.gatherStart).toHaveBeenCalledWith('MIN', 7)
+
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.seqActive).toBe(false)
+    expect(store.seqResults).toEqual([
+      { id: 'step-1', name: '铁矿石', done: 3, target: 3, status: 'done' },
+    ])
+  })
+
+  it('制作步按剩余件数续传并汇总为累计数量', async () => {
+    mocks.api.produceStart.mockResolvedValue({ sessionId: 9, recipeId: 'r1', targetActions: 3, cycle: cycle(2) })
+    mocks.api.produceReport.mockResolvedValue({
+      crafts: 3, recipeId: 'r1', materials: [], items: [], xp: 0,
+      level: { levelsGained: 0, level: 1, exp: 0 },
+      targetActions: 3, producedTotal: 3, finished: true, cycle: cycle(2),
+    })
+    seedSnapshot(1, {
+      steps: [{ kind: 'produce', id: 'step-1', recipeId: 'r1', name: 'A', jobId: 'CRP', target: 5 }],
+      active: true,
+      index: 0,
+      produceDone: 2,
+    })
+    setUser(1)
+    const store = useDohDolStore()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(mocks.api.produceStart).toHaveBeenCalledWith('CRP', 'r1', 3)
+
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(store.seqActive).toBe(false)
+    expect(store.seqResults).toEqual([{ id: 'step-1', name: 'A', done: 5, target: 5, status: 'done' }])
+  })
+
+  it('保存过久的运行态只恢复队列、不自动续跑', async () => {
+    seedSnapshot(1, {
+      steps: [{ ...gatherStep }],
+      active: true,
+      index: 0,
+      gatherGained: 1,
+      savedAt: Date.now() - 20 * 60 * 1000,
+    })
+    setUser(1)
+    const store = useDohDolStore()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(store.sequence).toHaveLength(1)
+    expect(store.seqActive).toBe(false)
+    expect(mocks.api.gatherStart).not.toHaveBeenCalled()
+  })
+
+  it('版本 / 结构不符的快照被忽略且不抛错', async () => {
+    storage.set(sequenceKey(1), JSON.stringify({ v: 999, steps: [{ ...gatherStep }] }))
+    setUser(1)
+    const store = useDohDolStore()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(store.sequence).toHaveLength(0)
+
+    storage.set(sequenceKey(1), '{ 这不是 JSON')
+    store.restore()
+    expect(store.sequence).toHaveLength(0)
+  })
+
+  it('恢复后新增步骤 id 不与恢复的 id 冲突', async () => {
+    seedSnapshot(1, {
+      steps: [
+        { ...gatherStep, id: 'step-1' },
+        { ...gatherStep, id: 'step-2', materialId: 'ore3' },
+      ],
+    })
+    setUser(1)
+    const store = useDohDolStore()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(store.sequence).toHaveLength(2)
+    expect(store.sequence.map((s) => s.id)).not.toContain(nextStepId())
   })
 })

@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import { sound } from '@/game/audio'
 import { resolveGatherAvailability } from '@/game/core/gather'
 import { ProgressClock } from '@/game/core/progress'
 import type { SequenceLoopMode, SequenceStep, StepResult, StepStatus } from '@/game/core/sequence'
-import { gatherStepIssue, SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
+import { gatherStepIssue, seedStepIds, SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
 import type { FishCatch, ActivityLogEntry, FishConditionsView, FishInsightView } from '@/game/types'
 import { activityExpLog } from '@/utils/battleLog'
+import { formatNumber } from '@/utils/format'
+import { clearStoredSequence, readSequence, writeSequence } from '@/utils/sequenceStorage'
 import { titleName } from '@/utils/titles'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -19,6 +21,10 @@ const REPORT_MS = 1500
 const HIDDEN_REPORT_MS = 5000
 /** 全量状态刷新节流：产出 / 进度已由上报响应驱动界面，不必每次上报都拉 `/game/state`。 */
 const STATE_REFRESH_MS = 5000
+/** 序列断点自动续传的最长「离线」时长：超过则只恢复队列、不自动继续运行。 */
+const AUTO_RESUME_MAX_AGE_MS = 15 * 60 * 1000
+/** 序列运行进度的持久化节流间隔（步骤切换 / 结束等状态变化仍强制写入）。 */
+const SEQ_PERSIST_MS = 1000
 
 /** 页面是否处于后台（Node 测试环境没有 document，按「可见」处理以免误降频）。 */
 function isPageHidden(): boolean {
@@ -57,12 +63,15 @@ export const useDohDolStore = defineStore('dohdol', () => {
   const targetCount = ref<number | null>(null)
   const producedCount = ref(0)
 
-  // 采集 / 制作序列：按顺序自动执行多个会话。仅当前页面会话有效（离开页面即停止）。
+  // 采集 / 制作序列：按顺序自动执行多个会话。队列与运行断点按账号持久化到本地，
+  // 整页刷新 / 版本更新重载后自动续传（见 restore）；应用内切页仍停止运行、保留队列。
   const sequence = ref<SequenceStep[]>([])
   const seqActive = ref(false)
   const seqIndex = ref(-1)
   /** 当前采集步「序列开始后」新采到的目标材料数量。 */
   const seqGained = ref(0)
+  /** 当前制作步「本次会话之前」已制造数量（续传时用于按剩余件数重启会话）。 */
+  const seqProducedBase = ref(0)
   const seqResults = ref<StepResult[]>([])
   /** 循环模式（默认不循环，保持旧行为）；count 表示跑完 loopTotal 轮后停止。 */
   const loopMode = ref<SequenceLoopMode>('once')
@@ -252,6 +261,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
           if (seqGained.value >= step.target) {
             stepComplete = { done: seqGained.value, target: step.target }
           }
+          persist()
         }
       } else if (mode.value === 'produce') {
         const [r, rtt] = await timed(() => api.produceReport(id))
@@ -264,7 +274,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
           // 达到目标件数：服务端已结束会话，本地直接收尾（不再调用 stop 接口）。
           settle()
           leveledUp = true
-          stepComplete = { done: r.producedTotal, target: r.targetActions ?? r.producedTotal }
+          // 续传时本次会话以「剩余件数」启动，需加上之前已完成的数量才是累计值。
+          const step = currentSeqStep.value
+          const base = step?.kind === 'produce' ? seqProducedBase.value : 0
+          stepComplete = {
+            done: base + r.producedTotal,
+            target: base + (r.targetActions ?? r.producedTotal),
+          }
           if (!seqActive.value) toast.push(`制造完成，共 ${r.producedTotal} 件`, 'success')
         } else {
           syncCycle(r.cycle, rtt)
@@ -289,6 +305,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
           if (!r.items.length) sound.play('produce.craft')
         }
         if (r.xp > 0 && r.xpBreakdown) pushLog(activityExpLog(r.xpBreakdown), 'exp')
+        if (currentSeqStep.value?.kind === 'produce') persist()
       } else if (mode.value === 'fish') {
         const [r, rtt] = await timed(() => api.fishReport(id))
         if (sessionId.value !== id) return
@@ -299,6 +316,12 @@ export const useDohDolStore = defineStore('dohdol', () => {
         // 鱼王 / 鱼皇 / 困难鱼用更华丽的音效与普通鱼获区分。
         if (r.caught.length) {
           sound.play(r.caught.some((f) => f.kind !== 'normal') ? 'fish.rare' : 'fish.catch')
+        }
+        // 自动卖鱼：命中档位的鱼未入背包，直接换金币（图鉴与统计仍照常记录）。
+        if (r.autoSold?.length && r.autoGold > 0) {
+          const sold = r.autoSold.map((f) => `${f.name} ×${f.count}`).join('、')
+          pushLog(`自动出售鱼获：${sold}，+${formatNumber(r.autoGold)} 金币`, 'loot')
+          toast.push(`自动卖鱼 +${formatNumber(r.autoGold)} 金币`, 'loot')
         }
         if (r.level?.levelsGained > 0) leveledUp = true
         syncCycle(r.cycle, rtt)
@@ -395,14 +418,97 @@ export const useDohDolStore = defineStore('dohdol', () => {
     }
   }
 
+  // --------------------------------------------------------- 序列持久化 / 续传
+  /** 当前登录账号 id；未登录为 0（此时不读写本地快照）。 */
+  function currentUserId(): number {
+    return game.state?.user?.id ?? 0
+  }
+
+  let lastPersistAt = 0
+
+  /** 把队列定义与运行断点写入本地；force 用于步骤切换 / 结束等关键状态（否则按 1s 节流）。 */
+  function persist(force = false) {
+    const id = currentUserId()
+    if (!id) return
+    const now = Date.now()
+    if (!force && now - lastPersistAt < SEQ_PERSIST_MS) return
+    lastPersistAt = now
+    const step = sequence.value[seqIndex.value]
+    writeSequence(id, {
+      v: 1,
+      steps: sequence.value,
+      loopMode: loopMode.value,
+      loopTotal: loopTotal.value,
+      active: seqActive.value,
+      index: seqIndex.value,
+      round: loopRound.value,
+      gatherGained: seqGained.value,
+      produceDone: step?.kind === 'produce' ? seqProducedBase.value + producedCount.value : 0,
+      results: seqResults.value,
+      savedAt: now,
+    })
+  }
+
+  /** 恢复本地快照：队列一定恢复；运行中的序列在「最近保存」时自动从断点继续。 */
+  function restore() {
+    const id = currentUserId()
+    if (!id) return
+    const data = readSequence(id)
+    if (!data) return
+    seedStepIds(data.steps)
+    sequence.value = data.steps
+    loopMode.value = data.loopMode
+    loopTotal.value = data.loopTotal
+    loopRound.value = data.round
+    seqResults.value = data.results
+    seqGained.value = data.gatherGained
+    seqProducedBase.value = data.produceDone
+    const recent = Date.now() - data.savedAt <= AUTO_RESUME_MAX_AGE_MS
+    const canResume = data.active && data.steps.length > 0 && data.index >= 0 && recent
+    if (!canResume) {
+      seqActive.value = false
+      seqIndex.value = -1
+      if (data.active) toast.push('已恢复上次的序列（未自动继续），可重新开始', 'info')
+      persist(true)
+      return
+    }
+    seqActive.value = true
+    seqIndex.value = data.index
+    toast.push(`已恢复序列，从第 ${data.index + 1} 步继续`, 'info')
+    void runStep(true)
+  }
+
+  // 账号 id 首次可用（启动加载 / 登录后）时自动恢复；切换账号各自恢复各自的快照。
+  let restoredId = 0
+  watch(
+    () => game.state?.user?.id ?? 0,
+    (id) => {
+      if (!id) {
+        restoredId = 0
+        return
+      }
+      if (id === restoredId) return
+      restoredId = id
+      restore()
+    },
+    { immediate: true },
+  )
+
+  // 整页卸载（刷新 / 关闭）前把节流窗口内的最后进度落盘，减少断点误差。
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', () => persist(true))
+  }
+
   // ------------------------------------------------------------------ 序列
   /** 清空「运行态」但保留队列定义（手动开始 / 序列结束时用）。 */
   function resetRun() {
     seqActive.value = false
     seqIndex.value = -1
     seqGained.value = 0
+    seqProducedBase.value = 0
     seqResults.value = []
     loopRound.value = 1
+    persist(true)
   }
 
   /** 入列：同一目标的步骤合并数量；超出上限拒绝。 */
@@ -416,6 +522,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     if (existing) {
       existing.target += step.target
       toast.push(`已合并到「${existing.name}」，数量 ${existing.target}`, 'info')
+      persist(true)
       return
     }
     if (sequence.value.length >= SEQ_STEP_LIMIT) {
@@ -423,11 +530,13 @@ export const useDohDolStore = defineStore('dohdol', () => {
       return
     }
     sequence.value.push(step)
+    persist(true)
   }
 
   function removeStep(id: string) {
     if (seqActive.value) return
     sequence.value = sequence.value.filter((s) => s.id !== id)
+    persist(true)
   }
 
   function moveStep(id: string, dir: -1 | 1) {
@@ -438,6 +547,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     const next = sequence.value.slice()
     ;[next[i], next[j]] = [next[j], next[i]]
     sequence.value = next
+    persist(true)
   }
 
   function clearSequence() {
@@ -445,6 +555,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
     sequence.value = []
     seqResults.value = []
     loopRound.value = 1
+    const id = currentUserId()
+    if (id) clearStoredSequence(id)
   }
 
   /** 开始执行序列：按顺序自动采集 / 制作，直到全部完成或用户停止。 */
@@ -475,8 +587,10 @@ export const useDohDolStore = defineStore('dohdol', () => {
     seqResults.value = []
     seqIndex.value = 0
     seqGained.value = 0
+    seqProducedBase.value = 0
     loopRound.value = 1
     seqActive.value = true
+    persist(true)
     await runStep()
   }
 
@@ -484,7 +598,8 @@ export const useDohDolStore = defineStore('dohdol', () => {
   async function stopSequence(silent = false) {
     const step = currentSeqStep.value
     if (step) {
-      const done = step.kind === 'gather' ? seqGained.value : producedCount.value
+      const done =
+        step.kind === 'gather' ? seqGained.value : seqProducedBase.value + producedCount.value
       seqResults.value.push({
         id: step.id,
         name: step.name,
@@ -497,21 +612,37 @@ export const useDohDolStore = defineStore('dohdol', () => {
     await stop(silent)
   }
 
-  /** 启动当前步（采集 / 制作）。启动失败（材料不足 / 等级不足等）→ 跳过并继续。 */
-  async function runStep() {
+  /**
+   * 启动当前步（采集 / 制作）。启动失败（材料不足 / 等级不足等）→ 跳过并继续。
+   * resume=true 用于断点续传：保留已恢复的进度计数，制作步按「剩余件数」重启会话。
+   */
+  async function runStep(resume = false) {
     if (!seqActive.value) return
     const step = sequence.value[seqIndex.value]
     if (!step) {
       finishSequence()
       return
     }
-    seqGained.value = 0
+    if (resume) {
+      // 边界：恢复的断点已满足目标 → 直接记为完成并前进。
+      const done = step.kind === 'gather' ? seqGained.value : seqProducedBase.value
+      if (done >= step.target) {
+        await completeStep(done, step.target)
+        return
+      }
+    } else {
+      seqGained.value = 0
+      seqProducedBase.value = 0
+    }
     try {
       if (step.kind === 'gather') {
         await startGather(step.jobId, step.regionId, { fromSequence: true })
       } else {
-        await startProduce(step.jobId, step.recipeId, step.target, { fromSequence: true })
+        const base = seqProducedBase.value
+        const remaining = Math.max(1, step.target - base)
+        await startProduce(step.jobId, step.recipeId, remaining, { fromSequence: true })
       }
+      persist(true)
     } catch (err) {
       const reason = err instanceof Error ? err.message : '启动失败'
       seqResults.value.push({
@@ -542,6 +673,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     )
     if (status === 'done') sound.play('seq.step')
     seqIndex.value += 1
+    persist(true)
     await runStep()
   }
 
@@ -558,7 +690,9 @@ export const useDohDolStore = defineStore('dohdol', () => {
       loopRound.value += 1
       seqResults.value = []
       seqGained.value = 0
+      seqProducedBase.value = 0
       seqIndex.value = 0
+      persist(true)
       toast.push(`第 ${loopRound.value} 轮`, 'info')
       void runStep()
       return
@@ -567,6 +701,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     seqActive.value = false
     seqIndex.value = -1
     seqGained.value = 0
+    seqProducedBase.value = 0
     // 保留 seqResults 供界面展示本轮汇总。
     if (wantMore && !progressed) {
       toast.push('本轮无任何产出，已停止循环', 'info')
@@ -577,6 +712,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
       )
       if (ok >= total) sound.play('seq.done')
     }
+    persist(true)
   }
 
   async function useConsumable(itemId: string) {
@@ -651,6 +787,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     clearSequence,
     startSequence,
     stopSequence,
+    restore,
     startGather,
     startProduce,
     startFish,

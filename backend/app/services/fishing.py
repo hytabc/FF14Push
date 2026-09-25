@@ -18,7 +18,7 @@ from typing import Any, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ActivitySession, DohDolProgress, FishRecord, Item, User
+from app.models import ActivitySession, AutoSellSetting, DohDolProgress, FishRecord, Item, User
 from app.services import consumables, dohdol_util, titles, weather
 from app.services.game_config import CONFIG
 from app.services.gathering import cleared_max_region, progress_level
@@ -289,6 +289,15 @@ async def report_fish(
     gained: dict[str, int] = {}
     double_catch_pct = equip.get("fishDoubleCatchPct", 0.0)
 
+    # 自动卖鱼：命中档位的鱼不入库，直接按系统回收价结算金币；鱼获记录 / 统计照常写。
+    auto_row = (
+        await db.execute(select(AutoSellSetting).where(AutoSellSetting.user_id == user.id))
+    ).scalar_one_or_none()
+    auto_kinds = set(auto_row.fish_kinds or []) if auto_row and auto_row.fish_enabled else set()
+    auto_sold: list[dict[str, Any]] = []
+    auto_index: dict[str, dict[str, Any]] = {}
+    auto_gold = 0
+
     for _ in range(casts):
         pick, kind = _resolve_catch(region, conditions, insights, chance_pct, rng, now)
 
@@ -303,7 +312,6 @@ async def report_fish(
 
         size = rng.randint(int(pick["sizeMin"]), int(pick["sizeMax"]))
         _record_fish(db, records, user.id, pick["id"], int(session.region_id), kind, size)
-        gained[pick["id"]] = gained.get(pick["id"], 0) + catch_count
         counts[pick["id"]] = counts.get(pick["id"], 0) + catch_count
         rarity = pick.get("rarity") if kind == "normal" else None
         for _ in range(catch_count):
@@ -311,6 +319,22 @@ async def report_fish(
                 "id": pick["id"], "name": pick["name"], "kind": kind,
                 "rarity": rarity, "size": size, "exp": pick["exp"],
             })
+
+        unit_price = dohdol_util.sell_price(dohdol_util.STACK_MATERIAL, pick["id"])
+        if kind in auto_kinds and unit_price > 0:
+            auto_gold += unit_price * catch_count
+            entry = auto_index.get(pick["id"])
+            if entry is None:
+                entry = {
+                    "itemId": pick["id"], "name": pick["name"], "kind": kind,
+                    "count": 0, "unitPrice": unit_price, "total": 0,
+                }
+                auto_index[pick["id"]] = entry
+                auto_sold.append(entry)
+            entry["count"] += catch_count
+            entry["total"] += unit_price * catch_count
+        else:
+            gained[pick["id"]] = gained.get(pick["id"], 0) + catch_count
 
         # 前置进度 / 直觉触发（无论本次钓到的是普通鱼还是特殊鱼，都可能作为他人的前置）。
         _advance_intuition(
@@ -320,6 +344,10 @@ async def report_fish(
 
     # 批量入库（含材料图鉴解锁）：一次查询 + 内存累加，避免每次抛竿各发一次 select。
     await dohdol_util.stack_add_many(db, user.id, dohdol_util.STACK_MATERIAL, gained)
+
+    # 自动卖鱼金币结算：命中档位的鱼未入库，直接换成金币。
+    if auto_gold:
+        user.gold = int(user.gold) + auto_gold
 
     session.session_fish = counts
     session.session_insights = {sid: expiry.isoformat() for sid, expiry in insights.items()}
@@ -363,6 +391,8 @@ async def report_fish(
         "level": level_info,
         "conditions": conditions,
         "insights": active_insights,
+        "autoSold": auto_sold,
+        "autoGold": auto_gold,
         "newTitles": new_titles,
         "cycle": dohdol_util.cycle_info(cast_seconds, float(session.credit), now),
     }

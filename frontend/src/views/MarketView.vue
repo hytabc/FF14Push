@@ -22,11 +22,12 @@ import {
   marketQueryParams,
 } from '@/utils/marketFilters'
 
-type Tab = 'all' | 'equipment' | 'wanted' | 'material' | 'consumable' | 'materia' | 'seed' | 'mine'
+type Tab = 'all' | 'equipment' | 'wanted' | 'material' | 'fish' | 'consumable' | 'materia' | 'seed' | 'mine'
 type ViewMode = 'card' | 'list' | 'grid'
 /** 可上架 / 可求购的堆叠物种类（与后端 StackKind 对齐）。 */
 type StackKind = 'material' | 'potion' | 'food' | 'materia' | 'seed'
-type StackTab = 'material' | 'consumable' | 'materia' | 'seed'
+/** 上架 / 求购的子页签：`fish` 只用于前端把鱼获从「素材」里拆出来（提交时仍按 material）。 */
+type StackTab = 'material' | 'fish' | 'consumable' | 'materia' | 'seed'
 
 const PAGE_SIZE = 20
 const VIEW_KEY = 'eorzea.marketView'
@@ -36,6 +37,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'equipment', label: '装备' },
   { id: 'wanted', label: '收购' },
   { id: 'material', label: '素材' },
+  { id: 'fish', label: '鱼获' },
   { id: 'consumable', label: '消耗品' },
   { id: 'materia', label: '魔晶石' },
   { id: 'seed', label: '种子' },
@@ -127,6 +129,8 @@ interface StackRow {
   have: number
   sell: number
   reference: number
+  /** 材料细分（fish 为鱼获，其余为采集材料 / 半成品），用于把鱼获单独成页签。 */
+  materialKind?: string
 }
 const stackEdits = ref<Record<string, { count: number; price: number }>>({})
 
@@ -152,10 +156,17 @@ function toStackRows(items: MaterialStackItem[] | undefined): StackRow[] {
     have: m.count,
     sell: m.sell ?? 0,
     reference: stackReference(m.kind as StackKind, m.itemId, m.sell ?? 0),
+    materialKind: m.materialKind,
   }))
 }
 
-const materialRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.materials))
+/** 鱼获与采集材料分开列：鱼获（materialKind === 'fish'）单独一个页签。 */
+const materialRows = computed<StackRow[]>(() =>
+  toStackRows(dohdol.state?.materials).filter((r) => r.materialKind !== 'fish'),
+)
+const fishRows = computed<StackRow[]>(() =>
+  toStackRows(dohdol.state?.materials).filter((r) => r.materialKind === 'fish'),
+)
 const consumableRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.consumables))
 const materiaRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.materia))
 const seedRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.seeds))
@@ -163,6 +174,8 @@ const seedRows = computed<StackRow[]>(() => toStackRows(dohdol.state?.seeds))
 /** 当前上架子页签对应的可上架行。 */
 const stackRows = computed<StackRow[]>(() => {
   switch (equipmentTab.value) {
+    case 'fish':
+      return fishRows.value
     case 'consumable':
       return consumableRows.value
     case 'materia':
@@ -187,6 +200,7 @@ const kindParam = computed(() =>
 
 const STACK_TABS: { id: StackTab; label: string }[] = [
   { id: 'material', label: '素材' },
+  { id: 'fish', label: '鱼获' },
   { id: 'consumable', label: '消耗品' },
   { id: 'materia', label: '魔晶石' },
   { id: 'seed', label: '种子' },
@@ -204,16 +218,30 @@ interface BuyCandidate {
   name: string
   sell: number
   reference: number
+  /** 材料细分（fish 为鱼获），用于把鱼获从「素材」里拆出来。 */
+  materialKind?: string
 }
 
 const buyCatalog = computed<BuyCandidate[]>(() => [
-  ...Object.values(data.materialById).map((m) => ({
-    kind: 'material' as const,
-    itemId: m.id,
-    name: m.name,
-    sell: m.sell ?? 0,
-    reference: stackReference('material', m.id, m.sell ?? 0),
-  })),
+  ...Object.values(data.materialById)
+    .filter((m) => m.kind !== 'fish')
+    .map((m) => ({
+      kind: 'material' as const,
+      itemId: m.id,
+      name: m.name,
+      sell: m.sell ?? 0,
+      reference: stackReference('material', m.id, m.sell ?? 0),
+    })),
+  ...Object.values(data.materialById)
+    .filter((m) => m.kind === 'fish')
+    .map((m) => ({
+      kind: 'material' as const,
+      materialKind: 'fish',
+      itemId: m.id,
+      name: m.name,
+      sell: m.sell ?? 0,
+      reference: stackReference('material', m.id, m.sell ?? 0),
+    })),
   ...data.consumables.items.map((c) => ({
     kind: c.kind as StackKind,
     itemId: c.id,
@@ -241,10 +269,17 @@ const buyTabLabel = computed(() => STACK_TABS.find((t) => t.id === buyTab.value)
 
 /** 当前子页签 + 搜索词下的求购候选。 */
 const buyCandidates = computed<BuyCandidate[]>(() => {
-  const kinds = buyTab.value === 'consumable' ? ['potion', 'food'] : [buyTab.value]
+  const tab = buyTab.value
+  const kinds = tab === 'consumable' ? ['potion', 'food'] : [tab]
   const needle = buySearch.value.trim().toLowerCase()
   return buyCatalog.value
-    .filter((c) => kinds.includes(c.kind))
+    .filter((c) =>
+      tab === 'fish'
+        ? c.materialKind === 'fish'
+        : tab === 'material'
+          ? c.kind === 'material' && c.materialKind !== 'fish'
+          : kinds.includes(c.kind),
+    )
     .filter((c) => !needle || c.name.toLowerCase().includes(needle))
     .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
 })
@@ -361,9 +396,16 @@ function setView(v: ViewMode) {
 function kindLabel(kind: string): string {
   if (kind === 'equipment') return '装备'
   if (kind === 'material') return '素材'
+  if (kind === 'fish') return '鱼获'
   if (kind === 'materia') return '魔晶石'
   if (kind === 'seed') return '种子'
   return '消耗品'
+}
+
+/** 列表 / 收购单的种类徽章：鱼获与素材同存 kind="material"，按底材细分显示为「鱼获」。 */
+function listingKindLabel(kind: string, itemKey: string): string {
+  if (data.materialById[itemKey]?.kind === 'fish') return '鱼获'
+  return kindLabel(kind)
 }
 
 const REQ_KIND_LABEL: Record<string, string> = {
@@ -983,7 +1025,7 @@ async function cancel(listing: MarketListing) {
           >
             <ItemIcon :base-id="o.itemKey" :size="24" variant="plain" />
             <span class="text-ink-100">{{ o.name }}</span>
-            <span class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">{{ kindLabel(o.kind) }}</span>
+            <span class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">{{ listingKindLabel(o.kind, o.itemKey) }}</span>
             <span class="text-amber-300">{{ formatNumber(o.unitPrice) }} / 件</span>
             <span class="text-ink-500">剩余 {{ formatNumber(o.remaining) }} / {{ formatNumber(o.quantity) }}</span>
             <span class="text-ink-500">买家 {{ o.buyerNickname }}</span>
@@ -1035,7 +1077,7 @@ async function cancel(listing: MarketListing) {
                   <span v-if="l.rarity" class="text-xs text-ink-400">{{ rarityName(l.rarity) }}</span>
                   <span v-if="l.levelReq" class="text-xs text-ink-500">Lv.{{ l.levelReq }}</span>
                   <span v-if="levelLocked(l)" class="rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] text-rose-300">{{ reqText(l) }}</span>
-                  <span class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">{{ kindLabel(l.kind) }}</span>
+                  <span class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">{{ listingKindLabel(l.kind, l.itemKey) }}</span>
                 </div>
                 <div v-if="l.equipment" class="mt-1 flex flex-wrap gap-1 text-[10px] text-ink-400">
                   <span v-for="(a, i) in l.equipment.baseAttrs" :key="`b${i}`" class="rounded bg-ink-800 px-1.5 py-0.5">
@@ -1074,7 +1116,7 @@ async function cancel(listing: MarketListing) {
           <div v-for="l in listings" :key="l.id" class="flex flex-wrap items-center gap-2 p-2 text-xs">
             <ItemIcon :base-id="l.itemKey" :rarity="l.rarity ?? undefined" :size="20" :variant="l.kind === 'equipment' ? 'full' : 'plain'" />
             <span class="text-ink-100">{{ l.name }}</span>
-            <span class="text-ink-500">{{ kindLabel(l.kind) }}</span>
+            <span class="text-ink-500">{{ listingKindLabel(l.kind, l.itemKey) }}</span>
             <span v-if="l.quantity > 1" class="text-ink-500">×{{ l.quantity }}</span>
             <span class="text-ink-500">卖家 {{ l.sellerNickname ?? '—' }}</span>
             <span class="ml-auto text-amber-300">{{ formatNumber(l.unitPrice) }} / 件</span>
@@ -1145,7 +1187,7 @@ async function cancel(listing: MarketListing) {
           <ItemIcon :base-id="buyTarget.itemKey" :rarity="buyTarget.rarity ?? undefined" :size="40" :variant="buyTarget.kind === 'equipment' ? 'full' : 'plain'" />
           <div>
             <p class="text-ink-100">{{ buyTarget.name }}<span v-if="buyTarget.quantity > 1"> ×{{ buyTarget.quantity }}</span></p>
-            <p class="text-xs text-ink-500">卖家 {{ buyTarget.sellerNickname ?? '—' }} · {{ kindLabel(buyTarget.kind) }}</p>
+            <p class="text-xs text-ink-500">卖家 {{ buyTarget.sellerNickname ?? '—' }} · {{ listingKindLabel(buyTarget.kind, buyTarget.itemKey) }}</p>
           </div>
         </div>
         <div class="space-y-1 rounded-lg bg-ink-800/60 p-3 text-xs">
@@ -1258,7 +1300,7 @@ async function cancel(listing: MarketListing) {
           <div>
             <p class="text-ink-100">{{ fillTarget.name }}</p>
             <p class="text-xs text-ink-500">
-              买家 {{ fillTarget.buyerNickname ?? '—' }} · {{ kindLabel(fillTarget.kind) }}
+              买家 {{ fillTarget.buyerNickname ?? '—' }} · {{ listingKindLabel(fillTarget.kind, fillTarget.itemKey) }}
             </p>
           </div>
         </div>

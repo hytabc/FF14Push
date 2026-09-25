@@ -484,6 +484,14 @@ export const api = {
     return (await http.post('/settings/auto-sell', { enabled, rarities })).data
   },
 
+  /** 自动卖鱼：按鱼的档位（normal / king / emperor / legend）选择要自动出售的鱼。 */
+  async setAutoSellFish(enabled: boolean, kinds: string[]) {
+    return (await http.post<{ ok?: boolean; enabled: boolean; kinds: string[]; message?: string }>(
+      '/settings/auto-sell-fish',
+      { enabled, kinds },
+    )).data
+  },
+
   /** 佩戴称号（设置页最多一个）；titleId 传 null 取消佩戴。 */
   async setActiveTitle(titleId: string | null) {
     return (

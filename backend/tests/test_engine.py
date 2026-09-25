@@ -615,6 +615,74 @@ class TestExpTerm:
         assert apply_exp_bonus(100, {}) == 100
 
 
+class TestExpTermLevelCap:
+    """经验词条不再出现在满级（100 级）装备上（maxItemLevel 过滤），低等级仍保留。"""
+
+    BANNED = {"expGain", "expDrain"}
+
+    def test_terms_carry_max_item_level(self) -> None:
+        assert int(CONFIG.term_by_id["expGain"]["maxItemLevel"]) == 99
+        assert int(CONFIG.term_by_id["expDrain"]["maxItemLevel"]) == 99
+
+    def test_level_below_cap_can_roll_exp_terms(self) -> None:
+        from app.services.item_factory import generate_item
+
+        seen = False
+        for seed in range(150):
+            item, _ = generate_item("accessory", 95, rarity="mythic", rng=random.Random(seed))
+            if self.BANNED & {t["id"] for t in item["terms"]}:
+                seen = True
+                break
+        assert seen, "99 级及以下装备仍应可能出现经验词条"
+
+    def test_level_100_never_rolls_exp_terms(self) -> None:
+        from app.services.item_factory import generate_exclusive_item, generate_item
+
+        for category in ("weapon", "armor", "accessory"):
+            for seed in range(60):
+                item, _ = generate_item(category, 100, rarity="mythic", rng=random.Random(seed))
+                assert self.BANNED.isdisjoint({t["id"] for t in item["terms"]}), item["terms"]
+        for seed in range(30):
+            item = generate_exclusive_item(random.Random(seed))
+            assert self.BANNED.isdisjoint({t["id"] for t in item["terms"]}), item["terms"]
+
+
+class TestDedicatedExpTermLevelCap:
+    """生产 / 采集专用装备在 100 级同样不再出现经验词条（灵感 / 博识）。"""
+
+    BANNED = {"dohInspiration", "dolKeenSense"}
+
+    def test_level_100_items_never_roll_xp_terms(self) -> None:
+        from app.services.item_factory import generate_crafted_item
+
+        ids = [
+            i["id"]
+            for i in CONFIG.dohdol_equipment["items"]
+            if int(i["levelReq"]) >= 100
+        ]
+        assert ids, "应存在 100 级专用装备"
+        for base_id in ids[:6]:
+            for seed in range(20):
+                item = generate_crafted_item(base_id, random.Random(seed), 1.0, 1.0)
+                assert self.BANNED.isdisjoint({t["id"] for t in item["terms"]}), base_id
+
+    def test_level_below_cap_can_roll_xp_terms(self) -> None:
+        from app.services.item_factory import generate_crafted_item
+
+        base_id = next(
+            i["id"]
+            for i in CONFIG.dohdol_equipment["items"]
+            if i["kind"] == "doh" and int(i["levelReq"]) == 90
+        )
+        seen = False
+        for seed in range(120):
+            item = generate_crafted_item(base_id, random.Random(seed), 1.0, 1.0)
+            if "dohInspiration" in {t["id"] for t in item["terms"]}:
+                seen = True
+                break
+        assert seen, "99 级及以下专用装备仍应可能出现经验词条"
+
+
 class TestRaidPressure:
     """副本必须能打死人，且门槛（requiredPower）必须可达。
 

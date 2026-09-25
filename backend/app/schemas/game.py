@@ -161,6 +161,13 @@ class AutoSellRequest(BaseModel):
     rarities: list[str] = Field(default_factory=list)
 
 
+class AutoSellFishRequest(BaseModel):
+    """自动卖鱼：按鱼的档位（normal / king / emperor / legend）选择要自动出售的鱼。"""
+
+    enabled: bool
+    kinds: list[str] = Field(default_factory=list)
+
+
 class ActiveTitleRequest(BaseModel):
     """佩戴称号（设置页最多一个）；None 表示不佩戴。"""
 

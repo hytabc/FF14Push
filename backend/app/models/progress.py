@@ -108,3 +108,6 @@ class AutoSellSetting(Base):
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, default=False)
     rarities: Mapped[list] = mapped_column(JsonType, default=lambda: ["common", "uncommon"])
+    # 自动卖鱼：按鱼的档位（normal / king / emperor / legend）多选。
+    fish_enabled: Mapped[bool] = mapped_column(sa.Boolean, default=False, server_default=sa.false())
+    fish_kinds: Mapped[list] = mapped_column(JsonType, default=lambda: ["normal"], server_default=sa.text("'[]'"))

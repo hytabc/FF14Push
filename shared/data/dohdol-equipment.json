@@ -227,6 +227,7 @@
         "dohLegs",
         "dohFeet"
       ],
+      "maxItemLevel": 99,
       "desc": "制造经验 +{v}%"
     },
     {
@@ -403,6 +404,7 @@
         "dolLegs",
         "dolFeet"
       ],
+      "maxItemLevel": 99,
       "desc": "采集 / 钓鱼经验 +{v}%"
     },
     {
@@ -1317,8 +1319,7 @@
       "levelReq": 100,
       "bonus": {
         "craftQualityPct": 40.4,
-        "craftRarityPct": 30.3,
-        "craftXpPct": 16.2
+        "craftRarityPct": 30.3
       }
     },
     {
@@ -1333,8 +1334,7 @@
       "bonus": {
         "craftQualityPct": 52.5,
         "craftRarityPct": 39.4,
-        "craftSpeedPct": 13.1,
-        "craftXpPct": 13.1
+        "craftSpeedPct": 13.1
       }
     },
     {
@@ -1917,8 +1917,7 @@
       "levelReq": 100,
       "bonus": {
         "craftSpeedPct": 60.6,
-        "craftRarityPct": 15.1,
-        "craftXpPct": 16.2
+        "craftRarityPct": 15.1
       }
     },
     {
@@ -1933,8 +1932,7 @@
       "bonus": {
         "craftSpeedPct": 78.8,
         "craftRarityPct": 19.7,
-        "craftQualityPct": 13.1,
-        "craftXpPct": 13.1
+        "craftQualityPct": 13.1
       }
     },
     {
@@ -2517,8 +2515,7 @@
       "levelReq": 100,
       "bonus": {
         "craftQualityPct": 12.1,
-        "craftRarityPct": 6.1,
-        "craftXpPct": 16.2
+        "craftRarityPct": 6.1
       }
     },
     {
@@ -2533,8 +2530,7 @@
       "bonus": {
         "craftQualityPct": 15.8,
         "craftRarityPct": 7.9,
-        "craftSpeedPct": 13.1,
-        "craftXpPct": 13.1
+        "craftSpeedPct": 13.1
       }
     },
     {
@@ -3144,8 +3140,7 @@
       "bonus": {
         "craftQualityPct": 18.2,
         "craftSpeedPct": 20.2,
-        "craftRarityPct": 9.1,
-        "craftXpPct": 16.2
+        "craftRarityPct": 9.1
       }
     },
     {
@@ -3160,8 +3155,7 @@
       "bonus": {
         "craftQualityPct": 23.6,
         "craftSpeedPct": 26.3,
-        "craftRarityPct": 11.8,
-        "craftXpPct": 13.1
+        "craftRarityPct": 11.8
       }
     },
     {
@@ -3744,8 +3738,7 @@
       "levelReq": 100,
       "bonus": {
         "craftSpeedPct": 16.2,
-        "craftRarityPct": 5.0,
-        "craftXpPct": 16.2
+        "craftRarityPct": 5.0
       }
     },
     {
@@ -3760,8 +3753,7 @@
       "bonus": {
         "craftSpeedPct": 21.0,
         "craftRarityPct": 6.6,
-        "craftQualityPct": 13.1,
-        "craftXpPct": 13.1
+        "craftQualityPct": 13.1
       }
     },
     {
@@ -4344,8 +4336,7 @@
       "levelReq": 100,
       "bonus": {
         "craftSpeedPct": 20.2,
-        "craftRarityPct": 5.0,
-        "craftXpPct": 16.2
+        "craftRarityPct": 5.0
       }
     },
     {
@@ -4360,8 +4351,7 @@
       "bonus": {
         "craftSpeedPct": 26.3,
         "craftRarityPct": 6.6,
-        "craftQualityPct": 13.1,
-        "craftXpPct": 13.1
+        "craftQualityPct": 13.1
       }
     },
     {
@@ -4944,8 +4934,7 @@
       "levelReq": 100,
       "bonus": {
         "craftQualityPct": 10.1,
-        "craftRarityPct": 5.0,
-        "craftXpPct": 16.2
+        "craftRarityPct": 5.0
       }
     },
     {
@@ -4960,8 +4949,7 @@
       "bonus": {
         "craftQualityPct": 13.1,
         "craftRarityPct": 6.6,
-        "craftSpeedPct": 13.1,
-        "craftXpPct": 13.1
+        "craftSpeedPct": 13.1
       }
     },
     {
@@ -5638,8 +5626,7 @@
       "levelReq": 100,
       "bonus": {
         "gatherYieldPct": 60.6,
-        "fishChancePct": 30.3,
-        "gatherXpPct": 16.2
+        "fishChancePct": 30.3
       }
     },
     {
@@ -5670,7 +5657,6 @@
         "gatherYieldPct": 78.8,
         "fishChancePct": 39.4,
         "gatherSpeedPct": 13.1,
-        "gatherXpPct": 13.1,
         "fishInsightPct": 13.1
       }
     },
@@ -6348,8 +6334,7 @@
       "levelReq": 100,
       "bonus": {
         "gatherSpeedPct": 60.6,
-        "fishInsightPct": 50.5,
-        "gatherXpPct": 16.2
+        "fishInsightPct": 50.5
       }
     },
     {
@@ -6380,7 +6365,6 @@
         "gatherSpeedPct": 78.8,
         "fishInsightPct": 65.7,
         "gatherYieldPct": 13.1,
-        "gatherXpPct": 13.1,
         "fishChancePct": 13.1
       }
     },
@@ -7022,8 +7006,7 @@
       "tierIndex": 10,
       "levelReq": 100,
       "bonus": {
-        "gatherYieldPct": 15.1,
-        "gatherXpPct": 16.2
+        "gatherYieldPct": 15.1
       }
     },
     {
@@ -7053,7 +7036,6 @@
       "bonus": {
         "gatherYieldPct": 19.7,
         "gatherSpeedPct": 13.1,
-        "gatherXpPct": 13.1,
         "fishInsightPct": 13.1,
         "fishChancePct": 13.1
       }
@@ -7732,8 +7714,7 @@
       "levelReq": 100,
       "bonus": {
         "gatherYieldPct": 20.2,
-        "fishInsightPct": 20.2,
-        "gatherXpPct": 16.2
+        "fishInsightPct": 20.2
       }
     },
     {
@@ -7764,7 +7745,6 @@
         "gatherYieldPct": 26.3,
         "fishInsightPct": 26.3,
         "gatherSpeedPct": 13.1,
-        "gatherXpPct": 13.1,
         "fishChancePct": 13.1
       }
     },
@@ -8406,8 +8386,7 @@
       "tierIndex": 10,
       "levelReq": 100,
       "bonus": {
-        "gatherSpeedPct": 16.2,
-        "gatherXpPct": 16.2
+        "gatherSpeedPct": 16.2
       }
     },
     {
@@ -8437,7 +8416,6 @@
       "bonus": {
         "gatherSpeedPct": 21.0,
         "gatherYieldPct": 13.1,
-        "gatherXpPct": 13.1,
         "fishInsightPct": 13.1,
         "fishChancePct": 13.1
       }
@@ -9080,8 +9058,7 @@
       "tierIndex": 10,
       "levelReq": 100,
       "bonus": {
-        "gatherSpeedPct": 20.2,
-        "gatherXpPct": 16.2
+        "gatherSpeedPct": 20.2
       }
     },
     {
@@ -9111,7 +9088,6 @@
       "bonus": {
         "gatherSpeedPct": 26.3,
         "gatherYieldPct": 13.1,
-        "gatherXpPct": 13.1,
         "fishInsightPct": 13.1,
         "fishChancePct": 13.1
       }
@@ -9754,8 +9730,7 @@
       "tierIndex": 10,
       "levelReq": 100,
       "bonus": {
-        "gatherYieldPct": 12.1,
-        "gatherXpPct": 16.2
+        "gatherYieldPct": 12.1
       }
     },
     {
@@ -9785,7 +9760,6 @@
       "bonus": {
         "gatherYieldPct": 15.8,
         "gatherSpeedPct": 13.1,
-        "gatherXpPct": 13.1,
         "fishInsightPct": 13.1,
         "fishChancePct": 13.1
       }

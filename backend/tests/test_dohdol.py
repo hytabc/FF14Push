@@ -942,7 +942,7 @@ class TestEquippedBonusSources:
 
 
 class TestXpGearData:
-    """经验专用装备数据守卫：悟道 / 博识变体必须真实携带经验属性。"""
+    """经验专用装备数据守卫：悟道 / 博识变体必须真实携带经验属性（满级 100 级除外）。"""
 
     def test_xp_variants_carry_xp_stat(self):
         items = CONFIG.dohdol_equipment["items"]
@@ -951,10 +951,16 @@ class TestXpGearData:
         assert doh_xp and dol_xp, "应存在生产 / 采集经验变体"
         for item in doh_xp:
             value = float(item["bonus"].get("craftXpPct", 0.0))
-            assert 0 < value <= 25, f"{item['id']} 制造经验加成异常：{value}"
+            if int(item["levelReq"]) >= 100:
+                assert value == 0.0, f"{item['id']} 满级装备不应再有制造经验加成：{value}"
+            else:
+                assert 0 < value <= 25, f"{item['id']} 制造经验加成异常：{value}"
         for item in dol_xp:
             value = float(item["bonus"].get("gatherXpPct", 0.0))
-            assert 0 < value <= 25, f"{item['id']} 采集经验加成异常：{value}"
+            if int(item["levelReq"]) >= 100:
+                assert value == 0.0, f"{item['id']} 满级装备不应再有采集经验加成：{value}"
+            else:
+                assert 0 < value <= 25, f"{item['id']} 采集经验加成异常：{value}"
 
 
 class TestActivityXpBreakdown:
@@ -1093,6 +1099,58 @@ class TestFishApi:
         async with session_factory() as db:
             records = (await db.execute(select(FishRecord))).scalars().all()
             assert records
+
+    @pytest.mark.asyncio
+    async def test_auto_sell_fish(self, auth_client, session_factory):
+        """自动卖鱼：命中档位的鱼不入库、直接换金币；鱼获记录与展示照常。"""
+        from app.models import ActivitySession, User
+
+        me = (await auth_client.get("/api/v1/auth/me")).json()
+        async with session_factory() as db:
+            gold_before = int(
+                (await db.execute(select(User.gold).where(User.id == me["id"]))).scalar_one()
+            )
+
+        kinds = ["normal", "king", "emperor", "legend"]
+        saved = await auth_client.post(
+            "/api/v1/settings/auto-sell-fish", json={"enabled": True, "kinds": kinds}
+        )
+        assert saved.status_code == 200, saved.text
+        assert saved.json() == {"enabled": True, "kinds": kinds}
+
+        state = (await auth_client.get("/api/v1/game/state")).json()
+        assert state["settings"]["autoSellFish"] == {"enabled": True, "kinds": kinds}
+
+        # 未知档位被拒
+        bad = await auth_client.post(
+            "/api/v1/settings/auto-sell-fish", json={"enabled": True, "kinds": ["nope"]}
+        )
+        assert bad.status_code == 200 and bad.json()["ok"] is False
+
+        start = await auth_client.post("/api/v1/fish/session/start", json={"regionId": 1})
+        session_id = start.json()["sessionId"]
+        async with session_factory() as db:
+            row = (
+                await db.execute(select(ActivitySession).where(ActivitySession.id == session_id))
+            ).scalar_one()
+            _backdate(row, 120)
+            await db.commit()
+
+        rep = await auth_client.post("/api/v1/fish/session/report", json={"sessionId": session_id})
+        assert rep.status_code == 200, rep.text
+        data = rep.json()
+        assert data["caught"], "本次鱼获仍应展示（即使被自动出售）"
+        assert data["autoSold"], "命中的鱼应被自动出售"
+        assert data["autoGold"] > 0
+        assert data["gained"] == [], "被自动出售的鱼不应进入库存"
+
+        async with session_factory() as db:
+            gold_after = int(
+                (await db.execute(select(User.gold).where(User.id == me["id"]))).scalar_one()
+            )
+            records = (await db.execute(select(FishRecord))).scalars().all()
+        assert gold_after >= gold_before + data["autoGold"]
+        assert records, "图鉴 / 统计用的鱼获记录仍应写入"
 
     @pytest.mark.asyncio
     async def test_fish_level_requirement(self, auth_client, session_factory):

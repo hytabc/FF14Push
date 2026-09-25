@@ -114,19 +114,28 @@ def _variant_id_suffix(variant: dict[str, Any]) -> str:
     return f"_{vid}" if vid else ""
 
 
-def _expand_base_items(data: dict[str, Any], job_main_attr: dict[str, str]) -> list[BaseItem]:
+def _expand_base_items(
+    data: dict[str, Any],
+    job_main_attr: dict[str, str],
+    job_affixes: dict[str, str] | None = None,
+) -> list[BaseItem]:
     pools = data["subAttrPools"]
     variants = data.get("variants", {})
     weapon_variants = variants.get("weapon") or [{}]
     armor_variants = variants.get("armor") or [{}]
     accessory_variants = variants.get("accessory") or [{}]
+    affixes = job_affixes or {}
     out: list[BaseItem] = []
 
     for fam in data["weaponFamilies"]:
         is_magical = job_main_attr.get(fam["jobId"]) == "int"
         base_pool = list(pools[fam["pool"]])
+        # 武器只保留「基础型（id 为空，随机）」+ 该职业自身职能词缀那一个变体。
+        wanted_affix = affixes.get(fam["jobId"], "")
         for t in data["tiers"]:
             for v in weapon_variants:
+                if v.get("id") and v["id"] != wanted_affix:
+                    continue
                 if int(v.get("minTier", 0)) > int(t["index"]):
                     continue
                 out.append(
@@ -245,13 +254,14 @@ def load_game_data() -> GameConfig:
     job_main_attr = {j["id"]: j["mainAttr"] for j in jobs["jobs"]}
 
     base_items_data = raw["baseItems"]
-    base_items = _expand_base_items(base_items_data, job_main_attr)
+    job_affixes = base_items_data.get("jobAffixes", {})
+    base_items = _expand_base_items(base_items_data, job_main_attr, job_affixes)
 
     # 绝境龙神系列：复用同一套「族 × 档位 × 变体」展开，标记 exclusive。
     # 单独特化出来，不并入 base_items（否则会污染抽箱/合成/生产候选池）。
     exclusive_items = [
         replace(item, exclusive=True)
-        for item in _expand_base_items(raw["exclusiveEquipment"], job_main_attr)
+        for item in _expand_base_items(raw["exclusiveEquipment"], job_main_attr, job_affixes)
     ]
 
     attributes = raw["subAttributes"]["attributes"]

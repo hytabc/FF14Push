@@ -7,12 +7,18 @@ from sqlalchemy import select
 
 from app.core.deps import CurrentUser, DbSession
 from app.models import AutoSellSetting, UserTitle
-from app.schemas.game import ActiveTitleRequest, AutoSellRequest
+from app.schemas.game import ActiveTitleRequest, AutoSellFishRequest, AutoSellRequest
 from app.services.game_config import CONFIG
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 VALID_RARITIES = set(CONFIG.rarity_order)
+# 鱼的档位：普通鱼 / 鱼王 / 鱼皇 / 困难鱼（与 fish.json 的 kind 一致）。
+VALID_FISH_KINDS = {"normal", "king", "emperor", "legend"}
+
+
+def _default_fish_kinds() -> list[str]:
+    return list(CONFIG.economy["sell"].get("fishAutoSellKinds", ["normal"]))
 
 
 async def _auto_sell(db: DbSession, user_id: int) -> AutoSellSetting:
@@ -24,6 +30,8 @@ async def _auto_sell(db: DbSession, user_id: int) -> AutoSellSetting:
             user_id=user_id,
             enabled=False,
             rarities=list(CONFIG.economy["sell"]["autoSellRarities"]),
+            fish_enabled=False,
+            fish_kinds=_default_fish_kinds(),
         )
         db.add(row)
         await db.flush()
@@ -47,6 +55,25 @@ async def set_auto_sell(payload: AutoSellRequest, db: DbSession, user: CurrentUs
     row.rarities = list(payload.rarities) if payload.rarities else list(CONFIG.economy["sell"]["autoSellRarities"])
     await db.commit()
     return {"enabled": bool(row.enabled), "rarities": list(row.rarities)}
+
+
+@router.get("/auto-sell-fish")
+async def get_auto_sell_fish(db: DbSession, user: CurrentUser) -> dict:
+    row = await _auto_sell(db, user.id)
+    await db.commit()
+    return {"enabled": bool(row.fish_enabled), "kinds": list(row.fish_kinds or []) or _default_fish_kinds()}
+
+
+@router.post("/auto-sell-fish")
+async def set_auto_sell_fish(payload: AutoSellFishRequest, db: DbSession, user: CurrentUser) -> dict:
+    row = await _auto_sell(db, user.id)
+    invalid = [k for k in payload.kinds if k not in VALID_FISH_KINDS]
+    if invalid:
+        return {"ok": False, "message": f"未知鱼的档位: {invalid}"}
+    row.fish_enabled = bool(payload.enabled)
+    row.fish_kinds = list(payload.kinds) if payload.kinds else _default_fish_kinds()
+    await db.commit()
+    return {"enabled": bool(row.fish_enabled), "kinds": list(row.fish_kinds)}
 
 
 @router.post("/active-title")

@@ -280,6 +280,7 @@ def term_codex_entries() -> list[dict[str, Any]]:
                     "stat": t["stat"],
                     "range": t["range"],
                     "slots": t.get("slots", []),
+                    "maxItemLevel": t.get("maxItemLevel"),
                     "desc": t["desc"],
                     "source": source,
                     "category": t.get("category", ""),

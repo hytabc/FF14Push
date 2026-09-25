@@ -104,7 +104,17 @@ const regionOverview = computed(() => {
   return [...byRegion.values()].sort((a, b) => a.regionId - b.regionId)
 })
 const materials = computed(() =>
-  (dohdol.state?.materials ?? []).slice().sort((a, b) => b.count - a.count),
+  (dohdol.state?.materials ?? [])
+    .filter((m) => m.materialKind !== 'fish')
+    .slice()
+    .sort((a, b) => b.count - a.count),
+)
+/** 鱼获与采集材料分开显示（鱼以 materialKind === 'fish' 标注）。 */
+const fishBag = computed(() =>
+  (dohdol.state?.materials ?? [])
+    .filter((m) => m.materialKind === 'fish')
+    .slice()
+    .sort((a, b) => b.count - a.count),
 )
 const bonus = computed(() => dohdol.state?.bonus ?? {})
 const running = computed(() => dohdol.isRunning && dohdol.mode === 'gather')
@@ -169,6 +179,18 @@ const totalValue = computed(() =>
 function sellAll() {
   void dohdol.sellStacks(
     materials.value
+      .filter((m) => (m.sell ?? 0) > 0)
+      .map((m) => ({ kind: m.kind, itemId: m.itemId, count: m.count })),
+  )
+}
+
+const fishValue = computed(() =>
+  fishBag.value.reduce((sum, m) => sum + (m.sell ?? 0) * m.count, 0),
+)
+
+function sellAllFish() {
+  void dohdol.sellStacks(
+    fishBag.value
       .filter((m) => (m.sell ?? 0) > 0)
       .map((m) => ({ kind: m.kind, itemId: m.itemId, count: m.count })),
   )
@@ -410,6 +432,39 @@ async function toggle() {
             </span>
           </div>
           <p v-if="!materials.length" class="text-ink-500">暂无材料。</p>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-xs font-semibold text-ink-300">鱼获库存</h2>
+          <button
+            v-if="fishBag.length"
+            class="rounded bg-amber-600/70 px-2 py-0.5 text-[10px] text-white hover:bg-amber-500"
+            @click="sellAllFish"
+          >
+            全部出售（+{{ fishValue }}）
+          </button>
+        </div>
+        <div class="max-h-64 space-y-1 overflow-y-auto text-xs">
+          <div v-for="f in fishBag" :key="f.itemId" class="flex items-center justify-between text-ink-200">
+            <span class="flex min-w-0 items-center gap-1.5">
+              <ItemIcon :base-id="f.itemId" variant="plain" :size="18" />
+              <span class="truncate">{{ f.name }}</span>
+            </span>
+            <span class="flex items-center gap-2">
+              <span class="font-mono text-ink-400">×{{ f.count }}</span>
+              <span class="font-mono text-ink-500">{{ (f.sell ?? 0) * f.count }}</span>
+              <button
+                class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
+                :disabled="(f.sell ?? 0) <= 0"
+                @click="dohdol.sellStack(f.kind, f.itemId, f.count)"
+              >
+                出售
+              </button>
+            </span>
+          </div>
+          <p v-if="!fishBag.length" class="text-ink-500">暂无鱼获。</p>
         </div>
       </div>
     </section>

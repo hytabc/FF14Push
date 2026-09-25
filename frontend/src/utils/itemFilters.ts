@@ -20,14 +20,17 @@ export function equipGroup(category: string): EquipGroup {
   return DEDICATED_GROUP[category] ?? 'combat'
 }
 
-/** 防具/饰品的职能词缀（variantId）→ 战斗职能的近似归属；基础/精准/制敌型视为通用（null）。 */
+/** 防具/饰品的职能词缀（variantId）→ 战斗职能；对应关系以 FF14 国服为准。基础型（''）不归属。 */
 const VARIANT_ROLE: Record<string, JobRole> = {
-  str: 'melee',
-  dex: 'physicalRanged',
-  int: 'magicalRanged',
-  tank: 'tank',
-  vit: 'tank',
-  bal: 'healer',
+  str: 'melee', // 强袭：武僧 / 武士
+  det: 'melee', // 制敌：龙骑士 / 钐镰客
+  dex: 'melee', // 游击：忍者 / 蝰蛇剑士
+  crit: 'physicalRanged', // 精准：吟游诗人 / 机工士 / 舞者
+  gold: 'physicalRanged', // 精准（饰品沿用旧变体 id）
+  int: 'magicalRanged', // 咏咒：黑魔法师 / 召唤师 / 赤魔法师 / 绘灵法师
+  tank: 'tank', // 御敌：骑士 / 战士 / 暗黑骑士 / 绝枪战士
+  vit: 'tank', // 御敌（饰品沿用旧变体 id）
+  bal: 'healer', // 治愈：白魔法师 / 学者 / 占星术士 / 贤者
 }
 
 /** 底材 → 战斗职能：武器按 jobId 精确取，防具/饰品按职能词缀近似，无法判断返回 null。 */

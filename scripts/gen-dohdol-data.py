@@ -28,6 +28,8 @@ regions = json.loads((DATA / "regions.json").read_text(encoding="utf-8"))["regio
 
 # 战斗装备底材（族 / 档位 / 职能变体），供高档配方生成时保持同步。
 BASE_ITEMS = json.loads((DATA / "base-items.json").read_text(encoding="utf-8"))
+# 武器按自身职业的职能词缀展开（基础型 + 该职能），与 shared/schema 的展开规则一致。
+JOB_AFFIXES = BASE_ITEMS.get("jobAffixes", {})
 
 # 地区档位 → 出售单价（金币）。材料/鱼不随地区等级变强，仅种类不同，价格按档位递增。
 # 定价规则：越高档涨幅越大（第 2 档起每档翻倍），让非战斗收入稳定在「同档战斗收入的一成上下」
@@ -176,6 +178,9 @@ DOL_VARIANTS = [
               "fishInsightPct": 1.3, "fishChancePct": 1.3}},
 ]
 VARIANTS_BY_KIND = {"doh": DOH_VARIANTS, "dol": DOL_VARIANTS}
+# 满级（100 级）装备不再提供经验加成：词条侧由 terms 的 maxItemLevel 控制，
+# 底材固定加成（「悟道 / 博识 / 大师」变体的经验项）在此档位剔除。
+XP_BONUS_STATS = {"craftXpPct", "gatherXpPct"}
 SLOTS = [
     ("Tool", "主手工具", "tool"),
     ("OffTool", "副手工具", "tool"),
@@ -232,7 +237,7 @@ DOHDOL_TERMS = [
     {"id": "dohDexterous", "name": "巧手", "category": "doh", "type": "buff", "trigger": "常驻",
      "stat": "craftSpeedPct", "range": [3, 15], "slots": DOH_SLOTS, "desc": "制造速度 +{v}%"},
     {"id": "dohInspiration", "name": "灵感", "category": "doh", "type": "buff", "trigger": "常驻",
-     "stat": "craftXpPct", "range": [5, 20], "slots": DOH_SLOTS, "desc": "制造经验 +{v}%"},
+     "stat": "craftXpPct", "range": [5, 20], "slots": DOH_SLOTS, "maxItemLevel": 99, "desc": "制造经验 +{v}%"},
     {"id": "dohRarityMisaligned", "name": "品阶失衡", "category": "doh", "type": "debuff", "trigger": "常驻",
      "stat": "craftRarityPct", "range": [-8, -2], "slots": DOH_SLOTS, "desc": "制造品阶概率 {v}%"},
     {"id": "dohQualityDull", "name": "品质钝化", "category": "doh", "type": "debuff", "trigger": "常驻",
@@ -248,7 +253,7 @@ DOHDOL_TERMS = [
     {"id": "dolKingInstinct", "name": "渔王的直觉", "category": "fish", "type": "buff", "trigger": "常驻",
      "stat": "fishChancePct", "range": [3, 10], "slots": DOL_SLOTS, "desc": "特殊鱼（鱼王 / 鱼皇 / 困难鱼）概率 +{v}%"},
     {"id": "dolKeenSense", "name": "博识", "category": "dol", "type": "buff", "trigger": "常驻",
-     "stat": "gatherXpPct", "range": [5, 20], "slots": DOL_SLOTS, "desc": "采集 / 钓鱼经验 +{v}%"},
+     "stat": "gatherXpPct", "range": [5, 20], "slots": DOL_SLOTS, "maxItemLevel": 99, "desc": "采集 / 钓鱼经验 +{v}%"},
     {"id": "dolPoorHarvest", "name": "歉收", "category": "dol", "type": "debuff", "trigger": "常驻",
      "stat": "gatherYieldPct", "range": [-12, -3], "slots": DOL_SLOTS, "desc": "采集产量 {v}%"},
     {"id": "dolSluggishGather", "name": "迟缓", "category": "dol", "type": "debuff", "trigger": "常驻",
@@ -303,6 +308,8 @@ for kind in ("doh", "dol"):
                 # （如「悟道」的 craftXpPct、「迅捷」的 craftSpeedPct）：缺省基准系数 1.0。
                 slot_bonus = SLOT_BONUS[(kind, suffix)]
                 stats = list(slot_bonus) + [s for s in v["bias"] if s not in slot_bonus]
+                if int(t["levelReq"]) >= 100:
+                    stats = [s for s in stats if s not in XP_BONUS_STATS]
                 bonus = {
                     stat: round(
                         slot_bonus.get(stat, 1.0) * float(t["power"]) * float(v["bias"].get(stat, 1.0)), 1
@@ -557,7 +564,10 @@ ARMOR_WEIGHT = {"head": 1, "body": 2, "hands": 1, "legs": 2, "feet": 1}
 for t in (t for t in BASE_ITEMS["tiers"] if t["index"] in (6, 7, 8)):
     for fam in BASE_ITEMS["weaponFamilies"]:
         job = "CRP" if fam["weaponType"] in CRP_WEAPONS else "BSM"
+        wanted_affix = JOB_AFFIXES.get(fam["jobId"], "")
         for v in BASE_ITEMS["variants"]["weapon"]:
+            if v.get("id") and v["id"] != wanted_affix:
+                continue
             if v.get("minTier", 0) > t["index"]:
                 continue
             bid = f"w_{fam['weaponType']}{_variant_suffix(v)}_{t['index']}"

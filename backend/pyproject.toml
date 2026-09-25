@@ -1,6 +1,6 @@
 [project]
 name = "eorzea-idle-backend"
-version = "1.0.2"
+version = "1.0.3"
 description = "艾欧泽亚放置录 — 后端服务（FastAPI + PostgreSQL）"
 requires-python = ">=3.11"
 dependencies = [
