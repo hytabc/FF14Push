@@ -120,7 +120,10 @@ nginx 侧：官方 `nginx:1.27-alpine` 不带 brotli 动态模块，**不强行�
 
 ### 4.3 WebSocket `permessage-deflate`
 
-- uvicorn 的 `websockets` 实现支持按消息压缩；在 `backend/docker-entrypoint.sh` 的 uvicorn 启动参数中**显式开启**（`--ws-per-message-deflate`）。
+- uvicorn 的 `websockets` 实现支持按消息压缩；在 `backend/docker-entrypoint.sh` 的 uvicorn 启动参数中**显式开启**。
+  **注意**：它是 click 的**带值选项**（`type=bool`），必须写成 `--ws-per-message-deflate true`；
+  写成裸 flag（`--ws-per-message-deflate --proxy-headers`）会把后一个参数当作它的值，
+  启动直接失败（`Invalid value for '--ws-per-message-deflate'`）。
 - 需**实测** nginx 是否透传 `Sec-WebSocket-Extensions`（`frontend/nginx.conf` 三个 WS `location` 已带 Upgrade 头）；若不透传，用浏览器 devtools 的 WS 帧确认并补对应 proxy 头。
 - 收益：coop/worldboss 的重复 JSON 快照压缩比通常 5–10×，是**多人带宽最直接的收益点**。
 
