@@ -104,6 +104,29 @@ def test_job_skills_reflect_role_identity() -> None:
             assert potency_skills, job["id"]
 
 
+def test_dps_jobs_have_survival_tool() -> None:
+    """输出职业也要有保命手段：辅助增伤技带一段减伤（或护盾），且越脆的职业补偿越多。"""
+    dps_roles = {"melee", "physicalRanged", "magicalRanged"}
+    dps_jobs = [j for j in CONFIG.jobs["jobs"] if j["role"] in dps_roles]
+    assert dps_jobs, "未找到输出职业"
+    max_dr: dict[str, float] = {}
+    for job in dps_jobs:
+        types = {e.get("type") for s in job["skills"] for e in s.get("effects") or []}
+        assert types & {"damageReduction", "shield"}, job["id"]
+        drs = [
+            float(e.get("value", 0) or 0)
+            for s in job["skills"]
+            for e in s.get("effects") or []
+            if e.get("type") == "damageReduction"
+        ]
+        assert drs, job["id"]
+        for value in drs:
+            assert 0 < value <= 0.30, (job["id"], value)
+        max_dr[job["role"]] = max(max_dr.get(job["role"], 0.0), max(drs))
+    # 最脆的远程法系补偿最多、近战最少，保留「输出越高越脆」的定位差异
+    assert max_dr["magicalRanged"] >= max_dr["physicalRanged"] >= max_dr["melee"]
+
+
 def test_all_jobs_have_signature() -> None:
     """每个职业恰好一个绝技，字段齐全、充能参数合理、id 不与现有技能重复。"""
     for job in CONFIG.jobs["jobs"]:

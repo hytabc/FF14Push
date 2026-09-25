@@ -285,7 +285,11 @@ async function reportDamage(): Promise<void> {
   reportSeq += 1
   try {
     const res = await api.worldbossReport({ reportSeq, damage, perHero })
-    for (const [heroId, total] of cumulative) reportedHeroDamage.set(heroId, total)
+    // 被幂等去重（duplicate）的窗口服务端并未结算、也没推进序号游标：本地不推进「已上报累计」，
+    // 下个窗口用更大的序号重报，避免这段伤害被永久丢弃（表现为「战斗中但 BOSS 不掉血」）。
+    if (!res.duplicate) {
+      for (const [heroId, total] of cumulative) reportedHeroDamage.set(heroId, total)
+    }
     if (state.value) {
       state.value.boss = res.boss
       state.value.myDamage = res.myDamage
@@ -323,8 +327,10 @@ function simStep(): void {
   const current = sim.value
   if (current && bossAlive.value) {
     current.setBossHpRatio(bossHpRatio.value)
+    const before = current.elapsedMs
     current.tick(dtMs)
-    reportAccum += dtMs
+    // 只累加真正推进的整步时间：引擎按 100ms 整数步结算，与伤害窗口同源，避免余数被丢弃后错位。
+    reportAccum += current.elapsedMs - before
     if (reportAccum >= REPORT_MS) {
       reportAccum = 0
       void reportDamage()
@@ -346,11 +352,11 @@ function stopSim(): void {
   rafId = 0
 }
 
-/** 用服务端下发的英雄快照重建本地模拟（进入战场 / 刷新页面恢复）。 */
-function buildSim(party: WorldBossSnapshot[] | null | undefined): void {
+/** 用服务端下发的英雄快照重建本地模拟（进入战场 / 刷新页面恢复）；序号从服务端游标续接，避免重放被判重。 */
+function buildSim(party: WorldBossSnapshot[] | null | undefined, lastReportSeq = 0): void {
   stopSim()
   reportedHeroDamage.clear()
-  reportSeq = 0
+  reportSeq = Math.max(0, Math.floor(lastReportSeq))
   playedEventSeq = 0
   if (!party || !party.length) {
     sim.value = null
@@ -378,7 +384,7 @@ async function load() {
   state.value = st
   roster.value = ro.data.heroes
   // 刷新页面后按服务端下发的快照恢复本地模拟（无会话则 party 为空）。
-  buildSim(st.party)
+  buildSim(st.party, st.lastReportSeq ?? 0)
 }
 
 async function connect() {
@@ -428,7 +434,7 @@ async function enter() {
     await game.stopRaid(true)
     state.value = await api.worldbossEnter([...selected.value])
     receipt.value = null
-    buildSim(state.value.party)
+    buildSim(state.value.party, state.value.lastReportSeq ?? 0)
     await connect()
   })
 }

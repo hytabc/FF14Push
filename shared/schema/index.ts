@@ -432,6 +432,24 @@ export interface FishIntuitionDef {
   chance: number
 }
 
+/** 困难鱼定价依据（由 scripts/gen-fish-data.py 计算写入，供「?」展示）。 */
+export interface FishPriceBasis {
+  /** 预期抛竿数 E（含窗口外等待、攒前置开销与鱼识判定）。 */
+  effort: number
+  /** 天气 / 时段窗口开启率（%）。 */
+  gatePct: number
+  /** 攒齐前置的窗口内预期抛竿数。 */
+  buildCasts: number
+  /** 鱼识 BUFF 可持续的抛竿数。 */
+  buffCasts: number
+  /** 锚点（同区鱼王）单价。 */
+  anchorSell: number
+  /** 锚点鱼王的预期抛竿数。 */
+  anchorEffort: number
+  /** 幂律指数 β（由同区鱼王 / 鱼皇两点拟合）。 */
+  exponent: number
+}
+
 export interface SpecialFishDef {
   id: string
   name: string
@@ -445,6 +463,8 @@ export interface SpecialFishDef {
   sizeMax: number
   exp: number
   sell?: number
+  /** 仅困难鱼（legend）：单价的有效概率推导依据。 */
+  priceBasis?: FishPriceBasis
 }
 
 export interface FishRegionDef {

@@ -217,6 +217,41 @@ class TestSharedData:
         assert sum(int(r["count"]) for r in hue_lord["intuition"]["requires"]) == 11
         assert hue_lord.get("weather"), "七彩天主需要特定天气窗口"
 
+    def test_legend_price_follows_effective_probability(self):
+        """困难鱼单价 = 鱼王单价 × (有效预期抛竿数 E / 鱼王 E)^β，越难钓越贵且不成为刷钱路线。
+
+        E 由 scripts/gen-fish-data.py 计算（含天气/时段窗口开启率、攒前置开销、鱼识 BUFF 判定），
+        随 fish.json 的 priceBasis 一并下发；此处复算公式并校验锚点、单调性与单位抛竿收益上界。
+        """
+        checked = 0
+        for region in CONFIG.fish["regions"]:
+            king = _special(region, "king")
+            legends = [s for s in region["specials"] if s["kind"] == "legend"]
+            if not legends:
+                continue
+            prev_sell = None
+            for s in sorted(legends, key=lambda x: x["priceBasis"]["effort"] if x.get("priceBasis") else 0):
+                checked += 1
+                basis = s.get("priceBasis")
+                assert basis, f"{s['id']} 缺少 priceBasis"
+                assert basis["anchorSell"] == int(king["sell"]), f"{s['id']} 锚点应为同区鱼王单价"
+                assert basis["effort"] > 0 and basis["anchorEffort"] > 0
+                assert 0 < basis["gatePct"] <= 100, f"{s['id']} 窗口开启率应在 (0,100]"
+                assert 0 < basis["exponent"] < 1, f"{s['id']} 幂律指数应在 (0,1)（越稀有单位收益越低）"
+                expected = basis["anchorSell"] * (basis["effort"] / basis["anchorEffort"]) ** basis["exponent"]
+                assert abs(int(s["sell"]) - expected) <= max(2.0, expected * 0.001), (
+                    f"{s['id']} 单价 {s['sell']} 与公式复算 {expected:.1f} 不符"
+                )
+                # 同区内 E 越大单价越高（幂律单调递增）
+                assert prev_sell is None or int(s["sell"]) >= prev_sell, f"{s['id']} 单价未随难度递增"
+                prev_sell = int(s["sell"])
+                # 防刷：困难鱼单位抛竿收益不得高出锚点鱼王 2 倍以上
+                king_per_cast = int(king["sell"]) / basis["anchorEffort"]
+                assert int(s["sell"]) / basis["effort"] <= king_per_cast * 2.0, (
+                    f"{s['id']} 单位抛竿收益过高：{int(s['sell']) / basis['effort']:.2f} vs 鱼王 {king_per_cast:.2f}"
+                )
+        assert checked >= 10, "困难鱼数量异常"
+
     def test_consumables_and_titles(self):
         kinds = {c["kind"] for c in CONFIG.consumables["items"]}
         assert kinds == {"potion", "food"}
@@ -1762,6 +1797,33 @@ class TestFishIntuition:
         region = _one_special_region()
         now = datetime.now(timezone.utc)
         assert fishing._special_candidates(region, _cond(), {}, now) == []
+
+    def test_chance_buff_applies_to_legend(self):
+        """「特殊鱼概率」加成对困难鱼同样生效（`fishChancePct` 不按 kind 过滤）。"""
+        from app.services import fishing
+
+        region = _one_special_region()
+        region["specials"][0]["intuition"]["chance"] = 0.01
+        cond = _cond()
+        now = datetime.now(timezone.utc)
+        insights = {"lt_1": now + timedelta(seconds=100)}
+
+        class _FixedRng:
+            def random(self) -> float:
+                return 0.5
+
+        rng = _FixedRng()
+        pick, kind = fishing._resolve_catch(region, cond, insights, 0.0, rng, now)
+        assert kind == "normal", "无加成时 0.01 < 0.5，不应钓起困难鱼"
+        pick, kind = fishing._resolve_catch(region, cond, insights, 100000.0, rng, now)
+        assert kind == "legend" and pick["id"] == "lt_1", "加成后困难鱼命中概率应同步提升"
+
+    def test_chance_wording_covers_legend(self):
+        """展示文案统一为「特殊鱼概率」，明确包含困难鱼。"""
+        assert CONFIG.dohdol_equipment["bonusNames"]["fishChancePct"] == "特殊鱼概率"
+        assert CONFIG.consumables["effectNames"]["fishChancePct"] == "特殊鱼概率"
+        term = next(t for t in CONFIG.dohdol_equipment["terms"] if t["id"] == "dolKingInstinct")
+        assert "困难鱼" in term["desc"]
 
     def test_normal_pool_respects_weather_gate(self):
         from app.services import fishing

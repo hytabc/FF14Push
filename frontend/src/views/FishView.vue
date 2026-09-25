@@ -6,7 +6,8 @@ import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
-import { fishChanceExplain } from '@/game/explanations'
+import { fishChanceExplain, fishPriceExplain } from '@/game/explanations'
+import type { Explain } from '@/game/explanations'
 import { conditionsFor, forecast, secondsUntilWeatherChange, timeOfDayName, weatherName } from '@/game/weather'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
@@ -62,11 +63,21 @@ const regionLevelLocked = computed(() =>
   currentRegion.value ? currentRegion.value.levelReq > (progress.value?.level ?? 1) : false,
 )
 
-/** 鱼王/鱼皇「鱼识加成」来自专用装备（药水加成在服务端结算时另计）。 */
+/** 「特殊鱼概率」加成来自专用装备（药水加成在服务端结算时另计），对鱼王 / 鱼皇 / 困难鱼同样生效。 */
 const chanceBonus = computed(() => dohdol.state?.bonus?.fishChancePct ?? 0)
 function fishInfo(region: (typeof data.fish.regions)[number]) {
   return fishChanceExplain(region, chanceBonus.value)
 }
+
+/** 困难鱼（legend）的单价定价依据，按鱼 id 缓存给「?」气泡用。 */
+const priceInfoById = computed(() => {
+  const out: Record<string, Explain> = {}
+  for (const s of specials.value) {
+    const info = fishPriceExplain(s)
+    if (info) out[s.id] = info
+  }
+  return out
+})
 
 /** 鱼获库存（鱼作为可出售材料存储）。 */
 const fishBag = computed(() =>
@@ -191,6 +202,7 @@ async function toggle() {
 
       <p class="mt-2 text-[11px] text-ink-500">
         普通鱼分白 / 蓝 / 紫三档；特殊鱼（鱼王 / 鱼皇 / 困难鱼）需在特定天气或时段先钓齐前置，开启对应「捕鱼人之识」后才有小概率钓起。
+        「特殊鱼概率」加成（专用装备 / 料理 / 秘药）对鱼王、鱼皇与困难鱼同样生效。
         <InfoTip v-if="currentRegion" :title="fishInfo(currentRegion).title">
           <p v-for="(line, i) in fishInfo(currentRegion).lines" :key="i">{{ line }}</p>
         </InfoTip>
@@ -241,6 +253,10 @@ async function toggle() {
           <ItemIcon :base-id="s.id" :rarity="fishKindRarity(s.kind)" :size="20" />
           <span :class="kindClass(s.kind)">{{ kindLabel(s.kind) }}：{{ s.name }}</span>
           <span class="text-ink-400">{{ (s.intuition.chance * 100).toFixed(3) }}%</span>
+          <span v-if="s.sell" class="text-amber-200/80">单价 {{ s.sell.toLocaleString() }}</span>
+          <InfoTip v-if="priceInfoById[s.id]" :title="priceInfoById[s.id].title">
+            <p v-for="(line, i) in priceInfoById[s.id].lines" :key="i">{{ line }}</p>
+          </InfoTip>
           <span v-if="specialGate(s)" class="text-sky-300">{{ specialGate(s) }}</span>
           <span class="text-ink-400">前置 {{ specialRequires(s) }}</span>
         </div>

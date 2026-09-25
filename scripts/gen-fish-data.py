@@ -10,6 +10,9 @@
   - 平衡调整：所有「捕鱼人之识」BUFF 持续时间统一为 30s；鱼王 / 鱼皇出现概率 ×2。
     该调整在生成阶段统一施加（`INSIGHT_DURATION_SEC` / `KING_EMPEROR_CHANCE_MULT`），
     `fish-base.json` 仍冻结旧数值。
+  - 困难鱼定价：不再用固定倍率，而是以同区鱼王 / 鱼皇单价为锚、按「实际有效概率」定价——
+    把天气/时段窗口开启率、攒前置鱼的开销、鱼识 BUFF 判定一起折算成预期抛竿数 E，
+    单价 = 鱼王单价 × (E / E_鱼王)^β（β 逐区由鱼王 / 鱼皇两点拟合），越难钓越贵。见 `_region_effort`。
 
 运行：`python scripts/gen-fish-data.py`
 """
@@ -17,6 +20,7 @@
 from __future__ import annotations
 
 import json
+import math
 import pathlib
 import sys
 from typing import Any
@@ -112,8 +116,9 @@ EXTRA_NORMAL: dict[int, dict[str, Any]] = {
 }
 
 # ───────────────────────────── 困难鱼（legend） ─────────────────────────────
-# 字段：id/name/weather/timeOfDay/requires[(fishId,count)]/duration/chance + 可选倍率。
-# 默认（普通 legend）：size = base_size×(2.4, 3.6)，exp = base_exp×25，sell = base_sell×60。
+# 字段：id/name/weather/timeOfDay/requires[(fishId,count)]/duration/chance + 可选 sizeMul/expMul。
+# 默认（普通 legend）：size = base_size×(2.4, 3.6)，exp = base_exp×25。
+# sell 不再由倍率给出，统一按有效概率折算的预期抛竿数定价（见 `_region_effort`）。
 LEGENDS: dict[int, list[dict[str, Any]]] = {
     3: [{"id": "l3_sea_god", "name": "海神", "weather": ["rain"], "timeOfDay": ["night"],
          "requires": [("f3_7", 1)], "duration": [50, 80], "chance": 0.0012}],
@@ -137,19 +142,19 @@ LEGENDS: dict[int, list[dict[str, Any]]] = {
           "requires": [("f20_7", 1)], "duration": [45, 70], "chance": 0.0008}],
     21: [
         {"id": "l21_purple", "name": "紫彩鱼", "requires": [("f21_1", 1)],
-         "duration": [40, 60], "chance": 0.06, "sizeMul": [0.9, 1.4], "expMul": 8, "sellMul": 12},
+         "duration": [40, 60], "chance": 0.06, "sizeMul": [0.9, 1.4], "expMul": 8},
         {"id": "l21_blue", "name": "蓝彩鱼", "requires": [("l21_purple", 1)],
-         "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8, "sellMul": 14},
+         "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8},
         {"id": "l21_red", "name": "红彩鱼", "requires": [("f21_2", 1)],
-         "duration": [40, 60], "chance": 0.06, "sizeMul": [0.9, 1.4], "expMul": 8, "sellMul": 12},
+         "duration": [40, 60], "chance": 0.06, "sizeMul": [0.9, 1.4], "expMul": 8},
         {"id": "l21_orange", "name": "橙彩鱼", "requires": [("l21_red", 1)],
-         "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8, "sellMul": 14},
+         "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8},
         {"id": "l21_green", "name": "绿彩鱼", "requires": [("f21_5", 1)],
-         "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8, "sellMul": 14},
+         "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8},
         {"id": "l21_hue_lord", "name": "七彩天主", "weather": ["clear"],
          "requires": [("l21_blue", 3), ("l21_orange", 3), ("l21_green", 5)],
          "duration": [60, 90], "chance": 0.0004,
-         "sizeMul": [3.0, 4.5], "expMul": 60, "sellMul": 200},
+         "sizeMul": [3.0, 4.5], "expMul": 60},
     ],
     25: [{"id": "l25_mirror_butterfly", "name": "镜中蝶", "weather": ["clear"], "timeOfDay": ["night"],
           "requires": [("f25_7", 2)], "duration": [30, 45], "chance": 0.0006}],
@@ -184,6 +189,113 @@ INSIGHT_DURATION_SEC = [30, 30]
 # 鱼王 / 鱼皇的出现概率提升至原来的 200%（困难鱼不受影响）。
 KING_EMPEROR_CHANCE_MULT = 2.0
 
+# ───────────────────────────── 困难鱼定价 ─────────────────────────────
+# 困难鱼单价以同区鱼王 / 鱼皇为锚，按其「实际有效概率」定价。有效概率不是裸的 intuition.chance，
+# 而是把三件事一起折算成「钓起 1 条该鱼的预期抛竿数 E」（含窗口外的等待）：
+#   1) 天气 / 时段窗口开启率（只在窗口内才计前置、才可能判定）；
+#   2) 攒齐前置鱼的开销（前置鱼按权重随机出现；前置本身是困难鱼时递归计入，如七彩链）；
+#   3) 鱼识 BUFF 期间的判定（BUFF 持续 insight_sec，每次抛竿以 chance 判定，未命中则重建）。
+# 曲线：单价 = 鱼王单价 × (E / E_鱼王)^β，β 由该区鱼王 / 鱼皇两点拟合（精确复现两锚点）。
+
+
+def _time_of_day_fractions(wcfg: dict[str, Any]) -> dict[str, float]:
+    """拂晓 / 白昼 / 黄昏 / 深夜各占一天的比例。"""
+    out: dict[str, float] = {}
+    for name, (start, end) in wcfg["timeOfDay"].items():
+        hours = (end - start + 1) if start <= end else (24 - start) + (end + 1)
+        out[name] = hours / 24.0
+    return out
+
+
+def _conditions(region_id: int, wcfg: dict[str, Any], tod_frac: dict[str, float]) -> list[tuple[float, str, str]]:
+    """该地区的 (概率, 天气, 时段) 联合分布（天气与时段相互独立）。"""
+    weights = {k: int(v) for k, v in _region_weights(wcfg, region_id).items()}
+    total = sum(weights.values())
+    return [(w / total * t, wid, tod) for wid, w in weights.items() for tod, t in tod_frac.items()]
+
+
+def _region_weights(wcfg: dict[str, Any], region_id: int) -> dict[str, int]:
+    for region in wcfg["regions"]:
+        if int(region["regionId"]) == int(region_id):
+            return region["weights"]
+    return {}
+
+
+def _gate_ok(weather_id: str, tod_id: str, weather_ids, tod_ids) -> bool:
+    """与 services/weather.gate_matches 同义：未声明即不限制，声明了必须命中其一。"""
+    if weather_ids and weather_id not in weather_ids:
+        return False
+    if tod_ids and tod_id not in tod_ids:
+        return False
+    return True
+
+
+def _normal_shares(normal: list[dict[str, Any]], weather_id: str, tod_id: str) -> dict[str, float]:
+    """某条件下普通鱼池中各鱼的权重占比（全被门槛排除时回落到全部普通鱼）。"""
+    pool = [f for f in normal if _gate_ok(weather_id, tod_id, f.get("weather"), f.get("timeOfDay"))]
+    if not pool:
+        pool = normal
+    total = sum(float(f.get("weight", 1.0)) for f in pool)
+    if total <= 0:
+        return {}
+    return {f["id"]: float(f.get("weight", 1.0)) / total for f in pool}
+
+
+def _region_effort(region: dict[str, Any], wcfg: dict[str, Any], tod_frac: dict[str, float],
+                   cast_seconds: float, insight_sec: float) -> dict[str, dict[str, float]]:
+    """该区每条特殊鱼的定价用指标（预期抛竿数 E 及其构成）。递归支持「前置本身是困难鱼」的七彩链。"""
+    conds = _conditions(region["regionId"], wcfg, tod_frac)
+    special_by_id = {s["id"]: s for s in region["specials"]}
+    memo: dict[str, dict[str, float]] = {}
+    resolving: set[str] = set()
+
+    def effort(sid: str) -> dict[str, float]:
+        if sid in memo:
+            return memo[sid]
+        if sid in resolving:  # 防御：理论上无环
+            return {"effort": float("inf"), "gate": 1.0, "build": 0.0, "buffCasts": 0.0}
+        special = special_by_id[sid]
+        resolving.add(sid)
+        try:
+            raw = [
+                (p, w, t) for p, w, t in conds
+                if _gate_ok(w, t, special.get("weather"), special.get("timeOfDay"))
+            ]
+            gate = sum(p for p, _, _ in raw) or 1e-9
+            # 前置只在窗口内累计：把条件概率归一化到「窗口开启」的条件下。
+            open_conds = [(p / gate, w, t) for p, w, t in raw]
+            build = 0.0
+            for req in special["intuition"]["requires"]:
+                fish_id, count = req["fishId"], int(req["count"])
+                if fish_id in special_by_id:
+                    per_cast = 1.0 / effort(fish_id)["effort"]
+                else:
+                    shares = [
+                        _normal_shares(region["normal"], w, t).get(fish_id, 0.0)
+                        for _, w, t in open_conds
+                    ]
+                    per_cast = sum(p * sh for (p, _, _), sh in zip(open_conds, shares))
+                build += count / max(per_cast, 1e-12)
+            buff_casts = max(1, round(insight_sec / cast_seconds))
+            p_hit = float(special["intuition"]["chance"])
+            p_success = 1.0 - (1.0 - p_hit) ** buff_casts
+            memo[sid] = {
+                "effort": (build + buff_casts) / max(p_success, 1e-12) / gate,
+                "gate": gate,
+                "build": build,
+                "buffCasts": float(buff_casts),
+            }
+        finally:
+            resolving.discard(sid)
+        return memo[sid]
+
+    return {s["id"]: effort(s["id"]) for s in region["specials"]}
+
+
+def _price_exponent(price_low: float, price_high: float, effort_low: float, effort_high: float) -> float:
+    """由鱼王 / 鱼皇两点拟合的幂律指数。"""
+    return math.log(price_high / price_low) / math.log(effort_high / effort_low)
+
 
 def _fish_stats(base_size: int, base_exp: int, base_sell: int, size_mul, exp_mul, sell_mul) -> dict[str, int]:
     return {
@@ -199,6 +311,8 @@ def build() -> dict[str, Any]:
     weather = json.loads(WEATHER.read_text(encoding="utf-8"))
     weather_keys = {int(r["regionId"]): set(r["weights"]) for r in weather["regions"]}
     insight_name = base.get("insightBuffName", "捕鱼人之识")
+    tod_frac = _time_of_day_fractions(weather)
+    cast_seconds = float(base["castSeconds"])
 
     regions_out: list[dict[str, Any]] = []
     all_ids: set[str] = set()
@@ -259,7 +373,7 @@ def build() -> dict[str, Any]:
             size_mul = leg.get("sizeMul", [2.4, 3.6])
             stats = _fish_stats(
                 base_size, base_exp, base_sell,
-                size_mul, leg.get("expMul", 25), leg.get("sellMul", 60),
+                size_mul, leg.get("expMul", 25), 1,
             )
             specials.append({
                 "id": leg["id"], "name": leg["name"], "kind": "legend",
@@ -275,10 +389,34 @@ def build() -> dict[str, Any]:
             })
             all_ids.add(leg["id"])
 
-        regions_out.append({
+        region_out = {
             "regionId": rid, "name": region["name"], "levelReq": region["levelReq"],
             "normal": normal, "specials": specials,
-        })
+        }
+        # 困难鱼定价：用有效概率（窗口开启率 + 前置开销 + BUFF 判定）折算的预期抛竿数 E 定价。
+        effort = _region_effort(region_out, weather, tod_frac, cast_seconds, INSIGHT_DURATION_SEC[0])
+        king = next(s for s in specials if s["kind"] == "king")
+        emperor = next(s for s in specials if s["kind"] == "emperor")
+        king_effort = effort[king["id"]]["effort"]
+        beta = _price_exponent(
+            king["sell"], emperor["sell"], king_effort, effort[emperor["id"]]["effort"]
+        )
+        for special in specials:
+            if special["kind"] != "legend":
+                continue
+            info = effort[special["id"]]
+            special["sell"] = max(1, round(int(king["sell"]) * (info["effort"] / king_effort) ** beta))
+            # 供前端「?」展示定价依据：单价 = 锚点鱼王单价 × (E/E_鱼王)^β。
+            special["priceBasis"] = {
+                "effort": round(info["effort"], 2),
+                "gatePct": round(info["gate"] * 100.0, 2),
+                "buildCasts": round(info["build"], 1),
+                "buffCasts": int(info["buffCasts"]),
+                "anchorSell": int(king["sell"]),
+                "anchorEffort": round(king_effort, 2),
+                "exponent": round(beta, 6),
+            }
+        regions_out.append(region_out)
 
     # ── 校验：id 唯一、天气门槛落在该地区天气表内、前置引用存在 ──
     # 注：普通鱼名可跨地区复用（原数据即如此，三文鱼/河鲈等为通用鱼），故不校验名称唯一性。
@@ -326,7 +464,9 @@ def build() -> dict[str, Any]:
             "special: 鱼王/鱼皇(legacy)与困难鱼(legend)共用统一的 intuition 结构——"
             "每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。"
             "旧 king/emperor 已迁入 specials[]，id 保持不变。"
-            "平衡调整：所有鱼识 BUFF 持续 30s；鱼王/鱼皇出现概率为原值的 200%。"
+            "平衡调整：所有鱼识 BUFF 持续 30s；鱼王/鱼皇出现概率为原值的 200%；"
+            "困难鱼单价按其「有效概率」定价：鱼王单价 × (E/E_鱼王)^β，"
+            "E 为含「天气/时段窗口开启率 + 攒前置鱼开销 + 鱼识 BUFF 判定」的预期抛竿数，越难钓越贵。"
         ),
         "castSeconds": base["castSeconds"],
         "insightBuffName": insight_name,

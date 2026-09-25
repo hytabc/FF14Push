@@ -1,5 +1,5 @@
 {
-  "$comment": "钓场。普通鱼分白/蓝/紫三档（rarity），可带天气(weather)/时间(timeOfDay)门槛；special: 鱼王/鱼皇(legacy)与困难鱼(legend)共用统一的 intuition 结构——每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。旧 king/emperor 已迁入 specials[]，id 保持不变。平衡调整：所有鱼识 BUFF 持续 30s；鱼王/鱼皇出现概率为原值的 200%。",
+  "$comment": "钓场。普通鱼分白/蓝/紫三档（rarity），可带天气(weather)/时间(timeOfDay)门槛；special: 鱼王/鱼皇(legacy)与困难鱼(legend)共用统一的 intuition 结构——每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。旧 king/emperor 已迁入 specials[]，id 保持不变。平衡调整：所有鱼识 BUFF 持续 30s；鱼王/鱼皇出现概率为原值的 200%；困难鱼单价按其「有效概率」定价：鱼王单价 × (E/E_鱼王)^β，E 为含「天气/时段窗口开启率 + 攒前置鱼开销 + 鱼识 BUFF 判定」的预期抛竿数，越难钓越贵。",
   "castSeconds": 3.0,
   "insightBuffName": "捕鱼人之识",
   "rarityNames": {
@@ -489,7 +489,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 100,
-          "sell": 480
+          "sell": 8174,
+          "priceBasis": {
+            "effort": 68144.58,
+            "gatePct": 7.5,
+            "buildCasts": 51.0,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.73,
+            "exponent": 0.562691
+          }
         }
       ]
     },
@@ -820,7 +829,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 125,
-          "sell": 480
+          "sell": 5027,
+          "priceBasis": {
+            "effort": 28860.57,
+            "gatePct": 44.0,
+            "buildCasts": 141.6,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.8,
+            "exponent": 0.562348
+          }
         }
       ]
     },
@@ -1001,7 +1019,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 125,
-          "sell": 480
+          "sell": 9725,
+          "priceBasis": {
+            "effort": 93093.69,
+            "gatePct": 5.62,
+            "buildCasts": 52.5,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.77,
+            "exponent": 0.562494
+          }
         }
       ]
     },
@@ -1635,7 +1662,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 150,
-          "sell": 1200
+          "sell": 25782,
+          "priceBasis": {
+            "effort": 50225.41,
+            "gatePct": 30.0,
+            "buildCasts": 140.0,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.76,
+            "exponent": 0.562536
+          }
         }
       ]
     },
@@ -1813,7 +1849,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 150,
-          "sell": 1200
+          "sell": 37881,
+          "priceBasis": {
+            "effort": 100450.83,
+            "gatePct": 15.0,
+            "buildCasts": 140.0,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.88,
+            "exponent": 0.561979
+          }
         }
       ]
     },
@@ -1994,7 +2039,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 175,
-          "sell": 1200
+          "sell": 41127,
+          "priceBasis": {
+            "effort": 116158.02,
+            "gatePct": 6.75,
+            "buildCasts": 52.5,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.87,
+            "exponent": 0.562039
+          }
         }
       ]
     },
@@ -2175,7 +2229,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 175,
-          "sell": 1200
+          "sell": 31081,
+          "priceBasis": {
+            "effort": 70809.93,
+            "gatePct": 11.25,
+            "buildCasts": 53.5,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.91,
+            "exponent": 0.561827
+          }
         }
       ]
     },
@@ -2660,7 +2723,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 200,
-          "sell": 1200
+          "sell": 51317,
+          "priceBasis": {
+            "effort": 170096.73,
+            "gatePct": 3.75,
+            "buildCasts": 53.5,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.72,
+            "exponent": 0.562754
+          }
         }
       ]
     },
@@ -3142,7 +3214,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 200,
-          "sell": 2400
+          "sell": 123760,
+          "priceBasis": {
+            "effort": 73329.1,
+            "gatePct": 20.0,
+            "buildCasts": 136.0,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.94,
+            "exponent": 0.570769
+          }
         }
       ]
     },
@@ -3323,7 +3404,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 225,
-          "sell": 2400
+          "sell": 270661,
+          "priceBasis": {
+            "effort": 285115.14,
+            "gatePct": 2.75,
+            "buildCasts": 52.5,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.8,
+            "exponent": 0.571493
+          }
         }
       ]
     },
@@ -3498,7 +3588,16 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 480
+          "sell": 1321,
+          "priceBasis": {
+            "effort": 25.75,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.02,
+            "exponent": 0.570404
+          }
         },
         {
           "id": "l21_blue",
@@ -3521,7 +3620,16 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 560
+          "sell": 2681,
+          "priceBasis": {
+            "effort": 89.1,
+            "gatePct": 100.0,
+            "buildCasts": 25.8,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.02,
+            "exponent": 0.570404
+          }
         },
         {
           "id": "l21_red",
@@ -3544,7 +3652,16 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 480
+          "sell": 1432,
+          "priceBasis": {
+            "effort": 29.69,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.02,
+            "exponent": 0.570404
+          }
         },
         {
           "id": "l21_orange",
@@ -3567,7 +3684,16 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 560
+          "sell": 2845,
+          "priceBasis": {
+            "effort": 98.91,
+            "gatePct": 100.0,
+            "buildCasts": 29.7,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.02,
+            "exponent": 0.570404
+          }
         },
         {
           "id": "l21_green",
@@ -3590,7 +3716,16 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 560
+          "sell": 3497,
+          "priceBasis": {
+            "effort": 142.04,
+            "gatePct": 100.0,
+            "buildCasts": 47.0,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.02,
+            "exponent": 0.570404
+          }
         },
         {
           "id": "l21_hue_lord",
@@ -3624,7 +3759,16 @@
           "sizeMin": 450,
           "sizeMax": 675,
           "exp": 540,
-          "sell": 8000
+          "sell": 452092,
+          "priceBasis": {
+            "effort": 714757.38,
+            "gatePct": 45.0,
+            "buildCasts": 1274.2,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.02,
+            "exponent": 0.570404
+          }
         }
       ]
     },
@@ -4261,7 +4405,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 250,
-          "sell": 4800
+          "sell": 758318,
+          "priceBasis": {
+            "effort": 173801.85,
+            "gatePct": 11.25,
+            "buildCasts": 107.0,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.89,
+            "exponent": 0.574394
+          }
         }
       ]
     },
@@ -4744,7 +4897,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 275,
-          "sell": 4800
+          "sell": 344402,
+          "priceBasis": {
+            "effort": 43374.82,
+            "gatePct": 35.0,
+            "buildCasts": 141.1,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.7,
+            "exponent": 0.575344
+          }
         }
       ]
     },
@@ -4922,7 +5084,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 275,
-          "sell": 9600
+          "sell": 1209527,
+          "priceBasis": {
+            "effort": 62781.77,
+            "gatePct": 24.0,
+            "buildCasts": 140.0,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.93,
+            "exponent": 0.561747
+          }
         }
       ]
     },
@@ -5255,7 +5426,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 275,
-          "sell": 9600
+          "sell": 1426539,
+          "priceBasis": {
+            "effort": 83633.77,
+            "gatePct": 9.38,
+            "buildCasts": 52.5,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.84,
+            "exponent": 0.562179
+          }
         }
       ]
     },
@@ -5434,7 +5614,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 300,
-          "sell": 9600
+          "sell": 772525,
+          "priceBasis": {
+            "effort": 28213.15,
+            "gatePct": 54.0,
+            "buildCasts": 141.7,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.9,
+            "exponent": 0.561873
+          }
         }
       ]
     },
@@ -5615,7 +5804,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 300,
-          "sell": 9600
+          "sell": 1167083,
+          "priceBasis": {
+            "effort": 59008.27,
+            "gatePct": 13.5,
+            "buildCasts": 53.5,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.95,
+            "exponent": 0.561644
+          }
         }
       ]
     },
@@ -5796,7 +5994,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 300,
-          "sell": 9600
+          "sell": 1820350,
+          "priceBasis": {
+            "effort": 128629.57,
+            "gatePct": 8.25,
+            "buildCasts": 53.5,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.8,
+            "exponent": 0.562365
+          }
         }
       ]
     },
@@ -6281,7 +6488,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 325,
-          "sell": 19200
+          "sell": 9724618,
+          "priceBasis": {
+            "effort": 354049.64,
+            "gatePct": 2.25,
+            "buildCasts": 53.5,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.65,
+            "exponent": 0.563091
+          }
         }
       ]
     },
@@ -6460,7 +6676,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 325,
-          "sell": 19200
+          "sell": 2570337,
+          "priceBasis": {
+            "effort": 33813.63,
+            "gatePct": 56.0,
+            "buildCasts": 140.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.85,
+            "exponent": 0.56209
+          }
         }
       ]
     },
@@ -6641,7 +6866,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 325,
-          "sell": 19200
+          "sell": 4518158,
+          "priceBasis": {
+            "effort": 92757.46,
+            "gatePct": 8.25,
+            "buildCasts": 51.0,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.93,
+            "exponent": 0.561747
+          }
         }
       ]
     },
@@ -6822,7 +7056,16 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 350,
-          "sell": 19200
+          "sell": 5601105,
+          "priceBasis": {
+            "effort": 135921.96,
+            "gatePct": 7.5,
+            "buildCasts": 51.0,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.92,
+            "exponent": 0.56177
+          }
         }
       ]
     }

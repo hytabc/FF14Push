@@ -443,6 +443,8 @@ async def test_enter_rejects_low_level_and_over_capacity(auth_client, session_fa
     assert body["rules"]["heroSlots"] == hero_slots() == 8
     assert body["reward"]["tiers"] and body["reward"]["rankBonus"]["1"] == 10
     assert body["session"] and len(body["session"]["heroes"]) == 1
+    # 新会话的序号游标为 0；客户端刷新 / 重进时据此续接 reportSeq。
+    assert body["lastReportSeq"] == 0
 
     # 重复上阵自己会在进入前清掉旧会话（幂等重进）
     again = await auth_client.post(f"{API}/worldboss/enter", json={"heroIds": [hero_id]})
@@ -592,6 +594,11 @@ async def test_report_is_idempotent_by_seq(auth_client, session_factory):
     assert first.status_code == 200, first.text
     assert first.json()["damageAccepted"] == damage
     hp_after_first = first.json()["boss"]["hp"]
+
+    # 状态接口下发服务端已处理的序号游标：客户端刷新后续接，不会把后续上报误判为重复。
+    resumed = await auth_client.get(f"{API}/worldboss/state")
+    assert resumed.status_code == 200, resumed.text
+    assert resumed.json()["lastReportSeq"] == 5
 
     again = await auth_client.post(f"{API}/worldboss/report", json=payload)
     assert again.status_code == 200, again.text

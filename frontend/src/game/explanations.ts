@@ -270,6 +270,7 @@ export function fishChanceExplain(
 ): Explain {
   const factor = 1 + chanceBonusPct / 100
   const lines: string[] = [
+    '「特殊鱼概率」加成（专用装备 / 料理 / 秘药）对困难鱼、鱼皇、鱼王同样生效。',
     '仅在对应「捕鱼人之识」生效期间判定：按稀有度先判困难鱼、再鱼皇、再鱼王，均未命中则为普通鱼。',
   ]
   for (const s of region.specials) {
@@ -290,6 +291,35 @@ export function fishChanceExplain(
   }
   lines.push('依据：服务端 fishing.report_fish()，配置 shared/data/fish.json 的 specials[].intuition。')
   return { title: '特殊鱼概率如何计算', lines }
+}
+
+/** 困难鱼单价的计算依据。真源：scripts/gen-fish-data.py（`_region_effort`）+ fish.json.specials[].priceBasis。 */
+export function fishPriceExplain(special: {
+  name: string
+  sell?: number
+  intuition: { chance: number }
+  priceBasis?: {
+    effort: number
+    gatePct: number
+    buildCasts: number
+    buffCasts: number
+    anchorSell: number
+    anchorEffort: number
+    exponent: number
+  }
+}): Explain | null {
+  const b = special.priceBasis
+  if (!b) return null
+  return {
+    title: '困难鱼单价如何计算',
+    lines: [
+      '困难鱼按「实际有效概率」定价：把天气/时段窗口开启率、攒齐前置鱼的开销、鱼识 BUFF 内的判定一起折算成「钓起 1 条的预期抛竿数 E」，越难钓越贵。',
+      `单价 = 该区鱼王单价 × (E ÷ 鱼王 E)^β（β 由同区鱼王/鱼皇两点拟合）`,
+      `${special.name}：${b.anchorSell.toLocaleString()} × (${Math.round(b.effort).toLocaleString()} ÷ ${Math.round(b.anchorEffort).toLocaleString()})^${b.exponent.toFixed(3)} = ${(special.sell ?? 0).toLocaleString()}`,
+      `其中 E = ${Math.round(b.effort).toLocaleString()} 抛：窗口开启率 ${b.gatePct}%、攒前置约 ${Math.round(b.buildCasts).toLocaleString()} 抛、鱼识 ${b.buffCasts} 抛内每次 ${pct(special.intuition.chance, 3)} 判定。`,
+      '依据：scripts/gen-fish-data.py（配置 shared/data/fish.json）。',
+    ],
+  }
 }
 
 /** 抽箱幸运来源 id → 中文名（chests.json.rarityLuck.sources）。 */

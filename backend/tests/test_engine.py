@@ -1614,6 +1614,27 @@ class TestEnchantExpansion:
         )
         assert theoretical_dps(boosted, 0.0, None) == pytest.approx(plain)
 
+    def test_damage_reduction_does_not_raise_theoretical_dps(self) -> None:
+        """职业技能上的减伤为纯生存，不进入后端 DPS 模型（合法上报不被放宽额度）。"""
+        stats = replace(compute_stats(FakeHero(level=50), []), job_id="DRG")
+        plain = theoretical_dps(stats, 0.0, None)
+        job = CONFIG.job_by_id["DRG"]
+        original = job["skills"]
+        try:
+            job["skills"] = [
+                {
+                    **skill,
+                    "effects": [
+                        *(skill.get("effects") or []),
+                        {"type": "damageReduction", "value": 0.25, "duration": 15},
+                    ],
+                }
+                for skill in original
+            ]
+            assert theoretical_dps(stats, 0.0, None) == pytest.approx(plain)
+        finally:
+            job["skills"] = original
+
 
 class TestBattleDifficulty:
     """战斗难度：怪物按「加法」放大、玩家攻击/防御按「乘法」缩小；难度 0 与现状逐位一致。"""

@@ -290,6 +290,34 @@ describe('蓝量与治疗平衡', () => {
     }
   })
 
+  it('输出职业也有保命手段：辅助技带减伤，且越脆补得越多', () => {
+    const jobs = data.jobs.jobs as Array<{
+      id: string
+      role: string
+      skills: Array<{ effects: Array<{ type: string; value?: number }> }>
+    }>
+    const dps = jobs.filter(
+      (j) => j.role === 'melee' || j.role === 'physicalRanged' || j.role === 'magicalRanged',
+    )
+    expect(dps.length).toBeGreaterThan(0)
+    const maxDr: Record<string, number> = {}
+    for (const job of dps) {
+      const effects = job.skills.flatMap((s) => s.effects ?? [])
+      const types = new Set(effects.map((e) => e.type))
+      expect(types.has('damageReduction') || types.has('shield')).toBe(true)
+      const drs = effects.filter((e) => e.type === 'damageReduction').map((e) => e.value ?? 0)
+      expect(drs.length).toBeGreaterThan(0)
+      for (const value of drs) {
+        expect(value).toBeGreaterThan(0)
+        expect(value).toBeLessThanOrEqual(0.3)
+      }
+      maxDr[job.role] = Math.max(maxDr[job.role] ?? 0, ...drs)
+    }
+    // 最脆的远程法系补偿最多、近战最少，保留「输出越高越脆」的定位差异
+    expect(maxDr.magicalRanged).toBeGreaterThanOrEqual(maxDr.physicalRanged)
+    expect(maxDr.physicalRanged).toBeGreaterThanOrEqual(maxDr.melee)
+  })
+
   it('治疗职业技能耗蓝 = 基础值 + 最大魔力 × 系数；其他定位不加收', () => {
     const pct = Number(data.heroes.mp.healSkillCostMaxMpPct)
     expect(pct).toBeGreaterThan(0)
@@ -1895,5 +1923,20 @@ describe('护盾机制（上限 / 魔法盾 / 吸血盾 / BOSS barrier）', () =
     engine.damageEnemy(1000)
     expect(sim.monsterHp).toBe(hp0)
     expect(sim.monsterShield).toBe(cap - 1000)
+  })
+})
+
+describe('输出职业辅助技减伤（保命）', () => {
+  it('技能携带的减伤效果折算进减伤属性，降低受到的伤害', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ maxHp: 10000 }), regionId: 1 })
+    sim.start()
+    const engine = sim as unknown as { applyEffects(s: unknown): void; buffs: Array<{ stat: string }> }
+    const before = sim.stats.tenacityPct
+    engine.applyEffects({
+      name: '红莲极意',
+      effects: [{ type: 'damageReduction', value: 0.25, duration: 15 }],
+    })
+    expect(sim.stats.tenacityPct).toBeCloseTo(before + 25, 5)
+    expect(engine.buffs.some((b) => b.stat === 'damageReduction')).toBe(true)
   })
 })

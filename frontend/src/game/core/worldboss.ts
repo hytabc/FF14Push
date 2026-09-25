@@ -501,10 +501,12 @@ export function advance(state: EngineState, config: WorldBossConfig, millisecond
   return state
 }
 
-/** 本地战斗循环：以 100ms 为步长推进，单次调用最多推进 `maxMs` 毫秒（避免长时间卡帧）。 */
+/** 本地战斗循环：以 100ms 为步长推进；不足一步的时间累积到下一次调用。 */
 export class WorldBossSimulator {
   readonly state: EngineState
   private readonly config: WorldBossConfig
+  /** 尚未凑满一个 100ms 步的余数：引擎按整数步结算，余数必须累积而不是每帧丢弃。 */
+  private pendingMs = 0
 
   constructor(snapshots: WorldBossSnapshot[], bossHpRatio = 1, seed = 20260924) {
     this.config = data.worldboss
@@ -517,9 +519,13 @@ export class WorldBossSimulator {
     this.state.bossHpRatio = Math.max(0, Math.min(1, ratio))
   }
 
-  /** 推进 `dtMs` 毫秒（按 100ms 步长对齐）。 */
+  /** 推进 `dtMs` 毫秒：攒满整步才调用引擎，余数留到下一帧（否则 60fps 下永远推进 0 步）。 */
   tick(dtMs: number): void {
-    advance(this.state, this.config, dtMs)
+    this.pendingMs += Math.max(0, dtMs)
+    const steps = Math.floor(this.pendingMs / TICK)
+    if (steps <= 0) return
+    this.pendingMs -= steps * TICK
+    advance(this.state, this.config, steps * TICK)
   }
 
   get heroes(): EngineHero[] {

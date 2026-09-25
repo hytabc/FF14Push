@@ -117,7 +117,7 @@
     "craftSpeedPct": "制造速度",
     "craftXpPct": "制造经验",
     "fishInsightPct": "捕鱼人之识时长",
-    "fishChancePct": "鱼王/鱼皇概率",
+    "fishChancePct": "特殊鱼概率",
     "craftMaterialSavePct": "材料节省",
     "craftExtraOutputPct": "额外产出",
     "craftQualityJumpPct": "品质跃升",
@@ -381,7 +381,7 @@
         "dolLegs",
         "dolFeet"
       ],
-      "desc": "鱼王 / 鱼皇概率 +{v}%"
+      "desc": "特殊鱼（鱼王 / 鱼皇 / 困难鱼）概率 +{v}%"
     },
     {
       "id": "dolKeenSense",

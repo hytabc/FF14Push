@@ -134,6 +134,8 @@ export interface WorldBossState {
   session: WorldBossSessionView | null
   /** 上阵英雄快照：客户端本地模拟的输入（运算下放，见 `game/core/worldboss.ts`）。 */
   party: import('./core/worldboss').WorldBossSnapshot[] | null
+  /** 服务端已处理的最大上报序号：刷新 / 重进后客户端据此续接，避免重放被判重丢弃。 */
+  lastReportSeq?: number
   sequence: number
   myDamage: number
   unclaimedCycle: number | null

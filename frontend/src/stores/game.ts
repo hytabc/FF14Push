@@ -140,11 +140,13 @@ export const useGameStore = defineStore('game', () => {
   /**
    * 副本战斗面板：各 BOSS 血量与狂暴状态。
    *
-   * 只依赖 0.1s 节拍（`uiTick`）而**不**依赖每帧的 `logVersion`：`bossEntries()` 每次求值
-   * 都会新建数组与对象，挂在每帧上会让副本页整页 60fps 重渲染。血量按 10Hz 刷新已足够。
+   * 同时依赖 0.1s 节拍（`uiTick`）与每帧的 `logVersion`：战斗日志本就按帧刷新，副本页已经是
+   * 逐帧重渲染，这里跟随同一节拍只多构造 ≤2 个对象，换来的是「BOSS 血量绝不会停在进入时的
+   * 快照」——历史上节拍缺失（startLoop 被 `if (rafId)` 拦下）会让 BOSS 血条永久冻结。
    */
   const raidBosses = computed<RaidBossEntry[]>(() => {
     void uiTick.value
+    void logVersion.value
     return sim.value?.bossEntries() ?? []
   })
 
@@ -263,16 +265,19 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function startLoop() {
-    if (rafId) return
+    // 10Hz UI 节拍（uiTick）与墙钟预算独立于 rAF 循环本身：startLoop 会被重复调用，
+    // 但节拍绝不能因此缺失——副本 BOSS 血条（raidBosses）只依赖 uiTick，缺了就会永久冻结。
+    if (tickTimer) window.clearInterval(tickTimer)
+    tickTimer = window.setInterval(() => {
+      uiTick.value += 1
+    }, TICK_MS)
     // 防加速 + 后台补算：模拟时间只能来自真实墙钟（Date.now），不采信
     // requestAnimationFrame 的时间戳（可被扩展篡改）。页面切到后台时 rAF 暂停，
     // 切回后把这段时间一次性计入预算，单次上限 CATCH_UP_MS（同时限制系统时钟跳变作弊）；
     // 关闭页面后不再有上报，也就不会有补算。
     lastWallMs = Date.now()
     simBudgetMs = 0
-    tickTimer = window.setInterval(() => {
-      uiTick.value += 1
-    }, TICK_MS)
+    if (rafId) return
     const step = () => {
       const wallNow = Date.now()
       const wallDelta = Math.min(CATCH_UP_MS, Math.max(0, wallNow - lastWallMs))
@@ -299,7 +304,10 @@ export const useGameStore = defineStore('game', () => {
           }
         }
       }
-      rafId = requestAnimationFrame(step)
+      // 只在仍需战斗时续帧：终止路径（副本结算 / 阵亡、会话被顶替）会在本帧内把 running 置 false
+      // 并调用 stopLoop()，此处若不检查就会重新排帧，留下 rafId!=0 而定时器已清的僵尸循环，
+      // 使后续战斗的 startLoop() 被 `if (rafId)` 拦截、10Hz 节拍缺失（BOSS 血条冻结）。
+      rafId = running.value ? requestAnimationFrame(step) : 0
     }
     rafId = requestAnimationFrame(step)
   }

@@ -12,7 +12,7 @@
 import data from '@shared/schema'
 import { describe, expect, it } from 'vitest'
 
-import { advance, newState, type WorldBossSnapshot } from './worldboss'
+import { advance, newState, WorldBossSimulator, type WorldBossSnapshot } from './worldboss'
 
 const SNAPSHOTS: WorldBossSnapshot[] = [
   {
@@ -209,5 +209,20 @@ describe('worldboss engine: 与后端逐位一致', () => {
     const state = newState(data.worldboss, SNAPSHOTS, 1)
     advance(state, data.worldboss, 250)
     expect(state.elapsedMs).toBe(200)
+  })
+
+  it('包装层按 100ms 累计推进：逐帧毫秒（60fps ≈ 16.7ms）不会被丢弃', () => {
+    const sim = new WorldBossSimulator(SNAPSHOTS, 1.0, 20260925)
+    // 20 帧 × 16.7ms = 334ms → 推进 3 个整步（300ms），余数 34ms 留到后续帧。
+    for (let i = 0; i < 20; i += 1) sim.tick(16.7)
+    expect(sim.elapsedMs).toBe(300)
+    expect(sim.damageDealt).toBeGreaterThan(0)
+
+    // 不足一步时不推进，但余数会累积：50ms + 50ms = 100ms → 1 步。
+    const remainder = new WorldBossSimulator(SNAPSHOTS, 1.0, 1)
+    remainder.tick(50)
+    expect(remainder.elapsedMs).toBe(0)
+    remainder.tick(50)
+    expect(remainder.elapsedMs).toBe(100)
   })
 })

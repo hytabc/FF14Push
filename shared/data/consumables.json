@@ -17,7 +17,7 @@
     "craftQualityPct": "制造品质概率",
     "craftRarityPct": "制造品阶概率",
     "fishInsightPct": "捕鱼人之识时长",
-    "fishChancePct": "鱼王/鱼皇概率",
+    "fishChancePct": "特殊鱼概率",
     "gatherYieldPct": "采集产量"
   },
   "items": [

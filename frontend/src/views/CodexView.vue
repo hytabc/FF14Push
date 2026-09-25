@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router'
 
 import { api } from '@/api'
 import data from '@shared/schema'
+import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import SearchSelect, { type SearchOption } from '@/components/SearchSelect.vue'
 import { useVisibleLimit } from '@/composables/useVisibleLimit'
+import { fishPriceExplain, type Explain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, JobRole, RarityId, TermQuality } from '@/game/types'
@@ -325,6 +327,19 @@ const dolLevel = computed(() => game.state?.dohdol?.progress?.dol?.level ?? 1)
 const fishEntryById = computed(() => {
   const map = new Map<string, Entry>()
   for (const e of entries.value) if (typeof e.fishId === 'string') map.set(e.fishId, e)
+  return map
+})
+
+/** 困难鱼的单价定价依据（静态，来自 fish.json 的 priceBasis），按鱼 id 索引供「?」用。 */
+const fishPriceInfoById = computed(() => {
+  const map: Record<string, Explain> = {}
+  for (const region of data.fish.regions) {
+    for (const s of region.specials) {
+      if (s.kind !== 'legend') continue
+      const info = fishPriceExplain(s)
+      if (info) map[s.id] = info
+    }
+  }
   return map
 })
 
@@ -1021,6 +1036,9 @@ function entryRarity(entry: Entry): RarityId {
 
         <p class="mt-2 text-[10px] text-ink-500">
           尺寸 {{ entry.sizeMin }} ~ {{ entry.sizeMax }} cm · 出售 {{ entry.sell }} 金币 · 经验 {{ entry.exp }}
+          <InfoTip v-if="fishPriceInfoById[entry.fishId]" :title="fishPriceInfoById[entry.fishId].title">
+            <p v-for="(line, i) in fishPriceInfoById[entry.fishId].lines" :key="i">{{ line }}</p>
+          </InfoTip>
         </p>
         <p v-if="entry.chance" class="text-[10px] text-ink-500">
           出现概率 {{ (entry.chance * 100).toFixed(2) }}%（仅在「{{ entry.buffName || '捕鱼人之识' }}」期间判定）

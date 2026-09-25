@@ -147,6 +147,8 @@ async def _state_view(db, user: User, boss: WorldBoss) -> dict:
         "session": session_public(session.state) if session is not None else None,
         # 下放客户端模拟：上阵英雄的完整快照（前端据此本地构造引擎 state）。
         "party": _party(session) if session is not None else None,
+        # 已处理的最大上报序号：客户端刷新 / 重进后据此续接，避免从 1 重放被判幂等而丢掉伤害。
+        "lastReportSeq": int(session.last_report_seq or 0) if session is not None else 0,
         "sequence": int(session.sequence) if session is not None else 0,
         "myDamage": int(contribution.damage) if contribution is not None else 0,
         "unclaimedCycle": await unclaimed_cycle(db, user.id, boss),
