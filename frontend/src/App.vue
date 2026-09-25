@@ -9,12 +9,16 @@ import SiteFooter from '@/components/SiteFooter.vue'
 import TagDialog from '@/components/TagDialog.vue'
 import ToastStack from '@/components/ToastStack.vue'
 import TutorialOverlay from '@/components/TutorialOverlay.vue'
+import VersionAnnouncementModal from '@/components/VersionAnnouncementModal.vue'
+import { useAnnouncementStore } from '@/stores/announcement'
 import { useAuthStore } from '@/stores/auth'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useSoundStore } from '@/stores/sound'
 import { useTreasureStore } from '@/stores/treasure'
+import { APP_VERSION } from '@/version'
 
+const announcement = useAnnouncementStore()
 const auth = useAuthStore()
 const game = useGameStore()
 const sound = useSoundStore()
@@ -57,6 +61,16 @@ const NAV = [
 /** 管理入口只对管理员可见。 */
 const navItems = computed(() =>
   auth.isAdmin ? [...NAV, { to: '/admin', label: '管理', icon: '🔧' }] : NAV,
+)
+
+// 版本更新公告：已登录且版本号变化时弹出一次。
+// App 是根组件，登录不会重新挂载，故用 watch（而非 onMounted）覆盖「登录后」与「刷新时」两种情况。
+watch(
+  () => auth.isLoggedIn,
+  (loggedIn) => {
+    if (loggedIn) announcement.maybeShow()
+  },
+  { immediate: true },
 )
 
 // 命中封号：立即停止本地战斗循环，页面只保留空白（不展示任何文案）。
@@ -144,6 +158,13 @@ async function logout() {
         <RouterLink to="/" class="text-sm font-bold tracking-wide text-amber-200">
           艾欧泽亚放置录
         </RouterLink>
+        <button
+          class="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[10px] text-ink-400 transition hover:text-amber-200"
+          title="当前版本 · 点击查看更新公告"
+          @click="announcement.open = true"
+        >
+          V{{ APP_VERSION }}
+        </button>
 
         <div class="ml-auto flex items-center gap-3 text-xs">
           <span class="rounded bg-ink-800 px-2 py-1 font-mono text-amber-300">
@@ -192,6 +213,7 @@ async function logout() {
 
     <SiteFooter />
 
+    <VersionAnnouncementModal />
     <ToastStack />
     <LootBubbles />
     <ItemActionDialogs />

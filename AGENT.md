@@ -1,6 +1,6 @@
 # 项目上下文：艾欧泽亚放置录
 
-本文件供后续新聊天快速了解项目。更新日期：2026-09-23。功能状态以当前代码、共享配置和测试为准；修改架构、启动方式或核心规则时同步更新本文。
+本文件供后续新聊天快速了解项目。更新日期：2026-09-25。功能状态以当前代码、共享配置和测试为准；修改架构、启动方式或核心规则时同步更新本文。
 
 ## 项目概况
 
@@ -20,6 +20,14 @@
 - **钓鱼 2.0** 已实现（迁移 `v8b0d2f4a6c8`：`users.active_title_id` + `activity_sessions.session_insights/session_intuition`，旧单值 `insight_expires_at` 已删除）：普通鱼分**白 / 蓝 / 紫**三档并可带**天气 / 时间门槛**；每钓场的特殊鱼（旧鱼王 / 鱼皇 + 新增 `kind:"legend"` 困难鱼，如镜中蝶、七彩天主）统一由 **`intuition`（捕鱼人之识）** 驱动——**每种直觉只绑定一条鱼**，需在该鱼的天气 / 时段窗口内钓齐**计数型前置**（`requires: [{fishId,count}]`）才开启，**BUFF 期间不刷新 / 不延长**，到期后须重新钓齐才能再次触发。天气与艾欧泽亚时间（ET）是**服务端时间的纯函数**：`backend/app/services/weather.py` ⟷ `frontend/src/game/weather.ts` 用同一 32 位整型哈希（`hash01`）逐位一致，前端据此做**天气预报**；改算法必须同步两端（`test_dohdol.py::TestWeather::test_hash_matches_frontend_snapshot` 锁住快照）。数据：`shared/data/fish.json`（结构 `normal[]` + `specials[]`，旧 `king/emperor` 已迁入 `specials[]` 并标 `legacy:true`，**id 与数值不变**）+ `shared/data/weather.json`；由 `scripts/gen-fish-data.py` 从冻结的 `scripts/fish-base.json` 重建（改内容改脚本并重跑，不要手改 `fish.json`）。称号由 `services/titles.py` **数据驱动**判定（`titles.json` 的 `condition.type`：`all_king/all_emperor`（仅 legacy）/`all_legend`/`all_special`/`count_kind`/`count_rarity`/`specific_fish`/`species_count`/`fish_count`/`region_group_king`），每人可在设置页**佩戴一个**（`POST /settings/active-title`，`users.active_title_id`），佩戴中的称号在排行榜 / 玩家资料突出展示；旧称号只统计 legacy 鱼王 / 鱼皇，**新增困难鱼不影响其达成条件**。`fish_records.kind` 现可为 `normal|king|emperor|legend`，`services/ranking.py` 的钓鱼榜与 `services/dohdol_state.py` 的 `fishStats` 已同步 legend 桶。另有 **10 个彩蛋称号**（挖宝下底 ×5 / 采集 ×5，`condition.type == "random_drop"`，**极低概率**）：**非确定性**，由 `titles.roll_random_titles(db, user_id, event, rolls)` 在 `services/treasure.open_chest`（通关第 5 层 = 下底）与 `services/gathering.report_gather`（按本次采集动作数 `rolls`）处抽取，逐称号独立判定（合并概率 `1−(1−p)^rolls`）、已拥有则跳过；**`evaluate_titles` 不处理 `random_drop`**（`matches()` 对其返回 False），故彩蛋不会被确定性条件误发。这两个响应各带 `newTitles`，前端 `dohdol`/`treasure` store 弹「达成彩蛋称号」提示（`titles.json` 中 `egg: true` 在设置页 / 钓鱼页标「彩蛋」）。
 
 - **全场景音效**已实现：音效由**浏览器实时合成**（Web Audio API），谱面是纯数据、**不打包任何音频素材、不引入第三方音频库**。引擎在 `frontend/src/game/audio.ts`（单例 `sound`，导出 `SoundCue` 联合类型 + `CUES` 谱面 + 纯函数 `gate()` 节流闸门），设置由 `frontend/src/stores/sound.ts` 持有并注入（localStorage 前缀 `eorzea.sound.*`：`enabled` / `master` / `battle` / `ui` / `ambient`，对应设置页音效区块）。战斗语义事件由 `BattleSimulator` 的可选构造参数 `onSound?: (cue: SoundCue) => void` 上报（未注入即静默，核心模拟器不依赖音频），`stores/game.ts`、`stores/treasure.ts` 传入 `sound.play`；世界BOSS 音效来自 WebSocket 增量事件（按 `seq` 去重）。事件点：战斗（`battle.hit/crit/skill/signature/heal/hurt/kill/clear/death/revive/boss.*`）、挖宝转盘与选门、抽箱滚轮、重造 / 附魔（涨跌不同音）、魔晶石、采集 / 生产 / 钓鱼 / 序列 / 种田、掉落气泡（按品阶）、弹窗开关。**关键事件必响、高频事件按最小间隔节流**（单音效 `throttleMs` + 全局 100ms 窗口并发上限），避免 DoT / proc 高峰爆音。AudioContext 在首个用户手势解锁（`App.vue`），页面切到后台（`document.hidden`）时静默。新增音效必须同时补 `CUES` 谱面（`Record<SoundCue, CueSpec>` 会强制穷尽），并同步 `frontend/src/game/audio.spec.ts` 的「关键音效齐备」清单。
+
+## 协作约定
+
+- **对话语言**：与用户的所有交流（回复、计划、说明、提问）一律使用中文。
+- **更新日志（必须执行，勿遗漏）**：根目录 `CHANGELOG.md` 是「所有版本更新内容」的单一事实来源，也是前端顶栏版本号与「更新公告」弹窗的数据源（前端经 `frontend/src/version.ts` 读取，`App.vue` / `components/VersionAnnouncementModal.vue` 展示）。
+  - 每次功能 / 数值 / 界面 / 接口 / 文档变动，都要在**最新版本**条目下追加一条中文更新概要，尽量一句话表述清晰。
+  - 发布新版本时，在最上方新增一条 `## Vx.y.z — YYYY-MM-DD` 条目，并同步 `package.json`、`frontend/package.json`、`backend/pyproject.toml`、`backend/app/main.py` 的版本号；前端顶栏版本号与公告弹窗会随之自动更新（公告按 localStorage 已读版本判定，用户下次进入即看到）。
+  - 维护者可能手动补充更新简报，保留其内容，不要覆盖或重排。
 
 ## 阅读顺序与事实来源
 
@@ -58,6 +66,7 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 | `backend/alembic/versions/` | 数据库结构与数据迁移 |
 | `backend/tests/`、`frontend/src/**/*.spec.ts` | pytest 与 Vitest 测试 |
 | `scripts/` | 本地启动、图标生成、数值推导和合作战斗标定工具 |
+| `CHANGELOG.md` | 根目录更新日志，版本更新内容的单一事实来源；前端 `src/version.ts` 解析为顶栏版本号与更新公告内容 |
 
 ## 必须保留的设计边界
 

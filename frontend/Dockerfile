@@ -25,6 +25,7 @@ RUN if [ -n "${NPM_REGISTRY}" ]; then \
     fi
 
 COPY shared ./shared
+COPY CHANGELOG.md ./CHANGELOG.md
 COPY frontend ./frontend
 
 # 默认走同源反代（nginx 把 /api 转发到后端），因此前端无需跨域配置
