@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { api } from '@/api'
+import BuffDock from '@/components/BuffDock.vue'
 import ItemActionDialogs from '@/components/ItemActionDialogs.vue'
 import LootBubbles from '@/components/LootBubbles.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
@@ -217,6 +218,7 @@ async function logout() {
     <VersionAnnouncementModal />
     <ToastStack />
     <LootBubbles />
+    <BuffDock />
     <ItemActionDialogs />
     <TagDialog />
   </div>

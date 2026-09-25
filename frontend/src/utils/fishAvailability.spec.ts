@@ -22,6 +22,7 @@ function ctx(patch: Partial<FishAvailabilityContext> = {}): FishAvailabilityCont
     dolLevel: 100,
     regionLevelReq: { [REGION]: 1 },
     nowMs: NOW,
+    prereqInWindow: () => true,
     ...patch,
   }
 }
@@ -92,16 +93,57 @@ describe('fishAvailability：优先级', () => {
   })
 })
 
-describe('fishAvailability：特殊鱼', () => {
-  it('鱼王 / 困难鱼用同一把尺（直觉前置不影响判定）', () => {
-    const legend: FishFilterEntry = {
-      regionId: REGION,
-      kind: 'legend',
-      rarity: null,
-      weather: [COND.weather],
-      requires: [{ fishId: 'f1_1', count: 3 }],
-    }
+describe('fishAvailability：困难鱼的前置窗口', () => {
+  const legend: FishFilterEntry = {
+    regionId: REGION,
+    kind: 'legend',
+    rarity: null,
+    weather: [COND.weather],
+    requires: [{ fishId: 'f1_1', count: 3 }],
+  }
+
+  it('困难鱼自身窗口命中、前置也在窗口期 → catchable', () => {
     expect(fishAvailability(legend, ctx())).toBe('catchable')
+  })
+
+  it('困难鱼自身窗口命中、前置不在窗口期 → prereq_closed', () => {
+    const c = ctx({ prereqInWindow: (id) => id !== 'f1_1' })
+    expect(fishAvailability(legend, c)).toBe('prereq_closed')
+  })
+
+  it('前置查询对每个前置逐一判定，任一未命中即 prereq_closed', () => {
+    const multi: FishFilterEntry = {
+      ...legend,
+      requires: [
+        { fishId: 'f1_1', count: 1 },
+        { fishId: 'f1_2', count: 1 },
+      ],
+    }
+    const c = ctx({ prereqInWindow: (id) => id === 'f1_1' })
+    expect(fishAvailability(multi, c)).toBe('prereq_closed')
+  })
+
+  it('没有前置的困难鱼不受影响', () => {
+    const noReq: FishFilterEntry = { ...legend, requires: null }
+    const c = ctx({ prereqInWindow: () => false })
+    expect(fishAvailability(noReq, c)).toBe('catchable')
+  })
+
+  it('地区未解锁 / 等级不足优先于前置判定', () => {
+    const closed = ctx({ prereqInWindow: () => false })
+    expect(fishAvailability(legend, { ...closed, unlockedRegions: new Set() })).toBe('region_locked')
+    expect(fishAvailability(legend, { ...closed, dolLevel: 1, regionLevelReq: { [REGION]: 50 } })).toBe('level_locked')
+  })
+
+  it('非困难鱼（鱼王 / 鱼皇）不受前置窗口影响', () => {
+    const king: FishFilterEntry = { ...legend, kind: 'king' }
+    const c = ctx({ prereqInWindow: () => false })
+    expect(fishAvailability(king, c)).toBe('catchable')
+  })
+
+  it('isFishCatchable 对 prereq_closed 返回 false', () => {
+    const c = ctx({ prereqInWindow: () => false })
+    expect(isFishCatchable(legend, c)).toBe(false)
   })
 })
 

@@ -23,7 +23,10 @@
     { "id": "dragon", "name": "龙族",
       "skills": [{ "id": "dragonBreath", "name": "龙息", "cd": 15, "effect": "dot", "potency": 150, "duration": 5, "desc": "每 15 秒造成 150% 攻击力的持续伤害（5 秒）" }] },
     { "id": "golem", "name": "魔像",
-      "skills": [{ "id": "harden", "name": "硬化", "cd": 25, "effect": "shield", "damageReduce": 0.5, "duration": 5, "desc": "每 25 秒获得减伤 50% 的护盾，持续 5 秒" }] },
+      "skills": [
+        { "id": "harden", "name": "硬化", "cd": 25, "effect": "shield", "damageReduce": 0.5, "duration": 5, "desc": "每 25 秒获得减伤 50% 的护盾，持续 5 秒" },
+        { "id": "stoneBulwark", "name": "磐岩壁垒", "cd": 30, "effect": "barrier", "barrierHpPct": 30, "desc": "每 30 秒获得最大生命 30% 的吸收护盾" }
+      ] },
     { "id": "tribal", "name": "蛮族",
       "skills": [{ "id": "savageCharge", "name": "狂暴冲锋", "cd": 18, "effect": "nuke", "potency": 250, "desc": "每 18 秒造成 250% 攻击力伤害" }] },
     { "id": "plant", "name": "植物",

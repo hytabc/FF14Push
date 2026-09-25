@@ -23,9 +23,9 @@ const TIERS: WorldBossRewardTier[] = [
 ]
 
 describe('世界BOSS 前端辅助', () => {
-  it('共享配置暴露世界BOSS 数值（20 亿血量 / 20000 攻击 / 5h 周期 / 短休整 / ≥20 技能 / 8 席 / P1-P3）', () => {
+  it('共享配置暴露世界BOSS 数值（24 亿血量 / 20000 攻击 / 5h 周期 / 短休整 / ≥20 技能 / 8 席 / P1-P3）', () => {
     const wb = data.worldboss
-    expect(wb.boss.maxHp).toBe(2_000_000_000)
+    expect(wb.boss.maxHp).toBe(2_400_000_000)
     expect(wb.boss.attack).toBe(20000)
     expect(wb.periodSeconds).toBe(5 * 3600)
     expect(wb.boss.respawnSeconds).toBeLessThanOrEqual(300)

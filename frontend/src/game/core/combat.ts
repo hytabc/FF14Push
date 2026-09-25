@@ -66,6 +66,17 @@ export function isHealingSkill(skill: SkillLike): boolean {
 }
 
 /**
+ * 护盾总量上限（占最大生命 %）：与后端 `coop_engine.shield_cap_pct` 同源读取
+ * `combat.json:equipEffects.shield.capPctOfMaxHp`，保证两端上限一致、护盾不可无限叠加。
+ */
+export function shieldCapPct(): number {
+  const equip = (data.combat as Record<string, unknown>).equipEffects as
+    | { shield?: { capPctOfMaxHp?: number } }
+    | undefined
+  return Number(equip?.shield?.capPctOfMaxHp ?? 30)
+}
+
+/**
  * 技能实际耗蓝：`mpCost × 伤害类型系数`；治疗职业（role === 'healer'）的治疗 / 护盾类技能
  * 额外收取「最大魔力 × `heroes.json:mp.healSkillCostMaxMpPct`」，避免固定耗蓝被膨胀的蓝条与
  * 回蓝掩盖、形成无限自愈。与 `battle.ts` 的结算同源，供技能面板展示。

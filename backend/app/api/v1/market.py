@@ -63,7 +63,12 @@ async def listings(
     kind: str = Query("all"),
     rarity: str | None = Query(None),
     category: str | None = Query(None),
+    slot: str | None = Query(None),
     q: str | None = Query(None, max_length=32),
+    levelMin: int | None = Query(None, ge=1),
+    levelMax: int | None = Query(None, ge=1),
+    priceMin: int | None = Query(None, ge=0),
+    priceMax: int | None = Query(None, ge=0),
     sort: str = Query("time_desc"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=50),
@@ -80,6 +85,17 @@ async def listings(
         conditions.append(MarketListing.rarity == rarity)
     if category:
         conditions.append(MarketListing.category == category)
+    # 部位 / 等级仅装备有值（堆叠物这两列为 NULL，天然被排除）。
+    if slot:
+        conditions.append(MarketListing.slot == slot)
+    if levelMin is not None:
+        conditions.append(MarketListing.level_req >= levelMin)
+    if levelMax is not None:
+        conditions.append(MarketListing.level_req <= levelMax)
+    if priceMin is not None:
+        conditions.append(MarketListing.unit_price >= priceMin)
+    if priceMax is not None:
+        conditions.append(MarketListing.unit_price <= priceMax)
     if q:
         conditions.append(MarketListing.name.ilike(f"%{q}%"))
 

@@ -598,6 +598,7 @@ def session_public(state: dict) -> dict:
                 "hp": float(hero.get("hp", 0.0)),
                 "mp": float(hero.get("mp", 0.0)),
                 "maxMp": float(snap.get("stats", {}).get("max_mp", 0.0)),
+                "shield": float(hero.get("shield", 0.0)),
                 "deadUntil": int(hero.get("deadUntil", 0)),
                 "damage": round(float(hero.get("damage", 0.0))),
                 "deaths": int(hero.get("deaths", 0)),

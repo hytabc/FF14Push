@@ -86,6 +86,8 @@ export const SORT_OPTIONS: { id: SortKey; label: string }[] = [
 
 /** 装备筛选状态；多选集合一律「命中任一（OR）」。装备页选择弹窗与背包共用。 */
 export interface ItemFilterState {
+  /** 名称关键字（不区分大小写的子串匹配）。 */
+  query: string
   rarity: 'all' | RarityId
   category: string
   slot: string
@@ -101,6 +103,7 @@ export interface ItemFilterState {
 
 export function createItemFilters(): ItemFilterState {
   return {
+    query: '',
     rarity: 'all',
     category: 'all',
     slot: 'all',
@@ -117,6 +120,7 @@ export function createItemFilters(): ItemFilterState {
 
 export function hasActiveFilters(f: ItemFilterState): boolean {
   return (
+    f.query.trim() !== '' ||
     f.rarity !== 'all' ||
     f.category !== 'all' ||
     f.slot !== 'all' ||
@@ -178,7 +182,9 @@ export function filterOptionSets(items: Item[]): FilterOptionSets {
 export function applyItemFilters(items: Item[], f: ItemFilterState, sort: SortKey): Item[] {
   const min = typeof f.levelMin === 'number' ? f.levelMin : null
   const max = typeof f.levelMax === 'number' ? f.levelMax : null
+  const kw = f.query.trim().toLowerCase()
   const list = items.filter((i) => {
+    if (kw && !i.name.toLowerCase().includes(kw)) return false
     if (f.rarity !== 'all' && i.rarity !== f.rarity) return false
     if (f.category !== 'all' && i.category !== f.category) return false
     if (f.slot !== 'all' && (i.equipSlots?.[0] ?? i.slot) !== f.slot) return false

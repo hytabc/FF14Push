@@ -510,6 +510,8 @@ export interface BossSkill {
   damageReduce?: number
   attackSpeedDebuff?: number
   damageType?: string
+  /** BOSS 吸收护盾：护盾量 = BOSS 最大生命 × 该百分比（上限见 combat.json:equipEffects.shield）。 */
+  barrierHpPct?: number
 }
 
 export interface CurrentRegion extends RegionDef {
@@ -613,6 +615,8 @@ export interface RaidBossEntry {
   hp: number
   maxHp: number
   hpPct: number
+  /** 护盾值（吸收 BOSS 受到的伤害），用于血条浅绿覆盖层。 */
+  shield: number
   enraged: boolean
   isTarget: boolean
   /** BOSS 技能名（高难副本会实际发动）。 */

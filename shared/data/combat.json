@@ -81,6 +81,8 @@
   },
   "$commentEquipEffects": "装备词条扩展机制的参数（概率/强度由词条值承载）。proc=命中/受击触发效果量；conditional=条件阈值；growth=成长层数上限；convert=资源转换；charge=累计触发阈值；special=复活/处决/免死。前端 battle.ts 结算，后端 combat_model.py 只镜像影响期望 DPS 的部分（见 docs/enchant-terms-expansion-design.md 的镜像清单）。",
   "equipEffects": {
+    "$commentShield": "护盾通用参数：capPctOfMaxHp 为护盾总量上限（占最大生命 %），所有来源叠加后统一裁剪，防止无限叠加；两端同源读取。",
+    "shield": { "capPctOfMaxHp": 30 },
     "proc": {
       "bleed": { "potencyPct": 25, "durationSec": 8, "tickSec": 1 },
       "defBreak": { "defenseDownPct": 25, "durationSec": 8 },
@@ -89,6 +91,7 @@
       "reflect": { "damagePct": 30 },
       "vengeance": { "attackBuffPct": 15, "durationSec": 6 },
       "aegis": { "maxHpShieldPct": 0.08, "durationSec": 6 },
+      "magicShield": { "mpCostPct": 10, "shieldPerMp": 1.0 },
       "resolve": { "maxMpRestorePct": 0.06 }
     },
     "conditional": {
@@ -105,7 +108,8 @@
     "convert": {
       "hpToMp": { "intervalSec": 1, "startMpPct": 50, "stopMpPct": 80 },
       "mpSurge": { "basePctOfMp": 1.0 },
-      "killRestoreMp": {}
+      "killRestoreMp": {},
+      "lifestealShield": {}
     },
     "charge": {
       "chargeBlast": { "hpThresholdPct": 100, "potencyPct": 200 },

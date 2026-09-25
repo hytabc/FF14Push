@@ -1589,6 +1589,31 @@ class TestEnchantExpansion:
         boosted = replace(stats, term_mods={**stats.term_mods, "bleedProcPct": 40.0})
         assert theoretical_dps(boosted, 0.0, None) > theoretical_dps(stats, 0.0, None)
 
+    def test_shield_terms_use_shield_category(self) -> None:
+        """护盾类词条统一归入 `shield` 类别（图鉴分组），新词条可被读取。"""
+        cats = {c["id"] for c in CONFIG.terms["categories"]}
+        assert "shield" in cats
+        for tid in ("magicShield", "lifestealShield", "aegisOnHit", "shieldBoost", "chargeShield"):
+            assert CONFIG.term_by_id[tid]["category"] == "shield", tid
+
+    def test_shield_cap_is_single_source(self) -> None:
+        """护盾上限 30% 为单一事实来源：引擎与配置同源读取（防止无限叠加）。"""
+        from app.services.coop_engine import shield_cap_pct
+
+        cap = float(CONFIG.combat["equipEffects"]["shield"]["capPctOfMaxHp"])
+        assert cap == pytest.approx(30.0)
+        assert shield_cap_pct() == pytest.approx(cap)
+
+    def test_shields_do_not_raise_theoretical_dps(self) -> None:
+        """护盾类词条为纯生存/资源，不进入后端 DPS 模型（合法上报不被放宽额度）。"""
+        stats = compute_stats(FakeHero(level=50), [])
+        plain = theoretical_dps(stats, 0.0, None)
+        boosted = replace(
+            stats,
+            term_mods={**stats.term_mods, "magicShieldProcPct": 20.0, "lifestealShieldPct": 60.0},
+        )
+        assert theoretical_dps(boosted, 0.0, None) == pytest.approx(plain)
+
 
 class TestBattleDifficulty:
     """战斗难度：怪物按「加法」放大、玩家攻击/防御按「乘法」缩小；难度 0 与现状逐位一致。"""

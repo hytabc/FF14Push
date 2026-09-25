@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { consumableBonus } from "@/utils/consumables"
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { api } from '@/api'
+import ConsumableList from '@/components/ConsumableList.vue'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import ItemFilterBar from '@/components/ItemFilterBar.vue'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useTagsStore } from '@/stores/tags'
-import ItemFilterBar from '@/components/ItemFilterBar.vue'
 import type { Item } from '@/game/types'
 import { categoryName, formatNumber, tagColorHex } from '@/utils/format'
 import {
@@ -24,30 +24,11 @@ const tagsStore = useTagsStore()
 const dohdol = useDohDolStore()
 
 const consumables = computed(() => game.state?.dohdol?.consumables ?? [])
-const activeBuffs = computed(() => game.state?.dohdol?.active ?? [])
 /** 挖宝产出：魔晶石（可出售）与作物种子（不可出售，用于种田）。 */
 const lootStacks = computed(() => [
   ...(game.state?.dohdol?.materia ?? []),
   ...(game.state?.dohdol?.seeds ?? []),
 ])
-
-/** 生效中药水/食物：按服务端绝对到期时间本地每秒重算剩余时长（不再依赖状态刷新）。 */
-const nowMs = ref(Date.now())
-const buffViews = computed(() =>
-  activeBuffs.value.map((b) => {
-    const end = Date.parse(b.expiresAt)
-    const remaining = Number.isFinite(end)
-      ? Math.max(0, Math.ceil((end - nowMs.value) / 1000))
-      : b.remainingSec
-    return { ...b, remaining }
-  }),
-)
-let buffTimer: number | undefined
-
-function mmss(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  return `${m}:${String(seconds % 60).padStart(2, '0')}`
-}
 
 const sortBy = ref<SortKey>('rarity')
 const tagFilter = ref<Set<number>>(new Set())
@@ -141,21 +122,8 @@ const countSummary = computed(() => {
 })
 
 onMounted(async () => {
-  buffTimer = window.setInterval(() => (nowMs.value = Date.now()), 1000)
   if (!game.state) await game.loadState()
 })
-
-onUnmounted(() => {
-  if (buffTimer !== undefined) window.clearInterval(buffTimer)
-})
-
-// 生效中的药水/食物归零后自动刷新状态（后端会顺带清理过期行）。
-watch(
-  () => buffViews.value.some((b) => b.remaining <= 0),
-  (expired) => {
-    if (expired) void game.loadState()
-  },
-)
 
 function toggle(item: Item) {
   const next = new Set(selected.value)
@@ -195,44 +163,9 @@ async function batchSell() {
 
 <template>
   <div class="space-y-4">
-    <section v-if="consumables.length || activeBuffs.length" class="card p-4">
-      <div class="flex flex-wrap items-center gap-3">
-        <h2 class="text-sm font-semibold text-white">药水 / 食物</h2>
-        <div class="flex flex-wrap gap-2 text-[11px]">
-          <span
-            v-for="b in buffViews"
-            :key="b.kind"
-            class="rounded bg-emerald-500/20 px-2 py-1 text-emerald-200"
-          >
-            生效中：{{ b.name }} · {{ mmss(b.remaining) }}
-          </span>
-        </div>
-      </div>
-      <div class="mt-3 flex flex-wrap gap-2">
-        <div
-          v-for="c in consumables"
-          :key="c.itemId"
-          class="flex flex-wrap items-center gap-2 rounded border border-ink-700 bg-ink-900/50 px-2 py-1 text-[11px]"
-          :title="c.desc"
-        >
-          <ItemIcon :base-id="c.itemId" variant="plain" :size="20" />
-          <span class="min-w-0 text-ink-200">{{ c.name }}<span class="block text-emerald-300">{{ consumableBonus(c.itemId) }}</span></span>
-          <span class="font-mono text-ink-400">×{{ c.count }}</span>
-          <button
-            class="rounded bg-emerald-600/80 px-2 py-0.5 text-white hover:bg-emerald-500"
-            @click="dohdol.useConsumable(c.itemId)"
-          >
-            使用
-          </button>
-          <button
-            class="rounded bg-amber-600/70 px-2 py-0.5 text-white hover:bg-amber-500 disabled:opacity-40"
-            :disabled="(c.sell ?? 0) <= 0"
-            @click="dohdol.sellStack(c.kind, c.itemId, 1)"
-          >
-            出售
-          </button>
-        </div>
-      </div>
+    <section v-if="consumables.length" class="card p-4">
+      <h2 class="text-sm font-semibold text-white">药水 / 食物</h2>
+      <ConsumableList :items="consumables" />
     </section>
 
     <section v-if="lootStacks.length" class="card p-4">

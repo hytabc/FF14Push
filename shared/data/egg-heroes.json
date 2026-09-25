@@ -117,9 +117,9 @@
       "attrBias": "int",
       "jobId": "SGE",
       "replaceSkills": false,
-      "desc": "使用贤者时追加「术道恒久」：开启后提高自身 100% 治疗量，持续 10s（CD 120s）",
+      "desc": "使用贤者时追加「术道恒久」：开启后提高自身 50% 治疗量，持续 10s（CD 120s）",
       "skills": [
-        { "id": "eggEternalWay", "name": "术道恒久", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "healingBuff", "value": 1, "duration": 10 }] }
+        { "id": "eggEternalWay", "name": "术道恒久", "cd": 120, "mpCost": 0, "potency": 0, "damageType": "magical", "target": "self", "priority": 1, "effects": [{ "type": "healingBuff", "value": 0.5, "duration": 10 }] }
       ]
     },
     {

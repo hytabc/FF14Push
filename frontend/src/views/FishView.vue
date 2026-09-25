@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import data from '@shared/schema'
 
@@ -17,6 +18,8 @@ const game = useGameStore()
 const dohdol = useDohDolStore()
 const auth = useAuthStore()
 const toast = useToastStore()
+const route = useRoute()
+const router = useRouter()
 
 const regionId = ref<number | null>(null)
 const error = ref('')
@@ -82,12 +85,23 @@ function sellAllFish() {
 onMounted(async () => {
   timer = window.setInterval(() => (nowMs.value = Date.now()), 1000)
   if (auth.isLoggedIn) await game.loadState()
+  applyJump()
   if (regionOptions.value.length && regionId.value === null) regionId.value = regionOptions.value[0].id
 })
 onUnmounted(() => {
   if (timer !== undefined) window.clearInterval(timer)
   void dohdol.stop(true)
 })
+
+/** 从图鉴跳转过来时：选中对应钓场（不自动开始钓鱼）。 */
+function applyJump() {
+  const regionParam = typeof route.query.region === 'string' ? Number(route.query.region) : NaN
+  if (!Number.isFinite(regionParam)) return
+  // 清掉 query，避免刷新 / 前进后退时重复触发
+  void router.replace({ name: 'fish' })
+  if (!regionOptions.value.some((r) => r.id === regionParam)) return
+  regionId.value = regionParam
+}
 
 function kindLabel(kind: string) {
   if (kind === 'king') return '鱼王'

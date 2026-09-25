@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from app.services.coop_engine import shield_cap_pct
+
 TICK = 100
 BASIC_CD_MS = 2000
 GCD_MS = 1500
@@ -74,8 +76,10 @@ def new_state(config: dict, snapshots: list[dict], seed: int = 20260924) -> dict
                 "levelMultiplier": float(snap.get("levelMultiplier", 1.0)),
                 "hp": float(stats["max_hp"]),
                 "mp": float(stats["max_mp"]),
+                "shield": 0.0,
                 "deadUntil": 0,
                 "cooldowns": {},
+                "lastCastAt": {},
                 "nextAttack": 0,
                 "gcdUntil": 0,
                 "nextHeal": 0,
@@ -159,6 +163,9 @@ def damage_hero(state: dict, hero: dict, amount: float, source: str) -> None:
     )
     value = max(0.0, float(amount)) * (1.0 - min(0.8, reduction))
     max_hp = hero["snapshot"]["stats"]["max_hp"]
+    absorbed = min(hero["shield"], value)
+    hero["shield"] -= absorbed
+    value -= absorbed
     hero["damageTaken"] += min(hero["hp"], value)
     # 生命值以整数结算：伤害后向下取整，避免残留 (0,1) 区间的小数生命值让英雄
     # 「显示 0 血却仍存活并战斗」。存活即至少 1 点，0 表示阵亡。
@@ -167,6 +174,7 @@ def damage_hero(state: dict, hero: dict, amount: float, source: str) -> None:
     if hero["hp"] <= 0:
         hero["deadUntil"] = state["elapsedMs"] + state["reviveSeconds"] * 1000
         hero["deaths"] += 1
+        hero["shield"] = 0.0
         hero["buffs"] = []
         hero["dots"] = []
         hero["slow"] = []
@@ -205,7 +213,14 @@ def auto_actions(state: dict, hero: dict) -> None:
 
     if now < hero["gcdUntil"]:
         return
-    skills = sorted(snap.get("skills", []), key=lambda s: s.get("priority", 3))
+    skills = sorted(
+        snap.get("skills", []),
+        key=lambda s: (
+            s.get("priority", 3),
+            hero["lastCastAt"].get(s["id"], float("-inf")) if s.get("priority", 3) == 3 else 0.0,
+            float(s.get("potency", 0) or 0),
+        ),
+    )
     skill = next(
         (
             s
@@ -219,6 +234,7 @@ def auto_actions(state: dict, hero: dict) -> None:
     hero["mp"] -= skill.get("mpCost", 0)
     hero["gcdUntil"] = now + int(GCD_MS / max(0.2, slow))
     hero["cooldowns"][skill["id"]] = now + int(float(skill.get("cd", 3)) * 1000)
+    hero["lastCastAt"][skill["id"]] = now
     if skill.get("potency", 0):
         deal_damage(state, hero, attack * float(skill["potency"]) / 100.0 * snap.get("skillMultiplier", 1.0) * mult * (0.9 + random_unit(state) * 0.2))
 
@@ -231,8 +247,10 @@ def auto_actions(state: dict, hero: dict) -> None:
             targets = alive if skill.get("teamTarget") == "party" else [hero]
             for ally in targets:
                 if typ == "shield":
-                    continue
-                heal_hero(state, ally, stats["max_hp"] * (1.0 if typ == "fullHeal" else value))
+                    cap = stats["max_hp"] * shield_cap_pct() / 100
+                    ally["shield"] = min(cap, ally["shield"] + stats["max_hp"] * value * hero["levelMultiplier"])
+                else:
+                    heal_hero(state, ally, stats["max_hp"] * (1.0 if typ == "fullHeal" else value))
         elif typ == "healOverTime":
             targets = alive if skill.get("teamTarget") == "party" else [hero]
             for ally in targets:
@@ -306,6 +324,7 @@ def step(state: dict, config: dict) -> None:
         if hero["hp"] <= 0:
             if now >= hero["deadUntil"]:
                 hero["hp"] = float(hero["snapshot"]["stats"]["max_hp"])
+                hero["shield"] = 0.0
                 event(state, "revive", f"{hero['snapshot']['name']}复活", slot=hero["slot"])
             else:
                 continue

@@ -16,6 +16,7 @@ const props = withDefaults(
     modelValue: ItemFilterState
     /** 候选池：用于派生各筛选的可选项，只列出实际存在的值。 */
     pool: Item[]
+    showSearch?: boolean
     showRarity?: boolean
     showCategory?: boolean
     showSlot?: boolean
@@ -23,6 +24,7 @@ const props = withDefaults(
     showRole?: boolean
   }>(),
   {
+    showSearch: true,
     showRarity: false,
     showCategory: true,
     showSlot: true,
@@ -67,6 +69,15 @@ function reset() {
 <template>
   <div class="space-y-2 text-xs">
     <div class="flex flex-wrap items-center gap-2">
+      <input
+        v-if="showSearch"
+        :value="modelValue.query"
+        type="text"
+        placeholder="按名称搜索"
+        class="w-40 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-ink-100 outline-none focus:border-amber-400"
+        @input="update({ query: ($event.target as HTMLInputElement).value })"
+      />
+
       <select
         v-if="showRarity"
         :value="modelValue.rarity"

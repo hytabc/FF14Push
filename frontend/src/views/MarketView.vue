@@ -14,7 +14,13 @@ import type { Item, MarketBuyOrder, MarketListing, MaterialStackItem } from '@/g
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
-import { RARITY_ORDER, attrName, baseAttrName, formatNumber, rarityName } from '@/utils/format'
+import { RARITY_ORDER, attrName, baseAttrName, categoryName, formatNumber, rarityName } from '@/utils/format'
+import {
+  type MarketFilterState,
+  createMarketFilters,
+  hasMarketFilters,
+  marketQueryParams,
+} from '@/utils/marketFilters'
 
 type Tab = 'all' | 'equipment' | 'wanted' | 'material' | 'consumable' | 'materia' | 'seed' | 'mine'
 type ViewMode = 'card' | 'list' | 'grid'
@@ -64,10 +70,24 @@ const maxActiveListings = ref(marketCfg.maxActiveListings)
 
 const tab = ref<Tab>('all')
 const sort = ref('time_desc')
-const rarity = ref('all')
-const q = ref('')
+/** 浏览筛选：全部为标量维度，下推到 /market/listings 由服务端过滤（见 marketFilters.ts）。 */
+const filters = ref<MarketFilterState>(createMarketFilters())
+const showAdvanced = ref(false)
 const page = ref(1)
 const view = ref<ViewMode>(readView())
+
+/** 浏览筛选的可选项。服务端 market_listings.slot 存的是底材 slot（双戒指合并为 ring），
+ *  与栏位 id（ring1 / ring2）不同，这里按底材口径列出。 */
+const CATEGORY_OPTIONS = [
+  ...(['weapon', 'armor', 'accessory'] as const).map((id) => ({ id, label: categoryName(id) })),
+  ...data.dohdolEquipment.categories.map((c) => ({ id: c.id, label: c.name })),
+]
+const SLOT_OPTIONS = [
+  ...data.slots
+    .filter((s) => s.id !== 'ring2')
+    .map((s) => (s.id === 'ring1' ? { id: 'ring', label: '戒指' } : { id: s.id, label: s.name })),
+  ...data.dohdolEquipment.slots.map((s) => ({ id: s.id, label: s.name })),
+]
 
 const listings = ref<MarketListing[]>([])
 const total = ref(0)
@@ -154,6 +174,13 @@ const stackRows = computed<StackRow[]>(() => {
   }
 })
 
+/** 上架堆叠物的名称搜索（客户端过滤：行来自自己的库存，量小）。 */
+const stackQuery = ref('')
+const visibleStackRows = computed<StackRow[]>(() => {
+  const kw = stackQuery.value.trim().toLowerCase()
+  return kw ? stackRows.value.filter((r) => r.name.toLowerCase().includes(kw)) : stackRows.value
+})
+
 const kindParam = computed(() =>
   tab.value === 'mine' || tab.value === 'wanted' ? 'all' : tab.value,
 )
@@ -219,6 +246,7 @@ const buyCandidates = computed<BuyCandidate[]>(() => {
   return buyCatalog.value
     .filter((c) => kinds.includes(c.kind))
     .filter((c) => !needle || c.name.toLowerCase().includes(needle))
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
 })
 
 function buyKey(row: BuyCandidate): string {
@@ -385,14 +413,14 @@ async function refreshState() {
 async function loadListings() {
   loading.value = true
   try {
-    const res = await api.marketListings({
-      kind: kindParam.value,
-      rarity: rarity.value === 'all' ? undefined : rarity.value,
-      q: q.value.trim() || undefined,
-      sort: sort.value,
-      page: page.value,
-      pageSize: PAGE_SIZE,
-    })
+    const res = await api.marketListings(
+      marketQueryParams(filters.value, {
+        kind: kindParam.value,
+        sort: sort.value,
+        page: page.value,
+        pageSize: PAGE_SIZE,
+      }),
+    )
     listings.value = res.listings
     total.value = res.total
     feePct.value = res.feePct
@@ -460,18 +488,23 @@ async function refresh() {
 }
 
 let searchTimer: number | null = null
-watch([tab, sort, rarity, page], () => {
+watch([tab, sort, page], () => {
   if (tab.value === 'mine') void loadMine()
   else if (tab.value === 'wanted') void loadBuyOrders()
   else void loadListings()
 })
-watch(q, () => {
-  if (searchTimer !== null) window.clearTimeout(searchTimer)
-  searchTimer = window.setTimeout(() => {
-    page.value = 1
-    if (tab.value !== 'mine' && tab.value !== 'wanted') void loadListings()
-  }, 300)
-})
+// 筛选变化：重置页码（交由 page 监听触发重载），否则防抖后直接重载当前页。
+watch(
+  filters,
+  () => {
+    if (searchTimer !== null) window.clearTimeout(searchTimer)
+    searchTimer = window.setTimeout(() => {
+      if (page.value !== 1) page.value = 1
+      else if (tab.value !== 'mine' && tab.value !== 'wanted') void loadListings()
+    }, 300)
+  },
+  { deep: true },
+)
 
 onMounted(async () => {
   if (!game.state) await game.loadState()
@@ -593,12 +626,20 @@ async function cancel(listing: MarketListing) {
     <section class="card p-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-lg font-semibold text-white">市场交易板</h2>
-        <button
-          class="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-ink-950 transition hover:bg-amber-400"
-          @click="listingOpen = !listingOpen"
-        >
-          {{ listingOpen ? '收起上架' : '我要上架' }}
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            class="rounded-lg border border-ink-600 px-3 py-1.5 text-xs font-medium text-ink-200 transition hover:border-amber-400 hover:text-amber-200"
+            @click="buyOrderOpen = true"
+          >
+            发布收购
+          </button>
+          <button
+            class="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-ink-950 transition hover:bg-amber-400"
+            @click="listingOpen = !listingOpen"
+          >
+            {{ listingOpen ? '收起上架' : '我要上架' }}
+          </button>
+        </div>
       </div>
       <p class="mt-2 text-xs leading-relaxed text-ink-400">
         玩家之间自由定价交易装备 / 素材 / 消耗品，整单买断成交，成交价抽取
@@ -661,10 +702,16 @@ async function cancel(listing: MarketListing) {
           >
             {{ t.label }}
           </button>
+          <input
+            v-model="stackQuery"
+            type="text"
+            placeholder="按名称搜索"
+            class="ml-auto rounded border border-ink-600 bg-ink-900 px-2 py-1 text-xs text-ink-100"
+          />
         </div>
 
         <div
-          v-for="row in stackRows"
+          v-for="row in visibleStackRows"
           :key="row.key"
           class="flex flex-wrap items-center gap-2 border-t border-ink-800 py-2 text-xs first:border-t-0"
         >
@@ -701,8 +748,8 @@ async function cancel(listing: MarketListing) {
             上架
           </button>
         </div>
-        <p v-if="!stackRows.length" class="py-4 text-center text-xs text-ink-400">
-          暂无可上架的{{ stackTabLabel }}。
+        <p v-if="!visibleStackRows.length" class="py-4 text-center text-xs text-ink-400">
+          {{ stackQuery.trim() ? `没有匹配的${stackTabLabel}。` : `暂无可上架的${stackTabLabel}。` }}
         </p>
       </div>
     </section>
@@ -727,41 +774,101 @@ async function cancel(listing: MarketListing) {
       </select>
 
       <!-- 筛选 -->
-      <div v-if="tab !== 'mine'" class="flex flex-wrap items-center gap-2 text-xs">
-        <template v-if="tab !== 'wanted'">
-          <input
-            v-model="q"
-            type="text"
-            placeholder="按名称搜索"
-            class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-ink-100"
-          />
-          <select v-model="rarity" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
-            <option value="all">全部品阶</option>
-            <option v-for="r in RARITY_ORDER" :key="r" :value="r">{{ rarityName(r) }}</option>
+      <div v-if="tab !== 'mine'" class="space-y-2 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <template v-if="tab !== 'wanted'">
+            <input
+              v-model="filters.q"
+              type="text"
+              placeholder="按名称搜索"
+              class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-ink-100"
+            />
+            <select v-model="filters.rarity" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+              <option value="all">全部品阶</option>
+              <option v-for="r in RARITY_ORDER" :key="r" :value="r">{{ rarityName(r) }}</option>
+            </select>
+            <label class="flex items-center gap-1 text-ink-400">
+              价格
+              <input
+                v-model.number="filters.priceMin"
+                type="number"
+                min="0"
+                placeholder="最低"
+                class="w-20 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-right text-ink-100"
+              />
+              <span>-</span>
+              <input
+                v-model.number="filters.priceMax"
+                type="number"
+                min="0"
+                placeholder="最高"
+                class="w-20 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-right text-ink-100"
+              />
+            </label>
+            <button
+              class="rounded border px-2 py-1.5 transition"
+              :class="showAdvanced || hasMarketFilters(filters) ? 'border-amber-400 text-amber-200' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
+              @click="showAdvanced = !showAdvanced"
+            >
+              高级筛选<span v-if="hasMarketFilters(filters)"> ·</span>
+            </button>
+          </template>
+          <select v-model="sort" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+            <option v-for="s in SORTS" :key="s.id" :value="s.id">{{ s.label }}</option>
           </select>
-        </template>
-        <select v-model="sort" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
-          <option v-for="s in SORTS" :key="s.id" :value="s.id">{{ s.label }}</option>
-        </select>
 
-        <div v-if="tab !== 'wanted'" class="ml-auto flex gap-0.5 rounded-lg bg-ink-800 p-0.5">
+          <div v-if="tab !== 'wanted'" class="ml-auto flex gap-0.5 rounded-lg bg-ink-800 p-0.5">
+            <button
+              v-for="v in VIEWS"
+              :key="v.id"
+              class="rounded px-2.5 py-1 transition"
+              :class="view === v.id ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
+              @click="setView(v.id)"
+            >
+              {{ v.label }}
+            </button>
+          </div>
           <button
-            v-for="v in VIEWS"
-            :key="v.id"
-            class="rounded px-2.5 py-1 transition"
-            :class="view === v.id ? 'bg-amber-500 text-ink-950' : 'text-ink-400 hover:text-ink-200'"
-            @click="setView(v.id)"
+            v-else
+            class="ml-auto rounded bg-amber-500 px-3 py-1.5 font-medium text-ink-950 transition hover:bg-amber-400"
+            @click="buyOrderOpen = true"
           >
-            {{ v.label }}
+            发布收购
           </button>
         </div>
-        <button
-          v-else
-          class="ml-auto rounded bg-amber-500 px-3 py-1.5 font-medium text-ink-950 transition hover:bg-amber-400"
-          @click="buyOrderOpen = true"
+
+        <!-- 高级筛选：种类 / 部位 / 等级区间（仅装备有这两列，堆叠物为空值） -->
+        <div
+          v-if="tab !== 'wanted' && showAdvanced"
+          class="flex flex-wrap items-center gap-2 rounded-lg border border-ink-700 bg-ink-900/40 p-2"
         >
-          发布收购
-        </button>
+          <select v-model="filters.category" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+            <option value="all">全部种类</option>
+            <option v-for="o in CATEGORY_OPTIONS" :key="o.id" :value="o.id">{{ o.label }}</option>
+          </select>
+          <select v-model="filters.slot" class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5">
+            <option value="all">全部部位</option>
+            <option v-for="o in SLOT_OPTIONS" :key="o.id" :value="o.id">{{ o.label }}</option>
+          </select>
+          <label class="flex items-center gap-1 text-ink-400">
+            等级
+            <input
+              v-model.number="filters.levelMin"
+              type="number"
+              min="1"
+              placeholder="最低"
+              class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-right text-ink-100"
+            />
+            <span>-</span>
+            <input
+              v-model.number="filters.levelMax"
+              type="number"
+              min="1"
+              placeholder="最高"
+              class="w-16 rounded border border-ink-600 bg-ink-900 px-2 py-1.5 text-right text-ink-100"
+            />
+          </label>
+        </div>
       </div>
 
       <!-- 我的寄售 -->

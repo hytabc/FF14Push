@@ -128,6 +128,11 @@ describe('hasActiveFilters / createItemFilters', () => {
     f.subAttrs.add('crit')
     expect(hasActiveFilters(f)).toBe(true)
   })
+
+  it('名称关键字（非空白）视为激活筛选', () => {
+    expect(hasActiveFilters({ ...createItemFilters(), query: '剑' })).toBe(true)
+    expect(hasActiveFilters({ ...createItemFilters(), query: '   ' })).toBe(false)
+  })
 })
 
 describe('filterOptionSets', () => {
@@ -188,6 +193,14 @@ describe('applyItemFilters', () => {
     expect(applyItemFilters(items, state({ weaponType: 'lance' }), 'power').map((i) => i.id)).toEqual([1])
     expect(applyItemFilters(items, state({ role: 'melee' }), 'power').map((i) => i.id)).toEqual([1])
     expect(applyItemFilters(items, state({ role: 'tank' }), 'power')).toEqual([])
+  })
+
+  it('按名称子串筛选（不区分大小写，忽略前后空白）', () => {
+    const pool = [...items, makeItem({ id: 3, name: 'Hero Blade', category: 'weapon' })]
+    expect(applyItemFilters(pool, state({ query: '长枪' }), 'power').map((i) => i.id)).toEqual([1])
+    expect(applyItemFilters(pool, state({ query: 'hero' }), 'power').map((i) => i.id)).toEqual([3])
+    expect(applyItemFilters(pool, state({ query: '  HERO  ' }), 'power').map((i) => i.id)).toEqual([3])
+    expect(applyItemFilters(pool, state({ query: '不存在' }), 'power')).toEqual([])
   })
 
   it('按等级区间筛选', () => {

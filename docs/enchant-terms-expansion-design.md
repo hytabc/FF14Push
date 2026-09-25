@@ -39,6 +39,7 @@
 | risk | 风险代价 | 有明确副作用的强力增益（`cost`） |
 | special | 特殊机制 | 复活 / 处决 / 免死等 |
 | charge | 累计触发 | 累计量达阈值后触发 |
+| shield | 护盾 | 护盾生成 / 强化（受 30% 上限约束，见 §5） |
 
 ## 3. 战斗新增 Buff（`shared/data/terms.json:terms`）
 
@@ -58,11 +59,11 @@
 | abnormal | stunOnHit | 眩晕 | stunProcPct | [3,12] | 主手/手 | 命中 {v}% 概率眩晕目标 2 秒 |
 | onHitTaken | reflectOnHit | 反震 | reflectProcPct | [5,20] | 身/腿/脚/饰 | 受击 {v}% 概率反弹本次伤害的 30% |
 | onHitTaken | vengeanceOnHit | 复仇 | vengeanceProcPct | [5,20] | 身/饰 | 受击 {v}% 概率获得攻击 +15%，持续 6 秒 |
-| onHitTaken | aegisOnHit | 庇护 | aegisProcPct | [5,20] | 身/饰 | 受击 {v}% 概率获得最大生命 8% 的护盾 |
+| onHitTaken | aegisOnHit | 庇护 | aegisProcPct | [5,20] | 身/饰 | 受击 {v}% 概率获得最大生命 8% 的护盾（归入 `shield` 类） |
 | onHitTaken | resolveOnHit | 坚毅 | resolveProcPct | [3,12] | 头/饰 | 受击 {v}% 概率恢复 6% 最大魔力 |
 | defense | guard | 守护 | guardPct | [3,15] | 全 | 受到伤害 -{v}% |
 | defense | block | 格挡 | blockProcPct | [5,20] | 盾/身/手 | {v}% 概率格挡，本次伤害减半 |
-| defense | shieldBoost | 护盾强化 | shieldBoostPct | [5,25] | 盾/头/身 | 护盾获得量 +{v}% |
+| defense | shieldBoost | 护盾强化 | shieldBoostPct | [5,25] | 盾/头/身 | 护盾获得量 +{v}%（归入 `shield` 类） |
 | conditional | lastStand | 背水 | lowHpAttackPct | [5,25] | 全 | 生命低于 50% 时攻击 +{v}% |
 | conditional | openingRush | 先手 | openingDamagePct | [5,25] | 主手/饰 | 战斗开始 10 秒内伤害 +{v}% |
 | conditional | bossHunter | 讨伐 | bossDamagePct | [5,25] | 主手/饰 | 对精英与 BOSS 伤害 +{v}% |
@@ -83,8 +84,10 @@
 | special | execute | 处决 | executePct | [5,20] | 主手/饰 | 目标生命低于 30% 时伤害 +{v}% |
 | special | cheatDeath | 不死 | cheatDeathPct | [3,10] | 身/饰 | 受致命伤害时 {v}% 概率免死并保留 1 点生命（每场 1 次） |
 | charge | chargeBlast | 蓄势 | chargeBlastPct | [5,20] | 主手/手 | 累计造成目标 100% 最大生命伤害后触发范围爆发（攻击力 {v}%） |
-| charge | chargeShield | 受创蓄力 | chargeShieldPct | [5,20] | 身/饰 | 累计受到 30% 最大生命伤害后获得护盾（最大生命 {v}%） |
+| charge | chargeShield | 受创蓄力 | chargeShieldPct | [5,20] | 身/饰 | 累计受到 30% 最大生命伤害后获得护盾（最大生命 {v}%，归入 `shield` 类） |
 | charge | chargeHeal | 咏唱蓄能 | chargeHealPct | [5,20] | 头/饰 | 累计释放 10 次技能后恢复最大生命 {v}% |
+| shield | magicShield | 魔法盾 | magicShieldProcPct | [5,20] | 头/防具/饰 | 释放技能 {v}% 概率消耗最大魔力 10%，获得等量护盾 |
+| shield | lifestealShield | 吸血盾 | lifestealShieldPct | [20,60] | 主手/防具/饰 | 吸血回复溢出生命上限的部分，按 {v}% 转化为护盾 |
 
 > 表中 `{c}` 表示 `cost` 折算值（= `round(v × ratio)`）；实现时 `desc` 用 `{v}` 与 `{c}` 两个占位符。
 
@@ -113,6 +116,7 @@
 
 ```jsonc
 {
+  "shield": { "capPctOfMaxHp": 30 },
   "proc": {
     "bleed":     { "potencyPct": 25, "durationSec": 8, "tickSec": 1 },
     "defBreak":  { "defenseDownPct": 25, "durationSec": 8 },
@@ -121,6 +125,7 @@
     "reflect":   { "damagePct": 30 },
     "vengeance": { "attackBuffPct": 15, "durationSec": 6 },
     "aegis":     { "maxHpShieldPct": 0.08, "durationSec": 6 },
+    "magicShield": { "mpCostPct": 10, "shieldPerMp": 1.0 },
     "resolve":   { "maxMpRestorePct": 0.06 }
   },
   "conditional": {
@@ -134,7 +139,7 @@
     "hitStackSpeedPct":    { "maxStacks": 10 },
     "skillStackDamagePct": { "maxStacks": 8 }
   },
-  "convert": { "hpToMp": { "intervalSec": 1 }, "mpSurge": { "basePctOfMp": 1.0 }, "killRestoreMp": {} },
+  "convert": { "hpToMp": { "intervalSec": 1 }, "mpSurge": { "basePctOfMp": 1.0 }, "killRestoreMp": {}, "lifestealShield": {} },
   "charge": {
     "chargeBlast":  { "hpThresholdPct": 100, "potencyPct": 200 },
     "chargeShield": { "hpThresholdPct": 30 },
@@ -160,6 +165,15 @@
 - **成长**：命中/击杀/施法时 `层数 = min(层数+1, maxStacks)`，加成为 `层数 × 值`。
 - **累计**：累计量达阈值触发一次 → 归零（或按需保留）。
 - **风险**：`cost` 值 = `round(主值 × ratio)`，累加进 `term_mods[cost.stat]`（可为 `damageTakenPct`/`maxHpPct`）。
+- **护盾上限（核心约束）**：`shieldCap = floor(maxHp × shield.capPctOfMaxHp/100)`；**所有**护盾来源
+  （技能 shield / 庇护 aegis / 受创蓄力 chargeShield / 魔法盾 magicShield / 吸血盾 lifestealShield）
+  统一经 `addShield()` 裁剪到上限，**不可无限叠加**。客户端 `battle.ts`、世界BOSS 引擎
+  （`worldboss.ts`）、合作远征 `coop_engine`、竞技场 `pvp_engine` 同源读取该配置。
+- **魔法盾**：施法时按 `magicShieldProcPct` 概率触发，消耗 `min(heroMp, maxMp × mpCostPct/100)` 魔力，
+  获得 `消耗魔力 × shieldPerMp × (1 + shieldBoostPct/100)` 的护盾。
+- **吸血盾**：吸血回复溢出生命上限的部分 `overflow`，按 `lifestealShieldPct/100` 转化为护盾。
+- **BOSS barrier（吸收盾）**：BOSS 技能 `effect:"barrier"` 授予 `floor(BOSS 最大生命 × barrierHpPct/100)`
+  的护盾，英雄造成的伤害先扣护盾再扣 BOSS 生命（占位符：`MonsterStats.skills[].barrierHpPct`）。
 
 ### 后端镜像清单
 
@@ -169,10 +183,21 @@
 | growth（战意/锐意/咏唱） | **是** | 战斗内 DPS 增长 |
 | mpSurge / killRestoreMp / hpToMp | 否 | 仅资源，不提高期望 DPS 上限 |
 | reflect / vengeance / aegis / resolve / block / guard / shieldBoost | 否 | 仅生存 |
+| magicShield / lifestealShield / BOSS barrier | 否 | 仅生存（护盾吸收 / 消耗多余魔力），不提高期望 DPS |
 | slow / stun / defBreak（敌方减益的生存部分） | 部分 | defBreak 降低目标防御 → 计入 DPS；slow/stun 仅生存 |
 | charge*（爆发） | **是** | chargeBlast 触发伤害计入 DPS |
 | cheatDeath / reviveChance | 否 | 仅生存 |
 | vitToAttack / critToDet / magicAttackPct 等面板 | 自动 | 面板由 `stats.py` 计算，`theoretical_dps` 直接读取 |
+
+## 5.1 护盾显示（全游戏统一）
+
+- 所有血条（英雄 / 怪物 / BOSS、地区 / 高难副本 / 挖宝 / 世界BOSS / 合作远征 / 竞技场回放）
+  统一使用 `frontend/src/components/HealthBar.vue`。
+- 护盾以**浅绿色覆盖层**（`emerald-300`）叠加在血条上，宽度 = `护盾 / 最大生命`（上限 30%）。
+- 英雄血条的护盾数据：地区 / 副本 / 挖宝来自 `BattleSimulator.shield`；合作远征来自 `BattleHero.shield`；
+  世界BOSS 来自引擎 state 的 `hero.shield`（`world_boss.session_public` 下发）；竞技场回放来自事件帧 `shield[]`。
+- 世界BOSS 的**共享血量**由服务端原子递减，不存在可吸收的会话内 BOSS 血量，故不为其新增 BOSS 吸收盾；
+  合作远征 BOSS 无技能池，同样不新增 BOSS 吸收盾（英雄护盾照常）。
 
 ## 6. 生产/采集新增词条（`dohdol-equipment.json`）
 

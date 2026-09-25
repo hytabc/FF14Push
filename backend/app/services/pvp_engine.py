@@ -1,12 +1,12 @@
 """Seeded asynchronous duel, using registered skill rotations and independent PvP tuning."""
 from copy import deepcopy
-from app.services.coop_engine import random_unit
+from app.services.coop_engine import random_unit, shield_cap_pct
 
 def duel(attacker,defender,config,seed):
     fighters=[]
     for s in (attacker,defender):
         fighters.append({'snapshot':deepcopy(s),'hp':s['stats']['max_hp'],'mp':s['stats']['max_mp'],
-            'cooldowns':{},'gcd':0,'attackAt':0,'stunUntil':0,'shield':0,'buffUntil':0})
+            'cooldowns':{},'lastCastAt':{},'gcd':0,'attackAt':0,'stunUntil':0,'shield':0,'buffUntil':0})
     rng={'rng':seed};events=[];winner=None;tick=0
     for tick in range(0,config['maxSeconds']*1000,100):
         hits=[]
@@ -19,16 +19,18 @@ def duel(attacker,defender,config,seed):
             if tick>=h['attackAt']:potency+=100;h['attackAt']=tick+2000
             skill=None
             if tick>=h['gcd']:
-                skill=next((a for a in sorted(s['skills'],key=lambda a:a.get('priority',3)) if h['cooldowns'].get(a['id'],0)<=tick and a.get('mpCost',0)<=h['mp']),None)
+                skill=next((a for a in sorted(s['skills'],key=lambda a:(a.get('priority',3),h['lastCastAt'].get(a['id'],float('-inf')) if a.get('priority',3)==3 else 0.0,float(a.get('potency',0) or 0))) if h['cooldowns'].get(a['id'],0)<=tick and a.get('mpCost',0)<=h['mp']),None)
             if skill:
                 potency+=skill.get('potency',0)*s['skillMultiplier'];h['gcd']=tick+1500
-                h['cooldowns'][skill['id']]=tick+round(skill['cd']*1000);h['mp']-=skill.get('mpCost',0)
+                h['cooldowns'][skill['id']]=tick+round(skill['cd']*1000);h['lastCastAt'][skill['id']]=tick;h['mp']-=skill.get('mpCost',0)
                 for effect in skill.get('effects',[]):
                     typ=effect['type'];value=effect.get('value',0)
                     if typ in ('heal','fullHeal','healOverTime'):
                         amount=st['max_hp']*(1 if typ=='fullHeal' else value)*config['healingMultiplier']
                         h['hp']=min(st['max_hp'],h['hp']+amount)
-                    elif typ=='shield':h['shield']=min(st['max_hp']*.5,h['shield']+st['max_hp']*value*config['healingMultiplier'])
+                    elif typ=='shield':
+                        cap=st['max_hp']*shield_cap_pct()/100
+                        h['shield']=min(cap,h['shield']+st['max_hp']*value*config['healingMultiplier'])
                     elif typ=='stun':enemy['stunUntil']=tick+round(config['controlSeconds']*1000)
                     elif typ in ('attackBuff','allDamageBuff'):h['buffUntil']=tick+round(effect.get('duration',5)*1000)
             if potency:
@@ -40,7 +42,7 @@ def duel(attacker,defender,config,seed):
         for i,amount,name in hits:
             target=fighters[1-i];absorb=min(target['shield'],amount);target['shield']-=absorb
             target['hp']=max(0,target['hp']-(amount-absorb))
-            events.append({'at':tick,'actor':i,'skill':name,'damage':round(amount-absorb),'hp':[round(h['hp']) for h in fighters]})
+            events.append({'at':tick,'actor':i,'skill':name,'damage':round(amount-absorb),'hp':[round(h['hp']) for h in fighters],'shield':[round(h['shield']) for h in fighters]})
         if any(h['hp']<=0 for h in fighters):
             winner=None if all(h['hp']<=0 for h in fighters) else 0 if fighters[1]['hp']<=0 else 1
             break

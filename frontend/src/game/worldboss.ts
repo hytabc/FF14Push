@@ -63,6 +63,8 @@ export interface WorldBossHero {
   hp: number
   mp: number
   maxMp: number
+  /** 护盾值（吸收受到的伤害），用于血条浅绿覆盖层。 */
+  shield: number
   deadUntil: number
   damage: number
   deaths: number

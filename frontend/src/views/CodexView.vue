@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { api } from '@/api'
 import data from '@shared/schema'
@@ -9,7 +10,7 @@ import { useVisibleLimit } from '@/composables/useVisibleLimit'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { CodexProgress, JobRole, RarityId, TermQuality } from '@/game/types'
-import { conditionsFor } from '@/game/weather'
+import { conditionsFor, matchesGate } from '@/game/weather'
 import { RARITY_ORDER, TERM_CATEGORY_OPTIONS, attrName, baseAttrName, categoryName, jobName, rarityName, slotName, termCategoryName, termQualityClass, termQualityName } from '@/utils/format'
 import {
   fishAvailability,
@@ -40,6 +41,7 @@ type Entry = Record<string, any>
 
 const toast = useToastStore()
 const game = useGameStore()
+const router = useRouter()
 
 const category = ref<'equipment' | 'monster' | 'material' | 'fish' | 'term'>('equipment')
 const entries = ref<Entry[]>([])
@@ -319,6 +321,20 @@ const availabilityReady = computed(() => Boolean(game.state))
 
 const dolLevel = computed(() => game.state?.dohdol?.progress?.dol?.level ?? 1)
 
+/** 全量鱼条目索引：困难鱼的直觉前置要查各自（普通鱼）的天气 / 时段门槛。 */
+const fishEntryById = computed(() => {
+  const map = new Map<string, Entry>()
+  for (const e of entries.value) if (typeof e.fishId === 'string') map.set(e.fishId, e)
+  return map
+})
+
+/** 前置鱼此刻是否在其窗口期（按同一份图鉴数据复算）；查不到条目时视为在窗口，不阻断。 */
+function prereqInWindow(fishId: string): boolean {
+  const e = fishEntryById.value.get(fishId)
+  if (!e || typeof e.regionId !== 'number') return true
+  return matchesGate(conditionsFor(e.regionId, nowMs.value), e.weather, e.timeOfDay)
+}
+
 const fishAvailabilityCtx = computed<FishAvailabilityContext>(() => ({
   unlockedRegions: new Set(
     data.fish.regions.map((r) => r.regionId).filter((id) => isFishRegionUnlocked(id)),
@@ -326,6 +342,7 @@ const fishAvailabilityCtx = computed<FishAvailabilityContext>(() => ({
   dolLevel: dolLevel.value,
   regionLevelReq: FISH_REGION_LEVEL_REQ,
   nowMs: nowMs.value,
+  prereqInWindow,
 }))
 
 /** 卡片悬停说明：讲清判定依据。`gate_closed`（条件本就不满足）不做标记，因此没有说明。 */
@@ -338,6 +355,9 @@ function availabilityTitle(entry: Entry, status: FishAvailability): string {
     return `采集等级不足：该钓场需要 Lv.${FISH_REGION_LEVEL_REQ[entry.regionId] ?? 1}，当前 Lv.${dolLevel.value}`
   }
   if (status === 'region_locked') return '该钓场尚未解锁'
+  if (status === 'prereq_closed') {
+    return `前置鱼未在窗口期：需先钓齐「${requiresText(entry)}」才能开启「${entry.buffName || '捕鱼人之识'}」`
+  }
   return ''
 }
 
@@ -361,6 +381,13 @@ function requiresText(entry: Entry): string {
     .map((r: { fishId: string; count: number }) => `${data.fishById[r.fishId]?.name ?? r.fishId} ×${r.count}`)
     .join('、')
 }
+
+/** 跳到钓鱼页并选中该困难鱼所在钓场（不自动开始钓鱼）。 */
+function goFish(entry: Entry) {
+  if (typeof entry.regionId !== 'number') return
+  void router.push({ name: 'fish', query: { region: String(entry.regionId) } })
+}
+
 const MATERIAL_KIND_LABEL: Record<string, string> = { gather: '采集材料', half: '半成品' }
 
 function regionName(regionId: number | null | undefined): string {
@@ -761,6 +788,7 @@ function entryRarity(entry: Entry): RarityId {
         </p>
         <p v-if="availabilityReady" class="text-[10px] text-ink-400">
           <b class="text-emerald-300">当前可钓</b> = 天气 / 时段条件已满足，且该钓场已解锁、采集等级达标（与是否已收集无关）；
+          困难鱼还要求其<b class="text-amber-200">前置鱼也同处窗口期</b>，否则标为「前置鱼未在窗口期」。
           <b class="text-amber-200">采集等级不足</b> 与 <b class="text-ink-400">地区未解锁</b> 分别标出原因；条件不满足的鱼不做标记。
         </p>
       </div>
@@ -983,6 +1011,12 @@ function entryRarity(entry: Entry): RarityId {
           >
             地区未解锁
           </span>
+          <span
+            v-if="statusOf(entry) === 'prereq_closed'"
+            class="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200"
+          >
+            前置鱼未在窗口期
+          </span>
         </div>
 
         <p class="mt-2 text-[10px] text-ink-500">
@@ -1002,6 +1036,15 @@ function entryRarity(entry: Entry): RarityId {
         <p v-else class="mt-2 text-[10px] text-ink-400">
           累计钓起 {{ entry.count }} 条 · 最大 {{ entry.maxSize }} cm · 首次 {{ entry.firstCaughtAt?.slice(0, 10) }}
         </p>
+
+        <!-- 困难鱼已高亮（自身与前置于窗口期）时，一键前往对应钓场 -->
+        <button
+          v-if="entry.kind === 'legend' && statusOf(entry) === 'catchable'"
+          class="mt-2 w-full rounded-md border border-emerald-400/60 bg-emerald-500/20 px-2 py-1 text-[11px] font-medium text-emerald-200 transition hover:bg-emerald-500/30"
+          @click="goFish(entry)"
+        >
+          立即前往
+        </button>
       </article>
     </section>
 

@@ -12,11 +12,11 @@
       "base": 430,
       "perLevel": 88
     },
-    "refPotencyPerSecond": 70,
+    "refPotencyPerSecond": 74,
     "refGearAttackMultiplier": 1.6,
     "refDamageMultiplier": 1.2,
     "targetKillSeconds": 2.5,
-    "targetSurvivalSeconds": 26.0,
+    "targetSurvivalSeconds": 24.0,
     "defenseRatioOfAttack": 0.1
   },
   "regionHighLevelScale": { "fromLevel": 60, "hpPerLevel": 0.05, "attackPerLevel": 0.0375, "endgameFromLevel": 80, "endgameMultiplier": 5 },

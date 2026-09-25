@@ -434,7 +434,7 @@ async def test_enter_rejects_low_level_and_over_capacity(auth_client, session_fa
     ok = await auth_client.post(f"{API}/worldboss/enter", json={"heroIds": [hero_id]})
     assert ok.status_code == 200, ok.text
     body = ok.json()
-    assert body["boss"]["maxHp"] == 2_000_000_000
+    assert body["boss"]["maxHp"] == 2_400_000_000
     assert body["boss"]["phase"] == 1 and body["boss"]["defenseMultiplier"] == 1.0
     assert body["boss"]["periodSeconds"] == 5 * 3600
     assert body["boss"]["periodEndsAt"] is not None
@@ -537,7 +537,7 @@ async def test_report_damage_reduces_global_hp(auth_client, session_factory):
     body = resp.json()
     assert body["damageAccepted"] == damage
     assert body["myDamage"] == damage
-    assert body["boss"]["hp"] == 2_000_000_000 - damage
+    assert body["boss"]["hp"] == 2_400_000_000 - damage
 
     async with session_factory() as db:
         contribution = await db.scalar(

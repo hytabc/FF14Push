@@ -383,6 +383,47 @@ async def test_other_players_listings_browsable_and_banned_hidden(client, sessio
     assert (await client.get(f"{API}/market/listings")).json()["total"] == 0
 
 
+async def test_listings_scalar_filters(client, session_factory):
+    """部位 / 等级区间 / 价格区间筛选下推到 SQL，total 随之收敛。"""
+    token_a = await _register(client, "mkt_f_a")
+    uid_a = await _user_id(session_factory, "mkt_f_a")
+    _auth(client, token_a)
+
+    main = await _seed_item(session_factory, uid_a, slot="mainHand", level_req=80)
+    body = await _seed_item(
+        session_factory,
+        uid_a,
+        base_id="a_body_1",
+        name="测试上衣",
+        category="armor",
+        slot="body",
+        level_req=30,
+    )
+    await _list_one(client, main, 5000)
+    await _list_one(client, body, 100)
+
+    token_b = await _register(client, "mkt_f_b")
+    _auth(client, token_b)
+
+    async def browse(**params) -> list[str]:
+        resp = await client.get(f"{API}/market/listings", params={"kind": "equipment", **params})
+        assert resp.status_code == 200, resp.text
+        return sorted(l["name"] for l in resp.json()["listings"])
+
+    both = sorted(["测试剑盾", "测试上衣"])
+    assert await browse() == both
+    assert await browse(slot="body") == ["测试上衣"]
+    assert await browse(levelMin=50) == ["测试剑盾"]
+    assert await browse(levelMax=50) == ["测试上衣"]
+    assert await browse(priceMin=1000) == ["测试剑盾"]
+    assert await browse(priceMax=1000) == ["测试上衣"]
+    # 条件为 AND：部位命中但等级不命中 → 空
+    assert await browse(slot="body", levelMin=50) == []
+
+    resp = await client.get(f"{API}/market/listings", params={"kind": "equipment", "slot": "body"})
+    assert resp.json()["total"] == 1
+
+
 def test_market_config_and_fee_math():
     cfg = CONFIG.economy["market"]
     assert 0 < float(cfg["feePct"]) < 1

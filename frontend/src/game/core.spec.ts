@@ -1019,6 +1019,54 @@ describe('蓝量经济（持续战斗不退化为「普攻循环」）', () => {
   })
 })
 
+describe('技能轮转（避免长 CD 空档期反复刷同一个技能）', () => {
+  const dummy: MonsterStats = {
+    id: 'dummy', regionId: 0, name: '木桩', templateId: 'dummy', kind: 'boss',
+    hp: 1e12, attack: 0, defense: 0, attackInterval: 999, level: 100, resistancePct: 0,
+  }
+
+  /** 统计一段时间内各技能的出手次数（含普攻）。 */
+  function castCounts(jobId: string, seconds: number, cdReducePct: number): Record<string, number> {
+    const sim = new BattleSimulator({
+      stats: makeStats({
+        jobId, maxMp: 100000, mpRegen: 100000, attack: 20000, maxHp: 1e7, hpRegen: 1000,
+        termMods: { cdReducePct },
+      }),
+      raid: { bosses: [dummy], enrage: null },
+    })
+    sim.start()
+    const byId: Record<string, number> = {}
+    for (let i = 0; i < seconds * 10; i += 1) {
+      sim.tick(0.1)
+      for (const [id, count] of Object.entries(sim.drainPending().skillCasts)) {
+        byId[id] = (byId[id] ?? 0) + count
+      }
+    }
+    return byId
+  }
+
+  it('冷却缩减把填充技压到 GCD 以下时，填充技不会独占出手', () => {
+    // 70% 冷却缩减 → 填充技 CD 3s×0.3=0.9s < GCD 1.5s，旧逻辑会一直刷同一个技能。
+    const byId = castCounts('DRG', 60, 70)
+    const total = Object.values(byId).reduce((a, b) => a + b, 0)
+    expect(total).toBeGreaterThan(0)
+    const filler = data.jobById['DRG'].skills[0]
+    expect((byId[filler.id] ?? 0) / total).toBeLessThan(0.6)
+    expect(Object.keys(byId).length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('各职能的填充技层级都会轮转', () => {
+    for (const jobId of ['PLD', 'WHM', 'BLM', 'SAM']) {
+      const byId = castCounts(jobId, 30, 70)
+      const total = Object.values(byId).reduce((a, b) => a + b, 0)
+      expect(total).toBeGreaterThan(0)
+      const filler = data.jobById[jobId].skills[0]
+      expect((byId[filler.id] ?? 0) / total).toBeLessThan(0.7)
+      expect(Object.keys(byId).length).toBeGreaterThanOrEqual(3)
+    }
+  })
+})
+
 describe('地区击杀手感（普攻与技能独立出手：小怪 ~4 下 / 精英 ~7 下 / BOSS ~13 下）', () => {
   beforeEach(() => {
     // 0.1：不触发精英判定（< 0.08 才出精英）、必中、不暴击、随机浮动固定；同时普通怪模板取到 normal。
@@ -1272,7 +1320,7 @@ describe('彩蛋英雄技能', () => {
     expect(sim.cooldowns['eggAzureDragoon']).toBeGreaterThan(0)
   })
 
-  it('「术道恒久」使自身治疗量提高 100%（10s）', () => {
+  it('「术道恒久」使自身治疗量提高 50%（10s）', () => {
     const healSkill = data.jobById['SGE'].skills.find((s) =>
       s.effects.some((e) => e.type === 'heal'),
     )!
@@ -1290,7 +1338,7 @@ describe('彩蛋英雄技能', () => {
     }
     const plain = healAmount(null)
     expect(plain).toBeGreaterThan(0)
-    expect(healAmount('aolongbaiban')).toBeCloseTo(plain * 2, 5)
+    expect(healAmount('aolongbaiban')).toBeCloseTo(plain * 1.5, 5)
   })
 
   it('新增彩蛋：牙子 / 罗洁愛尔 / 明岚 配置正确', () => {
@@ -1779,5 +1827,73 @@ describe('绝技（招牌技能）', () => {
     sim.tick(1.5)
     expect(sim.phase).not.toBe('dead')
     expect(sim.heroHp).toBe(1)
+  })
+})
+
+describe('护盾机制（上限 / 魔法盾 / 吸血盾 / BOSS barrier）', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  const dummy: MonsterStats = {
+    id: 'dummy', regionId: 0, name: '木桩', templateId: 'dummy', kind: 'boss',
+    hp: 1e12, attack: 0, defense: 0, attackInterval: 2.5, level: 60, resistancePct: 0,
+  }
+
+  it('护盾总量不超过最大生命的 30%（防止无限叠加）', () => {
+    const sim = new BattleSimulator({ stats: makeStats({ maxHp: 10000 }), raid: { bosses: [{ ...dummy }], enrage: null } })
+    sim.start()
+    const engine = sim as unknown as { addShield(n: number): number }
+    engine.addShield(999999)
+    expect(sim.shield).toBe(Math.floor(sim.stats.maxHp * 0.3))
+  })
+
+  it('「魔法盾」触发时消耗魔力转化为等量护盾', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ maxHp: 10000, maxMp: 1000, termMods: { magicShieldProcPct: 100 } }),
+      raid: { bosses: [{ ...dummy }], enrage: null },
+    })
+    sim.start()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const engine = sim as unknown as { rollMagicShield(): void }
+    sim.heroMp = 1000
+    engine.rollMagicShield()
+    // 消耗 10% 最大魔力 = 100，转化为等量护盾
+    expect(sim.heroMp).toBe(900)
+    expect(sim.shield).toBe(100)
+  })
+
+  it('「吸血盾」把吸血溢出生命上限的部分转化为护盾', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ maxHp: 1000, lifestealPct: 100, termMods: { lifestealShieldPct: 50 } }),
+      raid: { bosses: [{ ...dummy }], enrage: null },
+    })
+    sim.start()
+    sim.heroHp = 900
+    const engine = sim as unknown as { lifesteal(n: number): void }
+    engine.lifesteal(500)
+    // 回复 100 至满血，溢出 400 → 50% = 200 护盾
+    expect(sim.heroHp).toBe(1000)
+    expect(sim.shield).toBe(200)
+  })
+
+  it('BOSS 释放 barrier 获得护盾，英雄伤害先被吸收', () => {
+    const guarded: MonsterStats = {
+      ...dummy,
+      hp: 1_000_000,
+      skillInterval: 1,
+      skills: [{ id: 'bulwark', name: '磐岩壁垒', effect: 'barrier', barrierHpPct: 30, desc: '' }],
+    }
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1000, maxHp: 100000 }),
+      raid: { bosses: [guarded], enrage: null },
+    })
+    sim.start()
+    sim.tick(1.1)
+    const cap = Math.floor(guarded.hp * 0.3)
+    expect(sim.monsterShield).toBe(cap)
+    const engine = sim as unknown as { damageEnemy(n: number): void }
+    const hp0 = sim.monsterHp
+    engine.damageEnemy(1000)
+    expect(sim.monsterHp).toBe(hp0)
+    expect(sim.monsterShield).toBe(cap - 1000)
   })
 })

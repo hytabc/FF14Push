@@ -6,6 +6,7 @@ import data from '@shared/schema'
 import { consumableBonus } from '@/utils/consumables'
 
 import ActivityLog from '@/components/ActivityLog.vue'
+import ConsumableList from '@/components/ConsumableList.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import SearchSelect, { type SearchOption } from '@/components/SearchSelect.vue'
@@ -550,28 +551,7 @@ function expandToSequence(r: RecipeView) {
 
       <div class="rounded-lg border border-ink-700/60 bg-ink-900/40 p-3">
         <h2 class="mb-2 text-xs font-semibold text-ink-300">药水 / 食物</h2>
-        <div class="max-h-56 space-y-1 overflow-y-auto text-xs">
-          <div v-for="c in consumables" :key="c.itemId" class="flex items-center justify-between text-ink-200">
-            <span class="flex min-w-0 items-center gap-1.5">
-              <ItemIcon :base-id="c.itemId" variant="plain" :size="18" />
-              <span class="min-w-0"><span class="block">{{ c.name }}</span><span class="block text-[11px] leading-relaxed text-emerald-300">{{ consumableBonus(c.itemId) }}</span></span>
-            </span>
-            <span class="flex shrink-0 items-center gap-2">
-              <span class="font-mono text-ink-400">×{{ c.count }}</span>
-              <button class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-emerald-300 hover:bg-ink-700" @click="dohdol.useConsumable(c.itemId)">
-                使用
-              </button>
-              <button
-                class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
-                :disabled="(c.sell ?? 0) <= 0"
-                @click="dohdol.sellStack(c.kind, c.itemId, 1)"
-              >
-                出售
-              </button>
-            </span>
-          </div>
-          <p v-if="!consumables.length" class="text-ink-500">暂无药水食物。</p>
-        </div>
+        <ConsumableList variant="rows" :items="consumables" empty-text="暂无药水食物。" />
       </div>
     </section>
 

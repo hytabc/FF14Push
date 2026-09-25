@@ -65,12 +65,43 @@ def test_rarity_order_and_tiers() -> None:
     assert multipliers == sorted(multipliers)
 
 
-def test_all_jobs_have_seven_skills() -> None:
+def test_all_jobs_have_ten_skills() -> None:
     assert len(CONFIG.jobs["jobs"]) == 21
-    assert CONFIG.jobs["maxSkills"] == 7
+    assert CONFIG.jobs["maxSkills"] == 10
     for job in CONFIG.jobs["jobs"]:
         assert len(job["skills"]) == CONFIG.jobs["maxSkills"], job["id"]
-        assert len({s["id"] for s in job["skills"]}) == 7
+        assert len({s["id"] for s in job["skills"]}) == 10
+
+
+def test_all_jobs_have_rotation_kit() -> None:
+    """每个职业都补齐「短 CD 轮转技 + DOT 持续伤害 + 职能特色技」，用于避免反复刷同一个技能。"""
+    for job in CONFIG.jobs["jobs"]:
+        skills = job["skills"]
+        # 至少两个短 CD 普通技（优先级 3，CD ≤ 8），保证 GCD 空档期能轮转
+        short_fillers = [
+            s for s in skills if int(s["priority"]) == 3 and float(s["cd"]) <= 8 and int(s["potency"]) > 0
+        ]
+        assert len(short_fillers) >= 2, (job["id"], [s["id"] for s in short_fillers])
+        # 至少一个 DOT 持续伤害技能
+        assert any(
+            any(e.get("type") == "dot" for e in s.get("effects") or []) for s in skills
+        ), job["id"]
+        # 极短 CD 技能不得成为「最贵」的技能（耗蓝 ÷ CD 不能突破基础回蓝上限）
+        hardest = max(float(s["mpCost"]) / max(0.1, float(s["cd"])) for s in skills)
+        assert hardest <= float(CONFIG.heroes["attributes"]["mpRegen"]["base"]), job["id"]
+
+
+def test_job_skills_reflect_role_identity() -> None:
+    """职能特色：坦克必须有减伤 / 护盾技能，治疗必须有治疗 / 护盾技能，DPS 必须有高威力伤害技能。"""
+    for job in CONFIG.jobs["jobs"]:
+        kinds = {e.get("type") for s in job["skills"] for e in s.get("effects") or []}
+        potency_skills = [s for s in job["skills"] if int(s.get("potency", 0)) >= 300]
+        if job["role"] == "tank":
+            assert kinds & {"shield", "damageReduction", "immunity", "undying"}, job["id"]
+        elif job["role"] == "healer":
+            assert kinds & {"heal", "healOverTime", "shield"}, job["id"]
+        else:
+            assert potency_skills, job["id"]
 
 
 def test_all_jobs_have_signature() -> None:
@@ -469,6 +500,7 @@ def test_power_weights_cover_new_term_stats() -> None:
     new_stats = {
         "magicAttackPct", "physDefPct", "magicDefPct", "maxMpPct", "healPowerPct",
         "guardPct", "blockProcPct", "shieldBoostPct", "doubleAttackPct", "bleedProcPct",
+        "magicShieldProcPct", "lifestealShieldPct",
         "defBreakProcPct", "slowProcPct", "stunProcPct", "reflectProcPct", "vengeanceProcPct",
         "aegisProcPct", "resolveProcPct", "lowHpAttackPct", "openingDamagePct", "bossDamagePct",
         "lowMpRegenPct", "killStackAttackPct", "hitStackSpeedPct", "skillStackDamagePct",
@@ -514,11 +546,11 @@ def test_exclusive_items_stronger_than_same_level_gear() -> None:
 
 
 def test_world_boss_config() -> None:
-    """世界BOSS 数值：20 亿血量、攻击 20000、5h 讨伐周期、周期内短休整、≥20 技能、8 席、80 级门槛。"""
+    """世界BOSS 数值：24 亿血量、攻击 20000、5h 讨伐周期、周期内短休整、≥20 技能、8 席、80 级门槛。"""
     wb = CONFIG.worldboss
     boss = wb["boss"]
     assert int(wb["periodSeconds"]) == 5 * 3600, "讨伐周期沿用 5h 锚点"
-    assert int(boss["maxHp"]) == 2_000_000_000
+    assert int(boss["maxHp"]) == 2_400_000_000
     assert int(boss["attack"]) == 20000
     assert 0 < int(boss["respawnSeconds"]) <= 300, "周期内击杀后应是短暂休整，而非 5h CD"
     pool = boss["skillPool"]

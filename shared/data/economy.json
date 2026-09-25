@@ -131,6 +131,8 @@
       "guardPct": 0.4,
       "blockProcPct": 0.4,
       "shieldBoostPct": 0.3,
+      "magicShieldProcPct": 0.4,
+      "lifestealShieldPct": 0.3,
       "doubleAttackPct": 0.8,
       "bleedProcPct": 1.1,
       "defBreakProcPct": 0.7,

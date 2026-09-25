@@ -11,7 +11,7 @@ export interface FishFilterEntry {
   regionId?: number | null
   weather?: string[] | null
   timeOfDay?: string[] | null
-  requires?: unknown
+  requires?: Array<{ fishId: string; count: number }> | null
   sizeMin?: number | null
   sizeMax?: number | null
 }

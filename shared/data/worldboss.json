@@ -19,7 +19,7 @@
   "boss": {
     "id": "golden_bahamut",
     "name": "黄金巴哈姆特",
-    "maxHp": 2000000000,
+    "maxHp": 2400000000,
     "attack": 20000,
     "attackIntervalSeconds": 3,
     "respawnSeconds": 60,

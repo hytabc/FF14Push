@@ -686,7 +686,12 @@ export const api = {
     kind?: string
     rarity?: string
     category?: string
+    slot?: string
     q?: string
+    levelMin?: number
+    levelMax?: number
+    priceMin?: number
+    priceMax?: number
     sort?: string
     page?: number
     pageSize?: number

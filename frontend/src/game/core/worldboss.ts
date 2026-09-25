@@ -10,6 +10,8 @@
  */
 import data from '@shared/schema'
 
+import { shieldCapPct } from './combat'
+
 export const TICK = 100
 const BASIC_CD_MS = 2000
 const GCD_MS = 1500
@@ -65,8 +67,12 @@ export interface EngineHero {
   levelMultiplier: number
   hp: number
   mp: number
+  /** 护盾值（吸收受到的伤害，上限见 combat.json:equipEffects.shield）。 */
+  shield: number
   deadUntil: number
   cooldowns: Record<string, number>
+  /** 每个技能最近一次释放的时刻（ms）：用于同优先级技能轮转，避免反复刷同一个技能。 */
+  lastCastAt: Record<string, number>
   nextAttack: number
   gcdUntil: number
   nextHeal: number
@@ -176,8 +182,10 @@ export function newState(config: WorldBossConfig, snapshots: WorldBossSnapshot[]
       levelMultiplier: Number(snap.levelMultiplier ?? 1),
       hp: Number(stats.max_hp),
       mp: Number(stats.max_mp),
+      shield: 0,
       deadUntil: 0,
       cooldowns: {},
+      lastCastAt: {},
       nextAttack: 0,
       gcdUntil: 0,
       nextHeal: 0,
@@ -260,13 +268,17 @@ function damageHero(state: EngineState, hero: EngineHero, amount: number, source
   )
   const value = Math.max(0, amount) * (1 - Math.min(0.8, reduction))
   const maxHp = hero.snapshot.stats.max_hp
-  hero.damageTaken += Math.min(hero.hp, value)
+  const absorbed = Math.min(hero.shield, value)
+  hero.shield -= absorbed
+  const remaining = value - absorbed
+  hero.damageTaken += Math.min(hero.hp, remaining)
   // 生命值以整数结算：伤害后向下取整，避免「显示 0 血却仍存活」。存活即至少 1 点，0 表示阵亡。
-  hero.hp = Math.max(0, Math.trunc(hero.hp - value))
+  hero.hp = Math.max(0, Math.trunc(hero.hp - remaining))
   hero.minHpRatio = Math.min(hero.minHpRatio, hero.hp / maxHp)
   if (hero.hp <= 0) {
     hero.deadUntil = state.elapsedMs + state.reviveSeconds * 1000
     hero.deaths += 1
+    hero.shield = 0
     hero.buffs = []
     hero.dots = []
     hero.slow = []
@@ -315,12 +327,23 @@ function autoActions(state: EngineState, hero: EngineHero): void {
   }
 
   if (now < hero.gcdUntil) return
-  const skills = [...(snap.skills ?? [])].sort((a, b) => (a.priority ?? 3) - (b.priority ?? 3))
+  const skills = [...(snap.skills ?? [])].sort((a, b) => {
+    const pa = a.priority ?? 3
+    const pb = b.priority ?? 3
+    if (pa !== pb) return pa - pb
+    if (pa === 3) {
+      const aLast = hero.lastCastAt[a.id] ?? Number.NEGATIVE_INFINITY
+      const bLast = hero.lastCastAt[b.id] ?? Number.NEGATIVE_INFINITY
+      if (aLast !== bLast) return aLast - bLast
+    }
+    return Number(a.potency ?? 0) - Number(b.potency ?? 0)
+  })
   const skill = skills.find((s) => (hero.cooldowns[s.id] ?? 0) <= now && (s.mpCost ?? 0) <= hero.mp)
   if (!skill) return
   hero.mp -= skill.mpCost ?? 0
   hero.gcdUntil = now + Math.trunc(GCD_MS / Math.max(0.2, slow))
   hero.cooldowns[skill.id] = now + Math.trunc(Number(skill.cd ?? 3) * 1000)
+  hero.lastCastAt[skill.id] = now
   if (skill.potency) {
     dealDamage(
       state,
@@ -340,8 +363,12 @@ function autoActions(state: EngineState, hero: EngineHero): void {
     if (typ === 'heal' || typ === 'fullHeal' || typ === 'shield') {
       const targets = skill.teamTarget === 'party' ? alive : [hero]
       for (const ally of targets) {
-        if (typ === 'shield') continue
-        healHero(state, ally, stats.max_hp * (typ === 'fullHeal' ? 1 : value))
+        if (typ === 'shield') {
+          const cap = (stats.max_hp * shieldCapPct()) / 100
+          ally.shield = Math.min(cap, ally.shield + stats.max_hp * value * hero.levelMultiplier)
+        } else {
+          healHero(state, ally, stats.max_hp * (typ === 'fullHeal' ? 1 : value))
+        }
       }
     } else if (typ === 'healOverTime') {
       const targets = skill.teamTarget === 'party' ? alive : [hero]
@@ -427,6 +454,7 @@ export function step(state: EngineState, config: WorldBossConfig): void {
     if (hero.hp <= 0) {
       if (now >= hero.deadUntil) {
         hero.hp = Number(hero.snapshot.stats.max_hp)
+        hero.shield = 0
         pushEvent(state, 'revive', `${hero.snapshot.name}复活`, { slot: hero.slot })
       } else {
         continue

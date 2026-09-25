@@ -1,7 +1,14 @@
 """Deterministic 100ms team simulation. Pure JSON in/out, no wall clock or client damage."""
 from copy import deepcopy
 
+from app.services.game_config import CONFIG
+
 TICK = 100
+
+
+def shield_cap_pct() -> float:
+    """护盾总量上限（占最大生命 %），与前端 battle.ts 同源读取 combat.json:equipEffects.shield。"""
+    return float(CONFIG.combat.get("equipEffects", {}).get("shield", {}).get("capPctOfMaxHp", 30))
 
 def random_unit(state):
     state['rng'] = (1664525 * state['rng'] + 1013904223) & 0xffffffff
@@ -29,7 +36,7 @@ def new_battle(dungeon, seats, mode, config, seed=20260922):
         state['heroes'].append({'slot':seat['slot'],'controllerId':seat['controllerId'],
             'snapshot':snap,'clone':bool(seat.get('registrationId')),'registeredClone':bool(seat.get('registrationId')),
             'hp':stats['max_hp'],'mp':stats['max_mp'],'shield':0.,'deadUntil':0,'weakUntil':0,
-            'cooldowns':{},'nextAttack':0,'gcdUntil':0,'buffs':[], 'dots':[], 'nextHeal':0,
+            'cooldowns':{},'lastCastAt':{},'nextAttack':0,'gcdUntil':0,'buffs':[], 'dots':[], 'nextHeal':0,
             'damage':0.,'healing':0.,'damageTaken':0.,'minHpRatio':1.,'dangerMs':0,'deaths':0,'target':0,'threat':0.,'trialPassed':False})
     state['hadClone']=any(h['clone'] for h in state['heroes'])
     enter_phase(state,dungeon,config)
@@ -73,7 +80,9 @@ def damage_hero(state,hero,amount,source):
 def heal_hero(state,source,target,amount,shield=False):
     if target['hp']<=0:return
     amount=max(0,amount)*multiplier(source,state)*state['rules'].get('healingMultiplier',1.0)
-    if shield:target['shield']=min(target['snapshot']['stats']['max_hp'],target['shield']+amount)
+    if shield:
+        cap = target['snapshot']['stats']['max_hp'] * shield_cap_pct() / 100
+        target['shield'] = min(cap, target['shield'] + amount)
     else:
         actual=min(amount,target['snapshot']['stats']['max_hp']-target['hp']);target['hp']+=actual;source['healing']+=actual
 
@@ -185,10 +194,10 @@ def auto_actions(state,hero):
             if alive:heal_hero(state,hero,min(alive,key=lambda h:h['hp']/h['snapshot']['stats']['max_hp']),amount)
         hero['nextHeal']=now+2000
     if now<hero['gcdUntil']:return
-    skills=sorted(snap['skills'],key=lambda s:s.get('priority',3))
+    skills=sorted(snap['skills'],key=lambda s:(s.get('priority',3),hero['lastCastAt'].get(s['id'],float('-inf')) if s.get('priority',3)==3 else 0.0,float(s.get('potency',0) or 0)))
     skill=next((s for s in skills if hero['cooldowns'].get(s['id'],0)<=now and s.get('mpCost',0)<=hero['mp']),None)
     if not skill:return
-    hero['mp']-=skill.get('mpCost',0);hero['gcdUntil']=now+1500;hero['cooldowns'][skill['id']]=now+round(skill['cd']*1000)
+    hero['mp']-=skill.get('mpCost',0);hero['gcdUntil']=now+1500;hero['cooldowns'][skill['id']]=now+round(skill['cd']*1000);hero['lastCastAt'][skill['id']]=now
     if skill.get('potency',0):deal_damage(state,hero,attack*skill['potency']/100*snap['skillMultiplier']*mult*(.9+random_unit(state)*.2))
     alive=[h for h in state['heroes'] if h['hp']>0]
     for effect in skill.get('effects',[]):

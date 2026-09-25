@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
+import HealthBar from '@/components/HealthBar.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import TreasureWheel from '@/components/TreasureWheel.vue'
 import type { TreasureReward } from '@/game/types'
@@ -341,11 +342,12 @@ const logTone: Record<string, string> = {
             <div>
               <div class="mb-1 flex justify-between text-[11px] text-ink-400">
                 <span>生命</span>
-                <span>{{ Math.max(0, Math.round(treasure.sim?.heroHp ?? 0)) }} / {{ Math.round(stats?.maxHp ?? 0) }}</span>
+                <span>
+                  {{ Math.max(0, Math.round(treasure.sim?.heroHp ?? 0)) }} / {{ Math.round(stats?.maxHp ?? 0) }}
+                  <span v-if="(treasure.sim?.shield ?? 0) > 0" class="text-emerald-300">（护盾 {{ Math.round(treasure.sim?.shield ?? 0) }}）</span>
+                </span>
               </div>
-              <div class="h-2.5 overflow-hidden rounded-full bg-ink-800">
-                <div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${treasure.sim?.heroHpPct ?? 0}%` }" />
-              </div>
+              <HealthBar :value="treasure.sim?.heroHp ?? 0" :max="stats?.maxHp ?? 0" :shield="treasure.sim?.shield ?? 0" fill-class="bg-emerald-500" />
             </div>
             <div>
               <div class="mb-1 flex justify-between text-[11px] text-ink-400">
@@ -372,11 +374,10 @@ const logTone: Record<string, string> = {
               <span class="font-mono">
                 {{ Math.max(0, Math.round(boss.hp)).toLocaleString() }} /
                 {{ Math.round(boss.maxHp).toLocaleString() }}
+                <span v-if="boss.shield > 0" class="text-emerald-300">（护盾 {{ Math.round(boss.shield).toLocaleString() }}）</span>
               </span>
             </div>
-            <div class="mt-1 h-3 overflow-hidden rounded-full bg-ink-800">
-              <div class="h-full rounded-full bg-rose-500 transition-all" :style="{ width: `${boss.hpPct}%` }" />
-            </div>
+            <HealthBar class="mt-1" :value="boss.hp" :max="boss.maxHp" :shield="boss.shield" height="h-3" fill-class="bg-rose-500" />
             <p v-if="boss.skillNames.length" class="mt-2 text-[10px] text-fuchsia-300">
               技能池：{{ boss.skillNames.join('、') }}
             </p>

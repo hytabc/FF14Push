@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import data from '@shared/schema'
 
 import BattleFloatLayer from '@/components/BattleFloatLayer.vue'
+import HealthBar from '@/components/HealthBar.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import JobFigure from '@/components/JobFigure.vue'
@@ -323,11 +324,12 @@ function dodgeInfo() {
           <div>
             <div class="mb-1 flex justify-between text-[11px] text-ink-400">
               <span>生命</span>
-              <span>{{ Math.max(0, Math.round(sim?.heroHp ?? 0)) }} / {{ Math.round(stats?.maxHp ?? 0) }}</span>
+              <span>
+                {{ Math.max(0, Math.round(sim?.heroHp ?? 0)) }} / {{ Math.round(stats?.maxHp ?? 0) }}
+                <span v-if="(sim?.shield ?? 0) > 0" class="text-emerald-300">（护盾 {{ Math.round(sim?.shield ?? 0) }}）</span>
+              </span>
             </div>
-            <div class="h-2.5 overflow-hidden rounded-full bg-ink-800">
-              <div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${sim?.heroHpPct ?? 0}%` }" />
-            </div>
+            <HealthBar :value="sim?.heroHp ?? 0" :max="stats?.maxHp ?? 0" :shield="sim?.shield ?? 0" fill-class="bg-emerald-500" />
           </div>
           <div>
             <div class="mb-1 flex justify-between text-[11px] text-ink-400">
@@ -375,9 +377,7 @@ function dodgeInfo() {
         </div>
         <p v-else class="mt-3 text-[11px] text-ink-400">怪物正在靠近…</p>
 
-        <div class="mt-3 h-3 overflow-hidden rounded-full bg-ink-800">
-          <div class="h-full rounded-full bg-rose-500 transition-all" :style="{ width: `${sim?.monsterHpPct ?? 0}%` }" />
-        </div>
+        <HealthBar class="mt-3" :value="sim?.monsterHp ?? 0" :max="sim?.monsterMaxHp ?? 0" :shield="sim?.monsterShield ?? 0" height="h-3" fill-class="bg-rose-500" />
 
         <div class="relative mt-4 h-28 overflow-hidden rounded-lg border border-ink-700 bg-ink-900/60">
           <JobFigure :job-id="hero?.jobId" :size="40" class="absolute bottom-1 left-2" />

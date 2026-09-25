@@ -21,6 +21,7 @@
     { "id": "risk", "name": "风险代价" },
     { "id": "special", "name": "特殊机制" },
     { "id": "charge", "name": "累计触发" },
+    { "id": "shield", "name": "护盾" },
     { "id": "economy", "name": "收益获取" }
   ],
   "terms": [
@@ -92,12 +93,12 @@
 
     { "id": "reflectOnHit", "name": "反震", "category": "onHitTaken", "type": "buff", "trigger": "触发", "stat": "reflectProcPct", "range": [5, 20], "slots": ["body", "legs", "feet"], "desc": "受到攻击时 {v}% 概率反弹该次伤害的 30%" },
     { "id": "vengeanceOnHit", "name": "复仇", "category": "onHitTaken", "type": "buff", "trigger": "触发", "stat": "vengeanceProcPct", "range": [5, 20], "slots": ["body", "legs", "feet", "bracelet", "earring"], "desc": "受到攻击时 {v}% 概率获得攻击 +15%，持续 6 秒" },
-    { "id": "aegisOnHit", "name": "庇护", "category": "onHitTaken", "type": "buff", "trigger": "触发", "stat": "aegisProcPct", "range": [5, 20], "slots": ["body", "legs", "feet", "bracelet"], "desc": "受到攻击时 {v}% 概率获得最大生命 8% 的护盾" },
+    { "id": "aegisOnHit", "name": "庇护", "category": "shield", "type": "buff", "trigger": "触发", "stat": "aegisProcPct", "range": [5, 20], "slots": ["body", "legs", "feet", "bracelet"], "desc": "受到攻击时 {v}% 概率获得最大生命 8% 的护盾" },
     { "id": "resolveOnHit", "name": "坚毅", "category": "onHitTaken", "type": "buff", "trigger": "触发", "stat": "resolveProcPct", "range": [3, 12], "slots": ["head", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "受到攻击时 {v}% 概率恢复 6% 最大魔力" },
 
     { "id": "guard", "name": "守护", "category": "defense", "type": "buff", "trigger": "常驻", "stat": "guardPct", "range": [3, 15], "slots": ["mainHand", "head", "body", "hands", "legs", "feet"], "desc": "受到伤害 -{v}%" },
     { "id": "block", "name": "格挡", "category": "defense", "type": "buff", "trigger": "触发", "stat": "blockProcPct", "range": [5, 20], "slots": ["mainHand", "body", "hands"], "desc": "{v}% 概率格挡，本次受到的伤害减半" },
-    { "id": "shieldBoost", "name": "护盾强化", "category": "defense", "type": "buff", "trigger": "常驻", "stat": "shieldBoostPct", "range": [5, 25], "slots": ["mainHand", "head", "body", "hands"], "desc": "护盾获得量 +{v}%" },
+    { "id": "shieldBoost", "name": "护盾强化", "category": "shield", "type": "buff", "trigger": "常驻", "stat": "shieldBoostPct", "range": [5, 25], "slots": ["mainHand", "head", "body", "hands"], "desc": "护盾获得量 +{v}%" },
 
     { "id": "lastStand", "name": "背水", "category": "conditional", "type": "buff", "trigger": "条件", "stat": "lowHpAttackPct", "range": [5, 25], "desc": "生命低于 50% 时攻击力 +{v}%" },
     { "id": "openingRush", "name": "先手", "category": "conditional", "type": "buff", "trigger": "条件", "stat": "openingDamagePct", "range": [5, 25], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "战斗开始 10 秒内造成的伤害 +{v}%" },
@@ -123,7 +124,9 @@
     { "id": "cheatDeath", "name": "不死", "category": "special", "type": "buff", "trigger": "触发", "stat": "cheatDeathPct", "range": [3, 10], "slots": ["body", "legs", "feet"], "desc": "受到致命伤害时 {v}% 概率免死并保留 1 点生命（每场战斗 1 次）" },
 
     { "id": "chargeBlast", "name": "蓄势", "category": "charge", "type": "buff", "trigger": "累计", "stat": "chargeBlastPct", "range": [5, 20], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "累计造成目标 100% 最大生命的伤害后触发一次爆发，造成攻击力 {v}% 的伤害" },
-    { "id": "chargeShield", "name": "受创蓄力", "category": "charge", "type": "buff", "trigger": "累计", "stat": "chargeShieldPct", "range": [5, 20], "slots": ["body", "legs", "feet", "bracelet"], "desc": "累计受到 30% 最大生命的伤害后获得最大生命 {v}% 的护盾" },
+    { "id": "chargeShield", "name": "受创蓄力", "category": "shield", "type": "buff", "trigger": "累计", "stat": "chargeShieldPct", "range": [5, 20], "slots": ["body", "legs", "feet", "bracelet"], "desc": "累计受到 30% 最大生命的伤害后获得最大生命 {v}% 的护盾" },
+    { "id": "magicShield", "name": "魔法盾", "category": "shield", "type": "buff", "trigger": "触发", "stat": "magicShieldProcPct", "range": [5, 20], "slots": ["head", "body", "legs", "feet", "necklace", "earring", "bracelet"], "desc": "释放技能时 {v}% 概率消耗最大魔力 10%，获得等量护盾" },
+    { "id": "lifestealShield", "name": "吸血盾", "category": "shield", "type": "buff", "trigger": "触发", "stat": "lifestealShieldPct", "range": [20, 60], "slots": ["mainHand", "body", "legs", "feet", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "吸血回复溢出生命上限的部分，按 {v}% 转化为护盾" },
     { "id": "chargeHeal", "name": "咏唱蓄能", "category": "charge", "type": "buff", "trigger": "累计", "stat": "chargeHealPct", "range": [5, 20], "slots": ["head", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "每累计释放 10 次技能恢复最大生命 {v}%" },
 
     { "id": "magicWeak", "name": "魔力枯竭", "category": "attribute", "type": "debuff", "trigger": "常驻", "stat": "magicAttackPct", "range": [-15, -3], "desc": "魔法攻击力 {v}%" },

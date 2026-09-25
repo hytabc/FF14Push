@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { api } from '@/api'
 import { http, toApiError } from '@/api/client'
 import BossFigure from '@/components/BossFigure.vue'
+import HealthBar from '@/components/HealthBar.vue'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import JobIcon from '@/components/JobIcon.vue'
@@ -126,6 +127,7 @@ const session = computed(() => {
       hp: hero.hp,
       mp: hero.mp,
       maxMp: hero.snapshot.stats.max_mp,
+      shield: hero.shield,
       deadUntil: hero.deadUntil,
       damage: Math.round(hero.damage),
       deaths: hero.deaths,
@@ -245,11 +247,6 @@ function durationText(seconds: number): string {
   if (hours) return `${hours} 小时 ${minutes} 分`
   if (minutes) return `${minutes} 分 ${total % 60} 秒`
   return `${total} 秒`
-}
-
-/** 英雄血量占比（0-100）。 */
-function hpPctOf(hero: { hp: number; maxHp: number }): number {
-  return hero.maxHp > 0 ? Math.max(0, Math.min(100, (hero.hp / hero.maxHp) * 100)) : 0
 }
 
 /** 该英雄本场输出占全队输出的比例（0-100）。 */
@@ -580,25 +577,26 @@ onUnmounted(() => {
                 </span>
               </div>
               <div class="relative pb-4">
-                <div
-                  class="relative h-6 overflow-hidden rounded-full bg-ink-950/80 ring-1 ring-ink-700"
+                <HealthBar
+                  class="relative"
+                  height="h-6"
+                  track-class="bg-ink-950/80 ring-1 ring-ink-700"
+                  fill-class="bg-gradient-to-r from-rose-700 via-rose-500 to-rose-400 shadow-lg shadow-rose-500/30 duration-500"
+                  :value="boss?.hp ?? 0"
+                  :max="boss?.maxHp ?? 0"
                   role="progressbar"
                   aria-label="全服共享血量"
                   :aria-valuemin="0"
                   :aria-valuemax="boss?.maxHp ?? 0"
                   :aria-valuenow="boss?.hp ?? 0"
                 >
-                  <div
-                    class="h-full rounded-full bg-gradient-to-r from-rose-700 via-rose-500 to-rose-400 shadow-lg shadow-rose-500/30 transition-all duration-500"
-                    :style="{ width: `${hpPct}%` }"
-                  />
                   <span
                     v-for="p in phaseMarks"
                     :key="p.id"
                     class="absolute inset-y-0 w-px bg-white/50"
                     :style="{ left: `${p.minHpRatio * 100}%` }"
                   />
-                </div>
+                </HealthBar>
                 <span
                   v-for="p in phaseMarks"
                   :key="`tick-${p.id}`"
@@ -780,13 +778,13 @@ onUnmounted(() => {
                   <span class="min-w-0 flex-1 truncate text-white">{{ h.name }}</span>
                   <span class="text-xs text-ink-400">Lv.{{ h.level }}</span>
                 </div>
-                <div class="h-2 overflow-hidden rounded-full bg-ink-800">
-                  <div
-                    class="h-full transition-all"
-                    :class="h.hp > 0 ? 'bg-emerald-500' : 'bg-ink-600'"
-                    :style="{ width: `${hpPctOf(h)}%` }"
-                  />
-                </div>
+                <HealthBar
+                  height="h-2"
+                  :value="h.hp"
+                  :max="h.maxHp"
+                  :shield="h.shield"
+                  :fill-class="h.hp > 0 ? 'bg-emerald-500' : 'bg-ink-600'"
+                />
                 <div class="flex justify-between text-xs text-ink-400">
                   <span>HP {{ formatNumber(Math.round(h.hp)) }}</span>
                   <span v-if="h.hp <= 0" class="text-rose-300">复活 {{ reviveIn(h.deadUntil, session.elapsedMs) }}s</span>

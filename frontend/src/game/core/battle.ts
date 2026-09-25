@@ -17,6 +17,7 @@ import {
   powerAttack,
   rollDamage,
   rollIncoming,
+  shieldCapPct,
   skillCooldown,
   skillDamageMultiplier,
   skillMpCost,
@@ -104,6 +105,8 @@ interface EnemyState {
   stats: MonsterStats
   hp: number
   maxHp: number
+  /** 敌方吸收护盾：英雄造成的伤害先扣此值（BOSS 技能 barrier 授予），上限见 combat.json:equipEffects.shield。 */
+  shield: number
   attackTimer: number
   enraged: boolean
   /** 副本 BOSS 共享技能冷却：归零后从技能池随机抽一个释放。 */
@@ -130,6 +133,7 @@ const EQUIP = ((data.combat as Record<string, any>).equipEffects ?? {}) as {
     reflect?: { damagePct: number }
     vengeance?: { attackBuffPct: number; durationSec: number }
     aegis?: { maxHpShieldPct: number; durationSec: number }
+    magicShield?: { mpCostPct: number; shieldPerMp: number }
     resolve?: { maxMpRestorePct: number }
   }
   conditional?: {
@@ -209,6 +213,10 @@ export class BattleSimulator {
   log: LogEntry[] = []
   floating: FloatingText[] = []
   cooldowns: Record<string, number> = {}
+  /** 每个技能最近一次释放的时刻（秒，单调递增）：用于同优先级技能轮转，避免空档期反复刷同一个技能。 */
+  lastCastAt: Record<string, number> = {}
+  /** 单调递增的战斗时钟（秒），仅用于 `lastCastAt` 排序，不参与结算。 */
+  private rotationClock = 0
   gcd = 0
   /** 彩蛋技能「睡觉」剩余停止攻击时间（秒）：>0 时不释放任何技能与普攻。 */
   sleepTimer = 0
@@ -357,6 +365,11 @@ export class BattleSimulator {
     return this.current?.maxHp ?? 0
   }
 
+  /** 当前目标护盾值（用于血条浅绿覆盖层）。 */
+  get monsterShield(): number {
+    return this.current?.shield ?? 0
+  }
+
   private get monsterAttackTimer(): number {
     return this.current?.attackTimer ?? 0
   }
@@ -418,6 +431,7 @@ export class BattleSimulator {
       hp: Math.max(0, enemy.hp),
       maxHp: enemy.maxHp,
       hpPct: enemy.maxHp > 0 ? Math.max(0, (enemy.hp / enemy.maxHp) * 100) : 0,
+      shield: Math.max(0, enemy.shield),
       enraged: enemy.enraged,
       isTarget: index === this.targetIndex,
       skillNames: (enemy.stats.skills ?? []).map((s) => s.name),
@@ -551,6 +565,7 @@ export class BattleSimulator {
   /** 推进 dt 秒。 */
   tick(dt: number): void {
     this.tickFloating(dt)
+    this.rotationClock += dt
     if (this.phase === 'idle' || this.phase === 'cleared') return
 
     this.gcd = Math.max(0, this.gcd - dt)
@@ -642,7 +657,7 @@ export class BattleSimulator {
       if (dot.tick <= 0) {
         dot.tick = 1
         const damage = Math.max(1, Math.floor(powerAttack(this.stats) * (dot.potency / 100)))
-        this.monsterHp -= damage
+        this.damageEnemy(damage)
         this.pushFloat(String(damage), 'monster', 'monster')
       }
     }
@@ -679,6 +694,7 @@ export class BattleSimulator {
       stats,
       hp: stats.hp,
       maxHp: stats.hp,
+      shield: 0,
       attackTimer: stats.attackInterval,
       enraged: false,
       skillTimer: this.bossSkillInterval(stats),
@@ -801,10 +817,24 @@ export class BattleSimulator {
     }
   }
 
+  /**
+   * 选技能：先按优先级（1 增益 > 2 高伤 > 3 普通）。
+   *
+   * 同一优先级内：
+   * - 普通技能（优先级 3，即填充技层级）按「最近最少使用」轮转——攻速 / 冷却缩减会把填充技
+   *   CD 压到 GCD 以下使其常驻，若不轮转就会「一直在用第一个技能」。
+   * - 增益 / 高伤层级按威力从低到高（先用得起、再放大招），沿用原有蓝耗节奏，避免大招连发把
+   *   蓝打空后退化成只能普攻。
+   */
   private pickSkill(pool: SkillLike[]): SkillLike {
     const sorted = [...pool].sort((a, b) => {
       if (a.priority !== b.priority) return a.priority - b.priority
-      return b.potency - a.potency
+      if (a.priority === 3) {
+        const aLast = this.lastCastAt[a.id] ?? Number.NEGATIVE_INFINITY
+        const bLast = this.lastCastAt[b.id] ?? Number.NEGATIVE_INFINITY
+        if (aLast !== bLast) return aLast - bLast
+      }
+      return a.potency - b.potency
     })
     return sorted[0] ?? ADVENTURER_SKILL
   }
@@ -841,6 +871,7 @@ export class BattleSimulator {
     // 攻速：缩短 GCD
     const speed = attackSpeedFactor(stats)
     this.cooldowns[skill.id] = skillCooldown(stats, skill.cd) * (this.penalty.cooldownMultiplier ?? 1)
+    this.lastCastAt[skill.id] = this.rotationClock
     this.gcd = (data.combat.gcdSeconds as number) / speed
     this.pendingSkillCasts[skill.id] = (this.pendingSkillCasts[skill.id] ?? 0) + 1
 
@@ -859,6 +890,9 @@ export class BattleSimulator {
     }
 
     this.resolveSkillBody(skill)
+
+    // 装备「魔法盾」：释放技能时按概率消耗魔力转化为护盾。
+    this.rollMagicShield()
 
     // 装备「双重施法」：概率额外释放一次（不再扣蓝 / 不重置 CD-GCD / 不再次判定，避免递归）。
     const doubleCast = Math.max(0, this.baseStats.termMods.doubleCastPct ?? 0)
@@ -928,7 +962,7 @@ export class BattleSimulator {
       return
     }
     const amount = this.capBossHit(roll.amount)
-    this.monsterHp -= amount
+    this.damageEnemy(amount)
     const mark = hitMark(roll.isCrit, roll.isDirectHit)
     this.pushFloat(
       `${amount}${mark}`,
@@ -958,7 +992,7 @@ export class BattleSimulator {
     if (this.chargeDamage < this.monsterMaxHp * (hpThreshold / 100)) return
     this.chargeDamage = 0
     const blast = Math.max(1, Math.floor(powerAttack(this.stats) * (bonus / 100)))
-    this.monsterHp -= blast
+    this.damageEnemy(blast)
     this.pushFloat(`${blast}`, 'monster', 'monster')
     this.pushLog(`装备触发「蓄势」，造成 ${blast} 伤害`, 'skill')
     if (this.monsterHp <= 0) this.killMonster()
@@ -1103,7 +1137,7 @@ export class BattleSimulator {
           this.buffs.push({ stat: 'healOverTime', value, remaining: duration, name: skill.name })
           break
         case 'shield':
-          this.shield += Math.floor(stats.maxHp * value * this.healMultiplier)
+          this.addShield(stats.maxHp * value * this.healMultiplier)
           break
         case 'mpRestore':
           this.heroMp = Math.min(stats.maxMp, this.heroMp + Math.floor(stats.maxMp * value * (this.penalty.resourceMultiplier ?? 1)))
@@ -1138,7 +1172,7 @@ export class BattleSimulator {
           } else {
             const mark = hitMark(roll.isCrit, roll.isDirectHit)
             const amount = this.capBossHit(roll.amount)
-            this.monsterHp -= amount
+            this.damageEnemy(amount)
             this.pushFloat(
               `${amount}${mark}`,
               'monster',
@@ -1239,6 +1273,69 @@ export class BattleSimulator {
     return 1 + (this.baseStats.termMods.shieldBoostPct ?? 0) / 100
   }
 
+  /** 英雄护盾总量上限（最大生命 %，来自 combat.json:equipEffects.shield）。 */
+  private get shieldCap(): number {
+    return Math.floor((this.stats.maxHp * shieldCapPct()) / 100)
+  }
+
+  /**
+   * 增加护盾并裁剪到上限（护盾不可无限叠加），返回实际增加量。
+   * 所有英雄护盾来源（技能 / 庇护 / 受创蓄力 / 魔法盾 / 吸血盾）都必须经此入口。
+   */
+  private addShield(amount: number): number {
+    const before = this.shield
+    this.shield = Math.min(this.shieldCap, this.shield + Math.max(0, Math.floor(amount)))
+    return this.shield - before
+  }
+
+  /**
+   * 吸血：按吸血量回复生命；若装备「吸血盾」，把溢出生命上限的部分按词条比例转化为护盾。
+   * 仅影响生存，不建模进后端 DPS。
+   */
+  private lifesteal(healAmount: number): void {
+    const stats = this.stats
+    const before = this.heroHp
+    this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.max(0, healAmount))
+    const restored = Math.max(0, this.heroHp - before)
+    const overflow = Math.max(0, healAmount - restored)
+    const convert = this.baseStats.termMods.lifestealShieldPct ?? 0
+    if (convert <= 0 || overflow <= 0) return
+    const gained = this.addShield(overflow * (convert / 100))
+    if (gained > 0) {
+      this.pushLog(`装备触发「吸血盾」，溢出 ${Math.floor(overflow)} 生命转化为 ${gained} 护盾`, 'skill')
+    }
+  }
+
+  /**
+   * 装备「魔法盾」：释放技能时按词条概率消耗魔力，转化为护盾（受 30% 上限约束）。
+   * 仅影响生存/资源，不建模进后端 DPS。
+   */
+  private rollMagicShield(): void {
+    const chance = Math.max(0, this.baseStats.termMods.magicShieldProcPct ?? 0)
+    const param = EQUIP.proc?.magicShield
+    if (chance <= 0 || !param || Math.random() * 100 >= chance) return
+    const maxMp = this.stats.maxMp
+    const cost = Math.min(this.heroMp, Math.floor((maxMp * Number(param.mpCostPct ?? 10)) / 100))
+    if (cost <= 0) return
+    this.heroMp -= cost
+    const gained = this.addShield(cost * Number(param.shieldPerMp ?? 1) * this.shieldMultiplier)
+    this.pushLog(`装备触发「魔法盾」，消耗 ${cost} 魔力获得 ${gained} 护盾`, 'skill')
+  }
+
+  /** 对当前目标造成伤害：先扣敌人护盾，再扣生命值。所有对敌伤害都必须经此入口。 */
+  private damageEnemy(amount: number): void {
+    const enemy = this.current
+    if (!enemy || amount <= 0) return
+    const absorbed = Math.min(enemy.shield, amount)
+    enemy.shield -= absorbed
+    enemy.hp = Math.max(0, enemy.hp - (amount - absorbed))
+  }
+
+  /** 敌人护盾上限（最大生命 %，与英雄同源）。 */
+  private enemyShieldCap(enemy: EnemyState): number {
+    return Math.floor((enemy.maxHp * shieldCapPct()) / 100)
+  }
+
   /**
    * 受击触发（受击类 / 防御类）：格挡减伤 + 反震 / 复仇 / 庇护 / 坚毅概率触发，
    * 并累计「受创蓄力」。返回结算后的伤害；不建模进后端 DPS（仅影响生存与资源）。
@@ -1257,7 +1354,7 @@ export class BattleSimulator {
     const reflectChance = Math.max(0, mods.reflectProcPct ?? 0)
     if (proc.reflect && this.monster && reflectChance > 0 && Math.random() * 100 < reflectChance) {
       const back = Math.max(1, Math.floor(out * (proc.reflect.damagePct / 100)))
-      this.monsterHp -= back
+      this.damageEnemy(back)
       this.pushLog(`装备触发「反震」，反弹 ${back} 点伤害`, 'skill')
       if (this.monsterHp <= 0) {
         this.killMonster()
@@ -1278,7 +1375,7 @@ export class BattleSimulator {
     // 庇护：概率获得护盾
     const aegisChance = Math.max(0, mods.aegisProcPct ?? 0)
     if (proc.aegis && aegisChance > 0 && Math.random() * 100 < aegisChance) {
-      this.shield += Math.floor(stats.maxHp * proc.aegis.maxHpShieldPct * this.shieldMultiplier)
+      this.addShield(stats.maxHp * proc.aegis.maxHpShieldPct * this.shieldMultiplier)
       this.pushLog('装备触发「庇护」，获得护盾', 'skill')
     }
     // 坚毅：概率恢复魔力
@@ -1293,7 +1390,7 @@ export class BattleSimulator {
     const shieldThreshold = EQUIP.charge?.chargeShield?.hpThresholdPct ?? 30
     if (chargeShield > 0 && stats.maxHp > 0 && this.chargeTaken >= stats.maxHp * (shieldThreshold / 100)) {
       this.chargeTaken = 0
-      this.shield += Math.floor(stats.maxHp * (chargeShield / 100) * this.shieldMultiplier)
+      this.addShield(stats.maxHp * (chargeShield / 100) * this.shieldMultiplier)
       this.pushLog('装备触发「受创蓄力」，获得护盾', 'skill')
     }
     return out
@@ -1328,7 +1425,7 @@ export class BattleSimulator {
 
     // 荆棘反弹
     const thorns = stats.termMods.thornsPct
-    if (thorns) this.monsterHp -= Math.max(1, Math.floor(damage * (thorns / 100)))
+    if (thorns) this.damageEnemy(Math.max(1, Math.floor(damage * (thorns / 100))))
 
     if (this.shield > 0) {
       const absorbed = Math.min(this.shield, damage)
@@ -1343,9 +1440,9 @@ export class BattleSimulator {
       this.logIncomingDamage(this.monster!.name, damage)
     }
 
-    // 吸血
+    // 吸血（含「吸血盾」：溢出生命上限的部分转化为护盾）
     if (stats.lifestealPct > 0) {
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(damage * (stats.lifestealPct / 100) * this.healMultiplier))
+      this.lifesteal(Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * this.healMultiplier))
     }
 
     if (this.monsterHp <= 0) {
@@ -1405,6 +1502,17 @@ export class BattleSimulator {
           enemy.selfBuffs.push({ stat: 'damageReduce', value: reduce, remaining: seconds })
           this.pushLog(
             `「${enemy.stats.name}」施放 ${skill.name}：受到伤害 −${Math.round(reduce * 100)}%（${seconds}s）`,
+            'danger',
+          )
+        }
+        break
+      }
+      case 'barrier': {
+        const pct = Number(skill.barrierHpPct ?? 0)
+        if (pct > 0) {
+          enemy.shield = Math.min(this.enemyShieldCap(enemy), Math.floor((enemy.maxHp * pct) / 100))
+          this.pushLog(
+            `「${enemy.stats.name}」施放 ${skill.name}：获得护盾 ${Math.round(enemy.shield)}`,
             'danger',
           )
         }
@@ -1493,7 +1601,7 @@ export class BattleSimulator {
       this.logIncomingDamage(enemy.stats.name, damage, skill.name)
     }
     if (stats.lifestealPct > 0) {
-      this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * this.healMultiplier))
+      this.lifesteal(Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * this.healMultiplier))
     }
     if (this.heroHp <= 0) { this.mechanismFailures.push(skill.id); this.heroDies() }
   }

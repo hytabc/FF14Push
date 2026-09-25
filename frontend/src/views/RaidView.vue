@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '@/api'
 import { toApiError } from '@/api/client'
 import InfoTip from '@/components/InfoTip.vue'
+import HealthBar from '@/components/HealthBar.vue'
 import JobFigure from '@/components/JobFigure.vue'
 import JobIcon from '@/components/JobIcon.vue'
 import Modal from '@/components/Modal.vue'
@@ -286,16 +287,15 @@ function rewardExhausted(raid: RaidListEntry): boolean {
                 </span>
               </span>
             </div>
-            <div class="mt-2 flex justify-between text-[11px] text-ink-400">
+            <div class="mb-1 flex justify-between text-[11px] text-ink-400">
               <span>生命</span>
               <span class="font-mono">
                 {{ Math.max(0, Math.round(boss.hp)).toLocaleString() }} /
                 {{ Math.round(boss.maxHp).toLocaleString() }}
+                <span v-if="boss.shield > 0" class="text-emerald-300">（护盾 {{ Math.round(boss.shield).toLocaleString() }}）</span>
               </span>
             </div>
-            <div class="mt-1 h-3 overflow-hidden rounded-full bg-ink-800">
-              <div class="h-full rounded-full bg-rose-500 transition-all" :style="{ width: `${boss.hpPct}%` }" />
-            </div>
+            <HealthBar class="mt-1" :value="boss.hp" :max="boss.maxHp" :shield="boss.shield" height="h-3" fill-class="bg-rose-500" />
             <p v-if="boss.skillNames.length" class="mt-2 text-[10px] text-fuchsia-300">
               技能池：{{ boss.skillNames.length }} 个随机释放（{{ boss.skillNames.slice(0, 3).join('、') }} 等）
               <InfoTip :title="skillInfo(boss.skillNames.length).title">
@@ -319,11 +319,12 @@ function rewardExhausted(raid: RaidListEntry): boolean {
             <div>
               <div class="mb-1 flex justify-between text-[11px] text-ink-400">
                 <span>生命</span>
-                <span>{{ Math.max(0, Math.round(sim?.heroHp ?? 0)) }} / {{ Math.round(stats?.maxHp ?? 0) }}</span>
+                <span>
+                  {{ Math.max(0, Math.round(sim?.heroHp ?? 0)) }} / {{ Math.round(stats?.maxHp ?? 0) }}
+                  <span v-if="(sim?.shield ?? 0) > 0" class="text-emerald-300">（护盾 {{ Math.round(sim?.shield ?? 0) }}）</span>
+                </span>
               </div>
-              <div class="h-2.5 overflow-hidden rounded-full bg-ink-800">
-                <div class="h-full rounded-full bg-emerald-500 transition-all" :style="{ width: `${sim?.heroHpPct ?? 0}%` }" />
-              </div>
+              <HealthBar :value="sim?.heroHp ?? 0" :max="stats?.maxHp ?? 0" :shield="sim?.shield ?? 0" fill-class="bg-emerald-500" />
             </div>
             <div>
               <div class="mb-1 flex justify-between text-[11px] text-ink-400">

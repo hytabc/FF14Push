@@ -115,7 +115,9 @@ def equip_dps_multiplier(stats: HeroStats, mob_kind: str) -> float:
     """装备词条扩展机制的期望增伤系数（条件 / 资源转换 / 累计触发 / 动态成长）。
 
     与前端 `battle.ts` 口径对应，为避免合法上报被击杀额度拒绝，估算偏保守偏增益。
-    生存 / 资源类机制（受击触发、格挡、护盾等）不在此处。
+    生存 / 资源类机制（受击触发、格挡、护盾等）不在此处：护盾类词条（庇护 / 护盾强化 /
+    受创蓄力 / 魔法盾 / 吸血盾）仅吸收伤害或消耗多余魔力，不提高期望 DPS，故不建模；
+    护盾总量上限见 `combat.json:equipEffects.shield.capPctOfMaxHp`（前端与引擎同源读取）。
     """
     mods = stats.term_mods
     equip = CONFIG.combat.get("equipEffects") or {}
