@@ -50,10 +50,12 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 
 | 路径 | 职责 |
 | --- | --- |
-| `capacitor.config.ts` | Android 外壳配置（`server.url` 指向的线上地址、状态栏样式）；换地址改这里，或临时用 `EORZEA_APP_URL` 覆盖 |
+| `capacitor.config.ts` | Android / iOS 外壳配置（`server.url` 指向的线上地址、状态栏样式）；换地址改这里，或临时用 `EORZEA_APP_URL` 覆盖 |
 | `android/` | Capacitor 生成的 Android 工程；发布签名 `keystore/` 与 `keystore.properties` 为本机私有、不入库 |
-| `assets/` | App 图标源图（`scripts/gen-app-icon.mjs` 产出、`@capacitor/assets` 的输入）；`npm run app:icons` 据此重新展开到 `android/app/src/main/res/` |
+| `ios/` | Capacitor 生成的 iOS 工程（Xcode 工程 + SPM）；签名材料 `signing.properties` / `*.mobileprovision` / `*.p12` 为本机私有、不入库 |
+| `assets/` | App 图标源图（`scripts/gen-app-icon.mjs` 产出、`@capacitor/assets` 的输入）；`npm run app:icons` 据此重新展开到 `android/app/src/main/res/` 与 `ios/App/App/Assets.xcassets/` |
 | `scripts/build-apk.sh` | 构建 Android 安装包；自动探测 JDK / Android SDK 并校验 JDK 是否可用于 Android 构建 |
+| `scripts/build-ios.sh` | 构建 iOS 安装包（`xcodebuild archive` → 导出 `.ipa`）；自检 Xcode / 团队 ID，导出方式由 `IOS_EXPORT_METHOD` 决定 |
 | `scripts/gen-app-icon.mjs` | App 图标 / 启动图生成器（1024² 图标、2732² 启动图，「母水晶」主题） |
 | `frontend/src/views/` | 游戏页面；`RosterView.vue`、`CoopView.vue`、`ArenaView.vue` 为联机相关入口；`GameTestView.vue` 为「游戏测试」页，用 iframe 内嵌独立单文件小游戏 |
 | `frontend/public/games/` | 独立单文件小游戏静态资源（`ff14-test-game.html`），由 Vite 直接托管，与主游戏进度无关 |
@@ -139,7 +141,7 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
   - 批量卡片列表（抽箱结果、图鉴、选择弹窗）统一用 CSS `gallery-cell`（`content-visibility: auto`）跳过屏外元素的布局/绘制，并配合**分批挂载**（`ChestView` 的 `rampMount`）或**渐进渲染**（`composables/useVisibleLimit.ts` 的「显示更多」）避免单帧创建上百个节点。抽箱揭晓弹窗用 `Modal` 的 `:blur="false"`（`card-flat`）避免大量动画子元素反复触发 `backdrop-filter` 重算。
   - 卡片内的弹层（`InfoTip` / `TermBadges`）一律 `Teleport to="body"`：`content-visibility` 会引入 `contain: paint`，若弹层留在卡内会被错误定位（给卡片加 `gallery-cell` 前先确认这一点）。
 
-- **Android 客户端（Capacitor 外壳）**：只做「把网页装进 App」，不改动任何游戏逻辑，但下面几条是踩过坑的约束。
+- **移动端外壳（Capacitor：Android / iOS）**：只做「把网页装进 App」，不改动任何游戏逻辑，但下面几条是踩过坑的约束。
   - **是 WebView 直接加载线上地址（`capacitor.config.ts:server.url`），不是把 `frontend/dist` 打包进去当站点。** 因此 WebView 的源就是 nginx 的源：登录 Cookie、httpOnly 设备 Cookie、WebSocket、localStorage 与浏览器完全一致，服务端发版也不需要重新发包。**不要**改成「打包前端产物 + 把 `VITE_API_BASE` 指向绝对地址」——那会引入跨域、设备 Cookie 失效（`X-Device-Id` 之外的关联判定会掉）以及 WebSocket 源校验等一串问题。
   - **构建需要完整的 JDK 21–24（必须带 `jlink`）**。Android Studio / IDEA / PyCharm 自带的 JBR 都不行：JBR 25 会让 Gradle 8.14.3 自带的 Groovy 3 报 `Unsupported class file major version 69`；JBR 本身是精简运行时、没有 `jlink`，AGP 的 `JdkImageTransform`（转换 `core-for-system-modules.jar`）会失败。`scripts/build-apk.sh` 已按「版本合适且带 jlink」挑选，报错信息也指向 `brew install openjdk@21`。用 Android Studio 直接构建要把 *Settings → Build Tools → Gradle → Gradle JDK* 指到同一份 JDK。
   - **`android/build.gradle` 里的阿里云镜像必须保留**。`capacitor-android` / `capacitor-cordova-android-plugins` 两个子工程自带 `buildscript` 块，只声明了 `google()` + `mavenCentral()`；国内直连 `repo.maven.apache.org` 会 403，而 Gradle 遇到非 404 响应是直接判失败、不会继续尝试下一个仓库。根工程的 `allprojects` 只覆盖「工程依赖」，覆盖不到子工程的 buildscript 类路径，所以那里额外用了 `gradle.beforeProject` 注入镜像 —— 删掉任何一处都会让构建在依赖解析阶段挂掉。
@@ -147,6 +149,10 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
   - **前端 `style.css` 里 `[data-app-header]` / `[data-app-footer]` 的 `env(safe-area-inset-*)` 内边距要留着**：targetSdk 36 强制 edge-to-edge，状态栏会压在页面上；桌面浏览器该值为 0，不影响网页版。**全面屏的额外适配走设备级开关**：`frontend/src/utils/safeArea.ts:syncSafeAreaClasses()` 用「高度 = `env(safe-area-inset-*)` 的隐藏探针」量测，>0 时给 `<html>` 加 `safe-top` / `safe-bottom`，由 `style.css` 命中 `html.safe-top [data-app-header]`（改**实色**页头，避免半透明页头透出 body 顶部径向渐变、造成状态栏区域与导航条色差）与 `html.safe-bottom [data-app-footer]`。桌面端没有这两个 class，外观与改动前逐位一致；旋转 / 尺寸变化时重算。
   - **图标只能改 `scripts/gen-app-icon.mjs` 后重跑 `npm run app:icons`**（它写 `assets/`，再由 `@capacitor/assets` 展开到 `android/app/src/main/res/`）；直接改 `res/` 里的 PNG 会在下次展开时被覆盖。生成器用「到多边形的有符号距离」做解析式抗锯齿，辉光函数**内部不加亮**（`glowPolygon` 内部距离恒为 0，用 `max(sd,0)` 会得到满强度叠加、把水晶切面冲淡）；金色光环描边在 1024 网格下不能低于约 20，否则缩到 mdpi(48px) 会被抹掉。
   - 发布签名 `android/keystore/` 与 `android/keystore.properties` 是本机私有的，**不要提交**；密钥库是 PKCS12，`keyPassword` 必须与 `storePassword` 相同（Android 会忽略单独的 keypass）。缺失时构建回退 debug 签名。
+  - **iOS 工程由 `npx cap add ios` 生成，打包走 `scripts/build-ios.sh`**（`npm run app:ios`）。与 Android 最大的不同是 **iOS 必须有 Apple 签名**：脚本先自检 `xcode-select -p` 是否指向真正的 Xcode（只有 Command Line Tools 时直接报错退出），团队 ID 取 `IOS_TEAM_ID` 或 `ios/signing.properties` 的 `teamId=`，导出方式取 `IOS_EXPORT_METHOD`（`development` / `ad-hoc` / `app-store-connect` / `enterprise`，默认 development）。`ExportOptions.plist` 在构建时生成到 `build/`，**不要把团队 ID 提交进仓库**。
+  - **iOS 的版本号与 Android 同源、由脚本注入**：`MARKETING_VERSION` = 根 `package.json` 的版本号，`CURRENT_PROJECT_VERSION` = `major*10000 + minor*100 + patch`；`scripts/build-ios.sh` 通过 `xcodebuild MARKETING_VERSION=... CURRENT_PROJECT_VERSION=...` 传入。**不要在 Xcode 里手改这两个值**，否则会与 Android 端漂移。iOS 走 Swift Package Manager（无 CocoaPods），依赖由 `cap sync ios` 写进 `ios/App/CapApp-SPM/Package.swift`。
+  - **图标 / 启动图两端一起展开**：`npm run app:icons` 会 `capacitor-assets generate --android --ios`，iOS 侧写到 `ios/App/App/Assets.xcassets/`。只改了 `assets/` 却没重跑时，iOS 会继续用 Capacitor 默认图标。
+  - **`server.url` 壳应用在 App Store 可能被判「最低功能性」**：功能上可用（与 Android 同一套机制），但上架审核有风险，需自行评估；内部分发（ad-hoc / 企业）不受此影响。
 
 ## 本地开发
 

@@ -18,7 +18,7 @@
 | 后端 | Python 3.11+ / FastAPI + SQLAlchemy 2.0 (async) + Alembic |
 | 数据库 | 本地开发 SQLite；服务器部署 PostgreSQL 16 |
 | 部署 | 本地一键脚本 `scripts/dev.sh`；服务器 `docker compose`（nginx + API + PG） |
-| 移动端 | Capacitor 8 外壳（WebView 直接加载线上地址），仅 Android；见「Android 客户端」 |
+| 移动端 | Capacitor 8 外壳（WebView 直接加载线上地址），支持 Android / iOS；见「Android 客户端」「iOS 客户端」 |
 | 共享层 | `shared/` 单一事实来源：配置 JSON + 双端加载器 |
 
 ---
@@ -32,12 +32,14 @@ FF14Push/
 ├── .env.example                部署环境变量模板
 ├── .env.local.example          本地开发环境变量模板
 ├── .npmrc                      npm 国内镜像源（npmmirror）
-├── capacitor.config.ts         Android 外壳配置（加载哪个地址、状态栏样式等）
+├── capacitor.config.ts         Capacitor 外壳配置（加载哪个地址、状态栏样式等）
 ├── scripts/dev.sh              ★ 本地一键启动脚本（无需 Docker）
 ├── scripts/build-apk.sh        ★ 构建 Android 安装包（自动探测 JDK / SDK）
+├── scripts/build-ios.sh        ★ 构建 iOS 安装包（xcodebuild archive → 导出 .ipa）
 ├── scripts/gen-app-icon.mjs    App 图标 / 启动图生成器
 ├── assets/                     App 图标源图（由上面脚本生成，@capacitor/assets 的输入）
 ├── android/                    Capacitor 生成的 Android 工程（发布签名不入库）
+├── ios/                        Capacitor 生成的 iOS 工程（签名材料不入库）
 ├── shared/                     ★ 前后端共享配置层（唯一事实来源）
 │   ├── data/*.json           品阶/栏位/职业/底材/词条/怪物/BOSS/地区/副本/箱子/合成/经济/资质/指引
 │   └── schema/
@@ -531,9 +533,58 @@ JBR 25 会让 Gradle 自带的 Groovy 3 报 `Unsupported class file major versio
 **安全区**：Android 15+ 强制 edge-to-edge，状态栏会压在页面之上，故前端 `style.css` 用
 `[data-app-header]` / `[data-app-footer]` 的 `env(safe-area-inset-*)` 让出上下边距
 （桌面浏览器该值恒为 0）；Capacitor 会把真实状态栏 / 手势条高度注入给 WebView。
+`utils/safeArea.ts` 还会在探测到安全区时给 `<html>` 加 `safe-top` / `safe-bottom`，把页头改成
+实色，避免半透明页头透出 body 顶部渐变、导致状态栏区域与导航条出现色差（桌面端不加这两个 class，
+外观不变）。同一条机制在 iOS 上同样生效。
 
 **已知限制**：客户端只是 WebView 外壳，本身不缓存游戏本体，断网时进不去；页面内的站外链接
 （如底部备案号）会在同一个 WebView 中打开，用系统返回键退回。
+
+---
+
+## iOS 客户端（可选）
+
+同一个 Capacitor 外壳也能打成 iOS 包：工程在 `ios/`，配置与 Android 共用 `capacitor.config.ts`。
+
+```bash
+npm run app:icons     # 生成图标源图 → 展开成 iOS 图标 / 启动图资源
+npm run app:ios       # 构建前端产物 → cap sync → xcodebuild archive → 导出 .ipa
+npm run app:open:ios  # 用 Xcode 打开 ios/App/App.xcodeproj
+npm run app:sync      # 只做「构建前端 + 同步到各平台」，不打安装包
+```
+
+产物为 `build/ios/ipa/App.ipa`（`build/` 不入库）。
+
+**前置条件（缺一不可）**——iOS 的安装包必须由 Apple 签名：
+
+1. **完整安装的 Xcode**（只装了 Command Line Tools 时脚本会直接提示并退出）；
+2. Xcode 里登录 Apple ID（*Settings → Accounts*）。**付费** Apple Developer Program 才能出
+   App Store / TestFlight、ad-hoc、企业包；免费 Apple ID 只能出 7 天有效的开发包，且必须连真机安装；
+3. 团队 ID：`IOS_TEAM_ID=XXXXXXXXXX npm run app:ios`，或写一行 `teamId=XXXXXXXXXX` 到
+   `ios/signing.properties`（本机私有，不入库）。
+
+**导出方式**由 `IOS_EXPORT_METHOD` 决定（默认 `development`）：
+
+| 取值 | 用途 | 额外要求 |
+| --- | --- | --- |
+| `development` | 真机调试 | 设备已连接 / 已登记 |
+| `ad-hoc` | 内部分发 | 目标设备 UDID 已写进描述文件 |
+| `app-store-connect` | App Store / TestFlight | 已在 App Store Connect 建好 App |
+| `enterprise` | 企业内部分发 | 企业账号 + 企业证书 |
+
+```bash
+IOS_TEAM_ID=XXXXXXXXXX IOS_EXPORT_METHOD=ad-hoc npm run app:ios
+```
+
+**版本号**与 Android 同源：`MARKETING_VERSION` 取根 `package.json` 的版本号，
+`CURRENT_PROJECT_VERSION` 取 `major*10000 + minor*100 + patch`，由脚本在 `xcodebuild` 时注入，
+不要在 Xcode 里手改，避免两端口径漂移。
+
+**签名材料**：`ios/signing.properties`、`*.mobileprovision`、`*.p12` 均已加入 `.gitignore`（本机私有）；
+`ios/` 工程本身照常入库，与 `android/` 一致。
+
+**已知限制**：与 Android 相同——外壳不缓存游戏本体，断网进不去。另外，用 `server.url` 直接加载线上站点的
+壳应用在 App Store 审核时可能被按「最低功能性」质疑，上架前需自行评估。
 
 ---
 

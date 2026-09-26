@@ -22,6 +22,11 @@ build/
 .vscode/
 .DS_Store
 
+# iOS 签名材料（本机私有，同 android/keystore；ios/ 工程本身照常入库）
+ios/signing.properties
+*.mobileprovision
+*.p12
+
 # 测试与覆盖率
 coverage/
 .pytest_cache/
