@@ -450,6 +450,8 @@ export interface StatBreakdown {
   growthCoef: number
   /** 装备三维入核心属性的折算率（已含职业匹配加成）。 */
   biasRates: Record<string, number>
+  /** 英雄型专属加成（combat.json:biasBonus）：crit/dh/det 为乘算、attackSpeedPct 平加、coreAttrPct 为三维总量乘算。 */
+  biasBonus?: Record<string, number>
   /** 职业主属性匹配时装备主属性的额外加成（%）。 */
   jobMatchBonusPct: number
   /** 三维：英雄自身 / 装备折算后 / 合计。 */

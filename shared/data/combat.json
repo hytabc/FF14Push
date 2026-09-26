@@ -50,16 +50,23 @@
       "scaleCoef": 1.0
     }
   ],
-  "$commentPrimaryLink": "主属性与三属性的联动加成。来源：PRD 4.1",
-  "primaryLink": {
+  "$commentBiasBonus": "英雄型主属性特殊加成（取代原 primaryLink）。力量型强化暴击值、敏捷型强化直击值与攻速、智力型强化信念值；均衡型同时小幅强化三属性并额外提高三维总量（coreAttrPct，按百分比乘到力量/敏捷/智力总量上）。均衡型另在 stats.py 中纳入职业匹配加成。",
+  "biasBonus": {
     "str": {
-      "crit": 0.1
+      "crit": 0.12
     },
     "dex": {
-      "dh": 0.1
+      "dh": 0.12,
+      "attackSpeedPct": 6
     },
     "int": {
-      "det": 0.1
+      "det": 0.12
+    },
+    "balanced": {
+      "crit": 0.06,
+      "dh": 0.06,
+      "det": 0.06,
+      "coreAttrPct": 8
     }
   },
   "$commentHit": "命中率不足时可能 Miss（与直击无关）。来源：PRD 2.1",

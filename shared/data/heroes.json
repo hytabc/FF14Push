@@ -137,13 +137,13 @@
       }
     }
   },
-  "$commentAttrGain": "装备三维入核心属性时，主属性 100%、非主属性 50%；均衡型三维各 0.667（使总量与专精型持平）。来源：PRD 4.2 + 平衡取舍",
+  "$commentAttrGain": "装备三维入核心属性：力量/敏捷/智力全部 100% 生效，不再按英雄偏置折算（避免「主属性被削到 50%」）。英雄型的差异改由 combat.json:biasBonus 的专属加成体现。",
   "attrGainRate": {
     "main": 1.0,
-    "off": 0.5,
-    "balancedAll": 0.667
+    "off": 1.0,
+    "balancedAll": 1.0
   },
-  "$commentJobMatch": "英雄主属性与职业推荐主属性一致时的加成。来源：PRD 5.2",
+  "$commentJobMatch": "英雄主属性与职业推荐主属性一致时的加成；均衡型视为与任意职业匹配（bias=balanced 亦享受）。来源：PRD 5.2 + 均衡型补强",
   "jobMatchBonus": {
     "skillDamagePct": 0.1,
     "mpCostPct": -0.1,

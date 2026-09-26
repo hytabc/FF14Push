@@ -12,7 +12,7 @@ from app.models import Item, ItemTag
 from app.schemas.game import SellRequest, SetItemTagsRequest, UnequipRequest
 from app.services.game_config import CONFIG
 from app.services.serialization import item_to_dict
-from app.services.slots_util import SLOT_BY_ID, accepts
+from app.services.slots_util import SLOT_BY_ID, accepts, role_name, role_of_base
 from app.services.stats import compute_stats
 from app.services.valuation import sell_price, sell_price_range
 
@@ -26,6 +26,43 @@ async def _owned_item(db: DbSession, user_id: int, item_id: int) -> Item:
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
     return item
+
+
+async def _hero_role(db: DbSession, user_id: int, hero_id: int) -> str | None:
+    """英雄当前职能：由其已装备的主手武器决定（无武器 → None，不限制穿戴）。"""
+    weapon = await db.scalar(
+        select(Item).where(
+            Item.user_id == user_id, Item.equipped_hero_id == hero_id, Item.equipped_slot == "mainHand"
+        )
+    )
+    base = CONFIG.base_item_by_id.get(weapon.base_id) if weapon is not None else None
+    return role_of_base(base) if base is not None else None
+
+
+async def _unequip_incompatible(
+    db: DbSession, user_id: int, hero_id: int, role: str | None, exclude_id: int | None = None
+) -> list[dict]:
+    """换武器后自动卸下与该武器职能不符的防具 / 饰品（基础型无词缀装备不受限）。"""
+    if not role:
+        return []
+    worn = (
+        await db.execute(
+            select(Item).where(Item.user_id == user_id, Item.equipped_hero_id == hero_id)
+        )
+    ).scalars().all()
+    out: list[dict] = []
+    for item in worn:
+        if item.equipped_slot in (None, "mainHand") or item.id == exclude_id:
+            continue
+        base = CONFIG.base_item_by_id.get(item.base_id)
+        item_role = role_of_base(base) if base is not None else None
+        if item_role and item_role != role:
+            item.equipped_slot = None
+            item.equipped_hero_id = None
+            out.append({"id": item.id, "name": item.name})
+    if out:
+        await db.flush()
+    return out
 
 
 @router.post("/equip")
@@ -45,6 +82,19 @@ async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHe
     if not accepts(slot, base):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该装备不能放入此栏位")
 
+    item_role = role_of_base(base)
+    if slot == "mainHand":
+        # 换武器：以新武器职能为准，自动卸下不符职能的防具 / 饰品（卸下永远允许）。
+        unequipped = await _unequip_incompatible(db, user.id, hero.id, item_role, exclude_id=item.id)
+    else:
+        hero_role = await _hero_role(db, user.id, hero.id)
+        if hero_role and item_role and item_role != hero_role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"该装备为「{role_name(item_role)}」专用，与英雄当前职能不符",
+            )
+        unequipped = []
+
     current = (
         await db.execute(
             select(Item).where(Item.user_id == user.id, Item.equipped_slot == slot, Item.equipped_hero_id == hero.id)
@@ -63,7 +113,11 @@ async def equip(payload: dict, db: DbSession, user: CurrentUser, hero: CurrentHe
     await db.commit()
 
     stats = compute_stats(hero, items, sockets)
-    return {"item": item_to_dict(item, sell_price_range(item)), "stats": stats.to_dict()}
+    return {
+        "item": item_to_dict(item, sell_price_range(item)),
+        "stats": stats.to_dict(),
+        "unequipped": unequipped,
+    }
 
 
 @router.post("/unequip")

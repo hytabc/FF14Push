@@ -34,6 +34,9 @@ class BaseItem:
     weapon_type: str | None = None
     job_id: str | None = None
     variant_id: str = ""
+    # 职能词缀对应的战斗职能（tank / healer / melee / physicalRanged / magicalRanged）；
+    # 基础型（无词缀）为 None。武器另有 job_id 可精确取职能。
+    role: str | None = None
     # 世界BOSS 专属系列（绝境龙神）：并入 base_item_by_id 供属性/序列化/图鉴使用，
     # 但不并入 base_items，故抽箱/合成/生产的候选池天然不含它。
     exclusive: bool = False
@@ -155,6 +158,7 @@ def _expand_base_items(
                         sub_attr_pool=_variant_pool(v, base_pool),
                         sub_attr_scale=float(t.get("subAttrScale", 1.0)) * float(v.get("subAttrScale", 1.0)),
                         variant_id=v.get("id", ""),
+                        role=v.get("role"),
                     )
                 )
 
@@ -181,6 +185,7 @@ def _expand_base_items(
                         sub_attr_pool=_variant_pool(v, base_pool),
                         sub_attr_scale=float(t.get("subAttrScale", 1.0)) * float(v.get("subAttrScale", 1.0)),
                         variant_id=v.get("id", ""),
+                        role=v.get("role"),
                     )
                 )
 
@@ -203,6 +208,7 @@ def _expand_base_items(
                         sub_attr_pool=_variant_pool(v, base_pool),
                         sub_attr_scale=float(t.get("subAttrScale", 1.0)) * float(v.get("subAttrScale", 1.0)),
                         variant_id=v.get("id", ""),
+                        role=v.get("role"),
                     )
                 )
 

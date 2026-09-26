@@ -1,7 +1,7 @@
 {
   "name": "eorzea-idle-chronicle",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "艾欧泽亚放置录 — 挂机放置类网页游戏（Vue3 + FastAPI）",
   "workspaces": [
     "frontend"

@@ -225,7 +225,7 @@ const powerTip = computed(() => statExplain('power', statCtx.value))
             🎁 彩蛋英雄 · {{ eggDesc }}
           </p>
           <p class="mt-2 text-[11px] text-ink-500">
-            英雄主属性对应装备三维收益 100%，非主属性 50%；职业推荐主属性为
+            装备的力量 / 敏捷 / 智力三维均 100% 生效；不同英雄型提供专属加成（力量型→暴击、敏捷型→直击·攻速、智力型→信念、均衡型→三维总量）。职业推荐主属性为
             <b class="text-ink-300">{{ recommendAttr ? attrName(recommendAttr) : '无（冒险者）' }}</b>。
           </p>
         </div>

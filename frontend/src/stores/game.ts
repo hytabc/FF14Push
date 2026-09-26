@@ -582,7 +582,10 @@ export const useGameStore = defineStore('game', () => {
 
   async function equip(itemId: number, slot: SlotId) {
     try {
-      await api.equip(itemId, slot)
+      const res = await api.equip(itemId, slot)
+      if (res.unequipped?.length) {
+        toast.push(`换武器已自动卸下 ${res.unequipped.length} 件不符职能的装备`, 'info')
+      }
       await refreshAfterGearChange()
     } catch (e) {
       pushError(e)

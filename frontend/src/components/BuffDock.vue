@@ -3,14 +3,17 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
 import type { ActiveConsumable } from '@/game/types'
+import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { consumableBonus } from '@/utils/consumables'
 
 /**
  * 食物 / 秘药 BUFF 悬浮窗：全站常驻，可拖动、可最小化，位置与折叠状态记在 localStorage。
  * 剩余时长按服务端绝对到期时间 `expiresAt` 本地每秒重算，归零后自动刷新状态（后端顺带清理过期行）。
+ * 每行提供「续期」按钮：消耗背包中同种物品，在同槽位上叠加一份时长（需持有该物品）。
  */
 const game = useGameStore()
+const dohdol = useDohDolStore()
 
 const POS_KEY = 'eorzea.buffdock.pos'
 const COLLAPSED_KEY = 'eorzea.buffdock.collapsed'
@@ -60,6 +63,27 @@ function mmss(seconds: number): string {
 
 function progressPct(buff: DockBuff): number {
   return Math.round(Math.min(1, buff.remaining / Math.max(1, buff.total)) * 100)
+}
+
+// ---------- 续期 ----------
+
+/** 各消耗品的持有数量（用于判断能否续期）。 */
+const owned = computed<Map<string, number>>(
+  () => new Map((game.state?.dohdol?.consumables ?? []).map((c) => [c.itemId, c.count])),
+)
+const renewing = ref(false)
+
+/** 消耗 1 个同种物品为对应槽位续期（同槽位叠加时长）；未持有则按钮置灰。 */
+async function renew(itemId: string) {
+  if (renewing.value || (owned.value.get(itemId) ?? 0) <= 0) return
+  renewing.value = true
+  try {
+    await dohdol.useConsumable(itemId)
+  } catch {
+    /* 服务端会在持有不足时返回 400；这里静默，按钮状态随状态刷新恢复。 */
+  } finally {
+    renewing.value = false
+  }
 }
 
 // ---------- 位置与折叠 ----------
@@ -199,8 +223,23 @@ watch(
             <span class="min-w-0 flex-1 truncate text-ink-100">{{ b.name }}</span>
             <span class="shrink-0 font-mono text-emerald-300">{{ mmss(b.remaining) }}</span>
           </div>
-          <div class="mt-1 h-1 overflow-hidden rounded bg-ink-800">
-            <div class="h-full rounded bg-emerald-500/70" :style="{ width: `${progressPct(b)}%` }"></div>
+          <div class="mt-1 flex items-center gap-1.5">
+            <div class="h-1 min-w-0 flex-1 overflow-hidden rounded bg-ink-800">
+              <div class="h-full rounded bg-emerald-500/70" :style="{ width: `${progressPct(b)}%` }"></div>
+            </div>
+            <button
+              class="shrink-0 rounded bg-emerald-600/80 px-1.5 py-0.5 text-[10px] leading-none text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="renewing || (owned.get(b.itemId) ?? 0) <= 0"
+              :title="
+                (owned.get(b.itemId) ?? 0) > 0
+                  ? `续期：消耗 1 个「${b.name}」叠加一份时长（持有 ${owned.get(b.itemId)}）`
+                  : '背包中没有该物品，无法续期'
+              "
+              @pointerdown.stop
+              @click.stop="renew(b.itemId)"
+            >
+              续期 ×{{ owned.get(b.itemId) ?? 0 }}
+            </button>
           </div>
         </div>
       </div>

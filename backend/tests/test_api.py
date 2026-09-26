@@ -906,6 +906,45 @@ class TestEconomy:
         resp = await auth_client.post(f"{API}/inventory/equip", json={"itemId": item["id"], "slot": "head"})
         assert resp.status_code == 400
 
+    async def test_role_restricted_gear(self, auth_client, session_factory) -> None:
+        """职能限制：防具/饰品需与当前武器职能一致；换武器自动卸下不符装备。"""
+        me = (await auth_client.get(f"{API}/auth/me")).json()
+        tank_weapon = next(b for b in CONFIG.base_items if b.slot == "mainHand" and b.job_id == "PLD")
+        healer_weapon = next(b for b in CONFIG.base_items if b.slot == "mainHand" and b.job_id == "WHM")
+        tank_armor = next(b for b in CONFIG.base_items if b.slot == "head" and b.role == "tank")
+        healer_armor = next(b for b in CONFIG.base_items if b.slot == "head" and b.role == "healer")
+        await _seed_items(session_factory, me["id"], 1, category="weapon", base_id=tank_weapon.id, slot="mainHand")
+        await _seed_items(session_factory, me["id"], 1, category="weapon", base_id=healer_weapon.id, slot="mainHand")
+        await _seed_items(session_factory, me["id"], 1, category="armor", base_id=tank_armor.id, slot="head")
+        await _seed_items(session_factory, me["id"], 1, category="armor", base_id=healer_armor.id, slot="head")
+
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        by_base: dict[str, dict] = {it["baseId"]: it for it in state["items"]}
+
+        # 先装备坦克武器 → 英雄职能 = 坦克
+        resp = await auth_client.post(
+            f"{API}/inventory/equip", json={"itemId": by_base[tank_weapon.id]["id"], "slot": "mainHand"}
+        )
+        assert resp.status_code == 200, resp.text
+        # 坦克防具可穿
+        resp = await auth_client.post(
+            f"{API}/inventory/equip", json={"itemId": by_base[tank_armor.id]["id"], "slot": "head"}
+        )
+        assert resp.status_code == 200, resp.text
+        # 治疗防具被拒（职能不符）
+        resp = await auth_client.post(
+            f"{API}/inventory/equip", json={"itemId": by_base[healer_armor.id]["id"], "slot": "head"}
+        )
+        assert resp.status_code == 400 and "职能" in resp.json()["detail"], resp.text
+        # 换成治疗武器 → 自动卸下不符职能的坦克防具
+        resp = await auth_client.post(
+            f"{API}/inventory/equip", json={"itemId": by_base[healer_weapon.id]["id"], "slot": "mainHand"}
+        )
+        assert resp.status_code == 200, resp.text
+        unequipped_ids = {u["id"] for u in resp.json().get("unequipped", [])}
+        assert by_base[tank_armor.id]["id"] in unequipped_ids
+        assert "head" not in (await auth_client.get(f"{API}/game/state")).json()["loadout"]
+
     async def test_craft_preview_and_execute(self, auth_client, session_factory) -> None:
         me = (await auth_client.get(f"{API}/auth/me")).json()
         await _seed_items(session_factory, me["id"], 16, rarity="common")
@@ -2615,10 +2654,13 @@ async def test_game_state_includes_stat_breakdown(auth_client) -> None:
     stats = state["hero"]["stats"]
     assert breakdown["level"] == state["hero"]["level"]
     assert breakdown["mainAttr"] == stats["mainAttr"]
+    # 三维总量 = (英雄自身 + 装备折算) × 均衡型核心加成（coreAttrPct，仅 str/dex/int）。
+    core_pct = float((breakdown.get("biasBonus") or {}).get("coreAttrPct", 0.0)) / 100.0
     for attr in ("str", "dex", "int", "vit"):
+        scale = 1.0 + core_pct if attr in ("str", "dex", "int") else 1.0
         assert abs(
             breakdown["core"]["total"][attr]
-            - (breakdown["core"]["hero"][attr] + breakdown["core"]["equip"][attr])
+            - (breakdown["core"]["hero"][attr] + breakdown["core"]["equip"][attr]) * scale
         ) < 0.02
     rebuilt_hp = (breakdown["panelBase"]["maxHp"] + breakdown["equipFlat"]["hp"]) * (
         1 + breakdown["termMods"].get("maxHpPct", 0) / 100

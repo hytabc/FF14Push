@@ -33,33 +33,33 @@
   "variants": {
     "weapon": [
       { "id": "", "name": "", "minTier": 0, "pool": [], "subAttrScale": 1.0 },
-      { "id": "tank", "name": "御敌", "minTier": 0, "pool": ["str", "vit", "tenacity", "crit", "det"], "subAttrScale": 1.0 },
-      { "id": "str", "name": "强袭", "minTier": 0, "pool": ["str", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.0 },
-      { "id": "det", "name": "制敌", "minTier": 0, "pool": ["str", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.0 },
-      { "id": "dex", "name": "游击", "minTier": 0, "pool": ["dex", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.0 },
-      { "id": "crit", "name": "精准", "minTier": 0, "pool": ["dex", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.0 },
-      { "id": "int", "name": "咏咒", "minTier": 0, "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.0 },
-      { "id": "bal", "name": "治愈", "minTier": 0, "pool": ["int", "vit", "crit", "det", "sps"], "subAttrScale": 1.0 }
+      { "id": "tank", "name": "御敌", "role": "tank", "minTier": 0, "pool": ["str", "vit", "tenacity", "crit", "det"], "subAttrScale": 1.0 },
+      { "id": "str", "name": "强袭", "role": "melee", "minTier": 0, "pool": ["str", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.0 },
+      { "id": "det", "name": "制敌", "role": "melee", "minTier": 0, "pool": ["str", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.0 },
+      { "id": "dex", "name": "游击", "role": "melee", "minTier": 0, "pool": ["dex", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.0 },
+      { "id": "crit", "name": "精准", "role": "physicalRanged", "minTier": 0, "pool": ["dex", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.0 },
+      { "id": "int", "name": "咏咒", "role": "magicalRanged", "minTier": 0, "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.0 },
+      { "id": "bal", "name": "治愈", "role": "healer", "minTier": 0, "pool": ["int", "vit", "crit", "det", "sps"], "subAttrScale": 1.0 }
     ],
     "armor": [
       { "id": "", "name": "", "minTier": 0, "pool": [], "subAttrScale": 1.0 },
-      { "id": "str", "name": "强袭", "minTier": 2, "pool": ["str", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.05 },
-      { "id": "dex", "name": "游击", "minTier": 2, "pool": ["dex", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.05 },
-      { "id": "int", "name": "咏咒", "minTier": 3, "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.05 },
-      { "id": "tank", "name": "御敌", "minTier": 3, "pool": ["str", "vit", "tenacity", "crit", "det"], "subAttrScale": 1.1 },
-      { "id": "crit", "name": "精准", "minTier": 4, "pool": ["dex", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.15 },
-      { "id": "det", "name": "制敌", "minTier": 4, "pool": ["str", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.15 },
-      { "id": "bal", "name": "治愈", "minTier": 4, "pool": ["int", "vit", "crit", "det", "sps"], "subAttrScale": 1.05 }
+      { "id": "str", "name": "强袭", "role": "melee", "minTier": 2, "pool": ["str", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.05 },
+      { "id": "dex", "name": "游击", "role": "melee", "minTier": 2, "pool": ["dex", "vit", "crit", "dh", "det", "sks"], "subAttrScale": 1.05 },
+      { "id": "int", "name": "咏咒", "role": "magicalRanged", "minTier": 3, "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.05 },
+      { "id": "tank", "name": "御敌", "role": "tank", "minTier": 3, "pool": ["str", "vit", "tenacity", "crit", "det"], "subAttrScale": 1.1 },
+      { "id": "crit", "name": "精准", "role": "physicalRanged", "minTier": 4, "pool": ["dex", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.15 },
+      { "id": "det", "name": "制敌", "role": "melee", "minTier": 4, "pool": ["str", "vit", "crit", "dh", "det", "sks", "acc"], "subAttrScale": 1.15 },
+      { "id": "bal", "name": "治愈", "role": "healer", "minTier": 4, "pool": ["int", "vit", "crit", "det", "sps"], "subAttrScale": 1.05 }
     ],
     "accessory": [
       { "id": "", "name": "", "minTier": 0, "pool": [], "subAttrScale": 1.0 },
-      { "id": "str", "name": "强袭", "minTier": 2, "baseAttr": "str", "pool": ["str", "vit", "crit", "dh", "det", "acc", "lifesteal"], "subAttrScale": 1.05 },
-      { "id": "dex", "name": "游击", "minTier": 2, "baseAttr": "dex", "pool": ["dex", "vit", "crit", "dh", "det", "sks", "dodge", "acc"], "subAttrScale": 1.05 },
-      { "id": "int", "name": "咏咒", "minTier": 3, "baseAttr": "int", "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.05 },
-      { "id": "vit", "name": "御敌", "minTier": 3, "baseAttr": "vit", "pool": ["vit", "str", "crit", "det", "dodge", "acc"], "subAttrScale": 1.1 },
-      { "id": "gold", "name": "精准", "minTier": 4, "pool": ["dex", "vit", "crit", "dh", "det", "sks", "acc", "sps", "lifesteal"], "subAttrScale": 1.0 },
-      { "id": "det", "name": "制敌", "minTier": 4, "baseAttr": "str", "pool": ["str", "vit", "crit", "dh", "det", "acc"], "subAttrScale": 1.15 },
-      { "id": "bal", "name": "治愈", "minTier": 4, "baseAttr": "int", "pool": ["int", "vit", "crit", "det", "sps"], "subAttrScale": 1.05 }
+      { "id": "str", "name": "强袭", "role": "melee", "minTier": 2, "baseAttr": "str", "pool": ["str", "vit", "crit", "dh", "det", "acc", "lifesteal"], "subAttrScale": 1.05 },
+      { "id": "dex", "name": "游击", "role": "melee", "minTier": 2, "baseAttr": "dex", "pool": ["dex", "vit", "crit", "dh", "det", "sks", "dodge", "acc"], "subAttrScale": 1.05 },
+      { "id": "int", "name": "咏咒", "role": "magicalRanged", "minTier": 3, "baseAttr": "int", "pool": ["int", "vit", "crit", "dh", "det", "sps"], "subAttrScale": 1.05 },
+      { "id": "vit", "name": "御敌", "role": "tank", "minTier": 3, "baseAttr": "vit", "pool": ["vit", "str", "crit", "det", "dodge", "acc"], "subAttrScale": 1.1 },
+      { "id": "gold", "name": "精准", "role": "physicalRanged", "minTier": 4, "pool": ["dex", "vit", "crit", "dh", "det", "sks", "acc", "sps", "lifesteal"], "subAttrScale": 1.0 },
+      { "id": "det", "name": "制敌", "role": "melee", "minTier": 4, "baseAttr": "str", "pool": ["str", "vit", "crit", "dh", "det", "acc"], "subAttrScale": 1.15 },
+      { "id": "bal", "name": "治愈", "role": "healer", "minTier": 4, "baseAttr": "int", "pool": ["int", "vit", "crit", "det", "sps"], "subAttrScale": 1.05 }
     ]
   },
   "$commentBaseFloat": "基础属性 = 底材基准 × 品阶倍率 × (1 ± 20%)。来源：PRD 2.3.3",

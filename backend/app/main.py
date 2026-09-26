@@ -91,7 +91,7 @@ async def lifespan(app: FastAPI):
         await hub.shutdown()
 
 
-app = FastAPI(title="艾欧泽亚放置录 API", version="1.0.4", lifespan=lifespan)
+app = FastAPI(title="艾欧泽亚放置录 API", version="1.0.5", lifespan=lifespan)
 
 # 传输层压缩/解压。`add_middleware` 后注册的在外层，故注册顺序决定嵌套：
 #   CORS（最外）→ GZip → Brotli → RequestDecompress → 应用

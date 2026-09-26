@@ -184,7 +184,7 @@ export function heroRateExplain(key: 'attackSpeed' | 'haste' | 'hit', agility: n
       title: '攻击速度如何计算',
       lines: [
         `基础攻速 = 敏捷 ${num(agility)} × ${spec?.coef?.dex ?? 0}%（含等级成长）`,
-        `叠加装备「攻速」副属性与词条，上限 ${spec?.cap}%，影响普攻频率。`,
+        `叠加装备「攻速」副属性、词条与英雄型加成，上限 ${spec?.cap}%，影响普攻频率。`,
         `当前面板攻速 = ${value.toFixed(2)}%。`,
         '依据：服务端 stats.compute_stats()，配置 shared/data/heroes.json 的 attributes.attackSpeedPct。',
       ],
@@ -684,8 +684,8 @@ export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
     }
   }
 
-  // 三属性原始值（暴击 / 直击 / 信念）：装备副属性 → 词条 → 主属性联动。
-  const link = (data.combat as any).primaryLink?.[b?.bias ?? ''] ?? {}
+  // 三属性原始值（暴击 / 直击 / 信念）：装备副属性 → 词条 → 英雄型主属性加成。
+  const link = (data.combat as any).biasBonus?.[b?.bias ?? ''] ?? {}
   if (key === 'critValue' || key === 'dhValue' || key === 'detValue') {
     const map = {
       critValue: { sub: subs.crit, stat: 'critStatPct', label: '暴击', linkKey: 'crit', field: 'critValue', value: s?.critValue },
@@ -694,7 +694,7 @@ export function statExplain(key: StatKey, ctx: StatExplainContext): Explain {
     }[key]
     const lines = [`装备 / 魔晶石「${map.label}」副属性 ${num(map.sub ?? 0)}`]
     if (mods[map.stat]) lines.push(`× (1 + ${map.label}值加成 ${num(mods[map.stat], 1)}%)`)
-    if (link[map.linkKey]) lines.push(`× (1 + 主属性联动 ${num(link[map.linkKey] * 100, 1)}%)`)
+    if (link[map.linkKey]) lines.push(`× (1 + 英雄型「${map.label}」加成 ${num(link[map.linkKey] * 100, 1)}%)`)
     if (key === 'detValue' && mods.critToDetPct)
       lines.push(`+ 暴击转化：暴击值 ${num(s?.critValue ?? 0)} × ${num(mods.critToDetPct, 1)}%`)
     lines.push(`= ${num(map.value ?? 0)}`)

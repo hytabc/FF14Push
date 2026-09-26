@@ -6,14 +6,16 @@ import ItemFilterBar from '@/components/ItemFilterBar.vue'
 import ItemPickerTile from '@/components/ItemPickerTile.vue'
 import Modal from '@/components/Modal.vue'
 import { useVisibleLimit } from '@/composables/useVisibleLimit'
-import type { Item } from '@/game/types'
+import type { Item, JobRole } from '@/game/types'
 import { RARITY_ORDER, rarityName } from '@/utils/format'
 import {
   type ItemFilterState,
   type SortKey,
+  ROLE_LABELS,
   SORT_OPTIONS,
   applyItemFilters,
   createItemFilters,
+  roleOfBaseId,
 } from '@/utils/itemFilters'
 
 const props = withDefaults(
@@ -24,11 +26,25 @@ const props = withDefaults(
     equipped?: Item | null
     /** 候选池已按栏位收窄时，隐藏「部位 / 种类」筛选。 */
     slotScoped?: boolean
+    /** 当前英雄职能（用于标记「职能不符」的候选）；武器栏位不校验。 */
+    heroRole?: JobRole | null
+    /** 本弹窗是否在选武器（武器栏位不受职能限制）。 */
+    slotIsWeapon?: boolean
   }>(),
-  { equipped: null, slotScoped: false },
+  { equipped: null, slotScoped: false, heroRole: null, slotIsWeapon: false },
 )
 
 const emit = defineEmits<{ close: []; equip: [item: Item]; unequip: [] }>()
+
+/** 该候选与当前英雄职能不符（基础型 / 无武器时不限制）。 */
+function roleMismatch(item: Item): boolean {
+  if (props.slotIsWeapon || !props.heroRole) return false
+  const role = roleOfBaseId(item.baseId)
+  return !!role && role !== props.heroRole
+}
+
+const mismatchCount = computed(() => props.candidates.filter(roleMismatch).length)
+const heroRoleLabel = computed(() => (props.heroRole ? ROLE_LABELS[props.heroRole] ?? props.heroRole : ''))
 
 type ViewMode = 'card' | 'list' | 'grid'
 const VIEW_KEY = 'eorzea.pickerView'
@@ -52,7 +68,20 @@ function setView(v: ViewMode) {
   localStorage.setItem(VIEW_KEY, v)
 }
 
-const filtered = computed(() => applyItemFilters(props.candidates, filters.value, sort.value))
+const filtered = computed(() => {
+  const list = applyItemFilters(props.candidates, filters.value, sort.value)
+  // 职能不符的候选排到最后（仍列出，符合「显式提示而非隐藏」）。
+  const ok: Item[] = []
+  const bad: Item[] = []
+  for (const item of list) (roleMismatch(item) ? bad : ok).push(item)
+  return bad.length ? [...ok, ...bad] : list
+})
+
+/** 职能不符的候选不可装备（点击无反应，由徽章说明原因）。 */
+function pick(item: Item) {
+  if (roleMismatch(item)) return
+  emit('equip', item)
+}
 
 // 候选可达上百件（卡片视图每件还是很重的 ItemCard），首批只渲染一部分，其余由「显示更多」追加。
 const { visible, remaining, showMore } = useVisibleLimit(filtered, 60)
@@ -107,6 +136,10 @@ function isEquipped(item: Item): boolean {
         <span class="ml-auto text-ink-500">共 {{ filtered.length }} 件</span>
       </div>
 
+      <p v-if="mismatchCount" class="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">
+        当前职能：{{ heroRoleLabel }}。其中 {{ mismatchCount }} 件为其他职能专用（标「职能不符」），无法装备。
+      </p>
+
       <button
         v-if="equipped"
         class="w-full rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-left text-xs text-rose-200"
@@ -117,14 +150,20 @@ function isEquipped(item: Item): boolean {
 
       <!-- 卡片视图 -->
       <div v-if="view === 'card'" class="space-y-2">
-        <ItemCard
-          v-for="item in visible"
-          :key="item.id"
-          :item="item"
-          :show-actions="false"
-          :equipped="isEquipped(item)"
-          @select="emit('equip', $event)"
-        />
+        <div v-for="item in visible" :key="item.id" class="relative" :class="roleMismatch(item) ? 'opacity-50' : ''">
+          <ItemCard
+            :item="item"
+            :show-actions="false"
+            :equipped="isEquipped(item)"
+            @select="pick($event)"
+          />
+          <span
+            v-if="roleMismatch(item)"
+            class="pointer-events-none absolute right-2 top-2 rounded bg-rose-600/80 px-1.5 py-0.5 text-[10px] text-white"
+          >
+            职能不符
+          </span>
+        </div>
       </div>
 
       <!-- 列表视图 -->
@@ -138,7 +177,8 @@ function isEquipped(item: Item): boolean {
           :item="item"
           variant="list"
           :equipped="isEquipped(item)"
-          @select="emit('equip', $event)"
+          :incompatible="roleMismatch(item)"
+          @select="pick($event)"
         />
       </div>
 
@@ -150,7 +190,8 @@ function isEquipped(item: Item): boolean {
           :item="item"
           variant="grid"
           :equipped="isEquipped(item)"
-          @select="emit('equip', $event)"
+          :incompatible="roleMismatch(item)"
+          @select="pick($event)"
         />
       </div>
 

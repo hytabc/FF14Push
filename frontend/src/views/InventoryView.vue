@@ -6,10 +6,11 @@ import ConsumableList from '@/components/ConsumableList.vue'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import ItemFilterBar from '@/components/ItemFilterBar.vue'
+import { useConfirmStore } from '@/stores/confirm'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useTagsStore } from '@/stores/tags'
-import type { Item } from '@/game/types'
+import type { Item, MaterialStackItem } from '@/game/types'
 import { categoryName, formatNumber, tagColorHex } from '@/utils/format'
 import {
   type ItemFilterState,
@@ -22,6 +23,7 @@ import {
 const game = useGameStore()
 const tagsStore = useTagsStore()
 const dohdol = useDohDolStore()
+const confirm = useConfirmStore()
 
 const consumables = computed(() => game.state?.dohdol?.consumables ?? [])
 /** 挖宝产出：魔晶石（可出售）与作物种子（不可出售，用于种田）。 */
@@ -35,7 +37,6 @@ const tagFilter = ref<Set<number>>(new Set())
 const selected = ref<Set<number>>(new Set())
 const page = ref(1)
 const PAGE_SIZE = 24
-const confirmBatch = ref(false)
 
 /** 背包分页：战斗职业装备 / 生产采集专用装备。 */
 const tab = ref<'combat' | 'dohdol'>('combat')
@@ -153,11 +154,28 @@ function clearSelection() {
 }
 
 async function batchSell() {
-  confirmBatch.value = false
   const ids = [...selected.value]
   if (!ids.length) return
+  const ok = await confirm.ask({
+    title: '确认批量出售',
+    message: `将出售 ${ids.length} 件装备，预计获得约 ${formatNumber(selectedValue.value)} 金币。\n出售后装备永久消失（图鉴记录保留）。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (!ok) return
   await game.sell(ids)
   clearSelection()
+}
+
+/** 出售魔晶石等堆叠物（二次确认，避免误触）。 */
+async function sellStack(s: MaterialStackItem) {
+  const ok = await confirm.ask({
+    title: '确认出售',
+    message: `出售「${s.name}」×1，获得 ${s.sell ?? 0} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (ok) await dohdol.sellStack(s.kind, s.itemId, 1)
 }
 </script>
 
@@ -185,7 +203,7 @@ async function batchSell() {
           <button
             v-if="(s.sell ?? 0) > 0"
             class="rounded bg-amber-600/70 px-2 py-0.5 text-white hover:bg-amber-500"
-            @click="dohdol.sellStack(s.kind, s.itemId, 1)"
+            @click="sellStack(s)"
           >
             出售
           </button>
@@ -240,7 +258,7 @@ async function batchSell() {
           <button
             class="rounded bg-amber-600 px-2 py-1.5 text-white hover:bg-amber-500 disabled:opacity-40"
             :disabled="!selected.size"
-            @click="confirmBatch = true"
+            @click="batchSell"
           >
             批量出售
           </button>
@@ -311,29 +329,5 @@ async function batchSell() {
         下一页
       </button>
     </nav>
-
-    <Teleport to="body">
-      <div
-        v-if="confirmBatch"
-        class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4"
-        @click.self="confirmBatch = false"
-      >
-        <div class="card w-full max-w-md p-5">
-          <h3 class="text-lg font-semibold text-white">确认批量出售</h3>
-          <p class="mt-2 text-sm text-ink-200">
-            将出售 {{ selected.size }} 件装备，预计获得约
-            <b class="text-amber-300">{{ formatNumber(selectedValue) }}</b> 金币。出售后装备永久消失（图鉴记录保留）。
-          </p>
-          <div class="mt-4 flex justify-end gap-2">
-            <button class="rounded-md bg-ink-700 px-3 py-2 text-sm hover:bg-ink-600" @click="confirmBatch = false">
-              取消
-            </button>
-            <button class="rounded-md bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500" @click="batchSell">
-              确认出售
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>

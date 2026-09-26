@@ -199,7 +199,10 @@ def _compute(
     main_attr = _job_main_attr_for_attack(job_id, bias)
 
     job = CONFIG.job_by_id.get(agg.job_id) if agg.job_id else None
-    job_match = bool(job and job["mainAttr"] == bias and bias != "balanced")
+    # 均衡型视为与任意职业匹配（避免被 +15% 主属性装备加成排除）。
+    job_match = bool(job and (job["mainAttr"] == bias or bias == "balanced"))
+    # 英雄型专属加成（力量→暴击 / 敏捷→直击·攻速 / 智力→信念 / 均衡→三维总量 + 三属性小幅）。
+    bias_bonus: dict[str, Any] = dict(CONFIG.combat.get("biasBonus", {}).get(bias, {}))
 
     hero_core = {
         "str": float(hero.strength),
@@ -221,6 +224,11 @@ def _compute(
         equip_core[attr] = value * bias_rates.get(attr, 1.0)
 
     total_core = {a: hero_core.get(a, 0.0) + equip_core.get(a, 0.0) for a in ("str", "dex", "int", "vit")}
+    # 均衡型专属：三维总量按百分比提高（体力不受影响）。
+    core_pct = float(bias_bonus.get("coreAttrPct", 0.0))
+    if core_pct:
+        for attr in CORE_ATTRS:
+            total_core[attr] *= 1.0 + core_pct / 100.0
 
     attr_cfg: dict[str, Any] = CONFIG.heroes["attributes"]
     level_cfg: dict[str, Any] = CONFIG.heroes["levelUpGain"]
@@ -285,7 +293,7 @@ def _compute(
     magic_attack *= atk_eff
     phys_def *= def_eff
     magic_def *= def_eff
-    attack_speed_pct += mods.get("attackSpeedPct", 0.0)
+    attack_speed_pct += mods.get("attackSpeedPct", 0.0) + float(bias_bonus.get("attackSpeedPct", 0.0))
     dodge_pct = max(0.0, dodge_pct + mods.get("dodgePct", 0.0))
     lifesteal_pct += mods.get("lifestealPct", 0.0)
     tenacity_pct += mods.get("guardPct", 0.0)
@@ -297,10 +305,10 @@ def _compute(
     dh_value = sub.get("dh", 0.0) * (1 + mods.get("dhStatPct", 0.0) / 100.0)
     det_value = sub.get("det", 0.0) * (1 + mods.get("detStatPct", 0.0) / 100.0)
 
-    link = CONFIG.combat["primaryLink"]
-    crit_value *= 1.0 + link.get(bias, {}).get("crit", 0.0)
-    dh_value *= 1.0 + link.get(bias, {}).get("dh", 0.0)
-    det_value *= 1.0 + link.get(bias, {}).get("det", 0.0)
+    link = CONFIG.combat["biasBonus"]
+    crit_value *= 1.0 + float(link.get(bias, {}).get("crit", 0.0))
+    dh_value *= 1.0 + float(link.get(bias, {}).get("dh", 0.0))
+    det_value *= 1.0 + float(link.get(bias, {}).get("det", 0.0))
     # 联动：暴击值的一部分转化为信念值
     if mods.get("critToDetPct"):
         det_value += crit_value * mods["critToDetPct"] / 100.0
@@ -325,6 +333,7 @@ def _compute(
         },
         "growthCoef": round(gc, 4),
         "biasRates": {a: round(r, 4) for a, r in bias_rates.items()},
+        "biasBonus": {k: round(float(v), 4) for k, v in bias_bonus.items()},
         "jobMatchBonusPct": round(float(CONFIG.heroes["jobMatchBonus"]["equipMainAttrPct"]) * 100, 2),
         "core": {
             "hero": {a: round(hero_core.get(a, 0.0), 2) for a in ("str", "dex", "int", "vit")},

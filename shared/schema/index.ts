@@ -210,6 +210,8 @@ export interface BaseItem {
   subAttrPool: AttrId[]
   /** 变体 id（同档多套底材）。空串表示「基础型」，沿用 w_/a_/c_ 前缀 + 族 + 档位的旧 id。 */
   variantId?: string
+  /** 职能词缀对应的战斗职能；基础型（无词缀）与世界BOSS 专属装备为 null（不限制穿戴）。 */
+  role?: JobRole | null
   /** 世界BOSS 专属系列（绝境龙神）：不进入抽箱/合成/生产候选池，仅世界BOSS 掉落。 */
   exclusive?: boolean
 }
@@ -620,6 +622,8 @@ const jobsData = jobsJson as unknown as {
 interface BaseItemVariant {
   id: string
   name: string
+  /** 职能词缀对应的战斗职能（tank / healer / melee / physicalRanged / magicalRanged）；基础型不设。 */
+  role?: JobRole
   minTier: number
   pool?: AttrId[]
   subAttrScale?: number
@@ -695,6 +699,7 @@ export function expandBaseItems(
           baseAttrs: [{ attr: isMagical ? 'magicAttack' : 'attack', base: t.weaponAttack }],
           subAttrPool: variantPool(v, basePool),
           variantId: v.id,
+          role: v.role ?? null,
         })
       }
     }
@@ -720,6 +725,7 @@ export function expandBaseItems(
           })),
           subAttrPool: variantPool(v, basePool),
           variantId: v.id,
+          role: v.role ?? null,
         })
       }
     }
@@ -742,6 +748,7 @@ export function expandBaseItems(
           baseAttrs: [{ attr: v.baseAttr ?? fam.baseAttr, base: t.mainAttr }],
           subAttrPool: variantPool(v, basePool),
           variantId: v.id,
+          role: v.role ?? null,
         })
       }
     }
@@ -848,6 +855,8 @@ export const gameData = {
     rules: { heroSlots: number; levelRequirement: number; fullPowerLevel: number; weaknessFloor: number }
     reward: {
       minDamage: number
+      /** 击杀奖励：件数 = min(周期击杀次数 × perKill, maxItems)，本周期所有达标玩家各得同额。 */
+      killReward: { perKill: number; maxItems: number }
       /** 档位：按周期累计伤害取最高达标档的件数。 */
       tiers: Array<{ minDamage: number; items: number }>
       /** 名次加成：仅前 10 名（键为名次字符串）。 */

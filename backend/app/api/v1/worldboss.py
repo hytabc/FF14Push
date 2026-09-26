@@ -122,6 +122,16 @@ async def _my_session(db, user_id: int) -> WorldBossSession | None:
     )
 
 
+async def _cycle_damage(db, cycle: int, user_id: int) -> int:
+    """本周期该账号的累计伤害（榜单与「本周期进度」的同源口径）。"""
+    row = await db.scalar(
+        select(WorldBossContribution).where(
+            WorldBossContribution.cycle == cycle, WorldBossContribution.user_id == user_id
+        )
+    )
+    return int(row.damage) if row is not None else 0
+
+
 def _party(session: WorldBossSession) -> list[dict]:
     """上阵英雄快照：客户端本地模拟的输入（与后端引擎 `new_state` 的 snapshots 同构）."""
     return [hero.get("snapshot") or {} for hero in (session.state.get("heroes") or [])]
@@ -152,7 +162,9 @@ async def _state_view(db, user: User, boss: WorldBoss) -> dict:
         "sequence": int(session.sequence) if session is not None else 0,
         "myDamage": int(contribution.damage) if contribution is not None else 0,
         "unclaimedCycle": await unclaimed_cycle(db, user.id, boss),
-        "leaderboard": await leaderboard_view(db, boss.cycle, user.id, 1, 50),
+        "leaderboard": await leaderboard_view(
+            db, boss.cycle, user.id, 1, 50, kills=int(boss.kills or 0)
+        ),
     }
 
 
@@ -165,7 +177,9 @@ async def state(db: DbSession, user: CurrentUser) -> dict:
 @router.get("/leaderboard")
 async def leaderboard(db: DbSession, user: CurrentUser, page: int = 1) -> dict:
     boss = await db.get(WorldBoss, BOSS_ID) or await ensure_world_boss(db)
-    return await leaderboard_view(db, boss.cycle, user.id, max(1, page), 50)
+    return await leaderboard_view(
+        db, boss.cycle, user.id, max(1, page), 50, kills=int(boss.kills or 0)
+    )
 
 
 @router.post("/enter")
@@ -261,8 +275,11 @@ async def report(payload: ReportRequest, db: DbSession, user: CurrentUser) -> di
         raise HTTPException(404, "没有进行中的世界BOSS 会话")
 
     # 幂等：重复上报同一序号直接返回当前状态，不重复扣血 / 加贡献。
+    # 「本周期进度」一律返回**周期累计贡献**（与排行榜同源），而不是本场会话累计。
     if int(payload.reportSeq) <= int(session.last_report_seq or 0):
-        return _report_view(boss, session, accepted=0, duplicate=True)
+        return _report_view(
+            boss, session, accepted=0, my_damage=await _cycle_damage(db, boss.cycle, user.id), duplicate=True
+        )
 
     # BOSS 休整中：不接受伤害（推进游标，客户端据此停止本窗口的累计）。
     if boss.status != STATUS_ALIVE:
@@ -270,7 +287,9 @@ async def report(payload: ReportRequest, db: DbSession, user: CurrentUser) -> di
         session.last_report_seq = int(payload.reportSeq)
         session.heartbeat_at = now
         await db.commit()
-        return _report_view(boss, session, accepted=0, paused=True)
+        return _report_view(
+            boss, session, accepted=0, my_damage=await _cycle_damage(db, boss.cycle, user.id), paused=True
+        )
 
     # 窗口只认服务端时钟：客户端 elapsedMs 仅供参考（防加速 / 改系统时间）。
     window_ms = (now - float(session.last_report_at or session.created_at or now)) * 1000.0
@@ -330,8 +349,13 @@ async def report(payload: ReportRequest, db: DbSession, user: CurrentUser) -> di
             )
         )
         await db.refresh(boss)
-        await add_contribution(db, boss.id, boss.cycle, user.id, accepted, hero_deltas, hero_meta, now)
+        contribution = await add_contribution(
+            db, boss.id, boss.cycle, user.id, accepted, hero_deltas, hero_meta, now
+        )
         await kill_boss_if_depleted(db, now)
+        my_damage = int(contribution.damage)
+    else:
+        my_damage = await _cycle_damage(db, boss.cycle, user.id)
 
     session.damage = int(session.damage) + accepted
     session.last_report_at = now
@@ -339,7 +363,7 @@ async def report(payload: ReportRequest, db: DbSession, user: CurrentUser) -> di
     session.heartbeat_at = now
     session.updated_at = now
     await db.commit()
-    return _report_view(boss, session, accepted=accepted)
+    return _report_view(boss, session, accepted=accepted, my_damage=my_damage)
 
 
 def _report_view(
@@ -347,13 +371,15 @@ def _report_view(
     session: WorldBossSession,
     *,
     accepted: int,
+    my_damage: int,
     duplicate: bool = False,
     paused: bool = False,
 ) -> dict:
     return {
         "boss": boss_public(boss),
         "damageAccepted": int(accepted),
-        "myDamage": int(session.damage),
+        # 与「我的本周期进度」/ 排行榜同源：周期累计伤害（不是本场会话累计）。
+        "myDamage": int(my_damage),
         "duplicate": duplicate,
         "paused": paused,
     }
@@ -452,7 +478,9 @@ async def stream(ws: WebSocket) -> None:
             # 榜单行是进程级共享的；这里只做本连接自己的 entries / me 拼装（纯 CPU）。
             rows = payload.pop("leaderboardRows", None)
             if rows is not None:
-                payload["leaderboard"] = build_leaderboard(rows, payload.pop("cycle"), uid, 1, 50)
+                cycle = payload.pop("cycle")
+                kills = int((payload.get("boss") or {}).get("kills", 0))
+                payload["leaderboard"] = build_leaderboard(rows, cycle, uid, 1, 50, kills)
             await ws.send_json(payload)
     except (WebSocketDisconnect, RuntimeError):
         return

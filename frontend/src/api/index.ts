@@ -137,7 +137,12 @@ export const api = {
   },
 
   async equip(itemId: number, slot: SlotId) {
-    return (await http.post<{ item: Item }>('/inventory/equip', { itemId, slot })).data
+    return (
+      await http.post<{ item: Item; unequipped?: { id: number; name: string }[] }>('/inventory/equip', {
+        itemId,
+        slot,
+      })
+    ).data
   },
 
   async unequip(slot: SlotId) {

@@ -32,9 +32,14 @@ describe('世界BOSS 前端辅助', () => {
     expect(wb.boss.skillPool.length).toBeGreaterThanOrEqual(20)
     expect(wb.rules.heroSlots).toBe(8)
     expect(wb.phases.map((p) => p.id)).toEqual([1, 2, 3])
-    // 奖励 = 档位 + 名次加成：首档即保底门槛，第 1 名加成拉满到原上限 20
+    // 奖励 = 击杀奖励（全员同额）+ 档位 + 名次加成：首档即保底门槛。
     expect(wb.reward.tiers[0].minDamage).toBe(wb.reward.minDamage)
-    expect(wb.reward.tiers[wb.reward.tiers.length - 1].items + wb.reward.rankBonus['1']).toBe(20)
+    expect(wb.reward.killReward.perKill).toBeGreaterThanOrEqual(1)
+    const topItems =
+      wb.reward.tiers[wb.reward.tiers.length - 1].items +
+      wb.reward.rankBonus['1'] +
+      wb.reward.killReward.maxItems
+    expect(topItems).toBe(18)
   })
 
   it('阶段按血量占比递增：血量越低防御与技能威力越高', () => {

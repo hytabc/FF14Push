@@ -153,6 +153,14 @@ const periodLeft = computed(() => {
   return boss.value ? periodIn(boss.value.periodEndsAt, Date.now() / 1000) : 0
 })
 const rewardTiers = computed(() => state.value?.reward.tiers ?? [])
+/** 击杀奖励配置（每击杀件数 + 单周期上限）。 */
+const killReward = computed(() => state.value?.reward.killReward ?? { perKill: 0, maxItems: 0 })
+/** 本周期击杀奖励件数 = min(击杀次数 × perKill, maxItems)，所有达标玩家同额。 */
+const killRewardItems = computed(() => {
+  const { perKill, maxItems } = killReward.value
+  if (perKill <= 0 || maxItems <= 0) return 0
+  return Math.min((boss.value?.kills ?? 0) * perKill, maxItems)
+})
 /** 名次加成表（按名次升序，用于规则说明）。 */
 const rankBonusList = computed(() => {
   const table = state.value?.reward.rankBonus ?? {}
@@ -203,6 +211,7 @@ const progressInfo = {
   title: '我的本周期进度',
   lines: [
     '档位只看你自己的周期累计伤害，与他人无关：达到阈值即拿对应基础件数（保底）。',
+    '击杀奖励由全服共同讨伐的次数决定，本周期所有达标玩家各获得同样件数。',
     '名次加成按榜单排名额外发放，仅前 10 名。',
   ],
 }
@@ -220,7 +229,7 @@ const leaderboardInfo = computed(() => ({
   title: '本周期伤害榜',
   lines: [
     `周期累计伤害 ≥ ${formatNumber(leaderboard.value?.minDamage ?? 0)} 才能入榜并参与奖励。`,
-    '奖励件数 = 档位件数（按周期累计伤害）+ 名次加成（仅前 10 名）。',
+    '奖励件数 = 击杀奖励（全员同额）+ 档位件数（按周期累计伤害）+ 名次加成（仅前 10 名）。',
     '点击任一行可查看该玩家各英雄的伤害与占比。',
   ],
 }))
@@ -456,7 +465,7 @@ async function claim() {
     if (!state.value?.unclaimedCycle) return
     receipt.value = await api.worldbossClaim(state.value.unclaimedCycle)
     await game.loadState()
-    toast.push(`获得 ${receipt.value.items} 件绝境龙神装备`, 'loot')
+    toast.push(`获得 ${receipt.value.items} 件绝境龙神装备（含击杀奖励 ${receipt.value.killItems ?? 0} 件）`, 'loot')
     sound.play('ui.loot')
     await load()
   })
@@ -824,7 +833,7 @@ onUnmounted(() => {
               <div class="min-w-0">
                 <h2 class="text-sm font-semibold text-amber-100">第 {{ state.unclaimedCycle }} 周期已结算</h2>
                 <p class="mt-0.5 text-xs text-amber-200/80">
-                  周期累计伤害 {{ formatNumber(myDamage) }}，可按「档位 + 名次加成」领取「绝境龙神」装备。
+                  周期累计伤害 {{ formatNumber(myDamage) }}，可按「击杀奖励 + 档位 + 名次加成」领取「绝境龙神」装备。
                 </p>
               </div>
               <button
@@ -835,18 +844,6 @@ onUnmounted(() => {
                 {{ receipt ? '已领取' : '领取奖励' }}
               </button>
             </div>
-            <template v-if="receipt">
-              <p class="text-sm text-emerald-200">
-                第 {{ receipt.rank }} 名 · 档位 {{ receipt.tierItems }} 件 + 名次加成 {{ receipt.rankBonus }} 件 = {{ receipt.items }} 件
-              </p>
-              <ul class="grid gap-1.5 sm:grid-cols-2">
-                <li v-for="it in receipt.grants.items" :key="it.id" class="flex items-center gap-2 text-xs">
-                  <ItemIcon :base-id="it.baseId" :rarity="it.rarity" :size="20" />
-                  <span class="min-w-0 flex-1 truncate" :class="rarityClass(it.rarity)">{{ it.name }}</span>
-                  <span class="shrink-0 text-ink-400">{{ rarityName(it.rarity) }}</span>
-                </li>
-              </ul>
-            </template>
           </section>
         </div>
 
@@ -916,9 +913,16 @@ onUnmounted(() => {
             <summary class="cursor-pointer text-sm font-semibold text-white">奖励规则</summary>
             <div class="mt-3 space-y-3">
               <p>
-                按「讨伐周期」结算（每 {{ durationText(boss?.periodSeconds ?? 0) }} 一轮）：周期内 BOSS 可反复击杀，
-                奖励只看你自己的周期累计伤害，别人打得再快也不影响你的奖励。
+                按「讨伐周期」结算（每 {{ durationText(boss?.periodSeconds ?? 0) }} 一轮）：周期内 BOSS 可反复击杀。
+                奖励件数 = 击杀奖励 + 档位 + 名次加成。
               </p>
+              <div>
+                <p class="mb-1 font-medium text-ink-200">击杀奖励（全员同额）</p>
+                <p>
+                  本周期每击杀 1 次 BOSS，所有达标玩家各 +{{ killReward.perKill }} 件（单周期上限 {{ killReward.maxItems }} 件）。
+                  本周期已击杀 {{ boss?.kills ?? 0 }} 次 → 当前每人 <b class="text-amber-200">+{{ killRewardItems }}</b> 件。
+                </p>
+              </div>
               <div>
                 <p class="mb-1 font-medium text-ink-200">档位（周期累计伤害）</p>
                 <table class="w-full text-left">
@@ -960,7 +964,7 @@ onUnmounted(() => {
       <div v-if="detail" class="space-y-4 text-sm">
         <p class="text-ink-200">
           本周期累计伤害 <span class="font-mono text-amber-200">{{ formatNumber(detail.damage) }}</span>
-          · 预计奖励 ×{{ detail.items }}（档位 {{ detail.tierItems }} + 名次加成 {{ detail.rankBonus }}）
+          · 预计奖励 ×{{ detail.items }}（击杀奖励 {{ detail.killItems ?? 0 }} + 档位 {{ detail.tierItems }} + 名次加成 {{ detail.rankBonus }}）
         </p>
 
         <div class="flex h-3 w-full overflow-hidden rounded bg-ink-800">
@@ -986,6 +990,39 @@ onUnmounted(() => {
           <li v-if="!detail.heroes.length" class="text-ink-400">暂无分英雄数据（可能在本轮较早版本入场）。</li>
         </ul>
       </div>
+    </Modal>
+
+    <!-- 结算奖励：独立弹窗，领取后常驻显示，直到玩家主动关闭（不随页面刷新而消失） -->
+    <Modal :open="!!receipt" title="世界BOSS 结算奖励" max-width="max-w-2xl" @close="receipt = null">
+      <div v-if="receipt" class="space-y-4 text-sm">
+        <p class="text-ink-200">
+          第 {{ receipt.cycle }} 周期 · 第 {{ receipt.rank }} 名 · 周期累计伤害
+          <span class="font-mono text-amber-200">{{ formatNumber(receipt.damage) }}</span>
+        </p>
+        <p class="text-ink-200">
+          击杀奖励 <b class="text-amber-200">{{ receipt.killItems ?? 0 }}</b> 件（本周期击杀 {{ receipt.kills ?? 0 }} 次）
+          + 档位 {{ receipt.tierItems }} 件 + 名次加成 {{ receipt.rankBonus }} 件
+          = 共 <b class="text-amber-200">{{ receipt.items }}</b> 件
+        </p>
+
+        <ul v-if="receipt.grants.items.length" class="grid gap-1.5 sm:grid-cols-2">
+          <li v-for="it in receipt.grants.items" :key="it.id" class="flex items-center gap-2 text-xs">
+            <ItemIcon :base-id="it.baseId" :rarity="it.rarity" :size="22" />
+            <span class="min-w-0 flex-1 truncate" :class="rarityClass(it.rarity)">{{ it.name }}</span>
+            <span class="shrink-0 text-ink-400">{{ rarityName(it.rarity) }}</span>
+          </li>
+        </ul>
+        <p v-else class="text-ink-400">本周期没有获得装备。</p>
+
+        <p v-if="receipt.grants.autoSold.length" class="rounded bg-ink-800/60 px-2 py-1 text-xs text-ink-300">
+          其中 {{ receipt.grants.autoSold.length }} 件按「自动出售」设置直接换成金币，+{{ formatNumber(receipt.grants.autoGold) }} 金币（未入背包）。
+        </p>
+      </div>
+      <template #footer>
+        <button class="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-ink-950 hover:bg-amber-400" @click="receipt = null">
+          关闭
+        </button>
+      </template>
     </Modal>
   </main>
 </template>

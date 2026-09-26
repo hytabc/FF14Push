@@ -25,6 +25,7 @@ from app.models.world_boss import (
     STATUS_DEAD,
     WorldBoss,
     WorldBossContribution,
+    WorldBossCycle,
     WorldBossReward,
     WorldBossSession,
 )
@@ -48,6 +49,21 @@ def rules() -> dict:
 
 def reward_config() -> dict:
     return WORLD_BOSS["reward"]
+
+
+def kill_reward_config() -> dict:
+    """击杀奖励配置（每击杀件数 + 单周期上限）。"""
+    return reward_config().get("killReward") or {}
+
+
+def kill_reward_items(kills: int) -> int:
+    """击杀奖励件数 = min(本周期击杀次数 × perKill, maxItems)。"""
+    cfg = kill_reward_config()
+    per = int(cfg.get("perKill", 0) or 0)
+    cap = int(cfg.get("maxItems", 0) or 0)
+    if per <= 0 or cap <= 0:
+        return 0
+    return min(max(0, int(kills)) * per, cap)
 
 
 def period_seconds() -> int:
@@ -131,6 +147,21 @@ async def roll_world_boss(db: AsyncSession, now: float | None = None) -> bool:
     changed = False
 
     # 1) 周期换轮（无论 BOSS 存亡都强制重置）。
+    #    换轮会把 kills 清零，故先把「即将结束的周期」的击杀数快照下来，供击杀奖励复算。
+    period_end = await db.scalar(
+        select(WorldBoss.period_ends_at).where(
+            WorldBoss.id == BOSS_ID, WorldBoss.period_ends_at.isnot(None)
+        )
+    )
+    ending_cycle: int | None = None
+    ending_kills = 0
+    if period_end is not None and float(period_end) <= now:
+        snap = (
+            await db.execute(select(WorldBoss.cycle, WorldBoss.kills).where(WorldBoss.id == BOSS_ID))
+        ).first()
+        if snap is not None:
+            ending_cycle, ending_kills = int(snap[0]), int(snap[1] or 0)
+
     rolled = await db.execute(
         update(WorldBoss)
         .where(WorldBoss.period_ends_at.isnot(None), WorldBoss.period_ends_at <= now)
@@ -150,6 +181,8 @@ async def roll_world_boss(db: AsyncSession, now: float | None = None) -> bool:
         changed = True
         new_cycle = await db.scalar(select(WorldBoss.cycle).where(WorldBoss.id == BOSS_ID))
         if new_cycle is not None:
+            if ending_cycle is not None:
+                await record_cycle_kills(db, ending_cycle, ending_kills, now)
             await end_cycle_sessions(db, int(new_cycle) - 1)
 
     # 2) 补周期结束时间（老行 / 首次）。
@@ -206,6 +239,21 @@ async def end_cycle_sessions(db: AsyncSession, cycle: int) -> None:
         session.status = "ended"
         session.lease_until = 0
         session.lease_owner = None
+
+
+async def record_cycle_kills(db: AsyncSession, cycle: int, kills: int, now: float) -> None:
+    """落库某周期结束时的击杀次数（幂等；只新增行，供击杀奖励按周期号复算）。"""
+    existing = await db.scalar(select(WorldBossCycle).where(WorldBossCycle.cycle == int(cycle)))
+    if existing is not None:
+        existing.kills = max(int(existing.kills or 0), int(kills))
+        return
+    db.add(WorldBossCycle(cycle=int(cycle), boss_id=BOSS_ID, kills=int(kills), ended_at=now))
+
+
+async def cycle_kills(db: AsyncSession, cycle: int) -> int:
+    """某周期结束时的 BOSS 击杀次数（无记录返回 0）。"""
+    row = await db.scalar(select(WorldBossCycle).where(WorldBossCycle.cycle == int(cycle)))
+    return int(row.kills or 0) if row is not None else 0
 
 
 def merge_party(
@@ -350,23 +398,25 @@ def rank_bonus_items(rank: int) -> int:
     return int(rank_bonus_table().get(str(rank), 0))
 
 
-def reward_items(rank: int, damage: int) -> int:
-    """周期奖励件数 = 档位（累计伤害）+ 名次加成（仅前 10 名）；未达门槛为 0。"""
+def reward_items(rank: int, damage: int, kills: int = 0) -> int:
+    """周期奖励件数 = 击杀奖励（全服同额）+ 档位（累计伤害）+ 名次加成（仅前 10 名）；未达门槛为 0。"""
     if int(damage) < int(reward_config()["minDamage"]):
         return 0
-    return tier_for_damage(damage)[1] + rank_bonus_items(rank)
+    return tier_for_damage(damage)[1] + rank_bonus_items(rank) + kill_reward_items(kills)
 
 
-def _reward_view(rank: int, damage: int) -> dict:
+def _reward_view(rank: int, damage: int, kills: int = 0) -> dict:
     if int(damage) < int(reward_config()["minDamage"]):
-        return {"items": 0, "tier": 0, "tierItems": 0, "rankBonus": 0}
+        return {"items": 0, "tier": 0, "tierItems": 0, "rankBonus": 0, "killItems": 0}
     tier, tier_items_value = tier_for_damage(damage)
     bonus = rank_bonus_items(rank)
+    kill_items = kill_reward_items(kills)
     return {
-        "items": tier_items_value + bonus,
+        "items": tier_items_value + bonus + kill_items,
         "tier": tier,
         "tierItems": tier_items_value,
         "rankBonus": bonus,
+        "killItems": kill_items,
     }
 
 
@@ -406,12 +456,17 @@ def invalidate_contribution_rows() -> None:
 
 
 def build_leaderboard(
-    rows: list[dict], cycle: int, user_id: int | None = None, page: int = 1, page_size: int = 50
+    rows: list[dict],
+    cycle: int,
+    user_id: int | None = None,
+    page: int = 1,
+    page_size: int = 50,
+    kills: int = 0,
 ) -> dict:
     """把「已达标、已按伤害降序」的贡献行格式化成榜单视图（纯函数）。
 
     拆出来是为了让 WS 广播的共享生产者只做一次全表聚合，各连接再用本函数拼自己的
-    `entries` / `me`（纯 CPU，无额外查询）。
+    `entries` / `me`（纯 CPU，无额外查询）。`kills` 为该周期击杀次数（击杀奖励人人同额）。
     """
     offset = max(0, (page - 1) * page_size)
     entries = [
@@ -421,7 +476,7 @@ def build_leaderboard(
             "nickname": row["nickname"],
             "username": row["username"],
             "damage": row["damage"],
-            **_reward_view(offset + index + 1, row["damage"]),
+            **_reward_view(offset + index + 1, row["damage"], kills),
             "heroes": hero_breakdown(row),
         }
         for index, row in enumerate(rows[offset : offset + page_size])
@@ -436,13 +491,14 @@ def build_leaderboard(
                     "nickname": row["nickname"],
                     "username": row["username"],
                     "damage": row["damage"],
-                    **_reward_view(index + 1, row["damage"]),
+                    **_reward_view(index + 1, row["damage"], kills),
                     "heroes": hero_breakdown(row),
                 }
                 break
     return {
         "cycle": cycle,
         "minDamage": int(reward_config()["minDamage"]),
+        "kills": int(kills),
         "total": len(rows),
         "page": page,
         "pageSize": page_size,
@@ -464,13 +520,14 @@ async def leaderboard_view(
     page_size: int = 50,
     *,
     use_cache: bool = False,
+    kills: int = 0,
 ) -> dict:
     rows = (
         await cached_contribution_rows(db, cycle)
         if use_cache
         else await contribution_rows(db, cycle)
     )
-    return build_leaderboard(_qualified(rows), cycle, user_id, page, page_size)
+    return build_leaderboard(_qualified(rows), cycle, user_id, page, page_size, kills)
 
 
 async def _settled_cycles(db: AsyncSession, user_id: int, boss: WorldBoss) -> list[int]:
@@ -550,11 +607,12 @@ async def claim_reward(db: AsyncSession, user_id: int, cycle: int | None = None)
     if rank <= 0:
         raise HTTPException(409, "本轮未进入奖励榜单")
 
-    count = reward_items(rank, int(contribution.damage))
+    kills = await cycle_kills(db, target_cycle)
+    count = reward_items(rank, int(contribution.damage), kills)
     generated = [generate_exclusive_item() for _ in range(max(0, count))]
     grants = await grant_generated_items(db, user, generated, f"worldBoss:{target_cycle}") if generated else {"items": [], "autoSold": [], "autoGold": 0}
 
-    reward_view = _reward_view(rank, int(contribution.damage))
+    reward_view = _reward_view(rank, int(contribution.damage), kills)
     receipt = {
         "cycle": target_cycle,
         "rank": rank,
@@ -562,6 +620,8 @@ async def claim_reward(db: AsyncSession, user_id: int, cycle: int | None = None)
         "tier": reward_view["tier"],
         "tierItems": reward_view["tierItems"],
         "rankBonus": reward_view["rankBonus"],
+        "kills": kills,
+        "killItems": reward_view["killItems"],
         "damage": int(contribution.damage),
         "grants": grants,
         "gold": int(user.gold),

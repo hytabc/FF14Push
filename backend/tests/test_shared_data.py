@@ -268,6 +268,58 @@ def test_role_affix_pools_are_role_locked() -> None:
             raise AssertionError(f"未登记的职能变体 {item.variant_id}（{item.id}）")
 
 
+def test_base_item_roles_cover_variants() -> None:
+    """底材携带职能：词缀变体映射到战斗职能；武器按职业精确取职能；基础型 / 专属装备不限。"""
+    from app.services.slots_util import role_of_base
+
+    expected = {
+        "tank": "tank",
+        "vit": "tank",
+        "str": "melee",
+        "det": "melee",
+        "dex": "melee",
+        "crit": "physicalRanged",
+        "gold": "physicalRanged",
+        "int": "magicalRanged",
+        "bal": "healer",
+    }
+    for item in CONFIG.base_items:
+        # 底材自身的 role 只来自词缀变体（基础型为 None）。
+        expected_role = expected[item.variant_id] if item.variant_id else None
+        assert item.role == expected_role, (item.id, item.role, expected_role)
+        # 武器的职能由 job_id 精确决定（基础型武器也有职能）。
+        if item.job_id:
+            assert item.slot == "mainHand"
+            assert role_of_base(item) == CONFIG.job_by_id[item.job_id]["role"], item.id
+        else:
+            assert role_of_base(item) == item.role, item.id
+    # 世界BOSS 专属装备：武器按职业限定职能，防具/饰品（强攻 / 守护）不限制。
+    for item in CONFIG.exclusive_items:
+        if item.job_id:
+            assert role_of_base(item) == CONFIG.job_by_id[item.job_id]["role"], item.id
+        else:
+            assert item.role is None and role_of_base(item) is None, item.id
+
+
+def test_bias_bonus_and_attr_gain_rate_config() -> None:
+    """主属性全部 100% 生效；英雄型加成齐备（均衡型含三属性小幅 + 三维总量）。"""
+    rate = CONFIG.heroes["attrGainRate"]
+    assert float(rate["main"]) == 1.0
+    assert float(rate["off"]) == 1.0, "非主属性不再打 50% 折扣"
+    assert float(rate["balancedAll"]) == 1.0
+
+    bonus = CONFIG.combat["biasBonus"]
+    assert set(bonus) == {"str", "dex", "int", "balanced"}
+    assert float(bonus["str"]["crit"]) > 0
+    assert float(bonus["dex"]["dh"]) > 0 and float(bonus["dex"]["attackSpeedPct"]) > 0
+    assert float(bonus["int"]["det"]) > 0
+    balanced = bonus["balanced"]
+    assert float(balanced["crit"]) > 0 and float(balanced["dh"]) > 0 and float(balanced["det"]) > 0
+    assert float(balanced["coreAttrPct"]) > 0
+    assert "primaryLink" not in CONFIG.combat, "旧的 primaryLink 已被 biasBonus 取代"
+
+
+
 def test_regions_are_ordered_and_linked() -> None:
     regions = CONFIG.regions["regions"]
     assert len(regions) == 40
@@ -654,9 +706,11 @@ def test_world_boss_config() -> None:
     assert [int(t["minDamage"]) for t in tiers] == sorted(int(t["minDamage"]) for t in tiers), "档位必须升序"
     assert int(tiers[0]["minDamage"]) == 5_000_000, "首档 = 保底门槛"
     assert [int(t["items"]) for t in tiers] == sorted(int(t["items"]) for t in tiers), "档位件数应随伤害递增"
-    assert int(reward["rankBonus"]["1"]) == 10, "第 1 名名次加成"
-    # 强者第 1 名打满顶档 = 顶档件数 + 名次加成 = 20（与原上限一致）
-    assert int(tiers[-1]["items"]) + int(reward["rankBonus"]["1"]) == 20
+    assert int(reward["rankBonus"]["1"]) == 5, "第 1 名名次加成（已下调）"
+    kill = reward["killReward"]
+    assert int(kill["perKill"]) >= 1 and int(kill["maxItems"]) >= 1, "击杀奖励配置齐备"
+    # 强者第 1 名打满顶档 + 满额击杀奖励 = 顶档件数 + 名次加成 + 击杀上限 = 18
+    assert int(tiers[-1]["items"]) + int(reward["rankBonus"]["1"]) + int(kill["maxItems"]) == 18
 
 
 def test_world_boss_phases_escalate() -> None:

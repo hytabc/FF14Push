@@ -14,6 +14,7 @@ import { gatherYieldExplain } from '@/game/explanations'
 import { resolveGatherAvailability } from '@/game/core/gather'
 import { nextStepId, resolveGatherStep } from '@/game/core/sequence'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -22,6 +23,7 @@ const game = useGameStore()
 const dohdol = useDohDolStore()
 const auth = useAuthStore()
 const toast = useToastStore()
+const confirm = useConfirmStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -176,24 +178,45 @@ const totalValue = computed(() =>
   materials.value.reduce((sum, m) => sum + (m.sell ?? 0) * m.count, 0),
 )
 
-function sellAll() {
-  void dohdol.sellStacks(
-    materials.value
-      .filter((m) => (m.sell ?? 0) > 0)
-      .map((m) => ({ kind: m.kind, itemId: m.itemId, count: m.count })),
-  )
+async function sellAll() {
+  const rows = materials.value.filter((m) => (m.sell ?? 0) > 0)
+  if (!rows.length) return
+  const ok = await confirm.ask({
+    title: '确认全部出售',
+    message: `将出售 ${rows.length} 种材料，预计获得 ${totalValue.value} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (!ok) return
+  await dohdol.sellStacks(rows.map((m) => ({ kind: m.kind, itemId: m.itemId, count: m.count })))
 }
 
 const fishValue = computed(() =>
   fishBag.value.reduce((sum, m) => sum + (m.sell ?? 0) * m.count, 0),
 )
 
-function sellAllFish() {
-  void dohdol.sellStacks(
-    fishBag.value
-      .filter((m) => (m.sell ?? 0) > 0)
-      .map((m) => ({ kind: m.kind, itemId: m.itemId, count: m.count })),
-  )
+async function sellAllFish() {
+  const rows = fishBag.value.filter((m) => (m.sell ?? 0) > 0)
+  if (!rows.length) return
+  const ok = await confirm.ask({
+    title: '确认全部出售',
+    message: `将出售 ${rows.length} 种鱼获，预计获得 ${fishValue.value} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (!ok) return
+  await dohdol.sellStacks(rows.map((m) => ({ kind: m.kind, itemId: m.itemId, count: m.count })))
+}
+
+/** 出售单个堆叠物（二次确认，避免误触）。 */
+async function sellOne(item: { kind: string; itemId: string; name: string; count: number; sell?: number }) {
+  const ok = await confirm.ask({
+    title: '确认出售',
+    message: `出售「${item.name}」×${item.count}，获得 ${(item.sell ?? 0) * item.count} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (ok) await dohdol.sellStack(item.kind, item.itemId, item.count)
 }
 
 onMounted(async () => {
@@ -425,7 +448,7 @@ async function toggle() {
               <button
                 class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
                 :disabled="(m.sell ?? 0) <= 0"
-                @click="dohdol.sellStack(m.kind, m.itemId, m.count)"
+                @click="sellOne(m)"
               >
                 出售
               </button>
@@ -458,7 +481,7 @@ async function toggle() {
               <button
                 class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
                 :disabled="(f.sell ?? 0) <= 0"
-                @click="dohdol.sellStack(f.kind, f.itemId, f.count)"
+                @click="sellOne(f)"
               >
                 出售
               </button>

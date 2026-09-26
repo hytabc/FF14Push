@@ -92,6 +92,7 @@ from app.models.world_boss import (
     STATUS_DEAD,
     WorldBoss,
     WorldBossContribution,
+    WorldBossCycle,
     WorldBossReward,
     WorldBossSession,
     WorldBossTicket,
@@ -103,6 +104,7 @@ __all__ += [
     "WorldBossContribution",
     "WorldBossReward",
     "WorldBossTicket",
+    "WorldBossCycle",
     "STATUS_ALIVE",
     "STATUS_DEAD",
 ]

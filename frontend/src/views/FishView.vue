@@ -10,6 +10,7 @@ import { fishChanceExplain, fishPriceExplain } from '@/game/explanations'
 import type { Explain } from '@/game/explanations'
 import { conditionsFor, forecast, secondsUntilWeatherChange, timeOfDayName, weatherName } from '@/game/weather'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -19,6 +20,7 @@ const game = useGameStore()
 const dohdol = useDohDolStore()
 const auth = useAuthStore()
 const toast = useToastStore()
+const confirm = useConfirmStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -85,12 +87,28 @@ const fishBag = computed(() =>
 )
 const fishBagValue = computed(() => fishBag.value.reduce((sum, f) => sum + (f.sell ?? 0) * f.count, 0))
 
-function sellAllFish() {
-  void dohdol.sellStacks(
-    fishBag.value
-      .filter((f) => (f.sell ?? 0) > 0)
-      .map((f) => ({ kind: f.kind, itemId: f.itemId, count: f.count })),
-  )
+async function sellAllFish() {
+  const rows = fishBag.value.filter((f) => (f.sell ?? 0) > 0)
+  if (!rows.length) return
+  const ok = await confirm.ask({
+    title: '确认全部出售',
+    message: `将出售 ${rows.length} 种鱼获，预计获得 ${fishBagValue.value} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (!ok) return
+  await dohdol.sellStacks(rows.map((f) => ({ kind: f.kind, itemId: f.itemId, count: f.count })))
+}
+
+/** 出售单个鱼获（二次确认，避免误触）。 */
+async function sellOne(item: { kind: string; itemId: string; name: string; count: number; sell?: number }) {
+  const ok = await confirm.ask({
+    title: '确认出售',
+    message: `出售「${item.name}」×${item.count}，获得 ${(item.sell ?? 0) * item.count} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (ok) await dohdol.sellStack(item.kind, item.itemId, item.count)
 }
 
 onMounted(async () => {
@@ -332,7 +350,7 @@ async function toggle() {
             <span class="font-mono text-ink-500">{{ (f.sell ?? 0) * f.count }}</span>
             <button
               class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700"
-              @click="dohdol.sellStack(f.kind, f.itemId, f.count)"
+              @click="sellOne(f)"
             >
               出售
             </button>

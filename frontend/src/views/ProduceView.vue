@@ -15,6 +15,7 @@ import { findGatherTarget } from '@/game/core/gather'
 import { craftQualityExplain, craftRarityExplain } from '@/game/explanations'
 import { expandRecipeSteps, nextStepId, SEQ_STEP_LIMIT } from '@/game/core/sequence'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
@@ -25,10 +26,22 @@ const game = useGameStore()
 const dohdol = useDohDolStore()
 const auth = useAuthStore()
 const toast = useToastStore()
+const confirm = useConfirmStore()
 const router = useRouter()
 
 const job = ref('CRP')
 const error = ref('')
+
+/** 出售单个堆叠物（二次确认，避免误触）。 */
+async function sellOne(item: { kind: string; itemId: string; name: string; count: number; sell?: number }) {
+  const ok = await confirm.ask({
+    title: '确认出售',
+    message: `出售「${item.name}」×${item.count}，获得 ${(item.sell ?? 0) * item.count} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (ok) await dohdol.sellStack(item.kind, item.itemId, item.count)
+}
 
 /** 配方筛选：名称 / 种类 / 等级范围。 */
 const keyword = ref('')
@@ -545,7 +558,7 @@ function expandToSequence(r: RecipeView) {
               <button
                 class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
                 :disabled="(m.sell ?? 0) <= 0"
-                @click="dohdol.sellStack(m.kind, m.itemId, m.count)"
+                @click="sellOne(m)"
               >
                 出售
               </button>
@@ -569,7 +582,7 @@ function expandToSequence(r: RecipeView) {
               <button
                 class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
                 :disabled="(f.sell ?? 0) <= 0"
-                @click="dohdol.sellStack(f.kind, f.itemId, f.count)"
+                @click="sellOne(f)"
               >
                 出售
               </button>

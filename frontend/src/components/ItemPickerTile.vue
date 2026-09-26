@@ -10,9 +10,16 @@ const props = defineProps<{
   item: Item
   variant: 'list' | 'grid'
   equipped?: boolean
+  /** 与当前英雄职能不符：置灰并禁止选择。 */
+  incompatible?: boolean
 }>()
 
 const emit = defineEmits<{ select: [item: Item] }>()
+
+function pick() {
+  if (props.incompatible) return
+  emit('select', props.item)
+}
 
 const isDedicated = computed(() => equipGroup(props.item.category) !== 'combat')
 
@@ -33,8 +40,9 @@ const tooltip = computed(
   <button
     v-if="variant === 'grid'"
     class="gallery-cell flex flex-col items-center gap-1 rounded-lg border border-ink-700 bg-ink-900/40 p-2 text-center transition hover:border-white/50"
+    :class="incompatible ? 'cursor-not-allowed opacity-50 hover:border-ink-700' : ''"
     :title="tooltip"
-    @click="emit('select', item)"
+    @click="pick"
   >
     <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="32" />
     <span class="w-full truncate text-[11px] font-medium" :class="rarityClass(item.rarity)">{{ item.name }}</span>
@@ -42,20 +50,23 @@ const tooltip = computed(
       <template v-if="isDedicated">Lv.{{ item.levelReq }}</template>
       <template v-else>战力 {{ formatNumber(item.score) }}</template>
     </span>
-    <span v-if="equipped" class="rounded bg-emerald-500/20 px-1 text-[9px] text-emerald-300">已装备</span>
+    <span v-if="incompatible" class="rounded bg-rose-600/80 px-1 text-[9px] text-white">职能不符</span>
+    <span v-else-if="equipped" class="rounded bg-emerald-500/20 px-1 text-[9px] text-emerald-300">已装备</span>
   </button>
 
   <button
     v-else
     class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition hover:bg-ink-800/60"
+    :class="incompatible ? 'cursor-not-allowed opacity-50 hover:bg-transparent' : ''"
     :title="tooltip"
-    @click="emit('select', item)"
+    @click="pick"
   >
     <ItemIcon :base-id="item.baseId" :rarity="item.rarity" :size="24" />
     <span class="min-w-0 flex-1 truncate text-xs font-medium" :class="rarityClass(item.rarity)">{{ item.name }}</span>
     <span class="shrink-0 text-[10px] text-ink-400">{{ rarityName(item.rarity) }} · Lv.{{ item.levelReq }}</span>
     <span v-if="!isDedicated" class="shrink-0 font-mono text-[10px] text-amber-300">战力 {{ formatNumber(item.score) }}</span>
     <span v-else-if="bonusText" class="shrink-0 text-[10px] text-emerald-300">{{ bonusText }}</span>
-    <span v-if="equipped" class="shrink-0 rounded bg-emerald-500/20 px-1 py-0.5 text-[10px] text-emerald-300">已装备</span>
+    <span v-if="incompatible" class="shrink-0 rounded bg-rose-600/80 px-1 py-0.5 text-[10px] text-white">职能不符</span>
+    <span v-else-if="equipped" class="shrink-0 rounded bg-emerald-500/20 px-1 py-0.5 text-[10px] text-emerald-300">已装备</span>
   </button>
 </template>

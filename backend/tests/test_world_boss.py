@@ -23,14 +23,18 @@ from app.services.loot import base_items_for_category
 from app.services.world_boss import (
     BOSS_ID,
     claim_reward,
+    cycle_kills,
     ensure_world_boss,
     hero_slots,
     hero_breakdown,
+    kill_reward_config,
+    kill_reward_items,
     leaderboard_view,
     level_multiplier,
     merge_party,
     phase_for_ratio,
     rank_bonus_items,
+    record_cycle_kills,
     reward_items,
     roll_world_boss,
     tier_for_damage,
@@ -274,26 +278,31 @@ async def test_period_rollover_starts_new_cycle_and_ends_sessions(session_factor
 
 
 def test_reward_items_tiers_and_rank_bonus():
-    """奖励 = 档位（周期累计伤害）+ 名次加成（仅前 10 名）。"""
+    """奖励 = 击杀奖励（全员同额）+ 档位（周期累计伤害）+ 名次加成（仅前 10 名）。"""
     # 未达门槛：无档位、无奖励
     assert tier_for_damage(4_999_999) == (0, 0)
     assert reward_items(1, 4_999_999) == 0
     # 保底档：达标即有 1 件
     assert tier_for_damage(5_000_000)[1] == 1
     assert reward_items(50, 5_000_000) == 1
-    # 档位随伤害递增
+    # 档位随伤害递增（已按下调后的表）
     assert tier_for_damage(50_000_000)[1] == 2
-    assert tier_for_damage(200_000_000)[1] == 4
-    assert tier_for_damage(600_000_000)[1] == 7
-    assert tier_for_damage(1_500_000_000)[1] == 10
-    assert tier_for_damage(9_999_999_999)[1] == 10, "超出顶档仍取顶档"
+    assert tier_for_damage(200_000_000)[1] == 3
+    assert tier_for_damage(600_000_000)[1] == 4
+    assert tier_for_damage(1_500_000_000)[1] == 5
+    assert tier_for_damage(9_999_999_999)[1] == 5, "超出顶档仍取顶档"
     # 名次加成仅前 10 名
-    assert rank_bonus_items(1) == 10 and rank_bonus_items(10) == 1
+    assert rank_bonus_items(1) == 5 and rank_bonus_items(10) == 1
     assert rank_bonus_items(11) == 0 and rank_bonus_items(0) == 0
-    # 强者第 1 名打满顶档 = 20
-    assert reward_items(1, 2_000_000_000) == 20
-    # 第 2 名低贡献者 = 档位 1 + 加成 9
-    assert reward_items(2, 10_000_000) == 10
+    # 击杀奖励：min(击杀次数 × perKill, maxItems)，与名次 / 伤害无关（达标即同额）
+    cap = int(kill_reward_config()["maxItems"])
+    assert kill_reward_items(0) == 0
+    assert kill_reward_items(3) == 3
+    assert kill_reward_items(999) == cap
+    # 强者第 1 名打满顶档 + 满击杀 = 5(档) + 5(名次) + 8(击杀) = 18
+    assert reward_items(1, 2_000_000_000, 999) == 18
+    # 第 2 名低贡献者 = 档位 1 + 加成 4 + 击杀 3
+    assert reward_items(2, 10_000_000, 3) == 1 + 4 + 3
 
 
 # ---------------------------------------------------------------- 榜单 / 奖励
@@ -386,10 +395,12 @@ async def test_reward_claim_idempotent_and_grants_exclusive(session_factory):
     async with session_factory() as db:
         receipt = await claim_reward(db, uid)
         await db.commit()
-    assert receipt["rank"] == 1 and receipt["items"] == 20
-    assert receipt["tier"] == 5 and receipt["tierItems"] == 10 and receipt["rankBonus"] == 10
+    # 该周期无击杀记录（旧周期）→ 击杀奖励为 0：档位 5 + 名次加成 5 = 10
+    assert receipt["rank"] == 1 and receipt["items"] == 10
+    assert receipt["tier"] == 5 and receipt["tierItems"] == 5 and receipt["rankBonus"] == 5
+    assert receipt["kills"] == 0 and receipt["killItems"] == 0
     granted = receipt["grants"]["items"]
-    assert len(granted) == 20
+    assert len(granted) == 10
     exclusive_ids = {b.id for b in CONFIG.exclusive_items}
     for item in granted:
         assert item["rarity"] == "mythic"
@@ -403,6 +414,75 @@ async def test_reward_claim_idempotent_and_grants_exclusive(session_factory):
         stored = (await db.scalars(select(WorldBossReward).where(WorldBossReward.user_id == uid))).all()
     assert again == receipt, "重复领取应返回同一回执"
     assert len(stored) == 1
+
+
+async def test_cycle_kills_persisted_and_rewarded(session_factory):
+    """周期击杀数在换轮时落库，并化作全员同额的击杀奖励。"""
+    uid, _ = await _seed_player(session_factory, "kill_reward_player")
+    async with session_factory() as db:
+        boss = await ensure_world_boss(db)
+        # 让周期到期 → roll 应把该周期击杀数快照到 world_boss_cycles 并清空 kills。
+        boss.kills = 3
+        boss.cycle = 1
+        boss.period_ends_at = time.time() - 1
+        await db.commit()
+
+    async with session_factory() as db:
+        rolled = await roll_world_boss(db, time.time())
+        await db.commit()
+    assert rolled is True
+
+    async with session_factory() as db:
+        boss = await db.get(WorldBoss, BOSS_ID)
+        assert int(boss.cycle) == 2 and int(boss.kills) == 0, "换轮后本周期击杀数清零"
+        assert await cycle_kills(db, 1) == 3, "结束周期的击杀数已快照"
+        # 为已结束周期补一条达标贡献，再领取：应含击杀奖励。
+        db.add(
+            WorldBossContribution(
+                boss_id=BOSS_ID, cycle=1, user_id=uid, damage=2_000_000_000, party=[], updated_at=0, created_at=0
+            )
+        )
+        await db.commit()
+
+    async with session_factory() as db:
+        receipt = await claim_reward(db, uid, cycle=1)
+        await db.commit()
+    assert receipt["kills"] == 3
+    assert receipt["killItems"] == kill_reward_items(3)
+    assert receipt["items"] == receipt["tierItems"] + receipt["rankBonus"] + receipt["killItems"]
+
+
+async def test_report_progress_is_cycle_cumulative(auth_client, session_factory):
+    """「本周期进度」与排行榜同源：/report 的 myDamage 是周期累计贡献，而非本场会话累计。"""
+    hero_id = await _enter_ready(auth_client, session_factory)
+    uid = await _my_uid(auth_client)
+    # 先塞一条本周期已有的累计贡献（模拟上一场打出的伤害）；本场会话从 0 开始。
+    async with session_factory() as db:
+        boss = await db.get(WorldBoss, BOSS_ID)
+        db.add(
+            WorldBossContribution(
+                boss_id=BOSS_ID, cycle=boss.cycle, user_id=uid, damage=40_000_000, party=[], updated_at=0, created_at=0
+            )
+        )
+        await db.commit()
+
+    await _force_max_window(session_factory, uid)
+    cap = await _session_cap(session_factory, uid)
+    damage = max(1, int(cap * 0.5))
+    resp = await auth_client.post(
+        f"{API}/worldboss/report",
+        json={"reportSeq": 1, "damage": damage, "perHero": [{"heroId": hero_id, "damage": damage}]},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["damageAccepted"] == damage
+    # 周期累计 = 已有贡献 + 本次；绝不能是本场会话的 damage。
+    assert body["myDamage"] == 40_000_000 + damage
+
+    async with session_factory() as db:
+        boss = await db.get(WorldBoss, BOSS_ID)
+        board = await leaderboard_view(db, boss.cycle, uid, 1, 50)
+    assert board["me"] and board["me"]["damage"] == body["myDamage"], "进度与榜单同源"
 
 
 async def test_claim_requires_settled_cycle(session_factory):
@@ -441,7 +521,8 @@ async def test_enter_rejects_low_level_and_over_capacity(auth_client, session_fa
     assert body["boss"]["kills"] == 0
     assert [p["id"] for p in body["phases"]] == [1, 2, 3]
     assert body["rules"]["heroSlots"] == hero_slots() == 8
-    assert body["reward"]["tiers"] and body["reward"]["rankBonus"]["1"] == 10
+    assert body["reward"]["tiers"] and body["reward"]["rankBonus"]["1"] == 5
+    assert int(body["reward"]["killReward"]["perKill"]) >= 1
     assert body["session"] and len(body["session"]["heroes"]) == 1
     # 新会话的序号游标为 0；客户端刷新 / 重进时据此续接 reportSeq。
     assert body["lastReportSeq"] == 0

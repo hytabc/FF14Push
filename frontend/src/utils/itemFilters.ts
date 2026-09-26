@@ -33,12 +33,12 @@ const VARIANT_ROLE: Record<string, JobRole> = {
   bal: 'healer', // 治愈：白魔法师 / 学者 / 占星术士 / 贤者
 }
 
-/** 底材 → 战斗职能：武器按 jobId 精确取，防具/饰品按职能词缀近似，无法判断返回 null。 */
+/** 底材 → 战斗职能：优先取底材自带 role（词缀职能），武器按 jobId 精确取；无法判断返回 null。 */
 export function roleOfBaseId(baseId: string | null | undefined): JobRole | null {
   const base = baseId ? data.baseItemById[baseId] : undefined
   if (!base) return null
   if (base.jobId) return data.jobById[base.jobId]?.role ?? null
-  return VARIANT_ROLE[base.variantId ?? ''] ?? null
+  return base.role ?? VARIANT_ROLE[base.variantId ?? ''] ?? null
 }
 
 /** 战斗职能 id → 中文（坦克/治疗/近战DPS…）。 */

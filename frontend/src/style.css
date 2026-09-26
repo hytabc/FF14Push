@@ -176,6 +176,22 @@ html {
 [data-app-footer] {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
+
+/*
+ * 全面屏（edge-to-edge）单独适配：只在探测到安全区时才由 `utils/safeArea.ts` 给 <html> 加上
+ * `safe-top` / `safe-bottom`（桌面端没有这两个 class，外观与之前完全一致）。
+ * - safe-top：页头改实色 —— 半透明页头会透出 body 顶部的径向渐变，使状态栏区域与下方导航条
+ *   出现可见色差；实色后两者完全一致，同时省掉一次 backdrop 模糊计算。
+ * - safe-bottom：页脚 / 抽屉让出手势条高度。
+ */
+html.safe-top [data-app-header] {
+  background-color: var(--color-ink-950);
+  backdrop-filter: none;
+}
+html.safe-bottom [data-app-footer] {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
 .tutorial-highlight {
   outline: 2px solid #fbbf24;
   outline-offset: 4px;

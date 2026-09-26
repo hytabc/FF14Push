@@ -92,6 +92,8 @@ export interface WorldBossLeaderboardEntry {
   tierItems: number
   /** 名次加成件数（仅前 10 名）。 */
   rankBonus: number
+  /** 击杀奖励件数（本周期所有达标玩家同额）。 */
+  killItems?: number
   /** 该玩家本周期各英雄的伤害与占比（点击榜单行展开查看）。 */
   heroes: WorldBossHeroDamage[]
 }
@@ -99,6 +101,8 @@ export interface WorldBossLeaderboardEntry {
 export interface WorldBossLeaderboard {
   cycle: number
   minDamage: number
+  /** 本周期 BOSS 击杀次数（击杀奖励依据）。 */
+  kills?: number
   total: number
   page: number
   pageSize: number
@@ -120,6 +124,8 @@ export interface WorldBossRewardTier {
 
 export interface WorldBossRewardConfig {
   minDamage: number
+  /** 击杀奖励：件数 = min(本周期击杀次数 × perKill, maxItems)，本周期所有达标玩家各得同额。 */
+  killReward?: { perKill: number; maxItems: number }
   /** 档位：按周期累计伤害取最高达标档的件数（保底来源）。 */
   tiers: WorldBossRewardTier[]
   /** 名次加成：仅前 10 名（键为名次字符串）。 */
@@ -160,6 +166,10 @@ export interface WorldBossReceipt {
   tier: number
   tierItems: number
   rankBonus: number
+  /** 本周期 BOSS 击杀次数（击杀奖励依据）。 */
+  kills?: number
+  /** 击杀奖励件数。 */
+  killItems?: number
   damage: number
   grants: { items: Item[]; autoSold: Item[]; autoGold: number }
   gold: number

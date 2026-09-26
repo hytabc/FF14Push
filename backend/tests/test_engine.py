@@ -172,8 +172,8 @@ class TestHeroStats:
             assert stats.attack > prev_atk
             prev_hp, prev_atk = stats.max_hp, stats.attack
 
-    def test_off_attribute_gain_is_halved(self) -> None:
-        """PRD 招募 4.2：主属性 100%，非主属性 50%。"""
+    def test_all_core_attributes_gain_fully(self) -> None:
+        """装备三维全部 100% 生效：不再有「非主属性 50%」的折算。"""
         hero = FakeHero(level=1, attr_bias="str", strength=10, agility=10, intellect=10)
         base = compute_stats(hero, [])
 
@@ -182,12 +182,12 @@ class TestHeroStats:
         off_item = FakeItem(sub_attrs=[{"attr": "int", "value": 100.0, "type": "flat"}])
 
         main_gain = compute_stats(hero, [main_item]).max_hp - base.max_hp
-        # 智力为非主属性，只提供 50% 魔法值收益
+        # 智力为非主属性，同样 100% 计入魔法值
         off_gain = compute_stats(hero, [off_item]).max_mp - base.max_mp
         full_gain = 100 * float(CONFIG.heroes["attributes"]["maxMp"]["coef"]["int"])
 
         assert main_gain == pytest.approx(100 * 10)  # str 对 maxHp 的系数为 10
-        assert off_gain == pytest.approx(full_gain * 0.5)
+        assert off_gain == pytest.approx(full_gain)
 
     def test_equipment_attributes_reach_panel(self) -> None:
         hero = FakeHero(level=50)
@@ -198,7 +198,9 @@ class TestHeroStats:
         base = compute_stats(hero, [])
         with_item = compute_stats(hero, [item])
         assert with_item.attack == pytest.approx(base.attack + 500.0)
-        assert with_item.crit_value == pytest.approx(600.0)
+        # 三属性会再乘英雄型专属加成（均衡型 6%）。
+        crit_bonus = float(CONFIG.combat.get("biasBonus", {}).get(hero.attr_bias, {}).get("crit", 0.0))
+        assert with_item.crit_value == pytest.approx(600.0 * (1 + crit_bonus))
         assert with_item.crit_rate_pct > base.crit_rate_pct
 
     def test_buff_terms_apply(self) -> None:

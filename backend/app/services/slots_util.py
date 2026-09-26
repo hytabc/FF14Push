@@ -42,3 +42,20 @@ def all_slot_ids() -> list[str]:
 def slot_category(slot_id: str) -> str | None:
     slot = SLOT_BY_ID.get(slot_id)
     return slot["category"] if slot else None
+
+
+def role_of_base(base: BaseItem) -> str | None:
+    """底材对应的战斗职能：武器按自身职业精确取，防具/饰品按职能词缀。
+
+    基础型（无词缀）与世界BOSS 专属装备（强攻 / 守护）没有职能，返回 None（不限制穿戴）。
+    """
+    if base.job_id:
+        job = CONFIG.job_by_id.get(base.job_id)
+        return job["role"] if job else None
+    return base.role
+
+
+def role_name(role: str | None) -> str:
+    """职能 id → 中文（坦克 / 治疗 / 近战DPS …）。"""
+    info = CONFIG.jobs["roles"].get(role) if role else None
+    return str(info["name"]) if info else (role or "")

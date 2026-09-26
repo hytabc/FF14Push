@@ -11,6 +11,7 @@ import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { Item, SlotId } from '@/game/types'
 import { rarityBg, rarityClass, rarityName, slotName, baseAttrName, attrRangeLabel } from '@/utils/format'
+import { roleOfBaseId } from '@/utils/itemFilters'
 import { dohdolSlotGroups, equipmentSlotGroups } from '@/utils/slots'
 
 const game = useGameStore()
@@ -42,6 +43,9 @@ const slots = computed(() => [...data.slots].sort((a, b) => a.order - b.order))
 const slotGroups = computed(() => equipmentSlotGroups())
 
 const loadout = computed(() => game.loadout)
+
+/** 英雄当前职能：由已装备主手武器决定；无武器时不限制防具/饰品的职能。 */
+const heroRole = computed(() => roleOfBaseId(loadout.value['mainHand']?.baseId ?? null))
 
 const candidates = computed<Item[]>(() => {
   if (!pickerSlot.value) return []
@@ -203,6 +207,8 @@ async function unequipDohdol(slot: string) {
       :title="`选择装备 · ${pickerSlot ? slotName(pickerSlot) : ''}`"
       :candidates="candidates"
       :equipped="pickerSlot ? (loadout[pickerSlot] ?? null) : null"
+      :hero-role="heroRole"
+      :slot-is-weapon="pickerSlot === 'mainHand'"
       slot-scoped
       @close="pickerSlot = null"
       @equip="pickerSlot && equip($event, pickerSlot)"

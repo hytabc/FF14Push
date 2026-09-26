@@ -107,3 +107,18 @@ class WorldBossTicket(Base):
     user_id: Mapped[int] = mapped_column(sa.ForeignKey("users.id"))
     boss_id: Mapped[int] = mapped_column(sa.ForeignKey("world_bosses.id"))
     expires_at: Mapped[float] = mapped_column(sa.Float)
+
+
+class WorldBossCycle(Base):
+    """每个「讨伐周期」结束时的快照：记录该周期的击杀次数，用于结算击杀奖励。
+
+    周期换轮会把 `WorldBoss.kills` 清零，故必须单独落库；本表**只新增行、永不清理**，
+    使历史周期的奖励可随时按周期号复算。
+    """
+
+    __tablename__ = "world_boss_cycles"
+
+    cycle: Mapped[int] = mapped_column(primary_key=True)
+    boss_id: Mapped[int] = mapped_column(sa.ForeignKey("world_bosses.id", ondelete="CASCADE"))
+    kills: Mapped[int] = mapped_column(default=0)
+    ended_at: Mapped[float] = mapped_column(sa.Float, default=0)

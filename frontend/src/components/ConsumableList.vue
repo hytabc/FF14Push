@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
 import type { MaterialStackItem } from '@/game/types'
+import { useConfirmStore } from '@/stores/confirm'
 import { useDohDolStore } from '@/stores/dohdol'
 import { consumableBonus } from '@/utils/consumables'
 import {
@@ -26,6 +27,18 @@ const props = withDefaults(
 )
 
 const dohdol = useDohDolStore()
+const confirm = useConfirmStore()
+
+/** 出售单个消耗品（二次确认，避免误触）。 */
+async function sell(c: MaterialStackItem) {
+  const ok = await confirm.ask({
+    title: '确认出售',
+    message: `出售「${c.name}」×1，获得 ${c.sell ?? 0} 金币。\n出售后物品永久消失。`,
+    confirmLabel: '确认出售',
+    tone: 'danger',
+  })
+  if (ok) await dohdol.sellStack(c.kind, c.itemId, 1)
+}
 
 const sort = ref<ConsumableSortKey>('group')
 const filters = ref<ConsumableFilterState>(createConsumableFilters())
@@ -90,7 +103,7 @@ function resetFilters() {
         <button
           class="rounded bg-amber-600/70 px-2 py-0.5 text-white hover:bg-amber-500 disabled:opacity-40"
           :disabled="(c.sell ?? 0) <= 0"
-          @click="dohdol.sellStack(c.kind, c.itemId, 1)"
+          @click="sell(c)"
         >
           出售
         </button>
@@ -117,7 +130,7 @@ function resetFilters() {
           <button
             class="rounded bg-ink-800 px-2 py-0.5 text-[10px] text-amber-300 hover:bg-ink-700 disabled:opacity-40"
             :disabled="(c.sell ?? 0) <= 0"
-            @click="dohdol.sellStack(c.kind, c.itemId, 1)"
+            @click="sell(c)"
           >
             出售
           </button>
