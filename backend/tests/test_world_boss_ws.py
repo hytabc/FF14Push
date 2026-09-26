@@ -24,7 +24,7 @@ async def test_producer_snapshot_then_skips_unchanged(session_factory):
     assert first is not None
     assert first["type"] == "snapshot"
     assert first["sequence"] == 1
-    assert first["boss"]["maxHp"] == 2_400_000_000
+    assert first["boss"]["maxHp"] == 6_000_000_000
     assert "leaderboardRows" in first
 
     # 血量未变、且距上次榜单不足 5 秒 → 不推送。

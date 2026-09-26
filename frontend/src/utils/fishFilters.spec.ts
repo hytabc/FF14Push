@@ -27,7 +27,7 @@ function fish(overrides: Partial<FishFilterEntry> & { name?: string }): FishFilt
 /** 覆盖各种场景的样本集：无门槛普通鱼 / 带天气普通鱼 / 带时段蓝鱼 / 鱼王 / 困难鱼（带前置）。 */
 const ENTRIES = [
   fish({ name: '河鲈', rarity: 'white' }),
-  fish({ name: '珊瑚蝶鱼', rarity: 'blue', weather: ['clear'], sizeMin: 75, sizeMax: 135 }),
+  fish({ name: '珊瑚蝶鱼', rarity: 'blue', weather: ['clearSkies'], sizeMin: 75, sizeMax: 135 }),
   fish({ name: '银鳞鲳', rarity: 'blue', weather: ['rain'], sizeMin: 75, sizeMax: 135 }),
   fish({ name: '雷鸣鱼', rarity: 'purple', weather: ['rain', 'thunder'], sizeMin: 90, sizeMax: 160 }),
   fish({ name: '夜光鱼', rarity: 'blue', timeOfDay: ['night'], sizeMin: 40, sizeMax: 90 }),
@@ -218,7 +218,7 @@ describe('presentFishValues', () => {
     expect([...present.regions].sort((a, b) => a - b)).toEqual([1, 2, 31])
     expect([...present.kinds].sort()).toEqual(['king', 'legend', 'normal'])
     expect([...present.rarities].sort()).toEqual(['blue', 'purple', 'white'])
-    expect([...present.weather].sort()).toEqual(['clear', 'fog', 'rain', 'thunder'])
+    expect([...present.weather].sort()).toEqual(['clearSkies', 'fog', 'rain', 'thunder'])
     expect([...present.timeOfDay].sort()).toEqual(['dawn', 'dusk', 'night'])
   })
 

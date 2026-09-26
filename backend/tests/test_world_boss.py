@@ -278,31 +278,32 @@ async def test_period_rollover_starts_new_cycle_and_ends_sessions(session_factor
 
 
 def test_reward_items_tiers_and_rank_bonus():
-    """奖励 = 击杀奖励（全员同额）+ 档位（周期累计伤害）+ 名次加成（仅前 10 名）。"""
+    """奖励 = 击杀奖励（全员同额）+ 档位（周期累计伤害）+ 名次加成（仅前 5 名）。"""
     # 未达门槛：无档位、无奖励
-    assert tier_for_damage(4_999_999) == (0, 0)
-    assert reward_items(1, 4_999_999) == 0
-    # 保底档：达标即有 1 件
-    assert tier_for_damage(5_000_000)[1] == 1
-    assert reward_items(50, 5_000_000) == 1
-    # 档位随伤害递增（已按下调后的表）
-    assert tier_for_damage(50_000_000)[1] == 2
-    assert tier_for_damage(200_000_000)[1] == 3
-    assert tier_for_damage(600_000_000)[1] == 4
-    assert tier_for_damage(1_500_000_000)[1] == 5
-    assert tier_for_damage(9_999_999_999)[1] == 5, "超出顶档仍取顶档"
-    # 名次加成仅前 10 名
-    assert rank_bonus_items(1) == 5 and rank_bonus_items(10) == 1
+    assert tier_for_damage(9_999_999) == (0, 0)
+    assert reward_items(1, 9_999_999) == 0
+    # 保底档：达标即有 2 件
+    assert tier_for_damage(10_000_000)[1] == 2
+    assert reward_items(50, 10_000_000) == 2
+    # 档位随伤害递增
+    assert tier_for_damage(100_000_000)[1] == 3
+    assert tier_for_damage(400_000_000)[1] == 4
+    assert tier_for_damage(1_000_000_000)[1] == 5
+    assert tier_for_damage(2_000_000_000)[1] == 6
+    assert tier_for_damage(9_999_999_999)[1] == 6, "超出顶档仍取顶档"
+    # 名次加成仅前 5 名（已下调）
+    assert rank_bonus_items(1) == 3 and rank_bonus_items(5) == 1
+    assert rank_bonus_items(6) == 0 and rank_bonus_items(10) == 0
     assert rank_bonus_items(11) == 0 and rank_bonus_items(0) == 0
     # 击杀奖励：min(击杀次数 × perKill, maxItems)，与名次 / 伤害无关（达标即同额）
     cap = int(kill_reward_config()["maxItems"])
     assert kill_reward_items(0) == 0
-    assert kill_reward_items(3) == 3
+    assert kill_reward_items(3) == 6
     assert kill_reward_items(999) == cap
-    # 强者第 1 名打满顶档 + 满击杀 = 5(档) + 5(名次) + 8(击杀) = 18
-    assert reward_items(1, 2_000_000_000, 999) == 18
-    # 第 2 名低贡献者 = 档位 1 + 加成 4 + 击杀 3
-    assert reward_items(2, 10_000_000, 3) == 1 + 4 + 3
+    # 强者第 1 名打满顶档 + 满击杀 = 6(档) + 3(名次) + 12(击杀) = 21
+    assert reward_items(1, 2_000_000_000, 999) == 21
+    # 第 2 名低贡献者 = 档位 2 + 加成 2 + 击杀 6
+    assert reward_items(2, 10_000_000, 3) == 2 + 2 + 6
 
 
 # ---------------------------------------------------------------- 榜单 / 奖励
@@ -360,7 +361,7 @@ async def test_leaderboard_threshold_and_order(auth_client, session_factory):
     below, _ = await _seed_player(session_factory, "lb_below")
     async with session_factory() as db:
         boss = await ensure_world_boss(db)
-        for user_id, damage in ((uid, 8_000_000), (rival, 20_000_000), (below, 1_000_000)):
+        for user_id, damage in ((uid, 12_000_000), (rival, 30_000_000), (below, 1_000_000)):
             db.add(
                 WorldBossContribution(
                     boss_id=BOSS_ID, cycle=boss.cycle, user_id=user_id, damage=damage, party=[], updated_at=0, created_at=0
@@ -373,8 +374,8 @@ async def test_leaderboard_threshold_and_order(auth_client, session_factory):
         board = await leaderboard_view(db, cycle, uid, 1, 50)
     ids = [e["userId"] for e in board["entries"]]
     assert ids == [rival, uid], "低于门槛者不入榜，且按伤害降序"
-    assert board["me"]["rank"] == 2 and board["me"]["items"] == reward_items(2, 8_000_000)
-    assert all(e["damage"] >= 5_000_000 for e in board["entries"])
+    assert board["me"]["rank"] == 2 and board["me"]["items"] == reward_items(2, 12_000_000)
+    assert all(e["damage"] >= 10_000_000 for e in board["entries"])
 
 
 async def test_reward_claim_idempotent_and_grants_exclusive(session_factory):
@@ -395,12 +396,12 @@ async def test_reward_claim_idempotent_and_grants_exclusive(session_factory):
     async with session_factory() as db:
         receipt = await claim_reward(db, uid)
         await db.commit()
-    # 该周期无击杀记录（旧周期）→ 击杀奖励为 0：档位 5 + 名次加成 5 = 10
-    assert receipt["rank"] == 1 and receipt["items"] == 10
-    assert receipt["tier"] == 5 and receipt["tierItems"] == 5 and receipt["rankBonus"] == 5
+    # 该周期无击杀记录（旧周期）→ 击杀奖励为 0：档位 6 + 名次加成 3 = 9
+    assert receipt["rank"] == 1 and receipt["items"] == 9
+    assert receipt["tier"] == 5 and receipt["tierItems"] == 6 and receipt["rankBonus"] == 3
     assert receipt["kills"] == 0 and receipt["killItems"] == 0
     granted = receipt["grants"]["items"]
-    assert len(granted) == 10
+    assert len(granted) == 9
     exclusive_ids = {b.id for b in CONFIG.exclusive_items}
     for item in granted:
         assert item["rarity"] == "mythic"
@@ -514,14 +515,14 @@ async def test_enter_rejects_low_level_and_over_capacity(auth_client, session_fa
     ok = await auth_client.post(f"{API}/worldboss/enter", json={"heroIds": [hero_id]})
     assert ok.status_code == 200, ok.text
     body = ok.json()
-    assert body["boss"]["maxHp"] == 2_400_000_000
+    assert body["boss"]["maxHp"] == 6_000_000_000
     assert body["boss"]["phase"] == 1 and body["boss"]["defenseMultiplier"] == 1.0
     assert body["boss"]["periodSeconds"] == 5 * 3600
     assert body["boss"]["periodEndsAt"] is not None
     assert body["boss"]["kills"] == 0
     assert [p["id"] for p in body["phases"]] == [1, 2, 3]
     assert body["rules"]["heroSlots"] == hero_slots() == 8
-    assert body["reward"]["tiers"] and body["reward"]["rankBonus"]["1"] == 5
+    assert body["reward"]["tiers"] and body["reward"]["rankBonus"]["1"] == 3
     assert int(body["reward"]["killReward"]["perKill"]) >= 1
     assert body["session"] and len(body["session"]["heroes"]) == 1
     # 新会话的序号游标为 0；客户端刷新 / 重进时据此续接 reportSeq。
@@ -620,7 +621,7 @@ async def test_report_damage_reduces_global_hp(auth_client, session_factory):
     body = resp.json()
     assert body["damageAccepted"] == damage
     assert body["myDamage"] == damage
-    assert body["boss"]["hp"] == 2_400_000_000 - damage
+    assert body["boss"]["hp"] == 6_000_000_000 - damage
 
     async with session_factory() as db:
         contribution = await db.scalar(

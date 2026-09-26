@@ -6,9 +6,17 @@ import data from '@shared/schema'
 
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
+import WeatherIcon from '@/components/WeatherIcon.vue'
 import { fishChanceExplain, fishPriceExplain } from '@/game/explanations'
 import type { Explain } from '@/game/explanations'
-import { conditionsFor, forecast, secondsUntilWeatherChange, timeOfDayName, weatherName } from '@/game/weather'
+import {
+  conditionsFor,
+  forecast,
+  secondsUntilWeatherChange,
+  timeOfDayName,
+  timeOfDayWindowsText,
+  weatherName,
+} from '@/game/weather'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirmStore } from '@/stores/confirm'
 import { useDohDolStore } from '@/stores/dohdol'
@@ -52,6 +60,12 @@ const specials = computed(() => currentRegion.value?.specials ?? [])
 const conditions = computed(() => (regionId.value === null ? null : conditionsFor(regionId.value, nowMs.value)))
 const weatherForecast = computed(() => (regionId.value === null ? [] : forecast(regionId.value, 6, nowMs.value)))
 const nextWeatherIn = computed(() => secondsUntilWeatherChange(nowMs.value))
+
+/** 「?」说明用的换算常量，均取自配置（与结算同源）。 */
+const etDayMinutes = computed(() => Math.round(data.weather.eorzea.dayRealSeconds / 60))
+const weatherPeriodEtHours = computed(() =>
+  Math.round((data.weather.weatherPeriodSec / data.weather.eorzea.dayRealSeconds) * 24),
+)
 
 /** 生效中的「捕鱼人之识」（每次直觉只绑定一条鱼，可同时存在多个）。 */
 const insights = computed(() =>
@@ -200,20 +214,29 @@ async function toggle() {
       <!-- 天气 / 时间（当前 + 预报） -->
       <div v-if="conditions" class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-300">
         <span class="inline-flex items-center gap-1.5">
-          <span class="inline-block h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: conditions.weatherHex }" />
+          <WeatherIcon :weather-id="conditions.weather" :size="16" :hex="conditions.weatherHex" />
           天气：<b class="text-ink-100">{{ conditions.weatherName }}</b>
           <span class="text-ink-500">（{{ nextWeatherIn }}s 后变化）</span>
         </span>
-        <span>艾欧泽亚时间：<b class="text-ink-100">{{ conditions.etClock }}</b> · {{ conditions.timeOfDayName }}</span>
+        <span class="inline-flex items-center">
+          艾欧泽亚时间：<b class="text-ink-100">{{ conditions.etClock }}</b> · {{ conditions.timeOfDayName }}
+          <InfoTip title="艾欧泽亚时间（ET）">
+            <p>1 ET 日 = {{ etDayMinutes }} 现实分钟；ET 比现实快约 20.57×（1 ET 小时 = 2 分 55 秒），与 FF14 一致。</p>
+            <p>与 FF14 一致：白天 ET 06:00–17:59、夜晚 ET 18:00–05:59（每 12 ET 小时交替）。</p>
+            <p>时段划分（ET）：{{ timeOfDayWindowsText() }}</p>
+            <p>天气每 {{ weatherPeriodEtHours }} ET 小时（ET 00:00 / 08:00 / 16:00）变化一次。</p>
+          </InfoTip>
+        </span>
       </div>
       <div v-if="weatherForecast.length" class="mt-1 flex flex-wrap gap-1 text-[10px]">
         <span
           v-for="(f, i) in weatherForecast"
           :key="i"
-          class="rounded px-1.5 py-0.5"
+          class="inline-flex items-center gap-1 rounded px-1.5 py-0.5"
           :class="f.isNow ? 'bg-sky-500/20 text-sky-200' : 'bg-ink-800 text-ink-400'"
           :title="`${f.etClock} · ${f.timeOfDayName}`"
         >
+          <WeatherIcon :weather-id="f.weather" :size="12" :hex="f.weatherHex" />
           {{ f.isNow ? '现在' : `${Math.max(1, Math.round(f.inSeconds / 60))}分后` }} {{ f.weatherName }}
         </span>
       </div>

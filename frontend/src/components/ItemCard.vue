@@ -166,6 +166,22 @@ function tagStyle(colorId: string) {
       >
         附魔
       </button>
+      <template v-else>
+        <button
+          class="rounded bg-indigo-600/70 px-2 py-1 text-[11px] text-white hover:bg-indigo-500"
+          title="消耗 1 张重新打造卡，按「基于当前」重造"
+          @click="itemActions.requestRefine(item, true)"
+        >
+          用卡重造
+        </button>
+        <button
+          class="rounded bg-fuchsia-600/70 px-2 py-1 text-[11px] text-white hover:bg-fuchsia-500"
+          title="消耗 1 张重新打造卡，按「基于当前」附魔"
+          @click="itemActions.requestEnchant(item, false, true)"
+        >
+          用卡附魔
+        </button>
+      </template>
       <button
         class="rounded bg-teal-600/70 px-2 py-1 text-[11px] text-white hover:bg-teal-500"
         @click="tagsStore.openAssign(item)"

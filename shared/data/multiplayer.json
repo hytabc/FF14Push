@@ -19,6 +19,12 @@
   },
   "$commentDifficultyWeights": "远征/高难通关数计入抽箱与生产的品阶概率来源：仅计「首通」（每个副本是否通关一次，重复刷不再叠加），按难度加权求和（难度越高权重越高）。ref = 全部副本权重之和，即「全通 = 该项拉满」。",
   "difficultyWeights": { "normal": 1, "extreme": 2, "savage": 3, "ultimate": 5 },
+  "$commentModeReward": "通关奖励的模式倍率：在线真人联机（online）额外加成，solo / offline（含克隆）保持 1.0。仅作用于金币 / 经验 / 卡片，不影响通关判定。",
+  "modeRewardMultiplier": {
+    "solo": 1.0,
+    "offline": 1.0,
+    "online": 1.2
+  },
   "dungeons": [
     {
       "id": "normal_1",
@@ -104,10 +110,10 @@
         }
       ],
       "reward": {
-        "firstGold": 10000,
-        "repeatGold": 500,
-        "firstExp": 15000,
-        "repeatExp": 1500,
+        "firstGold": 40000,
+        "repeatGold": 2000,
+        "firstExp": 60000,
+        "repeatExp": 6000,
         "chests": 0
       },
       "minRarity": "common",
@@ -206,10 +212,10 @@
         }
       ],
       "reward": {
-        "firstGold": 10000,
-        "repeatGold": 500,
-        "firstExp": 15000,
-        "repeatExp": 1500,
+        "firstGold": 40000,
+        "repeatGold": 2000,
+        "firstExp": 60000,
+        "repeatExp": 6000,
         "chests": 0
       },
       "minRarity": "common",
@@ -308,10 +314,10 @@
         }
       ],
       "reward": {
-        "firstGold": 10000,
-        "repeatGold": 500,
-        "firstExp": 15000,
-        "repeatExp": 1500,
+        "firstGold": 40000,
+        "repeatGold": 2000,
+        "firstExp": 60000,
+        "repeatExp": 6000,
         "chests": 0
       },
       "minRarity": "common",
@@ -344,7 +350,7 @@
           "bosses": [
             "伊弗利特"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "焚烧",
@@ -367,7 +373,7 @@
           "bosses": [
             "炎狱之楔"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "焚烧",
@@ -390,7 +396,7 @@
           "bosses": [
             "伊弗利特·地狱之火"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "焚烧",
@@ -410,11 +416,12 @@
         }
       ],
       "reward": {
-        "firstGold": 20000,
-        "repeatGold": 1000,
-        "firstExp": 30000,
-        "repeatExp": 3000,
-        "chests": 1
+        "firstGold": 150000,
+        "repeatGold": 7500,
+        "firstExp": 200000,
+        "repeatExp": 20000,
+        "chests": 1,
+        "cards": 1
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -446,7 +453,7 @@
           "bosses": [
             "迦楼罗"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "邪风",
@@ -470,7 +477,7 @@
             "妙翅",
             "美翼"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "邪风",
@@ -493,7 +500,7 @@
           "bosses": [
             "迦楼罗·台风眼"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "邪风",
@@ -513,11 +520,12 @@
         }
       ],
       "reward": {
-        "firstGold": 20000,
-        "repeatGold": 1000,
-        "firstExp": 30000,
-        "repeatExp": 3000,
-        "chests": 1
+        "firstGold": 150000,
+        "repeatGold": 7500,
+        "firstExp": 200000,
+        "repeatExp": 20000,
+        "chests": 1,
+        "cards": 1
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -549,7 +557,7 @@
           "bosses": [
             "泰坦"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "大地之重",
@@ -572,7 +580,7 @@
           "bosses": [
             "泰坦之心"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "大地之重",
@@ -595,7 +603,7 @@
           "bosses": [
             "泰坦·大地之怒"
           ],
-          "hpScale": 130,
+          "hpScale": 170,
           "mechanics": [
             {
               "name": "大地之重",
@@ -615,11 +623,12 @@
         }
       ],
       "reward": {
-        "firstGold": 20000,
-        "repeatGold": 1000,
-        "firstExp": 30000,
-        "repeatExp": 3000,
-        "chests": 1
+        "firstGold": 150000,
+        "repeatGold": 7500,
+        "firstExp": 200000,
+        "repeatExp": 20000,
+        "chests": 1,
+        "cards": 1
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -643,7 +652,7 @@
       "enrageSeconds": 630,
       "syncKillSeconds": 12,
       "referenceTier": "savage",
-      "gateScale": 0.78,
+      "gateScale": 0.82,
       "trialScale": 0.58,
       "phases": [
         {
@@ -651,7 +660,7 @@
           "bosses": [
             "亚历山大·审判"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "时间停止",
@@ -681,7 +690,7 @@
           "bosses": [
             "亚历山大·时间停止"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "时间停止",
@@ -711,7 +720,7 @@
           "bosses": [
             "亚历山大·神圣审判"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "时间停止",
@@ -738,11 +747,12 @@
         }
       ],
       "reward": {
-        "firstGold": 30000,
-        "repeatGold": 1500,
-        "firstExp": 45000,
-        "repeatExp": 4500,
-        "chests": 1
+        "firstGold": 300000,
+        "repeatGold": 15000,
+        "firstExp": 400000,
+        "repeatExp": 40000,
+        "chests": 1,
+        "cards": 2
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -766,7 +776,7 @@
       "enrageSeconds": 420,
       "syncKillSeconds": 12,
       "referenceTier": "savage",
-      "gateScale": 0.78,
+      "gateScale": 0.82,
       "trialScale": 0.58,
       "phases": [
         {
@@ -775,7 +785,7 @@
             "欧米茄M",
             "欧米茄F"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "防护程序",
@@ -805,7 +815,7 @@
           "bosses": [
             "最终欧米茄"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "防护程序",
@@ -832,11 +842,12 @@
         }
       ],
       "reward": {
-        "firstGold": 30000,
-        "repeatGold": 1500,
-        "firstExp": 45000,
-        "repeatExp": 4500,
-        "chests": 1
+        "firstGold": 300000,
+        "repeatGold": 15000,
+        "firstExp": 400000,
+        "repeatExp": 40000,
+        "chests": 1,
+        "cards": 2
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -860,7 +871,7 @@
       "enrageSeconds": 630,
       "syncKillSeconds": 12,
       "referenceTier": "savage",
-      "gateScale": 0.78,
+      "gateScale": 0.82,
       "trialScale": 0.58,
       "phases": [
         {
@@ -868,7 +879,7 @@
           "bosses": [
             "希瓦"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "钻石星尘",
@@ -898,7 +909,7 @@
           "bosses": [
             "光之巫女"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "钻石星尘",
@@ -928,7 +939,7 @@
           "bosses": [
             "圣龙融合希瓦"
           ],
-          "hpScale": 175,
+          "hpScale": 215,
           "mechanics": [
             {
               "name": "钻石星尘",
@@ -955,11 +966,12 @@
         }
       ],
       "reward": {
-        "firstGold": 30000,
-        "repeatGold": 1500,
-        "firstExp": 45000,
-        "repeatExp": 4500,
-        "chests": 1
+        "firstGold": 300000,
+        "repeatGold": 15000,
+        "firstExp": 400000,
+        "repeatExp": 40000,
+        "chests": 1,
+        "cards": 2
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -983,7 +995,7 @@
       "enrageSeconds": 1200,
       "syncKillSeconds": 12,
       "referenceTier": "ultimate",
-      "gateScale": 0.78,
+      "gateScale": 0.82,
       "trialScale": 0.72,
       "phases": [
         {
@@ -1139,11 +1151,12 @@
         }
       ],
       "reward": {
-        "firstGold": 40000,
-        "repeatGold": 2000,
-        "firstExp": 60000,
-        "repeatExp": 6000,
-        "chests": 1
+        "firstGold": 600000,
+        "repeatGold": 30000,
+        "firstExp": 800000,
+        "repeatExp": 80000,
+        "chests": 1,
+        "cards": 3
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -1167,7 +1180,7 @@
       "enrageSeconds": 960,
       "syncKillSeconds": 12,
       "referenceTier": "ultimate",
-      "gateScale": 0.78,
+      "gateScale": 0.82,
       "trialScale": 0.72,
       "phases": [
         {
@@ -1321,11 +1334,12 @@
         }
       ],
       "reward": {
-        "firstGold": 40000,
-        "repeatGold": 2000,
-        "firstExp": 60000,
-        "repeatExp": 6000,
-        "chests": 1
+        "firstGold": 600000,
+        "repeatGold": 30000,
+        "firstExp": 800000,
+        "repeatExp": 80000,
+        "chests": 1,
+        "cards": 3
       },
       "minRarity": "legendary",
       "minItemLevel": 100,
@@ -1349,7 +1363,7 @@
       "enrageSeconds": 960,
       "syncKillSeconds": 12,
       "referenceTier": "ultimate",
-      "gateScale": 0.78,
+      "gateScale": 0.82,
       "trialScale": 0.72,
       "phases": [
         {
@@ -1503,11 +1517,12 @@
         }
       ],
       "reward": {
-        "firstGold": 40000,
-        "repeatGold": 2000,
-        "firstExp": 60000,
-        "repeatExp": 6000,
-        "chests": 1
+        "firstGold": 600000,
+        "repeatGold": 30000,
+        "firstExp": 800000,
+        "repeatExp": 80000,
+        "chests": 1,
+        "cards": 3
       },
       "minRarity": "legendary",
       "minItemLevel": 100,

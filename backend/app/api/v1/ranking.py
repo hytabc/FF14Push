@@ -114,6 +114,7 @@ async def player_profile(user_id: int, db: DbSession, viewer: CurrentUser) -> di
         "username": target.username,
         "hero": hero_to_dict(hero, stats),
         "power": hero_power(stats),
+        "maxPower": int(target.max_power or 0),
         "playSeconds": int(target.play_ms or 0) // 1000,
         "loadout": combat,
         "dohdolLoadout": dedicated,

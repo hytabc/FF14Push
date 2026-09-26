@@ -72,6 +72,7 @@ watch(
             class="inline-block rounded border border-amber-400 bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-100"
           >{{ activeTitleName }}</span>
           <span class="ml-auto font-mono text-amber-300">战力 {{ formatNumber(profile.power) }}</span>
+          <span class="font-mono text-[11px] text-ink-400">最高 {{ formatNumber(profile.maxPower) }}</span>
         </div>
         <p class="mt-1 text-ink-400">游玩时间 {{ formatPlaytime(profile.playSeconds) }}</p>
         <template v-if="profile.hero">

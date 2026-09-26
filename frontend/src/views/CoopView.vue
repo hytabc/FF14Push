@@ -3,6 +3,7 @@ import { requestKey } from '@/utils/requestKey'
 import JobIcon from '@/components/JobIcon.vue'
 import HealthBar from '@/components/HealthBar.vue'
 import { jobName } from '@/utils/format'
+import { titleName } from '@/utils/titles'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { http, toApiError } from '@/api/client'
 import { useGameStore } from '@/stores/game'
@@ -14,7 +15,8 @@ const dungeons = ref<Dungeon[]>([]), rooms = ref<RoomBrief[]>([]), mine = ref<Ro
 const roster = ref<Roster | null>(null), registrations = ref<Registration[]>([]), room = ref<Room | null>(null)
 const error = ref(''), notice = ref(''), busy = ref(false), mode = ref<Mode>('solo'), code = ref(''), filter = ref('normal')
 const choices = ref<Record<number, string>>({}), strategies = ref<Record<number, string>>({}), selected = ref<number[]>([])
-const registerId = ref<number>(), values = ref<Record<number, number>>({}), receipt = ref<null | { firstClear: boolean; goldGained: number; exp: { heroId: number; exp: number }[] }>(null)
+const registerId = ref<number>(), values = ref<Record<number, number>>({}), receipt = ref<null | { firstClear: boolean; goldGained: number; exp: { heroId: number; exp: number }[]; rewardMultiplier?: number; cards?: number; newTitles?: string[] }>(null)
+const rewardTitles = computed(() => (receipt.value?.newTitles ?? []).map((id) => titleName(id)))
 const state = computed(() => room.value?.battle?.state)
 const available = computed(() => dungeons.value.filter(d => d.difficulty === filter.value))
 const mySeats = computed(() => room.value?.seats.filter(s => s.controllerId === uid.value) ?? [])
@@ -120,9 +122,9 @@ onUnmounted(() => { disposed = true; clearInterval(interval); socket?.close() })
     <template v-if="!room">
       <div class="toolbar"><select v-model="mode" aria-label="挑战模式"><option v-for="(label,id) in modes" :key="id" :value="id">{{ label }}</option></select>
         <input v-model="code" placeholder="输入房间码" aria-label="房间码" maxlength="12"><button :disabled="busy || !code" @click="join">加入房间</button><RouterLink to="/roster">管理英雄 →</RouterLink></div>
-      <p>{{ mode === 'solo' ? '使用自己的英雄，伤害、治疗与护盾降低15%。' : mode === 'offline' ? '与登记克隆体组队，克隆体伤害、治疗与护盾降低20%。' : '全员在线准备后开战，掉线英雄临时克隆化，重连恢复。' }}</p>
+      <p>{{ mode === 'solo' ? '使用自己的英雄，伤害、治疗与护盾降低15%。' : mode === 'offline' ? '与登记克隆体组队，克隆体伤害、治疗与护盾降低20%。' : '全员在线准备后开战，掉线英雄临时克隆化，重连恢复；在线通关奖励 ×1.2。' }}</p>
       <div class="toolbar"><button v-for="(label,id) in difficulties" :key="id" :class="{ primary: filter === id }" @click="filter = id">{{ label }}</button></div>
-      <div class="cards"><article v-for="d in available" :key="d.id" class="panel"><span class="badge">Lv.{{ d.requiredLevel }} · {{ d.seats }} 英雄</span><h2>{{ d.name }}</h2><p>{{ d.phases.map(p => p.name).join(' → ') }}</p><p>狂暴 {{ Math.round(d.enrageSeconds / 60) }} 分钟</p><p v-if="d.prerequisite">前置：{{ dungeons.find(x => x.id === d.prerequisite)?.name }}</p><button class="primary" :disabled="busy" @click="create(d)">创建{{ modes[mode] }}</button></article></div>
+      <div class="cards"><article v-for="d in available" :key="d.id" class="panel"><span class="badge">Lv.{{ d.requiredLevel }} · {{ d.seats }} 英雄</span><h2>{{ d.name }}</h2><p>{{ d.phases.map(p => p.name).join(' → ') }}</p><p>狂暴 {{ Math.round(d.enrageSeconds / 60) }} 分钟</p><p>首通 {{ (d.reward?.firstGold ?? 0).toLocaleString() }} 金币 · 经验 {{ (d.reward?.firstExp ?? 0).toLocaleString() }}<template v-if="d.reward?.cards"> · 重新打造卡 ×{{ d.reward.cards }}</template></p><p v-if="d.prerequisite">前置：{{ dungeons.find(x => x.id === d.prerequisite)?.name }}</p><button class="primary" :disabled="busy" @click="create(d)">创建{{ modes[mode] }}</button></article></div>
       <section class="panel"><h2>克隆登记</h2><p>登记当前配装与通关资格，更新或撤回不会影响已经开始的战斗。外部克隆不领取奖励。</p>
         <select v-model="registerId" aria-label="登记英雄"><option :value="undefined">选择英雄</option><option v-for="h in roster?.heroes" :key="h.id" :value="h.id">{{ h.name }} Lv.{{ h.level }} · {{ jobName(h.jobId) }}</option></select>
         <button :disabled="busy || !registerId" @click="act(async () => { await http.post('/registrations', { heroId: registerId, kind: 'clone' }); await load() })">登记 / 更新克隆</button>
@@ -153,7 +155,7 @@ onUnmounted(() => { disposed = true; clearInterval(interval); socket?.close() })
         <div class="heroes"><article v-for="h in state.heroes" :key="h.slot" class="hero-card" :class="{ selected: selected.includes(h.slot) }"><div class="row"><label><input v-if="h.controllerId === uid && !h.registeredClone" v-model="selected" type="checkbox" :value="h.slot"> <JobIcon :job-id="h.snapshot.jobId" :size="20" /> {{ h.slot + 1 }}. {{ h.snapshot.name }}</label><small>{{ roles[h.snapshot.role] }}</small></div><span v-if="h.clone" class="badge">克隆 · 效能80%</span><span v-if="h.hp <= 0" class="badge danger">复活 {{ remaining(h.deadUntil, state.elapsedMs) }}秒</span><span v-else-if="h.weakUntil > state.elapsedMs" class="badge danger">衰弱 {{ remaining(h.weakUntil, state.elapsedMs) }}秒</span>
           <HealthBar :value="h.hp" :max="h.snapshot.stats.max_hp" :shield="h.shield" height="h-2.5" fill-class="bg-emerald-500" /><small>HP {{ Math.round(h.hp).toLocaleString() }} · MP {{ Math.round(h.mp) }}</small><p>输出 {{ Math.round(h.damage).toLocaleString() }} · 治疗 {{ Math.round(h.healing).toLocaleString() }}</p><small>{{ h.trialPassed ? '职责检查通过' : '职责检查待完成' }} · 死亡 {{ h.deaths }}</small><div v-if="h.controllerId === uid"><label>位置 / 分摊组 <input v-model.number="values[h.slot]" type="number" min="0" max="7" :placeholder="String(h.slot)" style="width:70px"></label></div></article></div>
         <section class="panel" style="margin-top:16px"><h2>战斗日志</h2><div class="logs"><div v-for="e in state.events.slice().reverse()" :key="e.seq">[{{ (e.at / 1000).toFixed(1) }}s] {{ e.text }}</div></div></section>
-        <section v-if="state.status === 'cleared'" class="panel"><h2>远征奖励</h2><p>{{ state.hadClone ? '含克隆体通关' : '全程真实英雄通关' }} · 奖励按账号领取，经验仅分配给真实参战英雄。</p><button :disabled="busy || !!receipt" class="primary" @click="claim">{{ receipt ? '奖励已领取' : '领取奖励' }}</button><p v-if="receipt">{{ receipt.firstClear ? '首次通关' : '重复通关' }} · 金币 +{{ receipt.goldGained }} · 总经验 +{{ receipt.exp.reduce((sum, x) => sum + x.exp, 0) }}</p></section>
+        <section v-if="state.status === 'cleared'" class="panel"><h2>远征奖励</h2><p>{{ state.hadClone ? '含克隆体通关' : '全程真实英雄通关' }} · 奖励按账号领取，经验仅分配给真实参战英雄。</p><button :disabled="busy || !!receipt" class="primary" @click="claim">{{ receipt ? '奖励已领取' : '领取奖励' }}</button><p v-if="receipt">{{ receipt.firstClear ? '首次通关' : '重复通关' }} · 金币 +{{ receipt.goldGained }} · 总经验 +{{ receipt.exp.reduce((sum, x) => sum + x.exp, 0) }}<template v-if="receipt.rewardMultiplier && receipt.rewardMultiplier > 1">（在线联机奖励 ×{{ receipt.rewardMultiplier }}）</template><template v-if="receipt.cards"> · 重新打造卡 +{{ receipt.cards }}</template></p><p v-if="rewardTitles.length" class="badge">达成称号：{{ rewardTitles.join('、') }}</p></section>
         <button v-if="state.status !== 'running'" :disabled="busy" @click="create(room.dungeon)">从头创建新挑战</button>
       </template>
     </template>

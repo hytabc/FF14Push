@@ -187,3 +187,81 @@ async def test_refresh_is_chunk_invariant(session_factory, monkeypatch):
 
     assert single_batch == small_batch
     assert single_batch, "应写入榜单行"
+
+
+async def _power_row(db, uid: int) -> RankingEntry:
+    return await db.scalar(
+        select(RankingEntry).where(
+            RankingEntry.board == "power", RankingEntry.user_id == uid
+        )
+    )
+
+
+async def test_power_board_ranks_by_historical_max(session_factory):
+    """战力榜按「历史最高战力」排行：卸下装备后当前战力下降，名次仍按峰值。"""
+    uid, _ = await _seed_user(session_factory, "rank_peak", attack=1500)
+
+    async with session_factory() as db:
+        await refresh_all_rankings(db)
+        await db.commit()
+    async with session_factory() as db:
+        high = (await _power_row(db, uid)).value
+
+    # 卸下已装备武器：当前战力回落。
+    async with session_factory() as db:
+        weapon = (
+            await db.execute(
+                select(Item).where(
+                    Item.user_id == uid, Item.equipped_slot.is_not(None)
+                )
+            )
+        ).scalars().first()
+        weapon.equipped_slot = None
+        weapon.equipped_hero_id = None
+        await db.commit()
+
+    async with session_factory() as db:
+        await refresh_all_rankings(db)
+        await db.commit()
+    async with session_factory() as db:
+        row = await _power_row(db, uid)
+        user = await db.get(User, uid)
+
+    assert row.value == high, "卸下装备后战力榜仍应按曾达到的最高战力"
+    assert 0 < int(row.payload["power"]) < high, "payload 应携带回落后的当前战力"
+    assert row.payload["maxPower"] == high
+    assert int(user.max_power) == high
+
+
+async def test_refresh_raises_max_power_to_current(session_factory):
+    """刷新会把 max_power 从 0 抬到当前战力（峰值由此开始累计）。"""
+    uid, _ = await _seed_user(session_factory, "rank_peak_up", attack=900)
+
+    async with session_factory() as db:
+        assert int((await db.get(User, uid)).max_power) == 0
+
+    async with session_factory() as db:
+        await refresh_all_rankings(db)
+        await db.commit()
+
+    async with session_factory() as db:
+        row = await _power_row(db, uid)
+        user = await db.get(User, uid)
+
+    assert row.value > 0
+    assert int(user.max_power) == row.value
+    assert row.payload["maxPower"] == row.value
+
+
+async def test_game_state_records_max_power(auth_client, session_factory):
+    """`/game/state` 顺带把历史最高战力抬到当前战力（排行榜刷新间隔内也不丢峰值）。"""
+    state = (await auth_client.get("/api/v1/game/state")).json()
+
+    async with session_factory() as db:
+        user = await db.get(User, state["user"]["id"])
+    assert int(user.max_power) == state["power"]
+
+    # 再次读取不得把峰值改小（只增不减）。
+    await auth_client.get("/api/v1/game/state")
+    async with session_factory() as db:
+        assert int((await db.get(User, state["user"]["id"])).max_power) == state["power"]

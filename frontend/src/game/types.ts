@@ -230,6 +230,8 @@ export interface DohDolState {
   materia?: MaterialStackItem[]
   /** 作物种子库存（挖宝产出）。 */
   seeds?: MaterialStackItem[]
+  /** 「重新打造卡」库存（远征高难度副本产出）。 */
+  cards?: MaterialStackItem[]
   active: ActiveConsumable[]
   recipes: RecipeView[]
   loadout: Record<string, Item>
@@ -383,6 +385,8 @@ export interface PlayerProfile {
   username: string
   hero: Hero | null
   power: number
+  /** 历史最高战力（战力榜排序依据，只增不减）。 */
+  maxPower: number
   /** 累计在线时长（秒）。 */
   playSeconds: number
   loadout: Partial<Record<SlotId, Item>>

@@ -7,6 +7,7 @@ import data from '@shared/schema'
 import InfoTip from '@/components/InfoTip.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import SearchSelect, { type SearchOption } from '@/components/SearchSelect.vue'
+import WeatherIcon from '@/components/WeatherIcon.vue'
 import { useVisibleLimit } from '@/composables/useVisibleLimit'
 import { fishPriceExplain, type Explain } from '@/game/explanations'
 import { useGameStore } from '@/stores/game'
@@ -777,10 +778,11 @@ function entryRarity(entry: Entry): RarityId {
           <button
             v-for="opt in fishWeatherOptions"
             :key="opt.id"
-            class="rounded-full border px-2.5 py-1 transition"
+            class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 transition"
             :class="fishFilters.weather.has(opt.id) ? 'border-amber-400 bg-amber-500/20 text-amber-200' : 'border-ink-600 text-ink-300 hover:border-ink-400'"
             @click="toggleFishWeather(opt.id)"
           >
+            <WeatherIcon :weather-id="opt.id" :size="14" />
             {{ opt.label }}
           </button>
         </div>
@@ -998,7 +1000,16 @@ function entryRarity(entry: Entry): RarityId {
           >
             {{ FISH_RARITY_LABEL[entry.rarity] ?? '白鱼' }}
           </span>
-          <span v-if="gateText(entry)" class="rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-sky-200">
+          <span
+            v-if="gateText(entry)"
+            class="inline-flex flex-wrap items-center gap-1 rounded bg-ink-700/60 px-1.5 py-0.5 text-[10px] text-sky-200"
+          >
+            <WeatherIcon
+              v-for="(w, i) in (entry.weather ?? [])"
+              :key="`w${i}`"
+              :weather-id="String(w)"
+              :size="12"
+            />
             {{ gateText(entry) }}
           </span>
           <!-- 当前可钓 / 不可钓的原因（只标在「天气 / 时段已命中」的鱼上） -->

@@ -26,6 +26,8 @@ const dohdol = useDohDolStore()
 const confirm = useConfirmStore()
 
 const consumables = computed(() => game.state?.dohdol?.consumables ?? [])
+/** 「重新打造卡」：远征高难度副本产出，用于生产/采集专用装备的「基于当前」重造/附魔。 */
+const cards = computed(() => game.state?.dohdol?.cards ?? [])
 /** 挖宝产出：魔晶石（可出售）与作物种子（不可出售，用于种田）。 */
 const lootStacks = computed(() => [
   ...(game.state?.dohdol?.materia ?? []),
@@ -184,6 +186,32 @@ async function sellStack(s: MaterialStackItem) {
     <section v-if="consumables.length" class="card p-4">
       <h2 class="text-sm font-semibold text-white">药水 / 食物</h2>
       <ConsumableList :items="consumables" />
+    </section>
+
+    <section v-if="cards.length" class="card p-4">
+      <h2 class="text-sm font-semibold text-white">重新打造卡</h2>
+      <p class="mt-1 text-[11px] text-ink-500">
+        在生产 / 采集专用装备上点击「用卡重造」或「用卡附魔」即可消耗 1 张，不花金币、已有太古词条不会降级。
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <div
+          v-for="c in cards"
+          :key="c.itemId"
+          class="flex flex-wrap items-center gap-2 rounded border border-ink-700 bg-ink-900/50 px-2 py-1 text-[11px]"
+          :title="c.desc"
+        >
+          <ItemIcon :base-id="c.itemId" variant="plain" :size="20" />
+          <span class="min-w-0 text-ink-200">{{ c.name }}</span>
+          <span class="font-mono text-ink-400">×{{ c.count }}</span>
+          <button
+            v-if="(c.sell ?? 0) > 0"
+            class="rounded bg-amber-600/70 px-2 py-0.5 text-white hover:bg-amber-500"
+            @click="sellStack(c)"
+          >
+            出售
+          </button>
+        </div>
+      </div>
     </section>
 
     <section v-if="lootStacks.length" class="card p-4">

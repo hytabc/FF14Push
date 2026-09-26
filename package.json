@@ -1,7 +1,7 @@
 {
   "name": "eorzea-idle-chronicle",
   "private": true,
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "艾欧泽亚放置录 — 挂机放置类网页游戏（Vue3 + FastAPI）",
   "workspaces": [
     "frontend"
@@ -14,6 +14,7 @@
     "typecheck": "npm run typecheck -w frontend",
     "gen:icons": "node scripts/gen-icons.mjs",
     "fetch:jobs": "node scripts/fetch-job-assets.mjs",
+    "fetch:weather": "node scripts/fetch-weather-assets.mjs",
     "app:icons": "node scripts/gen-app-icon.mjs && capacitor-assets generate --android --ios && node scripts/gen-harmony-icons.mjs",
     "app:sync": "npm run --silent build && cap sync",
     "app:apk": "./scripts/build-apk.sh",

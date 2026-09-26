@@ -259,16 +259,29 @@ export const api = {
     ).data
   },
 
-  async refine(itemId: number, mode: RerollMode = 'random', times = 1) {
+  async refine(itemId: number, mode: RerollMode = 'random', times = 1, useCard = false) {
     return (
-      await http.post<{ gold: number; cost: number; times: number; before: Item; after: Item }>(
-        '/economy/refine',
-        { itemId, mode, times },
-      )
+      await http.post<{
+        gold: number
+        cost: number
+        times: number
+        useCard?: boolean
+        cardsCost?: number
+        cardsLeft?: number
+        before: Item
+        after: Item
+      }>('/economy/refine', { itemId, mode, times, useCard })
     ).data
   },
 
-  async enchant(itemId: number, autoUntilRare = false, maxAttempts = 100, mode: RerollMode = 'random', times = 1) {
+  async enchant(
+    itemId: number,
+    autoUntilRare = false,
+    maxAttempts = 100,
+    mode: RerollMode = 'random',
+    times = 1,
+    useCard = false,
+  ) {
     return (
       await http.post<{
         gold: number
@@ -276,9 +289,12 @@ export const api = {
         attempts: number
         times?: number
         hit?: boolean
+        useCard?: boolean
+        cardsCost?: number
+        cardsLeft?: number
         before: Item
         after: Item
-      }>('/economy/enchant', { itemId, autoUntilRare, maxAttempts, mode, times })
+      }>('/economy/enchant', { itemId, autoUntilRare, maxAttempts, mode, times, useCard })
     ).data
   },
 

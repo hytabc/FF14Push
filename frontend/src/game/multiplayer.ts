@@ -20,6 +20,8 @@ export interface Dungeon {
   id: string; name: string; difficulty: string; requiredLevel: number; seats: number
   prerequisite: string | null; enrageSeconds: number
   phases: { name: string; bosses: string[]; mechanics: { name: string; action: string }[] }[]
+  /** 通关奖励（首通 / 重复金币与经验、装备箱数、重新打造卡数） */
+  reward?: { firstGold: number; repeatGold: number; firstExp: number; repeatExp: number; chests: number; cards?: number }
 }
 export interface BattleHero {
   slot: number; controllerId: number; snapshot: Snapshot; clone: boolean; registeredClone: boolean

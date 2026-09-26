@@ -19,7 +19,7 @@
   "boss": {
     "id": "golden_bahamut",
     "name": "黄金巴哈姆特",
-    "maxHp": 2400000000,
+    "maxHp": 6000000000,
     "attack": 20000,
     "attackIntervalSeconds": 3,
     "respawnSeconds": 60,
@@ -59,31 +59,26 @@
     "weaknessFloor": 0.1
   },
   "reward": {
-    "$comment": "周期结算奖励 = 击杀奖励(killReward，全服共享，所有达标玩家同额) + 档位(tiers，按周期累计伤害取最高达标档) + 名次加成(rankBonus，仅前 10 名)；仅周期累计伤害 ≥ minDamage 者进入榜单并参与奖励。",
-    "minDamage": 5000000,
+    "$comment": "周期结算奖励 = 击杀奖励(killReward，全服共享，所有达标玩家同额) + 档位(tiers，按周期累计伤害取最高达标档) + 名次加成(rankBonus，仅前 10 名)；仅周期累计伤害 ≥ minDamage 者进入榜单并参与奖励。BOSS 可在周期内被反复击杀，因此达标档位按「更高伤害」重定；本次下调名次加成、上调击杀奖励与档位件数。",
+    "minDamage": 10000000,
     "killReward": {
       "$comment": "击杀奖励件数 = min(本周期 BOSS 击杀次数 × perKill, maxItems)；本周期所有达标玩家各获得同样件数（普惠）。",
-      "perKill": 1,
-      "maxItems": 8
+      "perKill": 2,
+      "maxItems": 12
     },
     "tiers": [
-      { "minDamage": 5000000, "items": 1 },
-      { "minDamage": 50000000, "items": 2 },
-      { "minDamage": 200000000, "items": 3 },
-      { "minDamage": 600000000, "items": 4 },
-      { "minDamage": 1500000000, "items": 5 }
+      { "minDamage": 10000000, "items": 2 },
+      { "minDamage": 100000000, "items": 3 },
+      { "minDamage": 400000000, "items": 4 },
+      { "minDamage": 1000000000, "items": 5 },
+      { "minDamage": 2000000000, "items": 6 }
     ],
     "rankBonus": {
-      "1": 5,
-      "2": 4,
-      "3": 4,
-      "4": 3,
-      "5": 3,
-      "6": 2,
-      "7": 2,
-      "8": 1,
-      "9": 1,
-      "10": 1
+      "1": 3,
+      "2": 2,
+      "3": 2,
+      "4": 1,
+      "5": 1
     }
   }
 }

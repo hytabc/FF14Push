@@ -1,5 +1,5 @@
 {
-  "$comment": "称号。手工维护（gen-dohdol-data.py 已不再写入本文件）。条件由后端 services/titles.py 数据驱动判定；展示在排行榜 / 玩家资料 / 设置页（可佩戴一个）。旧两条（鱼王猎手 / 海皇）只统计 legacy 鱼王 / 鱼皇，新增困难鱼不影响其达成条件。",
+  "$comment": "称号。手工维护（gen-dohdol-data.py 已不再写入本文件）。条件由后端 services/titles.py 数据驱动判定；展示在排行榜 / 玩家资料 / 设置页（可佩戴一个）。旧称号（鱼王猎手 / 海皇 / 烟波钓徒 / 太公封神 / 分区鱼王）只统计 legacy 特殊鱼（原 40 区鱼王 / 鱼皇 + 第一批困难鱼），新增的鱼王 / 鱼皇 / 困难鱼不影响其达成条件；新增内容用 legacy:false 的 all_legend / all_special 条件另设称号。",
   "titles": [
     {
       "id": "fish_king_all",
@@ -102,6 +102,42 @@
       "name": "世界级钓手",
       "desc": "累计钓起 10000 条鱼",
       "condition": { "type": "fish_count", "count": 10000 }
+    },
+    {
+      "id": "fish_new_legend_all",
+      "name": "崽种猎手",
+      "desc": "钓起全部新增困难鱼（真实 FF14 钓场之皇）",
+      "condition": { "type": "all_legend", "legacy": false }
+    },
+    {
+      "id": "fish_new_special_all",
+      "name": "太公新篇",
+      "desc": "钓起全部新增的鱼王、鱼皇与困难鱼",
+      "condition": { "type": "all_special", "legacy": false }
+    },
+    {
+      "id": "fish_specific_red_dragon",
+      "name": "挥竿降龙",
+      "desc": "在阴云拂晓的窗口钓起红龙",
+      "condition": { "type": "specific_fish", "fishIds": ["l19_red_dragon"] }
+    },
+    {
+      "id": "coop_ultimate_bahamut",
+      "name": "传奇",
+      "desc": "通关巴哈姆特绝境战",
+      "condition": { "type": "coop_clear", "dungeonIds": ["ultimate_1"] }
+    },
+    {
+      "id": "coop_ultimate_weapon",
+      "name": "究极",
+      "desc": "通关究极神兵绝境战",
+      "condition": { "type": "coop_clear", "dungeonIds": ["ultimate_2"] }
+    },
+    {
+      "id": "coop_ultimate_eden",
+      "name": "创世",
+      "desc": "通关光暗未来绝境战",
+      "condition": { "type": "coop_clear", "dungeonIds": ["ultimate_3"] }
     },
     {
       "id": "treasure_egg_hunter",

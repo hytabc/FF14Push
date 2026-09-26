@@ -33,7 +33,7 @@ from app.services.admin import is_admin
 from app.services.locks import release_advisory_lock, try_advisory_lock
 from app.services.materia import socket_mods_map
 from app.services.stats import compute_stats
-from app.services.valuation import hero_power
+from app.services.valuation import hero_power, raise_max_power
 
 # 走缓存刷新（每 5 分钟）的榜单
 CACHED_BOARDS = ("level", "stage", "power", "gold", "playtime")
@@ -171,6 +171,10 @@ async def _refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
             stage_value = best.difficulty * STAGE_REGION_BASE + best.region_id if best else 0
             stage_cleared_at = best.cleared_at if best else None
             extra = {"activeTitleId": user.active_title_id}
+            # 战力榜按「历史最高战力」排行：当前战力低于曾达到的峰值时仍以峰值排名。
+            current_power = hero_power(stats)
+            raise_max_power(user, current_power)
+            peak_power = int(user.max_power or 0)
 
             entries = [
                 _entry(user, hero, "level", hero.level, hero.exp, extra),
@@ -182,7 +186,14 @@ async def _refresh_all_rankings(db: AsyncSession) -> dict[str, int]:
                     -int((stage_cleared_at or datetime.now(timezone.utc)).timestamp()),
                     extra,
                 ),
-                _entry(user, hero, "power", hero_power(stats), 0, {**stats.to_dict(), **extra}),
+                _entry(
+                    user,
+                    hero,
+                    "power",
+                    peak_power,
+                    0,
+                    {"power": current_power, "maxPower": peak_power, **extra},
+                ),
                 _entry(user, hero, "gold", int(user.gold), 0, extra),
                 _entry(user, hero, "playtime", _play_seconds(user), 0, extra),
             ]
@@ -617,6 +628,10 @@ def _entry(
                 "activeTitleId": extra.get("activeTitleId"),
             }
         )
+        # 战力榜：value 为历史最高战力，payload 额外带上当前战力（供榜上并列展示）。
+        if extra.get("power") is not None:
+            payload["power"] = int(extra["power"])
+            payload["maxPower"] = int(extra.get("maxPower", extra["power"]))
     return {
         "user_id": user.id,
         "board": board,

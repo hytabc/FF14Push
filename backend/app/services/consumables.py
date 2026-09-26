@@ -62,6 +62,9 @@ async def use_consumable(db: AsyncSession, user_id: int, item_id: str) -> dict[s
     if spec is None:
         raise ValueError("未知的消耗品")
     kind = spec["kind"]
+    if kind not in ("potion", "food"):
+        # 「重新打造卡」等非药食类堆叠物不通过此入口使用（由重造/附魔接口消耗）。
+        raise ValueError(f"{spec.get('name', item_id)}无法直接使用")
     if not await dohdol_util.stack_consume(db, user_id, kind, item_id, 1):
         raise ValueError(f"{spec['name']}不足")
 

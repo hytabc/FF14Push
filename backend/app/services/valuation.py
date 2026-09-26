@@ -21,6 +21,20 @@ def hero_power(stats: HeroStats) -> int:
     return power_audit(stats)['total']
 
 
+def raise_max_power(user: Any, power: int) -> bool:
+    """把账号的「历史最高战力」抬高到 power（只增不减），返回是否真的变高。
+
+    战力随装备 / 等级变化，战力榜按「达到过的最高战力」排行，故在每次算出当前战力的
+    热路径上调用（`services/ranking._refresh_all_rankings` 与 `services/state.build_game_state`）；
+    只在变高时标记 user 为脏，常态下不产生写入。
+    """
+    peak = int(power)
+    if peak <= int(getattr(user, "max_power", 0) or 0):
+        return False
+    user.max_power = peak
+    return True
+
+
 def attrs_score(base_attrs: Any, sub_attrs: Any) -> float:
     """基础属性 + 副属性的总评分 = Σ(属性值 × 权重)。"""
     score = 0.0

@@ -198,7 +198,7 @@ function rewardExhausted(raid: RaidListEntry): boolean {
           </li>
           <li>· {{ raid.difficulty === "normal" ? "推荐战力" : "需要战力" }} {{ formatNumber(raid.requiredPower) }}</li>
           <li v-if="raid.difficulty === 'hard' && raid.requiresAllSlots">· 需要穿满全部装备栏位</li>
-          <li v-if="raid.difficulty === 'hard'">
+          <li v-if="raid.difficulty === 'hard' && raid.minEquipRarity !== 'common'">
             · 全部装备品阶 ≥
             <span :class="rarityClass(raid.minEquipRarity)">{{ rarityName(raid.minEquipRarity) }}</span>
           </li>

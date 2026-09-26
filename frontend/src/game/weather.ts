@@ -38,10 +38,10 @@ export function weatherName(weatherId: string): string {
   return weatherType(weatherId)?.name ?? weatherId
 }
 
-/** 该地区当前天气 id。无权重表时回落 clear。 */
+/** 该地区当前天气 id。无权重表时回落 clearSkies。 */
 export function weatherFor(regionId: number, nowMs: number = Date.now()): string {
   const weights = REGION_WEIGHTS[regionId]
-  if (!weights) return 'clear'
+  if (!weights) return 'clearSkies'
   const bucket = Math.floor(nowMs / 1000 / weatherPeriodSec())
   const entries = Object.entries(weights)
   const total = entries.reduce((sum, [, w]) => sum + w, 0)
@@ -56,7 +56,14 @@ export function weatherFor(regionId: number, nowMs: number = Date.now()): string
   return last
 }
 
-/** 当前 ET 时刻在一天内的秒数。 */
+/**
+ * 当前 ET 时刻在一天内的秒数。
+ *
+ * 与 FF14 官方公式等价：1 ET 日 = 70 现实分钟（`eorzea.dayRealSeconds` = 4200 现实秒），
+ * 等价于 `floor(unix · 3600/175) mod 86400`——因 4200 × 3600/175 = 86400 恰为一天秒数，
+ * 故 `(epoch % 4200) / 4200 × 86400` 与之逐位一致（Unix 0 即 ET 00:00）。
+ * 与后端 `services/weather.py::et_seconds` 必须逐位一致。
+ */
 export function etSeconds(nowMs: number = Date.now()): number {
   const day = data.weather.eorzea.dayRealSeconds
   const epoch = Math.floor(nowMs / 1000)
@@ -90,6 +97,18 @@ export function timeOfDay(nowMs: number = Date.now()): string {
 
 export function timeOfDayName(name: string): string {
   return data.weather.timeOfDayNames[name] ?? name
+}
+
+function etHourRange([start, end]: [number, number]): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(start)}:00–${pad(end)}:59`
+}
+
+/** 各时段（拂晓 / 白昼 / 黄昏 / 深夜）的 ET 小时区间文案，供「?」说明使用。 */
+export function timeOfDayWindowsText(): string {
+  return Object.entries(data.weather.timeOfDay)
+    .map(([id, span]) => `${timeOfDayName(id)} ${etHourRange(span)}`)
+    .join(' / ')
 }
 
 /** 结算 / 展示用的当前环境条件（与后端 `conditions_for` 同结构）。 */

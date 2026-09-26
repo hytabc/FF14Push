@@ -1,5 +1,5 @@
 {
-  "$comment": "钓场。普通鱼分白/蓝/紫三档（rarity），可带天气(weather)/时间(timeOfDay)门槛；special: 鱼王/鱼皇(legacy)与困难鱼(legend)共用统一的 intuition 结构——每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。旧 king/emperor 已迁入 specials[]，id 保持不变。平衡调整：所有鱼识 BUFF 持续 30s；鱼王/鱼皇出现概率为原值的 200%；困难鱼单价按其「有效概率」定价：鱼王单价 × (E/E_鱼王)^β，E 为含「天气/时段窗口开启率 + 攒前置鱼开销 + 鱼识 BUFF 判定」的预期抛竿数，越难钓越贵。",
+  "$comment": "钓场。普通鱼分白/蓝/紫三档（rarity），可带天气(weather)/时间(timeOfDay)门槛；special: 鱼王/鱼皇 与 困难鱼(legend) 共用统一的 intuition 结构——每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。legacy:true 标记旧内容（原 40 区鱼王/鱼皇 + 第一批困难鱼），旧称号只统计 legacy 集合，因此新增鱼不影响已有称号；新增鱼王/鱼皇/困难鱼沿用真实 FF14 鱼名，概率逐条不同且更稀有。平衡调整：所有鱼识 BUFF 持续 30s；旧鱼王/鱼皇出现概率为原值的 200% 且保持不变；非 legacy 特殊鱼（新增鱼王/鱼皇 + 全部困难鱼）单价按其「有效概率」定价：鱼王单价 × (E/E_鱼王)^β，E 为含「天气/时段窗口开启率 + 攒前置鱼开销 + 鱼识 BUFF 判定」的预期抛竿数，越难钓越贵。",
   "castSeconds": 3.0,
   "insightBuffName": "捕鱼人之识",
   "rarityNames": {
@@ -59,7 +59,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -157,6 +158,70 @@
           "sizeMax": 360,
           "exp": 122,
           "sell": 640
+        },
+        {
+          "id": "k2_1",
+          "name": "扎尔艾拉",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f1_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.018
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 60,
+          "sell": 172,
+          "priceBasis": {
+            "effort": 71.54,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 63.02,
+            "exponent": 0.561307
+          }
+        },
+        {
+          "id": "e2_1",
+          "name": "无赖王",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f1_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 80,
+          "sell": 370,
+          "priceBasis": {
+            "effort": 280.18,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 63.02,
+            "exponent": 0.561307
+          }
         }
       ]
     },
@@ -211,7 +276,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -309,6 +375,108 @@
           "sizeMax": 360,
           "exp": 124,
           "sell": 640
+        },
+        {
+          "id": "k2_2",
+          "name": "拾荒鮟鱇",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f2_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.012
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 60,
+          "sell": 213,
+          "priceBasis": {
+            "effort": 104.44,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.95,
+            "exponent": 0.561621
+          }
+        },
+        {
+          "id": "e2_2",
+          "name": "皱鳃鲨",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f2_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 80,
+          "sell": 418,
+          "priceBasis": {
+            "effort": 348.38,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.95,
+            "exponent": 0.561621
+          }
+        },
+        {
+          "id": "l2_antipode",
+          "name": "内角石",
+          "kind": "legend",
+          "weather": [
+            "clouds"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "内角石之识",
+            "requires": [
+              {
+                "fishId": "f2_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0009
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 100,
+          "sell": 2669,
+          "priceBasis": {
+            "effort": 9446.54,
+            "gatePct": 14.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.95,
+            "exponent": 0.561621
+          }
         }
       ]
     },
@@ -463,9 +631,74 @@
           "sell": 640
         },
         {
+          "id": "k2_3",
+          "name": "高声鲶鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f3_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.016
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 60,
+          "sell": 183,
+          "priceBasis": {
+            "effort": 79.64,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.78,
+            "exponent": 0.56243
+          }
+        },
+        {
+          "id": "e2_3",
+          "name": "银君",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f3_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 80,
+          "sell": 335,
+          "priceBasis": {
+            "effort": 233.87,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.78,
+            "exponent": 0.56243
+          }
+        },
+        {
           "id": "l3_sea_god",
           "name": "海神",
           "kind": "legend",
+          "legacy": true,
           "weather": [
             "rain"
           ],
@@ -489,15 +722,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 100,
-          "sell": 8174,
+          "sell": 6937,
           "priceBasis": {
-            "effort": 68144.58,
-            "gatePct": 7.5,
+            "effort": 51108.44,
+            "gatePct": 10.0,
             "buildCasts": 51.0,
             "buffCasts": 10,
             "anchorSell": 160,
-            "anchorEffort": 62.73,
-            "exponent": 0.562691
+            "anchorEffort": 62.78,
+            "exponent": 0.56243
           }
         }
       ]
@@ -553,7 +786,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "heat"
+            "heatWaves"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -566,7 +799,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "dust"
+            "dustStorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -651,6 +884,70 @@
           "sizeMax": 360,
           "exp": 128,
           "sell": 640
+        },
+        {
+          "id": "k2_4",
+          "name": "滑溜帝王",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f4_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.01
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 75,
+          "sell": 235,
+          "priceBasis": {
+            "effort": 124.1,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.82,
+            "exponent": 0.562234
+          }
+        },
+        {
+          "id": "e2_4",
+          "name": "暗骑士",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f4_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 100,
+          "sell": 491,
+          "priceBasis": {
+            "effort": 461.71,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.82,
+            "exponent": 0.562234
+          }
         }
       ]
     },
@@ -705,7 +1002,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "heat"
+            "heatWaves"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -718,7 +1015,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "dust"
+            "dustStorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -805,12 +1102,77 @@
           "sell": 640
         },
         {
+          "id": "k2_5",
+          "name": "铜镜",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f5_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 75,
+          "sell": 196,
+          "priceBasis": {
+            "effort": 90.26,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.86,
+            "exponent": 0.562088
+          }
+        },
+        {
+          "id": "e2_5",
+          "name": "断指龙虾",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f5_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 100,
+          "sell": 370,
+          "priceBasis": {
+            "effort": 279.63,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.86,
+            "exponent": 0.562088
+          }
+        },
+        {
           "id": "l5_mirage",
           "name": "幻影王鲷",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "heat",
-            "dust"
+            "heatWaves",
+            "dustStorms"
           ],
           "intuition": {
             "name": "幻影王鲷之识",
@@ -829,15 +1191,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 125,
-          "sell": 5027,
+          "sell": 4320,
           "priceBasis": {
-            "effort": 28860.57,
+            "effort": 22121.48,
             "gatePct": 44.0,
-            "buildCasts": 141.6,
+            "buildCasts": 106.2,
             "buffCasts": 10,
             "anchorSell": 160,
-            "anchorEffort": 62.8,
-            "exponent": 0.562348
+            "anchorEffort": 62.86,
+            "exponent": 0.562088
           }
         }
       ]
@@ -993,9 +1355,112 @@
           "sell": 640
         },
         {
+          "id": "k2_6",
+          "name": "外科医生",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f6_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.008
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 75,
+          "sell": 265,
+          "priceBasis": {
+            "effort": 153.75,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.82,
+            "exponent": 0.562234
+          }
+        },
+        {
+          "id": "e2_6",
+          "name": "人面鲤",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f6_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 100,
+          "sell": 615,
+          "priceBasis": {
+            "effort": 689.47,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.82,
+            "exponent": 0.562234
+          }
+        },
+        {
+          "id": "l6_otaro",
+          "name": "波太郎",
+          "kind": "legend",
+          "weather": [
+            "fog"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "波太郎之识",
+            "requires": [
+              {
+                "fishId": "f6_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 125,
+          "sell": 4077,
+          "priceBasis": {
+            "effort": 19920.04,
+            "gatePct": 7.5,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.82,
+            "exponent": 0.562234
+          }
+        },
+        {
           "id": "l6_wood_catfish",
           "name": "幽林巨鲶",
           "kind": "legend",
+          "legacy": true,
           "weather": [
             "fog"
           ],
@@ -1019,15 +1484,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 125,
-          "sell": 9725,
+          "sell": 8253,
           "priceBasis": {
-            "effort": 93093.69,
-            "gatePct": 5.62,
+            "effort": 69820.27,
+            "gatePct": 7.5,
             "buildCasts": 52.5,
             "buffCasts": 10,
             "anchorSell": 160,
-            "anchorEffort": 62.77,
-            "exponent": 0.562494
+            "anchorEffort": 62.82,
+            "exponent": 0.562234
           }
         }
       ]
@@ -1181,6 +1646,70 @@
           "sizeMax": 360,
           "exp": 134,
           "sell": 640
+        },
+        {
+          "id": "k2_7",
+          "name": "暗兵鳢",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f7_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.015
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 75,
+          "sell": 189,
+          "priceBasis": {
+            "effort": 84.61,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.85,
+            "exponent": 0.562131
+          }
+        },
+        {
+          "id": "e2_7",
+          "name": "终结者",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f7_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 100,
+          "sell": 335,
+          "priceBasis": {
+            "effort": 234.04,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.85,
+            "exponent": 0.562131
+          }
         }
       ]
     },
@@ -1235,7 +1764,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "dust"
+            "dustStorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -1248,7 +1777,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "heat"
+            "heatWaves"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -1333,6 +1862,70 @@
           "sizeMax": 360,
           "exp": 136,
           "sell": 640
+        },
+        {
+          "id": "k2_8",
+          "name": "净髓蜗牛",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f8_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.011
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 90,
+          "sell": 223,
+          "priceBasis": {
+            "effort": 113.29,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.79,
+            "exponent": 0.562413
+          }
+        },
+        {
+          "id": "e2_8",
+          "name": "千年殇",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f8_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 120,
+          "sell": 491,
+          "priceBasis": {
+            "effort": 461.51,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 160,
+            "anchorEffort": 62.79,
+            "exponent": 0.562413
+          }
         }
       ]
     },
@@ -1387,7 +1980,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "dust"
+            "dustStorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -1400,7 +1993,8 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -1413,7 +2007,7 @@
           "rarity": "purple",
           "weight": 2,
           "weather": [
-            "heat"
+            "heatWaves"
           ],
           "sizeMin": 105,
           "sizeMax": 172,
@@ -1485,6 +2079,108 @@
           "sizeMax": 360,
           "exp": 138,
           "sell": 2400
+        },
+        {
+          "id": "k2_9",
+          "name": "虚空之眼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f9_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.013
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 90,
+          "sell": 765,
+          "priceBasis": {
+            "effort": 96.74,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.82,
+            "exponent": 0.562264
+          }
+        },
+        {
+          "id": "e2_9",
+          "name": "铁饼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f9_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 120,
+          "sell": 1389,
+          "priceBasis": {
+            "effort": 279.5,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.82,
+            "exponent": 0.562264
+          }
+        },
+        {
+          "id": "l9_helicoprion",
+          "name": "旋齿鲨",
+          "kind": "legend",
+          "weather": [
+            "heatWaves"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "旋齿鲨之识",
+            "requires": [
+              {
+                "fishId": "f9_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 150,
+          "sell": 13633,
+          "priceBasis": {
+            "effort": 16238.17,
+            "gatePct": 7.33,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.82,
+            "exponent": 0.562264
+          }
         }
       ]
     },
@@ -1552,7 +2248,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -1639,11 +2335,114 @@
           "sell": 2400
         },
         {
+          "id": "k2_10",
+          "name": "血红龙",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f10_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.007
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 90,
+          "sell": 1067,
+          "priceBasis": {
+            "effort": 174.88,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.79,
+            "exponent": 0.562403
+          }
+        },
+        {
+          "id": "e2_10",
+          "name": "加诺",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f10_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 120,
+          "sell": 2308,
+          "priceBasis": {
+            "effort": 689.17,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.79,
+            "exponent": 0.562403
+          }
+        },
+        {
+          "id": "l10_kuuno",
+          "name": "杀手库诺",
+          "kind": "legend",
+          "weather": [
+            "gales"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "杀手库诺之识",
+            "requires": [
+              {
+                "fishId": "f10_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.001
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 150,
+          "sell": 11980,
+          "priceBasis": {
+            "effort": 12880.35,
+            "gatePct": 9.26,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.79,
+            "exponent": 0.562403
+          }
+        },
+        {
           "id": "l10_skull",
           "name": "骷髅王鲶",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "wind"
+            "gales"
           ],
           "intuition": {
             "name": "骷髅王鲶之识",
@@ -1662,15 +2461,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 150,
-          "sell": 25782,
+          "sell": 23159,
           "priceBasis": {
-            "effort": 50225.41,
-            "gatePct": 30.0,
-            "buildCasts": 140.0,
+            "effort": 41586.64,
+            "gatePct": 27.78,
+            "buildCasts": 105.0,
             "buffCasts": 10,
             "anchorSell": 600,
-            "anchorEffort": 62.76,
-            "exponent": 0.562536
+            "anchorEffort": 62.79,
+            "exponent": 0.562403
           }
         }
       ]
@@ -1739,7 +2538,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "blizzard"
+            "blizzards"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -1826,11 +2625,114 @@
           "sell": 2400
         },
         {
+          "id": "k2_11",
+          "name": "暗星",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f11_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.017
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 90,
+          "sell": 664,
+          "priceBasis": {
+            "effort": 75.37,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.93,
+            "exponent": 0.561721
+          }
+        },
+        {
+          "id": "e2_11",
+          "name": "黎明少女",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f11_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 120,
+          "sell": 1569,
+          "priceBasis": {
+            "effort": 348.29,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.93,
+            "exponent": 0.561721
+          }
+        },
+        {
+          "id": "l11_shoni",
+          "name": "秀尼鱼龙",
+          "kind": "legend",
+          "weather": [
+            "blizzards"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "秀尼鱼龙之识",
+            "requires": [
+              {
+                "fishId": "f11_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 150,
+          "sell": 19092,
+          "priceBasis": {
+            "effort": 29788.83,
+            "gatePct": 5.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.93,
+            "exponent": 0.561721
+          }
+        },
+        {
           "id": "l11_glacier_sturgeon",
           "name": "冰川鲟",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "blizzard"
+            "blizzards"
           ],
           "intuition": {
             "name": "冰川鲟之识",
@@ -1849,15 +2751,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 150,
-          "sell": 37881,
+          "sell": 32551,
           "priceBasis": {
-            "effort": 100450.83,
+            "effort": 77012.3,
             "gatePct": 15.0,
-            "buildCasts": 140.0,
+            "buildCasts": 105.0,
             "buffCasts": 10,
             "anchorSell": 600,
-            "anchorEffort": 62.88,
-            "exponent": 0.561979
+            "anchorEffort": 62.93,
+            "exponent": 0.561721
           }
         }
       ]
@@ -1926,7 +2828,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "blizzard"
+            "blizzards"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -2013,11 +2915,114 @@
           "sell": 2400
         },
         {
+          "id": "k2_12",
+          "name": "核爆鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f12_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.009
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 105,
+          "sell": 930,
+          "priceBasis": {
+            "effort": 137.37,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.92,
+            "exponent": 0.561781
+          }
+        },
+        {
+          "id": "e2_12",
+          "name": "冰之巫女",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f12_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 140,
+          "sell": 1839,
+          "priceBasis": {
+            "effort": 462.24,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.92,
+            "exponent": 0.561781
+          }
+        },
+        {
+          "id": "l12_shariben",
+          "name": "沙里贝涅",
+          "kind": "legend",
+          "weather": [
+            "blizzards"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "沙里贝涅之识",
+            "requires": [
+              {
+                "fishId": "f12_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 16157,
+          "priceBasis": {
+            "effort": 22113.48,
+            "gatePct": 9.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.92,
+            "exponent": 0.561781
+          }
+        },
+        {
           "id": "l12_aurora_whale",
           "name": "极光鲸",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "blizzard"
+            "blizzards"
           ],
           "timeOfDay": [
             "night"
@@ -2039,15 +3044,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 175,
-          "sell": 41127,
+          "sell": 34905,
           "priceBasis": {
-            "effort": 116158.02,
-            "gatePct": 6.75,
+            "effort": 87118.51,
+            "gatePct": 9.0,
             "buildCasts": 52.5,
             "buffCasts": 10,
             "anchorSell": 600,
-            "anchorEffort": 62.87,
-            "exponent": 0.562039
+            "anchorEffort": 62.92,
+            "exponent": 0.561781
           }
         }
       ]
@@ -2103,7 +3108,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -2203,11 +3208,115 @@
           "sell": 2400
         },
         {
+          "id": "k2_13",
+          "name": "熔岩帝王",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f13_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.012
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 105,
+          "sell": 798,
+          "priceBasis": {
+            "effort": 104.37,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.85,
+            "exponent": 0.562093
+          }
+        },
+        {
+          "id": "e2_13",
+          "name": "龙鳞撕裂者",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f13_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 140,
+          "sell": 1256,
+          "priceBasis": {
+            "effort": 234.07,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.85,
+            "exponent": 0.562093
+          }
+        },
+        {
+          "id": "l13_lava",
+          "name": "莫名熔岩鱼",
+          "kind": "legend",
+          "weather": [
+            "clearSkies",
+            "fairSkies"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "莫名熔岩鱼之识",
+            "requires": [
+              {
+                "fishId": "f13_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 14358,
+          "priceBasis": {
+            "effort": 17845.93,
+            "gatePct": 8.33,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.85,
+            "exponent": 0.562093
+          }
+        },
+        {
           "id": "l13_cloud_butterfly",
           "name": "云蝶",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "wind"
+            "gales"
           ],
           "timeOfDay": [
             "day"
@@ -2229,15 +3338,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 175,
-          "sell": 31081,
+          "sell": 34759,
           "priceBasis": {
-            "effort": 70809.93,
-            "gatePct": 11.25,
+            "effort": 86034.06,
+            "gatePct": 9.26,
             "buildCasts": 53.5,
             "buffCasts": 10,
             "anchorSell": 600,
-            "anchorEffort": 62.91,
-            "exponent": 0.561827
+            "anchorEffort": 62.85,
+            "exponent": 0.562093
           }
         }
       ]
@@ -2306,7 +3415,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -2391,6 +3500,146 @@
           "sizeMax": 360,
           "exp": 148,
           "sell": 2400
+        },
+        {
+          "id": "k2_14",
+          "name": "维德弗尼尔",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f14_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.019
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 105,
+          "sell": 627,
+          "priceBasis": {
+            "effort": 68.04,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.95,
+            "exponent": 0.561653
+          }
+        },
+        {
+          "id": "e2_14",
+          "name": "风暴血骑士",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f14_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 140,
+          "sell": 1387,
+          "priceBasis": {
+            "effort": 279.93,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.95,
+            "exponent": 0.561653
+          }
+        },
+        {
+          "id": "l14_vandrel",
+          "name": "兰代勒翼龙",
+          "kind": "legend",
+          "weather": [
+            "gales"
+          ],
+          "timeOfDay": [
+            "dawn"
+          ],
+          "intuition": {
+            "name": "兰代勒翼龙之识",
+            "requires": [
+              {
+                "fishId": "f14_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 32942,
+          "priceBasis": {
+            "effort": 78752.99,
+            "gatePct": 2.16,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.95,
+            "exponent": 0.561653
+          }
+        },
+        {
+          "id": "l14_butterfly_snail",
+          "name": "云海蝴蝶螺",
+          "kind": "legend",
+          "weather": [
+            "gales"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "云海蝴蝶螺之识",
+            "requires": [
+              {
+                "fishId": "f14_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 17850,
+          "priceBasis": {
+            "effort": 26451.41,
+            "gatePct": 8.64,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.95,
+            "exponent": 0.561653
+          }
         }
       ]
     },
@@ -2543,6 +3792,147 @@
           "sizeMax": 360,
           "exp": 150,
           "sell": 2400
+        },
+        {
+          "id": "k2_15",
+          "name": "水瓶王",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f15_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 105,
+          "sell": 1160,
+          "priceBasis": {
+            "effort": 203.2,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.85,
+            "exponent": 0.562126
+          }
+        },
+        {
+          "id": "e2_15",
+          "name": "蝴蝶夫人",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f15_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 140,
+          "sell": 2307,
+          "priceBasis": {
+            "effort": 689.65,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.85,
+            "exponent": 0.562126
+          }
+        },
+        {
+          "id": "l15_kai",
+          "name": "铠鱼",
+          "kind": "legend",
+          "weather": [
+            "clearSkies",
+            "fairSkies"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "铠鱼之识",
+            "requires": [
+              {
+                "fishId": "f15_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0009
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 10704,
+          "priceBasis": {
+            "effort": 10580.12,
+            "gatePct": 12.5,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.85,
+            "exponent": 0.562126
+          }
+        },
+        {
+          "id": "l15_eobabin",
+          "name": "欧巴宾海蝎",
+          "kind": "legend",
+          "weather": [
+            "clouds"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "欧巴宾海蝎之识",
+            "requires": [
+              {
+                "fishId": "f15_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 175,
+          "sell": 13803,
+          "priceBasis": {
+            "effort": 16630.54,
+            "gatePct": 13.89,
+            "buildCasts": 3.8,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.85,
+            "exponent": 0.562126
+          }
         }
       ]
     },
@@ -2597,7 +3987,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -2697,11 +4088,77 @@
           "sell": 2400
         },
         {
+          "id": "k2_16",
+          "name": "能言者",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f16_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 120,
+          "sell": 736,
+          "priceBasis": {
+            "effort": 90.14,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.67,
+            "exponent": 0.562991
+          }
+        },
+        {
+          "id": "e2_16",
+          "name": "万事通鲈",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f16_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 160,
+          "sell": 1573,
+          "priceBasis": {
+            "effort": 347.18,
+            "gatePct": 100.0,
+            "buildCasts": 3.6,
+            "buffCasts": 10,
+            "anchorSell": 600,
+            "anchorEffort": 62.67,
+            "exponent": 0.562991
+          }
+        },
+        {
           "id": "l16_pegasus",
           "name": "天马",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "timeOfDay": [
             "dawn"
@@ -2723,15 +4180,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 200,
-          "sell": 51317,
+          "sell": 67488,
           "priceBasis": {
-            "effort": 170096.73,
-            "gatePct": 3.75,
+            "effort": 275556.7,
+            "gatePct": 2.31,
             "buildCasts": 53.5,
             "buffCasts": 10,
             "anchorSell": 600,
-            "anchorEffort": 62.72,
-            "exponent": 0.562754
+            "anchorEffort": 62.67,
+            "exponent": 0.562991
           }
         }
       ]
@@ -2787,7 +4244,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -2800,7 +4258,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -2885,6 +4343,147 @@
           "sizeMax": 360,
           "exp": 154,
           "sell": 9000
+        },
+        {
+          "id": "k2_17",
+          "name": "教皇鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f17_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.01
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 120,
+          "sell": 3243,
+          "priceBasis": {
+            "effort": 124.18,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.92,
+            "exponent": 0.570887
+          }
+        },
+        {
+          "id": "e2_17",
+          "name": "骸鲢鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f17_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 160,
+          "sell": 6868,
+          "priceBasis": {
+            "effort": 462.24,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.92,
+            "exponent": 0.570887
+          }
+        },
+        {
+          "id": "l17_ishiken",
+          "name": "异刺鲨",
+          "kind": "legend",
+          "weather": [
+            "gales"
+          ],
+          "timeOfDay": [
+            "dusk"
+          ],
+          "intuition": {
+            "name": "异刺鲨之识",
+            "requires": [
+              {
+                "fishId": "f17_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 200,
+          "sell": 137255,
+          "priceBasis": {
+            "effort": 87741.64,
+            "gatePct": 1.7,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.92,
+            "exponent": 0.570887
+          }
+        },
+        {
+          "id": "l17_thorax",
+          "name": "胸脊鲨",
+          "kind": "legend",
+          "weather": [
+            "clearSkies",
+            "fairSkies"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "胸脊鲨之识",
+            "requires": [
+              {
+                "fishId": "f17_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 200,
+          "sell": 63211,
+          "priceBasis": {
+            "effort": 22560.82,
+            "gatePct": 10.19,
+            "buildCasts": 3.8,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.92,
+            "exponent": 0.570887
+          }
         }
       ]
     },
@@ -2952,7 +4551,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -3037,6 +4636,108 @@
           "sizeMax": 360,
           "exp": 156,
           "sell": 9000
+        },
+        {
+          "id": "k2_18",
+          "name": "最后一滴泪",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f18_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.016
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 120,
+          "sell": 2521,
+          "priceBasis": {
+            "effort": 79.63,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.76,
+            "exponent": 0.571667
+          }
+        },
+        {
+          "id": "e2_18",
+          "name": "黑蒙鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f18_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 160,
+          "sell": 4666,
+          "priceBasis": {
+            "effort": 233.8,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.76,
+            "exponent": 0.571667
+          }
+        },
+        {
+          "id": "l18_sickle",
+          "name": "镰甲鱼",
+          "kind": "legend",
+          "weather": [
+            "gales"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "镰甲鱼之识",
+            "requires": [
+              {
+                "fishId": "f18_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 200,
+          "sell": 62768,
+          "priceBasis": {
+            "effort": 22050.84,
+            "gatePct": 7.72,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.76,
+            "exponent": 0.571667
+          }
         }
       ]
     },
@@ -3091,7 +4792,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -3191,11 +4893,114 @@
           "sell": 9000
         },
         {
+          "id": "k2_19",
+          "name": "菜食王",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f19_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.008
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 120,
+          "sell": 3665,
+          "priceBasis": {
+            "effort": 153.85,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.92,
+            "exponent": 0.570869
+          }
+        },
+        {
+          "id": "e2_19",
+          "name": "七星",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f19_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 160,
+          "sell": 8635,
+          "priceBasis": {
+            "effort": 690.28,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.92,
+            "exponent": 0.570869
+          }
+        },
+        {
+          "id": "l19_red_dragon",
+          "name": "红龙",
+          "kind": "legend",
+          "weather": [
+            "clouds"
+          ],
+          "timeOfDay": [
+            "dawn"
+          ],
+          "intuition": {
+            "name": "红龙之识",
+            "requires": [
+              {
+                "fishId": "f19_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 200,
+          "sell": 177323,
+          "priceBasis": {
+            "effort": 137461.46,
+            "gatePct": 1.44,
+            "buildCasts": 1.8,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.92,
+            "exponent": 0.570869
+          }
+        },
+        {
           "id": "l19_megalodon",
           "name": "巨齿鲨",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "intuition": {
             "name": "巨齿鲨之识",
@@ -3214,15 +5019,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 200,
-          "sell": 123760,
+          "sell": 115889,
           "priceBasis": {
-            "effort": 73329.1,
-            "gatePct": 20.0,
-            "buildCasts": 136.0,
+            "effort": 65252.86,
+            "gatePct": 17.24,
+            "buildCasts": 102.0,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 62.94,
-            "exponent": 0.570769
+            "anchorEffort": 62.92,
+            "exponent": 0.570869
           }
         }
       ]
@@ -3278,7 +5083,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -3291,7 +5097,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -3378,11 +5184,76 @@
           "sell": 9000
         },
         {
+          "id": "k2_20",
+          "name": "鬼视",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f20_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.013
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 135,
+          "sell": 2818,
+          "priceBasis": {
+            "effort": 96.67,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.71,
+            "exponent": 0.571918
+          }
+        },
+        {
+          "id": "e2_20",
+          "name": "水天一碧",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f20_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 180,
+          "sell": 5168,
+          "priceBasis": {
+            "effort": 279.13,
+            "gatePct": 100.0,
+            "buildCasts": 3.6,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 62.71,
+            "exponent": 0.571918
+          }
+        },
+        {
           "id": "l20_sail",
           "name": "帆",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "timeOfDay": [
             "dusk"
@@ -3404,15 +5275,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 225,
-          "sell": 270661,
+          "sell": 373166,
           "priceBasis": {
-            "effort": 285115.14,
-            "gatePct": 2.75,
+            "effort": 496100.34,
+            "gatePct": 1.58,
             "buildCasts": 52.5,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 62.8,
-            "exponent": 0.571493
+            "anchorEffort": 62.71,
+            "exponent": 0.571918
           }
         }
       ]
@@ -3468,7 +5339,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -3481,7 +5353,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -3568,9 +5440,113 @@
           "sell": 9000
         },
         {
+          "id": "k2_21",
+          "name": "晨曦旗鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f21_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.011
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 135,
+          "sell": 3076,
+          "priceBasis": {
+            "effort": 113.52,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
+          }
+        },
+        {
+          "id": "e2_21",
+          "name": "月神的爱宠",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f21_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 180,
+          "sell": 6856,
+          "priceBasis": {
+            "effort": 463.1,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
+          }
+        },
+        {
+          "id": "l21_gods_love",
+          "name": "众神之爱",
+          "kind": "legend",
+          "weather": [
+            "clearSkies",
+            "fairSkies"
+          ],
+          "timeOfDay": [
+            "dawn"
+          ],
+          "intuition": {
+            "name": "众神之爱之识",
+            "requires": [
+              {
+                "fishId": "f21_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 225,
+          "sell": 93765,
+          "priceBasis": {
+            "effort": 45511.06,
+            "gatePct": 3.75,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
+          }
+        },
+        {
           "id": "l21_purple",
           "name": "紫彩鱼",
           "kind": "legend",
+          "legacy": true,
           "intuition": {
             "name": "紫彩鱼之识",
             "requires": [
@@ -3588,21 +5564,22 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 1321,
+          "sell": 1320,
           "priceBasis": {
-            "effort": 25.75,
+            "effort": 25.76,
             "gatePct": 100.0,
             "buildCasts": 1.9,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 63.02,
-            "exponent": 0.570404
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
           }
         },
         {
           "id": "l21_blue",
           "name": "蓝彩鱼",
           "kind": "legend",
+          "legacy": true,
           "intuition": {
             "name": "蓝彩鱼之识",
             "requires": [
@@ -3620,21 +5597,22 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 2681,
+          "sell": 2679,
           "priceBasis": {
-            "effort": 89.1,
+            "effort": 89.13,
             "gatePct": 100.0,
             "buildCasts": 25.8,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 63.02,
-            "exponent": 0.570404
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
           }
         },
         {
           "id": "l21_red",
           "name": "红彩鱼",
           "kind": "legend",
+          "legacy": true,
           "intuition": {
             "name": "红彩鱼之识",
             "requires": [
@@ -3654,19 +5632,20 @@
           "exp": 72,
           "sell": 1432,
           "priceBasis": {
-            "effort": 29.69,
+            "effort": 29.71,
             "gatePct": 100.0,
             "buildCasts": 3.7,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 63.02,
-            "exponent": 0.570404
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
           }
         },
         {
           "id": "l21_orange",
           "name": "橙彩鱼",
           "kind": "legend",
+          "legacy": true,
           "intuition": {
             "name": "橙彩鱼之识",
             "requires": [
@@ -3684,21 +5663,22 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 2845,
+          "sell": 2844,
           "priceBasis": {
-            "effort": 98.91,
+            "effort": 98.96,
             "gatePct": 100.0,
             "buildCasts": 29.7,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 63.02,
-            "exponent": 0.570404
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
           }
         },
         {
           "id": "l21_green",
           "name": "绿彩鱼",
           "kind": "legend",
+          "legacy": true,
           "intuition": {
             "name": "绿彩鱼之识",
             "requires": [
@@ -3716,23 +5696,25 @@
           "sizeMin": 135,
           "sizeMax": 210,
           "exp": 72,
-          "sell": 3497,
+          "sell": 3499,
           "priceBasis": {
-            "effort": 142.04,
+            "effort": 142.32,
             "gatePct": 100.0,
-            "buildCasts": 47.0,
+            "buildCasts": 47.1,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 63.02,
-            "exponent": 0.570404
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
           }
         },
         {
           "id": "l21_hue_lord",
           "name": "七彩天主",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "intuition": {
             "name": "七彩天主之识",
@@ -3759,15 +5741,15 @@
           "sizeMin": 450,
           "sizeMax": 675,
           "exp": 540,
-          "sell": 452092,
+          "sell": 451094,
           "priceBasis": {
-            "effort": 714757.38,
+            "effort": 715647.33,
             "gatePct": 45.0,
-            "buildCasts": 1274.2,
+            "buildCasts": 1275.8,
             "buffCasts": 10,
             "anchorSell": 2200,
-            "anchorEffort": 63.02,
-            "exponent": 0.570404
+            "anchorEffort": 63.08,
+            "exponent": 0.570144
           }
         }
       ]
@@ -3823,7 +5805,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -3921,6 +5904,70 @@
           "sizeMax": 360,
           "exp": 164,
           "sell": 9000
+        },
+        {
+          "id": "k2_22",
+          "name": "花海龙",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f22_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.018
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 135,
+          "sell": 2365,
+          "priceBasis": {
+            "effort": 71.53,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.0,
+            "exponent": 0.57051
+          }
+        },
+        {
+          "id": "e2_22",
+          "name": "赌命河豚",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f22_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 180,
+          "sell": 5838,
+          "priceBasis": {
+            "effort": 348.57,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 2200,
+            "anchorEffort": 63.0,
+            "exponent": 0.57051
+          }
         }
       ]
     },
@@ -4073,6 +6120,108 @@
           "sizeMax": 360,
           "exp": 166,
           "sell": 33000
+        },
+        {
+          "id": "k2_23",
+          "name": "元首的军扇",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f23_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.009
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 135,
+          "sell": 12532,
+          "priceBasis": {
+            "effort": 137.32,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.87,
+            "exponent": 0.574487
+          }
+        },
+        {
+          "id": "e2_23",
+          "name": "战盾剑齿龙鳖",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f23_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 180,
+          "sell": 17026,
+          "priceBasis": {
+            "effort": 234.11,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.87,
+            "exponent": 0.574487
+          }
+        },
+        {
+          "id": "l23_automaton",
+          "name": "自走鱼偶",
+          "kind": "legend",
+          "weather": [
+            "fog"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "自走鱼偶之识",
+            "requires": [
+              {
+                "fishId": "f23_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 225,
+          "sell": 249920,
+          "priceBasis": {
+            "effort": 25134.52,
+            "gatePct": 6.79,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.87,
+            "exponent": 0.574487
+          }
         }
       ]
     },
@@ -4127,7 +6276,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "heat"
+            "heatWaves"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -4140,7 +6289,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "dust"
+            "dustStorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -4225,6 +6374,108 @@
           "sizeMax": 360,
           "exp": 168,
           "sell": 33000
+        },
+        {
+          "id": "k2_24",
+          "name": "冠骨鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f24_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.015
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 150,
+          "sell": 9490,
+          "priceBasis": {
+            "effort": 84.61,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.86,
+            "exponent": 0.574565
+          }
+        },
+        {
+          "id": "e2_24",
+          "name": "刺钉蜥蜴",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f24_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 200,
+          "sell": 31683,
+          "priceBasis": {
+            "effort": 689.72,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.86,
+            "exponent": 0.574565
+          }
+        },
+        {
+          "id": "l24_surprise_egg",
+          "name": "惊喜蛋",
+          "kind": "legend",
+          "weather": [
+            "dustStorms"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "惊喜蛋之识",
+            "requires": [
+              {
+                "fishId": "f24_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0005
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 250,
+          "sell": 257927,
+          "priceBasis": {
+            "effort": 26524.25,
+            "gatePct": 9.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.86,
+            "exponent": 0.574565
+          }
         }
       ]
     },
@@ -4279,7 +6530,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -4379,11 +6631,77 @@
           "sell": 33000
         },
         {
+          "id": "k2_25",
+          "name": "狂怒斗鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f25_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.007
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 150,
+          "sell": 14393,
+          "priceBasis": {
+            "effort": 175.07,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.94,
+            "exponent": 0.574131
+          }
+        },
+        {
+          "id": "e2_25",
+          "name": "深泳的古书",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f25_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 200,
+          "sell": 18844,
+          "priceBasis": {
+            "effort": 279.93,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.94,
+            "exponent": 0.574131
+          }
+        },
+        {
           "id": "l25_mirror_butterfly",
           "name": "镜中蝶",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "timeOfDay": [
             "night"
@@ -4405,15 +6723,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 250,
-          "sell": 758318,
+          "sell": 641205,
           "priceBasis": {
-            "effort": 173801.85,
-            "gatePct": 11.25,
+            "effort": 130351.39,
+            "gatePct": 15.0,
             "buildCasts": 107.0,
             "buffCasts": 10,
             "anchorSell": 8000,
-            "anchorEffort": 62.89,
-            "exponent": 0.574394
+            "anchorEffort": 62.94,
+            "exponent": 0.574131
           }
         }
       ]
@@ -4567,6 +6885,108 @@
           "sizeMax": 360,
           "exp": 172,
           "sell": 33000
+        },
+        {
+          "id": "k2_26",
+          "name": "食人鳄",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f26_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.012
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 150,
+          "sell": 10698,
+          "priceBasis": {
+            "effort": 104.44,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.96,
+            "exponent": 0.574075
+          }
+        },
+        {
+          "id": "e2_26",
+          "name": "蟒斑盘丽鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f26_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 200,
+          "sell": 25133,
+          "priceBasis": {
+            "effort": 462.44,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.96,
+            "exponent": 0.574075
+          }
+        },
+        {
+          "id": "l26_listrac",
+          "name": "利斯塔克鲨",
+          "kind": "legend",
+          "weather": [
+            "clouds"
+          ],
+          "timeOfDay": [
+            "dusk"
+          ],
+          "intuition": {
+            "name": "利斯塔克鲨之识",
+            "requires": [
+              {
+                "fishId": "f26_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 250,
+          "sell": 502373,
+          "priceBasis": {
+            "effort": 85294.86,
+            "gatePct": 2.33,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.96,
+            "exponent": 0.574075
+          }
         }
       ]
     },
@@ -4719,6 +7139,108 @@
           "sizeMax": 360,
           "exp": 174,
           "sell": 33000
+        },
+        {
+          "id": "k2_27",
+          "name": "珍珠皮皮拉鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f27_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.02
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 150,
+          "sell": 8147,
+          "priceBasis": {
+            "effort": 64.88,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.86,
+            "exponent": 0.574565
+          }
+        },
+        {
+          "id": "e2_27",
+          "name": "黑色喷气乱流",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f27_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 200,
+          "sell": 21385,
+          "priceBasis": {
+            "effort": 347.97,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.86,
+            "exponent": 0.574565
+          }
+        },
+        {
+          "id": "l27_lonka",
+          "name": "隆卡的大水蛇？",
+          "kind": "legend",
+          "weather": [
+            "fog"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "隆卡的大水蛇？之识",
+            "requires": [
+              {
+                "fishId": "f27_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0008
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 250,
+          "sell": 248293,
+          "priceBasis": {
+            "effort": 24824.02,
+            "gatePct": 6.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.86,
+            "exponent": 0.574565
+          }
         }
       ]
     },
@@ -4773,7 +7295,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -4786,7 +7308,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -4873,12 +7395,115 @@
           "sell": 33000
         },
         {
+          "id": "k2_28",
+          "name": "猎星鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f28_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.01
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 165,
+          "sell": 11842,
+          "priceBasis": {
+            "effort": 124.0,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.71,
+            "exponent": 0.575273
+          }
+        },
+        {
+          "id": "e2_28",
+          "name": "头领薄饼章鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f28_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 220,
+          "sell": 17050,
+          "priceBasis": {
+            "effort": 233.66,
+            "gatePct": 100.0,
+            "buildCasts": 3.6,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.71,
+            "exponent": 0.575273
+          }
+        },
+        {
+          "id": "l28_sailfish",
+          "name": "长吻帆蜥鱼",
+          "kind": "legend",
+          "weather": [
+            "clouds"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "长吻帆蜥鱼之识",
+            "requires": [
+              {
+                "fishId": "f28_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 275,
+          "sell": 173142,
+          "priceBasis": {
+            "effort": 13137.76,
+            "gatePct": 12.93,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 8000,
+            "anchorEffort": 62.71,
+            "exponent": 0.575273
+          }
+        },
+        {
           "id": "l28_kraken",
           "name": "大王乌贼",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "wind",
-            "thunder"
+            "gales",
+            "thunderstorms"
           ],
           "intuition": {
             "name": "大王乌贼之识",
@@ -4897,15 +7522,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 275,
-          "sell": 344402,
+          "sell": 321710,
           "priceBasis": {
-            "effort": 43374.82,
-            "gatePct": 35.0,
-            "buildCasts": 141.1,
+            "effort": 38568.4,
+            "gatePct": 30.17,
+            "buildCasts": 105.8,
             "buffCasts": 10,
             "anchorSell": 8000,
-            "anchorEffort": 62.7,
-            "exponent": 0.575344
+            "anchorEffort": 62.71,
+            "exponent": 0.575273
           }
         }
       ]
@@ -4961,7 +7586,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -5061,9 +7687,112 @@
           "sell": 100000
         },
         {
+          "id": "k2_29",
+          "name": "杜蒂娜鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f29_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.014
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 165,
+          "sell": 30627,
+          "priceBasis": {
+            "effort": 90.29,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
+          }
+        },
+        {
+          "id": "e2_29",
+          "name": "雷云隆头鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f29_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 220,
+          "sell": 96024,
+          "priceBasis": {
+            "effort": 690.16,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
+          }
+        },
+        {
+          "id": "l29_gaer",
+          "name": "嘎儿鱼",
+          "kind": "legend",
+          "weather": [
+            "rain"
+          ],
+          "timeOfDay": [
+            "dusk"
+          ],
+          "intuition": {
+            "name": "嘎儿鱼之识",
+            "requires": [
+              {
+                "fishId": "f29_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 275,
+          "sell": 1701394,
+          "priceBasis": {
+            "effort": 115079.92,
+            "gatePct": 1.72,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
+          }
+        },
+        {
           "id": "l29_phantom_dragon",
           "name": "幻龙",
           "kind": "legend",
+          "legacy": true,
           "weather": [
             "rain"
           ],
@@ -5084,15 +7813,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 275,
-          "sell": 1209527,
+          "sell": 1133266,
           "priceBasis": {
-            "effort": 62781.77,
-            "gatePct": 24.0,
-            "buildCasts": 140.0,
+            "effort": 55833.92,
+            "gatePct": 20.69,
+            "buildCasts": 105.0,
             "buffCasts": 10,
             "anchorSell": 25000,
-            "anchorEffort": 62.93,
-            "exponent": 0.561747
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
           }
         }
       ]
@@ -5148,7 +7877,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "wind"
+            "gales"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -5246,6 +7975,109 @@
           "sizeMax": 360,
           "exp": 180,
           "sell": 100000
+        },
+        {
+          "id": "k2_30",
+          "name": "雾凇狗鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f30_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.008
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 165,
+          "sell": 41310,
+          "priceBasis": {
+            "effort": 153.86,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.93,
+            "exponent": 0.561748
+          }
+        },
+        {
+          "id": "e2_30",
+          "name": "暗影帝冠",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f30_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 220,
+          "sell": 57812,
+          "priceBasis": {
+            "effort": 279.87,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.93,
+            "exponent": 0.561748
+          }
+        },
+        {
+          "id": "l30_snowthorn",
+          "name": "异形雪棘",
+          "kind": "legend",
+          "weather": [
+            "clearSkies",
+            "fairSkies"
+          ],
+          "timeOfDay": [
+            "dusk"
+          ],
+          "intuition": {
+            "name": "异形雪棘之识",
+            "requires": [
+              {
+                "fishId": "f30_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 275,
+          "sell": 1524627,
+          "priceBasis": {
+            "effort": 94801.01,
+            "gatePct": 2.08,
+            "buildCasts": 1.8,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.93,
+            "exponent": 0.561748
+          }
         }
       ]
     },
@@ -5313,7 +8145,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -5400,11 +8232,115 @@
           "sell": 100000
         },
         {
+          "id": "k2_31",
+          "name": "荧光死亡蠕虫",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f31_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.016
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 165,
+          "sell": 28569,
+          "priceBasis": {
+            "effort": 79.67,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.83,
+            "exponent": 0.562205
+          }
+        },
+        {
+          "id": "e2_31",
+          "name": "冰月壤龟",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f31_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 220,
+          "sell": 76725,
+          "priceBasis": {
+            "effort": 461.75,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.83,
+            "exponent": 0.562205
+          }
+        },
+        {
+          "id": "l31_rabbit_ear",
+          "name": "优雅兔耳",
+          "kind": "legend",
+          "weather": [
+            "clearSkies",
+            "fairSkies"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "优雅兔耳之识",
+            "requires": [
+              {
+                "fishId": "f31_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 275,
+          "sell": 1172035,
+          "priceBasis": {
+            "effort": 58938.56,
+            "gatePct": 2.87,
+            "buildCasts": 1.8,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.83,
+            "exponent": 0.562205
+          }
+        },
+        {
           "id": "l31_abyss_king",
           "name": "深渊王",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "timeOfDay": [
             "night"
@@ -5426,15 +8362,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 275,
-          "sell": 1426539,
+          "sell": 1319420,
           "priceBasis": {
-            "effort": 83633.77,
-            "gatePct": 9.38,
+            "effort": 72761.38,
+            "gatePct": 10.78,
             "buildCasts": 52.5,
             "buffCasts": 10,
             "anchorSell": 25000,
-            "anchorEffort": 62.84,
-            "exponent": 0.562179
+            "anchorEffort": 62.83,
+            "exponent": 0.562205
           }
         }
       ]
@@ -5503,7 +8439,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "blizzard"
+            "blizzards"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -5590,12 +8526,77 @@
           "sell": 100000
         },
         {
+          "id": "k2_32",
+          "name": "骇惊威",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f32_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.011
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 180,
+          "sell": 34797,
+          "priceBasis": {
+            "effort": 113.43,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.96,
+            "exponent": 0.561615
+          }
+        },
+        {
+          "id": "e2_32",
+          "name": "运行星",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f32_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 240,
+          "sell": 65349,
+          "priceBasis": {
+            "effort": 348.38,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.96,
+            "exponent": 0.561615
+          }
+        },
+        {
           "id": "l32_white_whale",
           "name": "白鲸",
           "kind": "legend",
+          "legacy": true,
           "weather": [
             "snow",
-            "blizzard"
+            "blizzards"
           ],
           "intuition": {
             "name": "白鲸之识",
@@ -5614,15 +8615,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 300,
-          "sell": 772525,
+          "sell": 663977,
           "priceBasis": {
-            "effort": 28213.15,
+            "effort": 21624.91,
             "gatePct": 54.0,
-            "buildCasts": 141.7,
+            "buildCasts": 106.3,
             "buffCasts": 10,
             "anchorSell": 25000,
-            "anchorEffort": 62.9,
-            "exponent": 0.561873
+            "anchorEffort": 62.96,
+            "exponent": 0.561615
           }
         }
       ]
@@ -5678,7 +8679,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -5778,11 +8780,115 @@
           "sell": 100000
         },
         {
+          "id": "k2_33",
+          "name": "金光皮颏鱵",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f33_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.013
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 180,
+          "sell": 31862,
+          "priceBasis": {
+            "effort": 96.77,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.86,
+            "exponent": 0.56209
+          }
+        },
+        {
+          "id": "e2_33",
+          "name": "大丽花冠鮨",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f33_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 240,
+          "sell": 52347,
+          "priceBasis": {
+            "effort": 234.07,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.86,
+            "exponent": 0.56209
+          }
+        },
+        {
+          "id": "l33_forktail",
+          "name": "餐叉尾",
+          "kind": "legend",
+          "weather": [
+            "thunderstorms"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "餐叉尾之识",
+            "requires": [
+              {
+                "fishId": "f33_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 300,
+          "sell": 794418,
+          "priceBasis": {
+            "effort": 29559.95,
+            "gatePct": 5.75,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.86,
+            "exponent": 0.56209
+          }
+        },
+        {
           "id": "l33_holy_dragon",
           "name": "圣龙",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "timeOfDay": [
             "day"
@@ -5804,15 +8910,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 300,
-          "sell": 1167083,
+          "sell": 1360747,
           "priceBasis": {
-            "effort": 59008.27,
-            "gatePct": 13.5,
+            "effort": 77005.8,
+            "gatePct": 10.34,
             "buildCasts": 53.5,
             "buffCasts": 10,
             "anchorSell": 25000,
-            "anchorEffort": 62.95,
-            "exponent": 0.561644
+            "anchorEffort": 62.86,
+            "exponent": 0.56209
           }
         }
       ]
@@ -5968,9 +9074,113 @@
           "sell": 100000
         },
         {
+          "id": "k2_34",
+          "name": "巨身锯盖鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f34_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.007
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 180,
+          "sell": 44449,
+          "priceBasis": {
+            "effort": 174.96,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.85,
+            "exponent": 0.562105
+          }
+        },
+        {
+          "id": "e2_34",
+          "name": "黑玛瑙刀背鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f34_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 240,
+          "sell": 96099,
+          "priceBasis": {
+            "effort": 689.69,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.85,
+            "exponent": 0.562105
+          }
+        },
+        {
+          "id": "l34_serpent",
+          "name": "潜龙",
+          "kind": "legend",
+          "weather": [
+            "clearSkies",
+            "fairSkies"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "潜龙之识",
+            "requires": [
+              {
+                "fishId": "f34_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0005
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 300,
+          "sell": 835166,
+          "priceBasis": {
+            "effort": 32303.99,
+            "gatePct": 7.33,
+            "buildCasts": 1.8,
+            "buffCasts": 10,
+            "anchorSell": 25000,
+            "anchorEffort": 62.85,
+            "exponent": 0.562105
+          }
+        },
+        {
           "id": "l34_star_whale",
           "name": "星鲸",
           "kind": "legend",
+          "legacy": true,
           "weather": [
             "fog"
           ],
@@ -5994,15 +9204,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 300,
-          "sell": 1820350,
+          "sell": 1544738,
           "priceBasis": {
-            "effort": 128629.57,
-            "gatePct": 8.25,
+            "effort": 96472.18,
+            "gatePct": 11.0,
             "buildCasts": 53.5,
             "buffCasts": 10,
             "anchorSell": 25000,
-            "anchorEffort": 62.8,
-            "exponent": 0.562365
+            "anchorEffort": 62.85,
+            "exponent": 0.562105
           }
         }
       ]
@@ -6058,7 +9268,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -6156,6 +9367,108 @@
           "sizeMax": 360,
           "exp": 190,
           "sell": 300000
+        },
+        {
+          "id": "k2_35",
+          "name": "麻瘩玛塔蛇颈龟",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f35_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.017
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 180,
+          "sell": 82962,
+          "priceBasis": {
+            "effort": 75.4,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 63.0,
+            "exponent": 0.561409
+          }
+        },
+        {
+          "id": "e2_35",
+          "name": "锅盖蟹",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f35_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 240,
+          "sell": 173320,
+          "priceBasis": {
+            "effort": 280.11,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 63.0,
+            "exponent": 0.561409
+          }
+        },
+        {
+          "id": "l35_jade",
+          "name": "水没翠玉",
+          "kind": "legend",
+          "weather": [
+            "rain"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "水没翠玉之识",
+            "requires": [
+              {
+                "fishId": "f35_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 300,
+          "sell": 2379341,
+          "priceBasis": {
+            "effort": 29762.05,
+            "gatePct": 6.67,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 63.0,
+            "exponent": 0.561409
+          }
         }
       ]
     },
@@ -6223,7 +9536,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -6308,6 +9621,108 @@
           "sizeMax": 360,
           "exp": 192,
           "sell": 300000
+        },
+        {
+          "id": "k2_36",
+          "name": "战地巨雀鳝",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f36_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.009
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 195,
+          "sell": 116404,
+          "priceBasis": {
+            "effort": 137.26,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.81,
+            "exponent": 0.562296
+          }
+        },
+        {
+          "id": "e2_36",
+          "name": "星尘睡鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f36_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.003
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 260,
+          "sell": 230228,
+          "priceBasis": {
+            "effort": 461.64,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.81,
+            "exponent": 0.562296
+          }
+        },
+        {
+          "id": "l36_heart",
+          "name": "碧空之心",
+          "kind": "legend",
+          "weather": [
+            "rain"
+          ],
+          "timeOfDay": [
+            "dusk"
+          ],
+          "intuition": {
+            "name": "碧空之心之识",
+            "requires": [
+              {
+                "fishId": "f36_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 325,
+          "sell": 4502723,
+          "priceBasis": {
+            "effort": 91372.2,
+            "gatePct": 1.87,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.81,
+            "exponent": 0.562296
+          }
         }
       ]
     },
@@ -6362,7 +9777,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "dust"
+            "dustStorms"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -6375,7 +9790,7 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "heat"
+            "heatWaves"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -6462,11 +9877,114 @@
           "sell": 300000
         },
         {
+          "id": "k2_37",
+          "name": "南瓜芽太阳鱼",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f37_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.015
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 195,
+          "sell": 88769,
+          "priceBasis": {
+            "effort": 84.48,
+            "gatePct": 100.0,
+            "buildCasts": 1.8,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.63,
+            "exponent": 0.563177
+          }
+        },
+        {
+          "id": "e2_37",
+          "name": "遗产石斑鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f37_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.004
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 260,
+          "sell": 196713,
+          "priceBasis": {
+            "effort": 347.02,
+            "gatePct": 100.0,
+            "buildCasts": 3.6,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.63,
+            "exponent": 0.563177
+          }
+        },
+        {
+          "id": "l37_ball",
+          "name": "闪电球",
+          "kind": "legend",
+          "weather": [
+            "dustStorms"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "闪电球之识",
+            "requires": [
+              {
+                "fishId": "f37_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0005
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 325,
+          "sell": 2261807,
+          "priceBasis": {
+            "effort": 26524.25,
+            "gatePct": 9.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.63,
+            "exponent": 0.563177
+          }
+        },
+        {
           "id": "l37_golden_god",
           "name": "黄金神鱼",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "dust"
+            "dustStorms"
           ],
           "timeOfDay": [
             "dusk"
@@ -6488,15 +10006,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 325,
-          "sell": 9724618,
+          "sell": 12230323,
           "priceBasis": {
-            "effort": 354049.64,
-            "gatePct": 2.25,
+            "effort": 531074.46,
+            "gatePct": 1.5,
             "buildCasts": 53.5,
             "buffCasts": 10,
             "anchorSell": 75000,
-            "anchorEffort": 62.65,
-            "exponent": 0.563091
+            "anchorEffort": 62.63,
+            "exponent": 0.563177
           }
         }
       ]
@@ -6552,7 +10070,7 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "heat"
+            "heatWaves"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -6565,7 +10083,8 @@
           "rarity": "blue",
           "weight": 3,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -6652,12 +10171,116 @@
           "sell": 300000
         },
         {
+          "id": "k2_38",
+          "name": "抓月虾",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f38_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.012
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 195,
+          "sell": 99719,
+          "priceBasis": {
+            "effort": 104.38,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.88,
+            "exponent": 0.561991
+          }
+        },
+        {
+          "id": "e2_38",
+          "name": "奥雷奥雷奥雷",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f38_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 260,
+          "sell": 157014,
+          "priceBasis": {
+            "effort": 234.13,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.88,
+            "exponent": 0.561991
+          }
+        },
+        {
+          "id": "l38_nelado",
+          "name": "内拉朵",
+          "kind": "legend",
+          "weather": [
+            "gales"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "内拉朵之识",
+            "requires": [
+              {
+                "fishId": "f38_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0007
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 325,
+          "sell": 2588792,
+          "priceBasis": {
+            "effort": 34296.14,
+            "gatePct": 4.94,
+            "buildCasts": 1.8,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.88,
+            "exponent": 0.561991
+          }
+        },
+        {
           "id": "l38_lava_leviathan",
           "name": "熔岩鲲",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "heat",
-            "clear"
+            "heatWaves",
+            "clearSkies",
+            "fairSkies"
           ],
           "intuition": {
             "name": "熔岩鲲之识",
@@ -6676,15 +10299,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 325,
-          "sell": 2570337,
+          "sell": 2309615,
           "priceBasis": {
-            "effort": 33813.63,
-            "gatePct": 56.0,
-            "buildCasts": 140.9,
+            "effort": 27993.89,
+            "gatePct": 51.85,
+            "buildCasts": 105.7,
             "buffCasts": 10,
             "anchorSell": 75000,
-            "anchorEffort": 62.85,
-            "exponent": 0.56209
+            "anchorEffort": 62.88,
+            "exponent": 0.561991
           }
         }
       ]
@@ -6740,7 +10363,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -6840,9 +10464,112 @@
           "sell": 300000
         },
         {
+          "id": "k2_39",
+          "name": "得卡特",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f39_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.019
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 195,
+          "sell": 78366,
+          "priceBasis": {
+            "effort": 68.02,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
+          }
+        },
+        {
+          "id": "e2_39",
+          "name": "灰达尤南丽鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f39_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.005
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 260,
+          "sell": 173465,
+          "priceBasis": {
+            "effort": 279.81,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
+          }
+        },
+        {
+          "id": "l39_pony",
+          "name": "犎牛多鳍鱼",
+          "kind": "legend",
+          "weather": [
+            "rain"
+          ],
+          "timeOfDay": [
+            "night"
+          ],
+          "intuition": {
+            "name": "犎牛多鳍鱼之识",
+            "requires": [
+              {
+                "fishId": "f39_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0006
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 325,
+          "sell": 1957001,
+          "priceBasis": {
+            "effort": 20891.58,
+            "gatePct": 9.48,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
+          }
+        },
+        {
           "id": "l39_black_tortoise",
           "name": "玄武巨龟",
           "kind": "legend",
+          "legacy": true,
           "weather": [
             "rain"
           ],
@@ -6866,15 +10593,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 325,
-          "sell": 4518158,
+          "sell": 4181478,
           "priceBasis": {
-            "effort": 92757.46,
-            "gatePct": 8.25,
+            "effort": 80698.99,
+            "gatePct": 9.48,
             "buildCasts": 51.0,
             "buffCasts": 10,
             "anchorSell": 75000,
-            "anchorEffort": 62.93,
-            "exponent": 0.561747
+            "anchorEffort": 62.91,
+            "exponent": 0.561834
           }
         }
       ]
@@ -6930,7 +10657,8 @@
           "rarity": "blue",
           "weight": 5,
           "weather": [
-            "clear"
+            "clearSkies",
+            "fairSkies"
           ],
           "sizeMin": 75,
           "sizeMax": 135,
@@ -7030,11 +10758,114 @@
           "sell": 300000
         },
         {
+          "id": "k2_40",
+          "name": "滑稽女王",
+          "kind": "king",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f40_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.006
+          },
+          "sizeMin": 240,
+          "sizeMax": 360,
+          "exp": 210,
+          "sell": 144971,
+          "priceBasis": {
+            "effort": 203.28,
+            "gatePct": 100.0,
+            "buildCasts": 1.9,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.9,
+            "exponent": 0.561854
+          }
+        },
+        {
+          "id": "e2_40",
+          "name": "希望鲤鱼",
+          "kind": "emperor",
+          "intuition": {
+            "name": "捕鱼人之识",
+            "requires": [
+              {
+                "fishId": "f40_2",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.002
+          },
+          "sizeMin": 300,
+          "sizeMax": 450,
+          "exp": 280,
+          "sell": 288089,
+          "priceBasis": {
+            "effort": 690.13,
+            "gatePct": 100.0,
+            "buildCasts": 3.7,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.9,
+            "exponent": 0.561854
+          }
+        },
+        {
+          "id": "l40_tiger",
+          "name": "三刃海虎",
+          "kind": "legend",
+          "weather": [
+            "clouds"
+          ],
+          "timeOfDay": [
+            "day"
+          ],
+          "intuition": {
+            "name": "三刃海虎之识",
+            "requires": [
+              {
+                "fishId": "f40_1",
+                "count": 1
+              }
+            ],
+            "durationSec": [
+              30,
+              30
+            ],
+            "chance": 0.0005
+          },
+          "sizeMin": 360,
+          "sizeMax": 540,
+          "exp": 350,
+          "sell": 2588164,
+          "priceBasis": {
+            "effort": 34349.91,
+            "gatePct": 6.9,
+            "buildCasts": 1.8,
+            "buffCasts": 10,
+            "anchorSell": 75000,
+            "anchorEffort": 62.9,
+            "exponent": 0.561854
+          }
+        },
+        {
           "id": "l40_creator",
           "name": "创世神鱼",
           "kind": "legend",
+          "legacy": true,
           "weather": [
-            "thunder"
+            "thunderstorms"
           ],
           "timeOfDay": [
             "night"
@@ -7056,15 +10887,15 @@
           "sizeMin": 360,
           "sizeMax": 540,
           "exp": 350,
-          "sell": 5601105,
+          "sell": 5183723,
           "priceBasis": {
-            "effort": 135921.96,
-            "gatePct": 7.5,
+            "effort": 118252.1,
+            "gatePct": 8.62,
             "buildCasts": 51.0,
             "buffCasts": 10,
             "anchorSell": 75000,
-            "anchorEffort": 62.92,
-            "exponent": 0.56177
+            "anchorEffort": 62.9,
+            "exponent": 0.561854
           }
         }
       ]

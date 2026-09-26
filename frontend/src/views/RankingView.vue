@@ -19,7 +19,7 @@ const toast = useToastStore()
 const BOARDS = [
   { id: 'level', label: '等级榜', hint: '同等级按经验降序' },
   { id: 'stage', label: '关卡榜', hint: '难度优先；同难度按关卡降序，同关卡按通关时间升序（越早越靠前）' },
-  { id: 'power', label: '战力榜', hint: '英雄总战力降序' },
+  { id: 'power', label: '战力榜', hint: '按历史最高战力降序（括号内为当前战力）' },
   { id: 'gold', label: '金币榜', hint: '当前持有金币降序' },
   { id: 'playtime', label: '游玩时间榜', hint: '累计在线时长降序' },
   { id: 'fish_species', label: '钓鱼种类榜', hint: '钓到的鱼类种类数降序' },
@@ -98,7 +98,7 @@ watch([board, page], load)
 const STAGE_REGION_BASE = 1000
 
 function valueText(boardId: string, entry: RankingEntry): string {
-  if (boardId === 'gold') return formatNumber(entry.value)
+  if (boardId === 'gold' || boardId === 'power') return formatNumber(entry.value)
   if (boardId === 'stage') {
     if (entry.value <= 0) return '未通关'
     const difficulty = Math.floor(entry.value / STAGE_REGION_BASE)
@@ -140,15 +140,28 @@ function activeTitle(entry: RankingEntry): string | null {
   return id ? titleName(String(id)) : null
 }
 
-const FISH_REGION_TOTAL = data.fish.regions.length
+/** 特殊鱼各档总数（按配置统计，作为「已收集/总数」的分母；不写死 40）。 */
+const FISH_KIND_TOTALS = (() => {
+  const totals: Record<string, number> = { king: 0, emperor: 0, legend: 0 }
+  for (const region of data.fish.regions) {
+    for (const fish of region.specials) totals[fish.kind] = (totals[fish.kind] ?? 0) + 1
+  }
+  return totals
+})()
 
-/** 钓鱼种类榜：按「普通 / 鱼王 / 鱼皇」拆分的种类数（后端实时聚合）。 */
-function fishBreakdown(entry: RankingEntry): { normal: number; king: number; emperor: number } {
+/** 钓鱼种类榜：按「普通 / 鱼王 / 鱼皇 / 困难鱼」拆分的种类数（后端实时聚合）。 */
+function fishBreakdown(entry: RankingEntry): { normal: number; king: number; emperor: number; legend: number } {
   return {
     normal: Number(entry.payload?.fishNormal ?? 0),
     king: Number(entry.payload?.fishKing ?? 0),
     emperor: Number(entry.payload?.fishEmperor ?? 0),
+    legend: Number(entry.payload?.fishLegend ?? 0),
   }
+}
+
+/** 战力榜：数值列 = 历史最高战力，行内附带当前战力。 */
+function powerCurrent(entry: RankingEntry): number {
+  return Number(entry.payload?.power ?? entry.value)
 }
 
 /** 生产/采集榜：行内展示生产 / 采集等级（来自 payload）。 */
@@ -319,10 +332,14 @@ function pickDungeon(id: string) {
                 <div v-if="pane.board === 'coop'" class="mt-0.5 text-[10px] text-ink-500">
                   {{ modeLabel(entry) }}<span v-if="hadClone(entry)"> · 含克隆</span>
                 </div>
+                <div v-if="pane.board === 'power'" class="mt-0.5 text-[10px] text-ink-500">
+                  当前战力 {{ formatNumber(powerCurrent(entry)) }}
+                </div>
                 <div v-if="pane.board === 'fish_species'" class="mt-0.5 text-[10px] text-ink-500">
                   普通 {{ fishBreakdown(entry).normal }} ·
-                  鱼王 {{ fishBreakdown(entry).king }}/{{ FISH_REGION_TOTAL }} ·
-                  鱼皇 {{ fishBreakdown(entry).emperor }}/{{ FISH_REGION_TOTAL }}
+                  鱼王 {{ fishBreakdown(entry).king }}/{{ FISH_KIND_TOTALS.king }} ·
+                  鱼皇 {{ fishBreakdown(entry).emperor }}/{{ FISH_KIND_TOTALS.emperor }} ·
+                  困难鱼 {{ fishBreakdown(entry).legend }}/{{ FISH_KIND_TOTALS.legend }}
                 </div>
                 <div v-if="DOHDOL_BOARDS.includes(pane.board)" class="mt-0.5 text-[10px] text-ink-500">
                   生产 Lv.{{ dohdolLevels(entry).doh }} · 采集 Lv.{{ dohdolLevels(entry).dol }}

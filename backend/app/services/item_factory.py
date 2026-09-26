@@ -126,6 +126,17 @@ def dohdol_base_attr_range(rarity: str, bonus_value: float) -> tuple[float, floa
     return center * (1.0 - spread), center * (1.0 + spread)
 
 
+def _dohdol_base_attrs(dohdol: dict[str, Any], rarity: str, rng: random.Random) -> list[dict[str, Any]]:
+    """生产/采集专用装备的基础属性（与 generate_crafted_item 同源：中心值 ± baseAttrFloat）。"""
+    return [
+        {
+            "attr": stat,
+            "value": round(dohdol_center_value(rarity, float(value)) * _float_factor(rng, CONFIG.base_attr_float), 2),
+        }
+        for stat, value in dohdol["bonus"].items()
+    ]
+
+
 def sub_attr_range(base: BaseItem, rarity: str, attr_id: str) -> tuple[float, float]:
     """副属性的**可达区间**：名义区间 × 档位缩放后再叠加 ±subAttrFloat 浮动。
 
@@ -150,9 +161,20 @@ def sub_attr_cap(base: BaseItem, rarity: str, attr_id: str) -> float:
     return _extreme_value(float(lo) * scale, float(hi) * scale)
 
 
+_DOHDOL_TERMS: dict[str, dict[str, Any]] | None = None
+
+
+def _dohdol_term_by_id(term_id: str) -> dict[str, Any] | None:
+    """生产/采集专用词条索引（dohdol-equipment.json:terms），惰性构建。"""
+    global _DOHDOL_TERMS
+    if _DOHDOL_TERMS is None:
+        _DOHDOL_TERMS = {t["id"]: t for t in CONFIG.dohdol_equipment.get("terms", [])}
+    return _DOHDOL_TERMS.get(term_id)
+
+
 def term_range(term_id: str) -> tuple[float, float]:
-    """词条区间（terms.json 的 range）。"""
-    spec = CONFIG.term_by_id.get(term_id)
+    """词条区间（战斗 terms.json 或生产/采集 dohdol-equipment.json）。"""
+    spec = CONFIG.term_by_id.get(term_id) or _dohdol_term_by_id(term_id)
     if spec is None:
         return 0.0, 0.0
     lo, hi = spec["range"]
@@ -605,9 +627,20 @@ def regenerate_attrs(
     升为太古（economy.refine.basedOnCurrentAncientUpgradeChance）。
     """
     rng = rng or random.Random()
-    base = CONFIG.base_item_by_id[item.base_id]
+    dohdol = CONFIG.dohdol_item_by_id.get(item.base_id)
 
     if mode != "basedOnCurrent":
+        if dohdol is not None:
+            return {
+                "baseAttrs": _dohdol_base_attrs(dohdol, item.rarity, rng),
+                "subAttrs": [],
+                "terms": roll_dedicated_terms(
+                    dohdol["slot"], item.rarity, rng,
+                    int(CONFIG.recipes["equipment"]["guaranteedAncientTerms"]),
+                    int(dohdol["levelReq"]),
+                ),
+            }
+        base = CONFIG.base_item_by_id[item.base_id]
         mult = float(CONFIG.rarities[item.rarity]["multiplier"])
         if getattr(item, "high_quality", False):
             mult *= float(CONFIG.recipes["equipment"]["highQualityMultiplier"])
@@ -626,6 +659,22 @@ def regenerate_attrs(
 
     spread_down = float(CONFIG.economy["refine"]["basedOnCurrentDownPct"])
     spread_up = float(CONFIG.economy["refine"]["basedOnCurrentUpPct"])
+
+    if dohdol is not None:
+        # 生产/采集专用装备：基础属性按底材加成浮动，无副属性，词条走专用池的「基于当前」。
+        base_attrs = []
+        for entry in item.base_attrs or []:
+            bonus = float((dohdol.get("bonus") or {}).get(entry["attr"], 0.0))
+            lo, hi = dohdol_base_attr_range(item.rarity, bonus)
+            value = float_near_current(rng, float(entry["value"]), lo, hi, "common", spread_down, spread_up)
+            base_attrs.append({**entry, "value": round(value, 2)})
+        terms = _roll_terms_based_on_current(
+            item, rng, spread_down, spread_up,
+            float(CONFIG.economy["refine"].get("basedOnCurrentAncientUpgradeChance", 0.0)),
+        )
+        return {"baseAttrs": base_attrs, "subAttrs": [], "terms": terms}
+
+    base = CONFIG.base_item_by_id[item.base_id]
     base_attrs = []
     for entry in item.base_attrs or []:
         lo, hi = base_attr_range(base, item.rarity, entry["attr"], getattr(item, "high_quality", False))
@@ -723,9 +772,16 @@ def roll_terms_for_enchant(
     Buff 升为太古（economy.enchant.basedOnCurrentAncientUpgradeChance）。
     """
     rng = rng or random.Random()
-    base = CONFIG.base_item_by_id[item.base_id]
+    dohdol = CONFIG.dohdol_item_by_id.get(item.base_id)
 
     if mode != "basedOnCurrent":
+        if dohdol is not None:
+            return roll_dedicated_terms(
+                dohdol["slot"], item.rarity, rng,
+                int(CONFIG.recipes["equipment"]["guaranteedAncientTerms"]),
+                int(dohdol["levelReq"]),
+            )
+        base = CONFIG.base_item_by_id[item.base_id]
         return roll_terms(base, item.rarity, rng)
 
     cfg = CONFIG.economy["enchant"]

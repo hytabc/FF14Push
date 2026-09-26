@@ -241,6 +241,45 @@ async def test_coop_worker_reconnect_locks_and_reward_once(auth_client,session_f
         assert (await db.scalar(select(CoopProgress))).clears==1
         for hid in ids:assert (await db.get(Hero,hid)).exp>0
 
+async def test_coop_reward_grants_recraft_cards_and_ultimate_title(session_factory):
+    """通关奖励：按难度产出「重新打造卡」、按模式加成，并在绝境战通关时授予 FF14 称号。"""
+    from app.models import StackItem, UserTitle
+    from app.services.coop_rewards import grant_reward
+
+    async with session_factory() as db:
+        user = User(username='card_reward', nickname='Card', password_hash='x', gold=0)
+        db.add(user)
+        await db.flush()
+        hero = Hero(user_id=user.id, name='英雄', level=100, talent='common', attr_bias='balanced',
+                    strength=33, agility=33, intellect=34)
+        db.add(hero)
+        await db.flush()
+        uid, hid = int(user.id), int(hero.id)
+        dungeon = DUNGEONS['ultimate_1']
+        mult = CFG['modeRewardMultiplier']['online']
+        battle = SimpleNamespace(id=91, status='cleared', state={'hadClone': False, 'elapsedMs': 60000, 'heroes': [
+            {'controllerId': uid, 'registeredClone': False, 'snapshot': {'heroId': hid}}
+        ]}, config={'dungeons': [dungeon]})
+        room = SimpleNamespace(dungeon_id='ultimate_1', mode='online')
+        receipt = await grant_reward(db, uid, room, battle)
+        await db.commit()
+
+    assert receipt['rewardMultiplier'] == mult
+    assert receipt['goldGained'] == round(dungeon['reward']['firstGold'] * mult)
+    assert receipt['cards'] == round(dungeon['reward']['cards'] * mult)
+    assert 'coop_ultimate_bahamut' in receipt['newTitles']
+
+    async with session_factory() as db:
+        card = await db.scalar(select(StackItem).where(StackItem.user_id == uid, StackItem.kind == 'card'))
+        assert card is not None and int(card.count) == receipt['cards']
+        owned = set((await db.scalars(select(UserTitle.title_id).where(UserTitle.user_id == uid))).all())
+        assert 'coop_ultimate_bahamut' in owned
+
+    # 幂等：同一次战斗重复领取返回同一回执（不重复发卡 / 称号）
+    async with session_factory() as db:
+        assert await grant_reward(db, uid, room, battle) == receipt
+
+
 async def test_room_rejects_duplicates_and_single_online(auth_client,session_factory):
     c=auth_client;uid=(await c.get(API+'/auth/me')).json()['id'];ids=await seed_heroes(session_factory,uid)
     room=await make_room(c,[ids[0],ids[0]])

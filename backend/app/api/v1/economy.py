@@ -8,8 +8,9 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.core.deps import CurrentHero, CurrentItems, CurrentUser, DbSession
-from app.models import Item
+from app.models import Item, StackItem
 from app.schemas.game import CraftRequest, EnchantRequest, RefineRequest
+from app.services import dohdol_util
 from app.services.economy import REQUIRED, build_craft_plan, enchant_cost, is_exclusive_base, refine_cost
 from app.services.grants import insert_items
 from app.services.item_factory import generate_item, regenerate_attrs, roll_terms_for_enchant
@@ -24,6 +25,9 @@ MAX_REROLL_TIMES = 50
 
 
 _DEDICATED_CATEGORIES = {"doh_tool", "doh_gear", "dol_tool", "dol_gear"}
+# 「重新打造卡」：远征高难度副本产出、用于生产/采集专用装备的「基于当前」重造/附魔。
+CARD_KIND = dohdol_util.STACK_CARD
+CARD_ITEM_ID = "recraft_card"
 
 
 async def _user_items(db: DbSession, user_id: int) -> list[Item]:
@@ -33,11 +37,34 @@ async def _user_items(db: DbSession, user_id: int) -> list[Item]:
 
 
 def _require_combat_item(item: Item) -> None:
-    """重造 / 附魔仅适用于战斗装备；专用装备不在此列（底材不在 base-items 内）。"""
+    """金币重造 / 附魔仅适用于战斗装备；专用装备需改用「重新打造卡」。"""
     if item.category in _DEDICATED_CATEGORIES:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="生产/采集专用装备无法重造或附魔"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="生产/采集专用装备需使用「重新打造卡」重造或附魔",
         )
+
+
+def _require_dedicated_item(item: Item) -> None:
+    """「重新打造卡」仅可用于生产/采集专用装备。"""
+    if item.category not in _DEDICATED_CATEGORIES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="重新打造卡仅可用于生产/采集专用装备"
+        )
+
+
+async def _card_count(db: DbSession, user_id: int) -> int:
+    row = await db.scalar(
+        select(StackItem).where(
+            StackItem.user_id == user_id, StackItem.kind == CARD_KIND, StackItem.item_id == CARD_ITEM_ID
+        )
+    )
+    return int(row.count) if row else 0
+
+
+async def _consume_cards(db: DbSession, user_id: int, count: int) -> None:
+    if not await dohdol_util.stack_consume(db, user_id, CARD_KIND, CARD_ITEM_ID, count):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="重新打造卡不足")
 
 
 @router.post("/craft/preview")
@@ -137,12 +164,40 @@ async def refine(
     ).scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
-    _require_combat_item(item)
-    exclusive = is_exclusive_base(item.base_id)
 
     times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))
     before = item_to_dict(item, sell_price_range(item))
     rng = random.Random()
+
+    if payload.useCard:
+        # 「重新打造卡」路径：仅生产/采集专用装备，强制「基于当前」，每件每次消耗 1 张卡、不扣金币。
+        _require_dedicated_item(item)
+        mode = "basedOnCurrent"
+        have = await _card_count(db, user.id)
+        done = min(times, have)
+        if done == 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="重新打造卡不足，需要 1 张")
+        for _ in range(done):
+            result = regenerate_attrs(item, rng, mode)
+            item.base_attrs = result["baseAttrs"]
+            item.sub_attrs = result["subAttrs"]
+            item.terms = result["terms"]
+            item.refine_count = int(item.refine_count) + 1
+        await _consume_cards(db, user.id, done)
+        await db.commit()
+        return {
+            "gold": int(user.gold),
+            "cost": 0,
+            "cardsCost": done,
+            "cardsLeft": have - done,
+            "mode": mode,
+            "times": done,
+            "before": before,
+            "after": item_to_dict(item, sell_price_range(item)),
+        }
+
+    _require_combat_item(item)
+    exclusive = is_exclusive_base(item.base_id)
 
     spent = 0
     done = 0
@@ -182,11 +237,38 @@ async def enchant(
     ).scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="装备不存在")
-    _require_combat_item(item)
-    exclusive = is_exclusive_base(item.base_id)
 
     rng = random.Random()
     before = item_to_dict(item, sell_price_range(item))
+
+    if payload.useCard:
+        # 「重新打造卡」路径：仅生产/采集专用装备，强制「基于当前」，每件每次消耗 1 张卡、不扣金币。
+        _require_dedicated_item(item)
+        mode = "basedOnCurrent"
+        times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))
+        have = await _card_count(db, user.id)
+        done = min(times, have)
+        if done == 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="重新打造卡不足，需要 1 张")
+        for _ in range(done):
+            item.terms = roll_terms_for_enchant(item, rng, mode)
+            item.enchant_count = int(item.enchant_count) + 1
+        await _consume_cards(db, user.id, done)
+        await db.commit()
+        return {
+            "gold": int(user.gold),
+            "cost": 0,
+            "cardsCost": done,
+            "cardsLeft": have - done,
+            "mode": mode,
+            "attempts": done,
+            "times": done,
+            "before": before,
+            "after": item_to_dict(item, sell_price_range(item)),
+        }
+
+    _require_combat_item(item)
+    exclusive = is_exclusive_base(item.base_id)
 
     if not payload.autoUntilRare:
         times = max(1, min(MAX_REROLL_TIMES, int(payload.times)))

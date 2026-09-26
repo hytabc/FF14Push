@@ -498,21 +498,6 @@
       "clockToleranceMs": 2000
     },
     "raid_h1": {
-      "power": 60000,
-      "attack": 1200,
-      "defense": 400,
-      "maxFightSeconds": 600,
-      "minSurvivalSeconds": 12,
-      "requiredLevel": 100,
-      "requiresAllSlots": true,
-      "minEquipRarity": "mythic",
-      "topRarity": null,
-      "topRarityRatio": 0.0,
-      "minAncientTermsPerItem": 2,
-      "durationTolerance": 0.1,
-      "clockToleranceMs": 2000
-    },
-    "raid_h2": {
       "power": 62000,
       "attack": 1200,
       "defense": 400,
@@ -520,10 +505,25 @@
       "minSurvivalSeconds": 12,
       "requiredLevel": 100,
       "requiresAllSlots": true,
-      "minEquipRarity": "mythic",
+      "minEquipRarity": "common",
       "topRarity": null,
       "topRarityRatio": 0.0,
-      "minAncientTermsPerItem": 3,
+      "minAncientTermsPerItem": 0,
+      "durationTolerance": 0.1,
+      "clockToleranceMs": 2000
+    },
+    "raid_h2": {
+      "power": 62500,
+      "attack": 1200,
+      "defense": 400,
+      "maxFightSeconds": 600,
+      "minSurvivalSeconds": 12,
+      "requiredLevel": 100,
+      "requiresAllSlots": true,
+      "minEquipRarity": "common",
+      "topRarity": null,
+      "topRarityRatio": 0.0,
+      "minAncientTermsPerItem": 0,
       "durationTolerance": 0.1,
       "clockToleranceMs": 2000
     }

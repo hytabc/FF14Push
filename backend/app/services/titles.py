@@ -5,8 +5,9 @@
 - **彩蛋掉落**（`roll_random_titles`）：极低概率、非确定性（如挖宝下底 / 采集动作），
   每个事件各自 roll，每个未拥有的彩蛋称号按自身 `chance` 独立抽取。
 
-旧称号（鱼王猎手 / 海皇）只统计 **legacy** 鱼王 / 鱼皇，故新增困难鱼不影响它们的达成条件；
-一旦已解锁即永久保留（evaluate_titles 只补发缺失的称号）。
+旧称号（鱼王猎手 / 海皇 / 烟波钓徒 / 太公封神）只统计 **legacy** 特殊鱼（原 40 区鱼王 / 鱼皇 +
+第一批困难鱼），故后续新增的鱼王 / 鱼皇 / 困难鱼不影响它们的达成条件；新内容用 `legacy: false`
+的 `all_legend` / `all_special` 条件另设称号。一旦已解锁即永久保留（evaluate_titles 只补发缺失的称号）。
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import FishRecord, UserTitle
+from app.models.multiplayer import CoopProgress
 from app.services.game_config import CONFIG
 
 
@@ -69,10 +71,15 @@ def matches(condition: dict[str, Any], ctx: dict[str, Any]) -> bool:
     if kind == "all_emperor":
         return {s["id"] for s in _specials("emperor", legacy=True)} <= ctx["ids"]
     if kind == "all_legend":
-        target = {s["id"] for s in _specials("legend")}
+        # 默认只统计 legacy（第一批）困难鱼，保证旧称号「烟波钓徒」达成条件不随新增内容变难；
+        # 新内容的「全部新困难鱼」用 legacy=false 条件。
+        legacy = bool(condition.get("legacy", True))
+        target = {s["id"] for s in _specials("legend", legacy=legacy)}
         return bool(target) and target <= ctx["ids"]
     if kind == "all_special":
-        target = {s["id"] for s in _specials()}
+        # 同上：默认只统计 legacy 特殊鱼（旧「太公封神」集合不变）；legacy=false 为新增特殊鱼。
+        legacy = bool(condition.get("legacy", True))
+        target = {s["id"] for s in _specials(legacy=legacy)}
         return bool(target) and target <= ctx["ids"]
     if kind == "count_kind":
         return ctx["kind"].get(condition["kind"], 0) >= int(condition["count"])
@@ -110,6 +117,38 @@ async def evaluate_titles(db: AsyncSession, user_id: int) -> list[str]:
         if title["id"] in existing:
             continue
         if matches(title["condition"], ctx):
+            db.add(UserTitle(user_id=user_id, title_id=title["id"]))
+            new.append(title["id"])
+    return new
+
+
+async def evaluate_coop_titles(db: AsyncSession, user_id: int) -> list[str]:
+    """远征通关称号：按 `CoopProgress` 中已通关（clears > 0）的副本补发。
+
+    条件为 `condition.type == "coop_clear"` + `dungeonIds`（需全部通关）。幂等：只补发缺失的称号。
+    与钓鱼的确定性条件（`evaluate_titles`）互不干扰——`matches()` 对 `coop_clear` 返回 False。
+    """
+    rows = (
+        await db.execute(
+            select(CoopProgress.dungeon_id).where(
+                CoopProgress.user_id == user_id, CoopProgress.clears > 0
+            )
+        )
+    ).scalars().all()
+    cleared = set(rows)
+    if not cleared:
+        return []
+    existing = set(
+        (
+            await db.execute(select(UserTitle.title_id).where(UserTitle.user_id == user_id))
+        ).scalars().all()
+    )
+    new: list[str] = []
+    for title in CONFIG.titles["titles"]:
+        condition = title.get("condition", {})
+        if condition.get("type") != "coop_clear" or title["id"] in existing:
+            continue
+        if set(condition.get("dungeonIds") or []) <= cleared:
             db.add(UserTitle(user_id=user_id, title_id=title["id"]))
             new.append(title["id"])
     return new

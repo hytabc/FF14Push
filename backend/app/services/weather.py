@@ -58,10 +58,10 @@ def hash01(bucket: int, region_id: int) -> float:
 
 
 def weather_for(region_id: int, now: datetime | None = None) -> str:
-    """该地区当前天气 id。无权重表时回落到 clear。"""
+    """该地区当前天气 id。无权重表时回落到 clearSkies。"""
     weights = _region_weights(region_id)
     if not weights:
-        return "clear"
+        return "clearSkies"
     period = weather_period_sec()
     bucket = int(_now(now).timestamp()) // period
     total = sum(weights.values())
@@ -77,7 +77,12 @@ def weather_for(region_id: int, now: datetime | None = None) -> str:
 
 
 def et_seconds(now: datetime | None = None) -> float:
-    """当前 ET 时刻在一天内的秒数（0 ≤ s < 86400）。"""
+    """当前 ET 时刻在一天内的秒数（0 ≤ s < 86400）。
+
+    与 FF14 官方公式等价：1 ET 日 = 70 现实分钟（`eorzea.dayRealSeconds` = 4200 现实秒），
+    等价于 `floor(unix · 3600/175) mod 86400`——因 4200 × 3600/175 = 86400 恰为一天秒数，
+    故 `(epoch % 4200) / 4200 × 86400` 与之逐位一致（Unix 0 即 ET 00:00）。
+    """
     day = float(_cfg()["eorzea"]["dayRealSeconds"])
     epoch = int(_now(now).timestamp())
     return (epoch % day) / day * 86400.0

@@ -54,6 +54,8 @@ const title = computed(() => {
 const mode = computed(() => actions.pending?.mode ?? 'random')
 const times = computed(() => actions.pending?.times ?? 1)
 const isRerollMode = computed(() => kind.value === 'refine' || kind.value === 'enchant')
+/** 使用「重新打造卡」（生产/采集专用装备）：强制「基于当前」、不扣金币、每件每次 1 张。 */
+const useCard = computed(() => actions.pending?.useCard ?? actions.result?.useCard ?? false)
 
 // 实付价由后端按当前重造次数算好下发，避免前端与结算公式漂移
 const enchantCost = computed(() =>
@@ -87,11 +89,11 @@ function estimateTotal(action: ItemActionKind | null, target: Item | null, md: R
 }
 
 const confirmEstimate = computed(() => estimateTotal(kind.value, item.value, mode.value, times.value))
-const affordable = computed(() => game.gold >= confirmEstimate.value)
+const affordable = computed(() => useCard.value || game.gold >= confirmEstimate.value)
 const nextEstimate = computed(() =>
   result.value ? estimateTotal(result.value.kind, result.value.after, result.value.mode, result.value.times) : 0,
 )
-const canRepeat = computed(() => !actions.busy && game.gold >= nextEstimate.value)
+const canRepeat = computed(() => !actions.busy && (useCard.value || game.gold >= nextEstimate.value))
 
 function fmt(value: number): string {
   return String(Math.round(value * 100) / 100)
@@ -127,9 +129,14 @@ function close() {
           </p>
           <p class="text-[11px] text-ink-400">
             {{ result.kind === 'refine' ? '重造完成' : '附魔完成' }} · 共
-            <b class="text-ink-200">{{ result.times }}</b> 次 · 消耗
-            <b class="text-amber-300">{{ result.cost.toLocaleString() }}</b> 金币 · 剩余
-            <b class="text-amber-300">{{ game.gold.toLocaleString() }}</b>
+            <b class="text-ink-200">{{ result.times }}</b> 次 ·
+            <template v-if="result.useCard">
+              消耗 <b class="text-amber-300">{{ result.cardsCost }}</b> 张重新打造卡
+            </template>
+            <template v-else>
+              消耗 <b class="text-amber-300">{{ result.cost.toLocaleString() }}</b> 金币 · 剩余
+              <b class="text-amber-300">{{ game.gold.toLocaleString() }}</b>
+            </template>
           </p>
         </div>
       </div>
@@ -191,7 +198,7 @@ function close() {
         </div>
       </div>
 
-      <div v-if="isRerollMode" class="grid grid-cols-2 gap-2">
+      <div v-if="isRerollMode && !useCard" class="grid grid-cols-2 gap-2">
         <button
           class="rounded-md border px-2 py-2 text-xs transition"
           :class="
@@ -241,7 +248,12 @@ function close() {
       </div>
 
       <p v-if="kind === 'refine'" class="text-xs text-ink-300">
-        <template v-if="mode === 'basedOnCurrent'">
+        <template v-if="useCard">
+          使用「重新打造卡」重造生产/采集专用装备：走
+          <b class="text-white">基于当前</b> 逻辑（属性在现有值附近小幅浮动，可升可降）；
+          <b class="text-emerald-300">每件每次消耗 1 张卡、不消耗金币</b>，已有太古词条数不减少。
+        </template>
+        <template v-else-if="mode === 'basedOnCurrent'">
           基于当前：<b class="text-white">属性与词条</b>都在现有值附近
           （{{ data.economy.refine.basedOnCurrentDownPct * 100 }}% ~ +{{
             data.economy.refine.basedOnCurrentUpPct * 100
@@ -253,12 +265,17 @@ function close() {
           彻底随机：重新洗牌<b class="text-white">基础属性浮动值</b>、<b class="text-white">副属性（种类与数值）</b>
           与<b class="text-white">全部 Buff/Debuff</b>，等同重新获得该装备；品阶、类型、等级需求保持不变。
         </template>
-        <span v-if="item.refineCount" class="text-amber-300">
+        <span v-if="item.refineCount && !useCard" class="text-amber-300">
           该装备已重造 {{ item.refineCount }} 次，重造费用会随次数继续上涨。
         </span>
       </p>
       <p v-else-if="kind === 'enchant'" class="text-xs text-ink-300">
-        <template v-if="mode === 'basedOnCurrent'">
+        <template v-if="useCard">
+          使用「重新打造卡」附魔生产/采集专用装备：走
+          <b class="text-white">基于当前</b> 逻辑（保留词条种类，每条在现有值附近浮动）；
+          <b class="text-emerald-300">每件每次消耗 1 张卡、不消耗金币</b>，已有太古词条数不减少。
+        </template>
+        <template v-else-if="mode === 'basedOnCurrent'">
           基于当前：保留现有词条种类，<b class="text-white">每条独立</b>在现有值附近
           （{{ data.economy.enchant.basedOnCurrentDownPct * 100 }}% ~ +{{
             data.economy.enchant.basedOnCurrentUpPct * 100
@@ -283,7 +300,11 @@ function close() {
       </p>
 
       <p class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-        <template v-if="isRerollMode">
+        <template v-if="isRerollMode && useCard">
+          预计消耗：{{ times }} 张重新打造卡
+          <span class="ml-1 text-ink-300">（每件每次 1 张，卡不足时按现有数量结算）</span>
+        </template>
+        <template v-else-if="isRerollMode">
           预计消耗：{{ confirmEstimate.toLocaleString() }} 金币
           <span v-if="times > 1">（{{ times }} 次，逐次递增结算）</span>
           <span v-if="!affordable" class="ml-1 text-rose-300">· 金币不足</span>
@@ -300,10 +321,16 @@ function close() {
         <button
           class="mr-auto rounded-md border border-indigo-500/60 px-3 py-2 text-sm text-indigo-200 hover:bg-indigo-500/15 disabled:opacity-50"
           :disabled="!canRepeat"
-          :title="canRepeat ? '' : '金币不足，无法继续'"
+          :title="canRepeat ? '' : '资源不足，无法继续'"
           @click="actions.repeat()"
         >
-          {{ actions.busy ? '处理中…' : `继续 ×${result.times} · ${nextEstimate.toLocaleString()}` }}
+          {{
+            actions.busy
+              ? '处理中…'
+              : result.useCard
+                ? `继续 ×${result.times} · ${result.times} 张卡`
+                : `继续 ×${result.times} · ${nextEstimate.toLocaleString()}`
+          }}
         </button>
         <button
           class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"

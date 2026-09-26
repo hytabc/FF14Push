@@ -24,6 +24,9 @@ class User(Base, TimestampMixin):
     banned_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     # 累计在线时长（毫秒）：由战斗 / 采集 / 生产 / 钓鱼 / 副本的服务端上报窗口累加，离线不计入。
     play_ms: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default="0")
+    # 历史最高战力（只增不减）：战力榜按此排行，避免换下装备 / 降级后名次回退。
+    # 在每次计算「当前上场英雄战力」的热路径上抬高，见 services/valuation.raise_max_power。
+    max_power: Mapped[int] = mapped_column(sa.BigInteger, default=0, server_default="0")
     # 好友码：唯一、可分享的加好友凭证（注册 / 迁移时生成，8 位易读字符）。
     friend_code: Mapped[str | None] = mapped_column(sa.String(12), unique=True, index=True, nullable=True)
     # 最近活跃时间：好友在线状态依据（前端心跳刷新）。在线 = now - last_seen_at < 阈值。

@@ -74,6 +74,9 @@ async def _stacks(db: AsyncSession, user_id: int) -> list[dict[str, Any]]:
         elif row.kind == "seed":
             entry["seedKind"] = spec.get("yield", {}).get("type")
             entry["desc"] = spec.get("desc", "")
+        elif row.kind == "card":
+            entry["cardKind"] = spec.get("kind")
+            entry["desc"] = spec.get("desc", "")
         else:
             entry["materialKind"] = spec.get("kind", "gather")
         out.append(entry)
@@ -187,6 +190,7 @@ async def build_dohdol_state(
         "consumables": [row for row in stacks if row["kind"] in ("potion", "food")],
         "materia": [row for row in stacks if row["kind"] == "materia"],
         "seeds": [row for row in stacks if row["kind"] == "seed"],
+        "cards": [row for row in stacks if row["kind"] == "card"],
         "active": await consumables.active_state(db, user_id),
         "recipes": recipes,
         "loadout": dedicated_loadout,

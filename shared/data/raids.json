@@ -200,12 +200,12 @@
       "name": "绝·究极神兵",
       "requiredLevel": 100,
       "challengeLevel": 100,
-      "requiredPower": 60000,
+      "requiredPower": 62000,
       "requiresAllSlots": true,
-      "minEquipRarity": "mythic",
+      "minEquipRarity": "common",
       "topRarity": null,
       "topRarityRatio": 0.0,
-      "minAncientTermsPerItem": 2,
+      "minAncientTermsPerItem": 0,
       "dailyRewardClears": 1,
       "enrage": null,
       "bosses": [
@@ -213,21 +213,21 @@
           "id": "raid_h1_a",
           "name": "绝·究极神兵",
           "type": "primal",
-          "hpMultiplier": 440,
-          "attackMultiplier": 8.9,
+          "hpMultiplier": 2400,
+          "attackMultiplier": 7.0,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,
           "resistancePct": 30
         }
       ],
       "reward": {
-        "firstGold": 9000000,
-        "firstExp": 9000000,
+        "firstGold": 23000000,
+        "firstExp": 13000000,
         "boxTier": "boss",
         "slotChoice": true,
         "boxCount": 5,
-        "repeatGold": 1500000,
-        "repeatExp": 1500000
+        "repeatGold": 3800000,
+        "repeatExp": 2200000
       }
     },
     {
@@ -237,12 +237,12 @@
       "name": "绝·巴哈姆特零式",
       "requiredLevel": 100,
       "challengeLevel": 100,
-      "requiredPower": 62000,
+      "requiredPower": 62500,
       "requiresAllSlots": true,
-      "minEquipRarity": "mythic",
+      "minEquipRarity": "common",
       "topRarity": null,
       "topRarityRatio": 0.0,
-      "minAncientTermsPerItem": 3,
+      "minAncientTermsPerItem": 0,
       "dailyRewardClears": 1,
       "enrage": { "attackMultiplier": 3.5, "damageReductionPct": 30, "attackSpeedBonusPct": 30 },
       "bosses": [
@@ -250,8 +250,8 @@
           "id": "raid_h2_a",
           "name": "绝·巴哈姆特",
           "type": "dragon",
-          "hpMultiplier": 200,
-          "attackMultiplier": 2.1,
+          "hpMultiplier": 1000,
+          "attackMultiplier": 5.6,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,
           "resistancePct": 30
@@ -260,21 +260,21 @@
           "id": "raid_h2_b",
           "name": "绝·那伽",
           "type": "dragon",
-          "hpMultiplier": 200,
-          "attackMultiplier": 2.1,
+          "hpMultiplier": 1000,
+          "attackMultiplier": 5.6,
           "defenseMultiplier": 4.5,
           "attackInterval": 2.5,
           "resistancePct": 30
         }
       ],
       "reward": {
-        "firstGold": 11500000,
-        "firstExp": 11500000,
+        "firstGold": 31000000,
+        "firstExp": 17000000,
         "boxTier": "boss",
         "slotChoice": true,
         "boxCount": 8,
-        "repeatGold": 1500000,
-        "repeatExp": 1500000
+        "repeatGold": 4600000,
+        "repeatExp": 2800000
       }
     }
   ]

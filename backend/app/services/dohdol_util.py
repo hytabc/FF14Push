@@ -22,6 +22,8 @@ STACK_POTION = "potion"
 STACK_FOOD = "food"
 STACK_MATERIA = "materia"
 STACK_SEED = "seed"
+# 「重新打造卡」：远征高难度副本产出、用于生产/采集专用装备的「基于当前」重造/附魔。
+STACK_CARD = "card"
 
 # 单次上报允许结算的最大窗口（秒）：页面切到后台时定时器被浏览器节流，放宽窗口以免
 # 后台产出被截断；关闭页面后不再上报，所以窗口再大也不会产生离线收益。来源：dohdol-levels.json。
@@ -104,8 +106,8 @@ def consumable_def(item_id: str) -> dict[str, Any] | None:
 
 
 def sell_price(kind: str, item_id: str) -> int:
-    """堆叠物品的出售单价（金币）。材料 / 半成品 / 鱼 / 药水食物 / 魔晶石均可出售；种子不可出售。"""
-    if kind in (STACK_POTION, STACK_FOOD):
+    """堆叠物品的出售单价（金币）。材料 / 半成品 / 鱼 / 药水食物 / 魔晶石 / 打造卡均可出售；种子不可出售。"""
+    if kind in (STACK_POTION, STACK_FOOD, STACK_CARD):
         spec = consumable_def(item_id)
         return max(0, int(spec.get("sell", 0))) if spec else 0
     if kind == STACK_MATERIA:

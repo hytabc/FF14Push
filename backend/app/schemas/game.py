@@ -124,6 +124,8 @@ class RefineRequest(BaseModel):
     mode: Literal["random", "basedOnCurrent"] = "random"
     # 连续重造次数：一次请求结算多次（金币不足时提前停止）
     times: int = Field(default=1, ge=1, le=50)
+    # 使用「重新打造卡」（仅生产/采集专用装备）：强制 basedOnCurrent，每件每次消耗 1 张、不扣金币
+    useCard: bool = False
 
 
 class EnchantRequest(BaseModel):
@@ -133,6 +135,8 @@ class EnchantRequest(BaseModel):
     mode: Literal["random", "basedOnCurrent"] = "random"
     # 连续附魔次数：一次请求结算多次（金币不足时提前停止）
     times: int = Field(default=1, ge=1, le=50)
+    # 使用「重新打造卡」（仅生产/采集专用装备）：强制 basedOnCurrent，每件每次消耗 1 张、不扣金币
+    useCard: bool = False
 
 
 class RegionEnterRequest(BaseModel):

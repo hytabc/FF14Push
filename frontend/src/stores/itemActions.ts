@@ -15,10 +15,13 @@ export interface RerollResult {
   kind: 'refine' | 'enchant'
   before: Item
   after: Item
-  /** 本次实际连做的次数（金币不足时可能小于请求值）。 */
+  /** 本次实际连做的次数（金币/卡不足时可能小于请求值）。 */
   times: number
   /** 本次实际消耗的金币。 */
   cost: number
+  /** 使用「重新打造卡」时实际消耗的张数（生产/采集专用装备）。 */
+  useCard: boolean
+  cardsCost: number
   /** 本次使用的模式，供「继续」沿用。 */
   mode: RerollMode
 }
@@ -27,23 +30,32 @@ export const useItemActions = defineStore('itemActions', () => {
   const game = useGameStore()
   const toast = useToastStore()
 
-  const pending = ref<{ kind: ItemActionKind; item: Item; mode: RerollMode; times: number } | null>(null)
+  const pending = ref<{ kind: ItemActionKind; item: Item; mode: RerollMode; times: number; useCard: boolean } | null>(
+    null,
+  )
   const result = ref<RerollResult | null>(null)
   const busy = ref(false)
 
-  function requestRefine(item: Item) {
+  function requestRefine(item: Item, useCard = false) {
     result.value = null
-    pending.value = { kind: 'refine', item, mode: 'random', times: 1 }
+    // 「重新打造卡」只走「基于当前」逻辑。
+    pending.value = { kind: 'refine', item, mode: useCard ? 'basedOnCurrent' : 'random', times: 1, useCard }
   }
 
-  function requestEnchant(item: Item, auto = false) {
+  function requestEnchant(item: Item, auto = false, useCard = false) {
     result.value = null
-    pending.value = { kind: auto ? 'enchantAuto' : 'enchant', item, mode: 'random', times: 1 }
+    pending.value = {
+      kind: auto ? 'enchantAuto' : 'enchant',
+      item,
+      mode: useCard ? 'basedOnCurrent' : 'random',
+      times: 1,
+      useCard,
+    }
   }
 
   function requestSell(item: Item) {
     result.value = null
-    pending.value = { kind: 'sell', item, mode: 'random', times: 1 }
+    pending.value = { kind: 'sell', item, mode: 'random', times: 1, useCard: false }
   }
 
   function setMode(mode: RerollMode) {
@@ -77,7 +89,7 @@ export const useItemActions = defineStore('itemActions', () => {
     busy.value = true
     try {
       if (current.kind === 'refine') {
-        const res = await game.refine(current.item.id, current.mode, current.times)
+        const res = await game.refine(current.item.id, current.mode, current.times, current.useCard)
         if (res) {
           result.value = {
             kind: 'refine',
@@ -85,12 +97,14 @@ export const useItemActions = defineStore('itemActions', () => {
             after: res.after,
             times: res.times,
             cost: res.cost,
+            useCard: current.useCard,
+            cardsCost: res.cardsCost ?? 0,
             mode: current.mode,
           }
           playReroll(current.kind, res.before, res.after)
         }
       } else if (current.kind === 'enchant') {
-        const res = await game.enchant(current.item.id, false, current.mode, current.times)
+        const res = await game.enchant(current.item.id, false, current.mode, current.times, current.useCard)
         if (res) {
           result.value = {
             kind: 'enchant',
@@ -98,6 +112,8 @@ export const useItemActions = defineStore('itemActions', () => {
             after: res.after,
             times: res.times ?? res.attempts,
             cost: res.cost,
+            useCard: current.useCard,
+            cardsCost: res.cardsCost ?? 0,
             mode: current.mode,
           }
           playReroll('enchant', res.before, res.after, res.hit)
@@ -111,6 +127,8 @@ export const useItemActions = defineStore('itemActions', () => {
             after: res.after,
             times: res.attempts,
             cost: res.cost,
+            useCard: false,
+            cardsCost: 0,
             mode: current.mode,
           }
           playReroll('enchant', res.before, res.after, res.hit)
@@ -133,7 +151,13 @@ export const useItemActions = defineStore('itemActions', () => {
     const current = result.value
     if (!current || busy.value) return
     // 保留旧结果直到新结果返回，避免「继续」时弹窗闪回确认视图。
-    pending.value = { kind: current.kind, item: current.after, mode: current.mode, times: current.times }
+    pending.value = {
+      kind: current.kind,
+      item: current.after,
+      mode: current.mode,
+      times: current.times,
+      useCard: current.useCard,
+    }
     await confirm()
   }
 

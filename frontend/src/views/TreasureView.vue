@@ -18,13 +18,18 @@ const game = useGameStore()
 const toast = useToastStore()
 const treasure = useTreasureStore()
 
-const chestPhase = ref<'idle' | 'spinning' | 'result'>('idle')
+const chestPhase = ref<'idle' | 'spinning' | 'result' | 'claimed'>('idle')
 /** 交给转盘展示落点的本层奖励。 */
 const wheelRewards = ref<TreasureReward[]>([])
 
 const config = computed(() => treasure.config)
 const run = computed(() => treasure.run)
-const active = computed(() => !!run.value && run.value.status !== 'ended')
+const active = computed(() => {
+  if (!run.value) return false
+  if (run.value.status !== 'ended') return true
+  // 第五层开箱即结束副本（status=ended），但仍要停留在副本界面让玩家看完奖励并点「确认领取」。
+  return chestPhase.value === 'spinning' || chestPhase.value === 'result'
+})
 const stats = computed(() => game.hero?.stats ?? null)
 const boss = computed(() => treasure.bosses[0] ?? null)
 
@@ -158,6 +163,11 @@ function onWheelDone() {
   chestPhase.value = 'result'
 }
 
+/** 确认领取本层宝箱奖励：非末层解锁选门，末层（已通关）退出副本界面。 */
+function claimChest() {
+  chestPhase.value = 'claimed'
+}
+
 async function chooseDoor(index: number) {
   resetChestPhase()
   await treasure.chooseDoor(index)
@@ -236,6 +246,13 @@ const logTone: Record<string, string> = {
         <h3 class="text-sm font-semibold text-white">上次挖宝结果</h3>
         <p class="mt-1 text-xs text-ink-300">{{ endedReasonText }}</p>
         <p class="mt-1 text-[11px] text-ink-500">到达第 {{ run.floor }} 层。</p>
+        <RouterLink
+          v-if="run.endedReason === 'completed'"
+          to="/materia"
+          class="mt-2 inline-block rounded-md bg-ink-700 px-3 py-1.5 text-xs text-ink-100 hover:bg-ink-600"
+        >
+          去镶嵌魔晶石 →
+        </RouterLink>
       </section>
 
       <section class="grid gap-3 lg:grid-cols-2">
@@ -321,9 +338,12 @@ const logTone: Record<string, string> = {
             <span class="rounded bg-ink-800 px-2 py-1 text-xs text-ink-200">
               <template v-if="run?.eventActive">猜大小中 · 倍率 ×{{ run?.multiplier }}</template>
               <template v-else-if="run?.status === 'fighting'">战斗中</template>
+              <template v-else-if="treasure.chest?.completed">已通关</template>
+              <template v-else-if="treasure.chest">已开箱</template>
               <template v-else>待开箱</template>
             </span>
             <button
+              v-if="run?.status !== 'ended'"
               class="rounded-md bg-rose-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500"
               :disabled="treasure.busy"
               @click="abandon"
@@ -461,7 +481,8 @@ const logTone: Record<string, string> = {
             @done="onWheelDone"
           />
 
-          <div v-else class="space-y-3">
+          <!-- 开箱结果：确认领取后才继续（选门 / 退出副本） -->
+          <div v-else-if="chestPhase === 'result'" class="space-y-3">
             <h3 class="text-sm font-semibold text-white">
               第 {{ treasure.chest?.floor }} 层奖励
               <span class="ml-1 text-[11px] text-ink-400">倍率 ×{{ treasure.chest?.multiplier }}</span>
@@ -486,21 +507,17 @@ const logTone: Record<string, string> = {
                 升级 ×{{ treasure.chest.level.levelsGained }}
               </span>
             </p>
+
+            <p class="text-[11px] text-ink-400">奖励已入账，点击确认领取后继续。</p>
+            <button
+              class="rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-ink-950 hover:bg-amber-400"
+              @click="claimChest"
+            >
+              确认领取
+            </button>
           </div>
 
-          <!-- 选门 / 完成 -->
-          <div v-if="treasure.chest?.completed" class="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
-            <p class="text-sm font-semibold text-emerald-200">通关全部 {{ config?.floors }} 层！</p>
-            <p class="mt-1 text-[11px] text-ink-300">
-              额外获得 {{ formatNumber(treasure.chest.bonusGold) }} 金币通关奖金。
-            </p>
-            <RouterLink
-              to="/materia"
-              class="mt-2 inline-block rounded-md bg-ink-700 px-3 py-1.5 text-xs text-ink-100 hover:bg-ink-600"
-            >
-              去镶嵌魔晶石 →
-            </RouterLink>
-          </div>
+          <!-- 选门（末层确认领取后直接退出副本界面） -->
           <div v-else class="space-y-2">
             <h3 class="text-sm font-semibold text-white">选择进入下一层的门</h3>
             <p class="text-[11px] text-ink-400">

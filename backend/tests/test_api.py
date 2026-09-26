@@ -283,6 +283,61 @@ class TestInitialState:
         assert state["regionProgress"]["1"]["unlocked"] is True
         assert state["regionProgress"]["2"]["unlocked"] is False
 
+    async def test_gathering_region_unlock_follows_account_progress(
+        self, auth_client, session_factory
+    ) -> None:
+        """切换低等级英雄不应把已通关的生产 / 采集地区重新锁上。
+
+        采集 / 生产 / 钓鱼地区按账号「通关的最远地区」解锁（与 start_gather / start_fish
+        的服务端门槛同源），与当前上场英雄面板无关；战斗列表仍按英雄面板判定（走 /region）。
+        """
+        state = (await auth_client.get(f"{API}/game/state")).json()
+        user_id = state["user"]["id"]
+
+        async with session_factory() as db:
+            existing: dict[int, RegionProgress] = {}
+            for row in (
+                await db.execute(select(RegionProgress).where(RegionProgress.user_id == user_id))
+            ).scalars().all():
+                existing.setdefault(row.region_id, row)
+            # 账号已通关到第 5 区（跨英雄共享的账号级进度；周目 0）。
+            for region_id in range(1, 6):
+                row = existing.get(region_id)
+                if row is None:
+                    db.add(
+                        RegionProgress(
+                            user_id=user_id, difficulty=0, region_id=region_id,
+                            unlocked=True, cleared=True,
+                        )
+                    )
+                else:
+                    row.unlocked = True
+                    row.cleared = True
+            # 新增一个 1 级英雄，并切换为上场英雄（低等级、弱面板）。
+            lv1 = Hero(
+                user_id=user_id, name="一级小号", level=1, exp=0,
+                talent="common", attr_bias="balanced",
+            )
+            db.add(lv1)
+            await db.commit()
+            lv1_id = lv1.id
+
+        switched = await auth_client.post(f"{API}/heroes/switch", json={"heroId": lv1_id})
+        assert switched.status_code == 200, switched.text
+        assert (await auth_client.get(f"{API}/game/state")).json()["hero"]["level"] == 1
+
+        progress = (await auth_client.get(f"{API}/game/state")).json()["regionProgress"]
+        # 已通关地区 + 最远通关的下一区都可采集；更远的仍未解锁（与服务端门槛一致）。
+        for region_id in range(1, 7):
+            assert progress[str(region_id)]["unlocked"] is True, region_id
+        assert progress["7"]["unlocked"] is False
+
+        blocked = await auth_client.post(
+            f"{API}/gather/session/start", json={"jobId": "MIN", "regionId": 7}
+        )
+        assert blocked.status_code == 400
+        assert "尚未解锁" in blocked.json()["detail"]
+
     async def test_eleven_loadout_slots(self, auth_client) -> None:
         state = (await auth_client.get(f"{API}/game/state")).json()
         cfg = (await auth_client.get(f"{API}/game/config")).json()
@@ -1507,7 +1562,7 @@ class TestTavern:
 
 
 class TestRaid:
-    # 高难副本门槛：全神话 + 太古词条/件（极* 2 个，绝·巴哈姆特零式 3 个）
+    # 高难副本门槛：绝* 已取消装备词缀 / 品质限制，只保留等级、栏位与战力门槛。
     MYTHIC_MIX = ["mythic"] * 11
 
     async def _gear_up(
@@ -1586,51 +1641,29 @@ class TestRaid:
         assert raid["requiredLevel"] == 20
         assert raid["minAncientTermsPerItem"] == 2
 
-    async def test_hard_equipment_gate_rejects_rare_mix(self, auth_client, session_factory) -> None:
-        """高难：全部装备品阶不得低于神话。全蓝应被拦下。"""
-        await self._gear_up(auth_client, session_factory, mix=["rare"] * 11, ancient=2)
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
-        assert resp.status_code == 400
-        assert "神话" in resp.json()["detail"]
+    async def test_hard_raid_ignores_equipment_quality_and_ancient_terms(
+        self, auth_client, session_factory
+    ) -> None:
+        """最后两关（绝*）已取消装备词缀与品质限制：全蓝、无太古词条也能进入。"""
+        await self._gear_up(auth_client, session_factory, mix=["rare"] * 11, ancient=0)
+        started = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
+        assert started.status_code == 200, started.text
+        await auth_client.post(f"{API}/raid/session/stop", json={"sessionId": started.json()["sessionId"]})
 
-    async def test_hard_equipment_gate_requires_ancient_terms(self, auth_client, session_factory) -> None:
-        """高难：每件装备至少 2 个太古词条。"""
-        await self._gear_up(auth_client, session_factory, ancient=0)
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
-        assert resp.status_code == 400
-        assert "太古" in resp.json()["detail"]
-
-    async def test_hard_gate_rejects_normal_gear(self, auth_client, session_factory) -> None:
-        """高难度高难：装备品阶不得低于神话。"""
-        await self._gear_up(auth_client, session_factory, mix=["legendary"] * 11, ancient=2)
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
-        assert resp.status_code == 400
-        assert "神话" in resp.json()["detail"]
-
-    async def test_hard_gate_rejects_half_mythic_only(self, auth_client, session_factory) -> None:
-        """高难度高难：混入传说件应被拦下。"""
-        await self._gear_up(
-            auth_client, session_factory, mix=["mythic"] * 5 + ["legendary"] * 6, ancient=2
-        )
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
-        assert resp.status_code == 400
-        assert "神话" in resp.json()["detail"]
-
-    async def test_hard_gate_requires_ancient_terms(self, auth_client, session_factory) -> None:
-        """高难度高难：每件装备至少 2 个太古词条（绝·究极神兵）。"""
-        await self._gear_up(auth_client, session_factory, ancient=0)
-        resp = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
-        assert resp.status_code == 400
-        assert "太古" in resp.json()["detail"]
+        body = (await auth_client.get(f"{API}/raid")).json()
+        raid = next(r for r in body["raids"] if r["id"] == "raid_h1")
+        assert raid["minEquipRarity"] == "common"
+        assert raid["minAncientTermsPerItem"] == 0
 
     async def test_hard_raid_eligible_with_full_requirement(self, auth_client, session_factory) -> None:
-        await self._gear_up(auth_client, session_factory, ancient=2)
+        await self._gear_up(auth_client, session_factory, ancient=0)
         body = (await auth_client.get(f"{API}/raid")).json()
         raid = next(r for r in body["raids"] if r["id"] == "raid_h1")
         assert raid["eligible"] is True, raid["blockedReason"]
         assert raid["difficulty"] == "hard"
         assert raid["requiredLevel"] == 100
-        assert raid["minAncientTermsPerItem"] == 2
+        assert raid["minEquipRarity"] == "common"
+        assert raid["minAncientTermsPerItem"] == 0
 
         started = await auth_client.post(f"{API}/raid/session/start", json={"raidId": "raid_h1"})
         assert started.status_code == 200, started.text

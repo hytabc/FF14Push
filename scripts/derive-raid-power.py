@@ -35,9 +35,9 @@ from app.services.stats import compute_stats  # noqa: E402
 from app.services.valuation import hero_power  # noqa: E402
 
 # 奖励系数：首通 / 重刷 相对「同等级地区一次完整刷取」的倍数（经验与金币同源）。
-FIRST_FACTOR = {"normal": 10.0, "hard": 12.0}
-FIRST_FACTOR_OVERRIDE = {"raid_h2": 15.0}
-REPEAT_FACTOR = {"normal": 1.5, "hard": 2.0}
+FIRST_FACTOR = {"normal": 10.0, "hard": 30.0}
+FIRST_FACTOR_OVERRIDE = {"raid_h2": 40.5}
+REPEAT_FACTOR = {"normal": 1.5, "hard": 5.0}
 
 
 class Hero:

@@ -33,85 +33,85 @@ OUT = ROOT / "shared" / "data" / "fish.json"
 # ───────────────────────────── 每个地区的新增普通鱼 ─────────────────────────────
 # blue ×2 + purple ×1。weather / timeOfDay 为可选门槛（必须落在该地区天气表内）。
 EXTRA_NORMAL: dict[int, dict[str, Any]] = {
-    1: {"blue": [{"name": "珊瑚蝶鱼", "weather": ["clear"]}, {"name": "银鳞鲳", "weather": ["rain"]}],
+    1: {"blue": [{"name": "珊瑚蝶鱼", "weather": ["clearSkies", "fairSkies"]}, {"name": "银鳞鲳", "weather": ["rain"]}],
         "purple": {"name": "月光水母", "timeOfDay": ["night"]}},
-    2: {"blue": [{"name": "蓝鳍梭鱼", "weather": ["clear"]}, {"name": "浪花鲹", "weather": ["fog"]}],
+    2: {"blue": [{"name": "蓝鳍梭鱼", "weather": ["clearSkies", "fairSkies"]}, {"name": "浪花鲹", "weather": ["fog"]}],
         "purple": {"name": "海月水母", "timeOfDay": ["night"]}},
     3: {"blue": [{"name": "斑点鲼", "weather": ["fog"]}, {"name": "石首鱼", "weather": ["clouds"]}],
         "purple": {"name": "深渊提灯鱼", "timeOfDay": ["night"]}},
-    4: {"blue": [{"name": "沙漠鲹", "weather": ["heat"]}, {"name": "沙丘鳅", "weather": ["dust"]}],
+    4: {"blue": [{"name": "沙漠鲹", "weather": ["heatWaves"]}, {"name": "沙丘鳅", "weather": ["dustStorms"]}],
         "purple": {"name": "赤沙王鲷", "timeOfDay": ["night"]}},
-    5: {"blue": [{"name": "灼热鲈", "weather": ["heat"]}, {"name": "砂砾鲶", "weather": ["dust"]}],
+    5: {"blue": [{"name": "灼热鲈", "weather": ["heatWaves"]}, {"name": "砂砾鲶", "weather": ["dustStorms"]}],
         "purple": {"name": "幻影蜥鱼", "timeOfDay": ["night"]}},
     6: {"blue": [{"name": "苔藓鳟", "weather": ["rain"]}, {"name": "林间鳜", "weather": ["fog"]}],
         "purple": {"name": "幽林木灵鱼", "timeOfDay": ["night"]}},
     7: {"blue": [{"name": "落叶鲑", "weather": ["rain"]}, {"name": "树影鲫", "weather": ["fog"]}],
         "purple": {"name": "夜枭鱼", "timeOfDay": ["night"]}},
-    8: {"blue": [{"name": "风蚀鲤", "weather": ["dust"]}, {"name": "旱地鳅", "weather": ["heat"]}],
+    8: {"blue": [{"name": "风蚀鲤", "weather": ["dustStorms"]}, {"name": "旱地鳅", "weather": ["heatWaves"]}],
         "purple": {"name": "金沙鳞鱼", "timeOfDay": ["night"]}},
-    9: {"blue": [{"name": "沙暴鲈", "weather": ["dust"]}, {"name": "绿洲鳟", "weather": ["clear"]}],
-        "purple": {"name": "蜃楼鱼", "weather": ["heat"]}},
-    10: {"blue": [{"name": "迷雾鳟", "weather": ["rain"]}, {"name": "高地鲈", "weather": ["wind"]}],
+    9: {"blue": [{"name": "沙暴鲈", "weather": ["dustStorms"]}, {"name": "绿洲鳟", "weather": ["clearSkies", "fairSkies"]}],
+        "purple": {"name": "蜃楼鱼", "weather": ["heatWaves"]}},
+    10: {"blue": [{"name": "迷雾鳟", "weather": ["rain"]}, {"name": "高地鲈", "weather": ["gales"]}],
          "purple": {"name": "星尘水母", "timeOfDay": ["night"]}},
-    11: {"blue": [{"name": "冰晶鲑", "weather": ["snow"]}, {"name": "寒霜鳕", "weather": ["blizzard"]}],
+    11: {"blue": [{"name": "冰晶鲑", "weather": ["snow"]}, {"name": "寒霜鳕", "weather": ["blizzards"]}],
          "purple": {"name": "极光蝶鱼", "timeOfDay": ["night"]}},
-    12: {"blue": [{"name": "雪原鳟", "weather": ["snow"]}, {"name": "霜牙梭子鱼", "weather": ["blizzard"]}],
+    12: {"blue": [{"name": "雪原鳟", "weather": ["snow"]}, {"name": "霜牙梭子鱼", "weather": ["blizzards"]}],
          "purple": {"name": "冬夜鲟", "timeOfDay": ["night"]}},
-    13: {"blue": [{"name": "苍穹旗鱼", "weather": ["wind"]}, {"name": "云海鳟", "weather": ["clouds"]}],
+    13: {"blue": [{"name": "苍穹旗鱼", "weather": ["gales"]}, {"name": "云海鳟", "weather": ["clouds"]}],
          "purple": {"name": "龙鳞鱼", "timeOfDay": ["day"]}},
-    14: {"blue": [{"name": "云雾鲳", "weather": ["clouds"]}, {"name": "风语鳟", "weather": ["wind"]}],
+    14: {"blue": [{"name": "云雾鲳", "weather": ["clouds"]}, {"name": "风语鳟", "weather": ["gales"]}],
          "purple": {"name": "天穹水母", "timeOfDay": ["night"]}},
     15: {"blue": [{"name": "苔原鲈", "weather": ["clouds"]}, {"name": "溪谷虹鳟", "weather": ["rain"]}],
          "purple": {"name": "古龙鳕", "timeOfDay": ["night"]}},
-    16: {"blue": [{"name": "田园鲫", "weather": ["clear"]}, {"name": "牧草鲑", "weather": ["rain"]}],
+    16: {"blue": [{"name": "田园鲫", "weather": ["clearSkies", "fairSkies"]}, {"name": "牧草鲑", "weather": ["rain"]}],
          "purple": {"name": "萤火提灯鱼", "timeOfDay": ["dawn"]}},
-    17: {"blue": [{"name": "高原鳟", "weather": ["clear"]}, {"name": "岩壁鲈", "weather": ["wind"]}],
+    17: {"blue": [{"name": "高原鳟", "weather": ["clearSkies", "fairSkies"]}, {"name": "岩壁鲈", "weather": ["gales"]}],
          "purple": {"name": "翡翠水母", "timeOfDay": ["night"]}},
-    18: {"blue": [{"name": "山涧虹鳟", "weather": ["rain"]}, {"name": "峭壁鲶", "weather": ["wind"]}],
+    18: {"blue": [{"name": "山涧虹鳟", "weather": ["rain"]}, {"name": "峭壁鲶", "weather": ["gales"]}],
          "purple": {"name": "石纹鲵", "timeOfDay": ["night"]}},
-    19: {"blue": [{"name": "红玉鲷", "weather": ["clear"]}, {"name": "碧波旗鱼", "weather": ["rain"]}],
+    19: {"blue": [{"name": "红玉鲷", "weather": ["clearSkies", "fairSkies"]}, {"name": "碧波旗鱼", "weather": ["rain"]}],
          "purple": {"name": "珊瑚夜光鱼", "timeOfDay": ["night"]}},
-    20: {"blue": [{"name": "樱花鲑", "weather": ["clear"]}, {"name": "潮汐鲳", "weather": ["thunder"]}],
+    20: {"blue": [{"name": "樱花鲑", "weather": ["clearSkies", "fairSkies"]}, {"name": "潮汐鲳", "weather": ["thunderstorms"]}],
          "purple": {"name": "月下章鱼", "timeOfDay": ["dusk"]}},
-    21: {"blue": [{"name": "草原鳟", "weather": ["clear"]}, {"name": "疾风鲈", "weather": ["wind"]}],
+    21: {"blue": [{"name": "草原鳟", "weather": ["clearSkies", "fairSkies"]}, {"name": "疾风鲈", "weather": ["gales"]}],
          "purple": {"name": "草原夜光鲤", "timeOfDay": ["night"]}},
-    22: {"blue": [{"name": "黄金鲹", "weather": ["clear"]}, {"name": "港町鲭", "weather": ["rain"]}],
+    22: {"blue": [{"name": "黄金鲹", "weather": ["clearSkies", "fairSkies"]}, {"name": "港町鲭", "weather": ["rain"]}],
          "purple": {"name": "宵灯水母", "timeOfDay": ["night"]}},
     23: {"blue": [{"name": "雾岛鲑", "weather": ["fog"]}, {"name": "湖光鳟", "weather": ["clouds"]}],
          "purple": {"name": "幽谷大鲵", "timeOfDay": ["night"]}},
-    24: {"blue": [{"name": "灼沙鲈", "weather": ["heat"]}, {"name": "荒漠鲶", "weather": ["dust"]}],
+    24: {"blue": [{"name": "灼沙鲈", "weather": ["heatWaves"]}, {"name": "荒漠鲶", "weather": ["dustStorms"]}],
          "purple": {"name": "沙海幻鱼", "timeOfDay": ["night"]}},
-    25: {"blue": [{"name": "蝶翼鳟", "weather": ["clear"]}, {"name": "仙灵鲑", "weather": ["fog"]}],
+    25: {"blue": [{"name": "蝶翼鳟", "weather": ["clearSkies", "fairSkies"]}, {"name": "仙灵鲑", "weather": ["fog"]}],
          "purple": {"name": "妖精湖灯鱼", "timeOfDay": ["night"]}},
     26: {"blue": [{"name": "雷云鳟", "weather": ["clouds"]}, {"name": "雪岭鳕", "weather": ["snow"]}],
          "purple": {"name": "永夜鲟", "timeOfDay": ["night"]}},
     27: {"blue": [{"name": "雨林鳜", "weather": ["rain"]}, {"name": "藤蔓鲶", "weather": ["fog"]}],
          "purple": {"name": "丛林幽光鱼", "timeOfDay": ["night"]}},
-    28: {"blue": [{"name": "黑风旗鱼", "weather": ["wind"]}, {"name": "雷暴鲹", "weather": ["thunder"]}],
+    28: {"blue": [{"name": "黑风旗鱼", "weather": ["gales"]}, {"name": "雷暴鲹", "weather": ["thunderstorms"]}],
          "purple": {"name": "深渊灯笼鱼", "timeOfDay": ["night"]}},
-    29: {"blue": [{"name": "象鲷", "weather": ["clear"]}, {"name": "遗辉鲳", "weather": ["rain"]}],
+    29: {"blue": [{"name": "象鲷", "weather": ["clearSkies", "fairSkies"]}, {"name": "遗辉鲳", "weather": ["rain"]}],
          "purple": {"name": "神殿夜光鱼", "timeOfDay": ["night"]}},
-    30: {"blue": [{"name": "寒钢鳟", "weather": ["wind"]}, {"name": "军港鲈", "weather": ["clouds"]}],
+    30: {"blue": [{"name": "寒钢鳟", "weather": ["gales"]}, {"name": "军港鲈", "weather": ["clouds"]}],
          "purple": {"name": "冰宫水母", "timeOfDay": ["night"]}},
-    31: {"blue": [{"name": "悲叹鲹", "weather": ["rain"]}, {"name": "泪海旗鱼", "weather": ["thunder"]}],
+    31: {"blue": [{"name": "悲叹鲹", "weather": ["rain"]}, {"name": "泪海旗鱼", "weather": ["thunderstorms"]}],
          "purple": {"name": "深海幽灵鱼", "timeOfDay": ["night"]}},
-    32: {"blue": [{"name": "星霜鳕", "weather": ["snow"]}, {"name": "天外鲑", "weather": ["blizzard"]}],
+    32: {"blue": [{"name": "星霜鳕", "weather": ["snow"]}, {"name": "天外鲑", "weather": ["blizzards"]}],
          "purple": {"name": "极星水母", "timeOfDay": ["night"]}},
-    33: {"blue": [{"name": "乐园鲷", "weather": ["clear"]}, {"name": "花海鳟", "weather": ["rain"]}],
+    33: {"blue": [{"name": "乐园鲷", "weather": ["clearSkies", "fairSkies"]}, {"name": "花海鳟", "weather": ["rain"]}],
          "purple": {"name": "神域灯鱼", "timeOfDay": ["day"]}},
     34: {"blue": [{"name": "迷宫鳜", "weather": ["fog"]}, {"name": "幽径鲶", "weather": ["rain"]}],
          "purple": {"name": "幻境水母", "timeOfDay": ["night"]}},
-    35: {"blue": [{"name": "图拉尔旗鱼", "weather": ["clear"]}, {"name": "礁湖鲳", "weather": ["rain"]}],
+    35: {"blue": [{"name": "图拉尔旗鱼", "weather": ["clearSkies", "fairSkies"]}, {"name": "礁湖鲳", "weather": ["rain"]}],
          "purple": {"name": "浅海夜光鱼", "timeOfDay": ["night"]}},
-    36: {"blue": [{"name": "雨林象鱼", "weather": ["rain"]}, {"name": "藤桥鲶", "weather": ["thunder"]}],
+    36: {"blue": [{"name": "雨林象鱼", "weather": ["rain"]}, {"name": "藤桥鲶", "weather": ["thunderstorms"]}],
          "purple": {"name": "密林幽光鱼", "timeOfDay": ["night"]}},
-    37: {"blue": [{"name": "遗迹鲈", "weather": ["dust"]}, {"name": "王墓鳅", "weather": ["heat"]}],
+    37: {"blue": [{"name": "遗迹鲈", "weather": ["dustStorms"]}, {"name": "王墓鳅", "weather": ["heatWaves"]}],
          "purple": {"name": "王都夜光鱼", "timeOfDay": ["dusk"]}},
-    38: {"blue": [{"name": "熔岩鳟", "weather": ["heat"]}, {"name": "火山鲶", "weather": ["clear"]}],
+    38: {"blue": [{"name": "熔岩鳟", "weather": ["heatWaves"]}, {"name": "火山鲶", "weather": ["clearSkies", "fairSkies"]}],
          "purple": {"name": "熔核水母", "timeOfDay": ["night"]}},
-    39: {"blue": [{"name": "王都鲷", "weather": ["clear"]}, {"name": "护城旗鱼", "weather": ["clouds"]}],
+    39: {"blue": [{"name": "王都鲷", "weather": ["clearSkies", "fairSkies"]}, {"name": "护城旗鱼", "weather": ["clouds"]}],
          "purple": {"name": "星芒水母", "timeOfDay": ["night"]}},
-    40: {"blue": [{"name": "圣域鳟", "weather": ["clear"]}, {"name": "天启鲑", "weather": ["rain"]}],
+    40: {"blue": [{"name": "圣域鳟", "weather": ["clearSkies", "fairSkies"]}, {"name": "天启鲑", "weather": ["rain"]}],
          "purple": {"name": "原初水母", "timeOfDay": ["night"]}},
 }
 
@@ -122,23 +122,23 @@ EXTRA_NORMAL: dict[int, dict[str, Any]] = {
 LEGENDS: dict[int, list[dict[str, Any]]] = {
     3: [{"id": "l3_sea_god", "name": "海神", "weather": ["rain"], "timeOfDay": ["night"],
          "requires": [("f3_7", 1)], "duration": [50, 80], "chance": 0.0012}],
-    5: [{"id": "l5_mirage", "name": "幻影王鲷", "weather": ["heat", "dust"],
+    5: [{"id": "l5_mirage", "name": "幻影王鲷", "weather": ["heatWaves", "dustStorms"],
          "requires": [("f5_7", 1)], "duration": [50, 80], "chance": 0.0012}],
     6: [{"id": "l6_wood_catfish", "name": "幽林巨鲶", "weather": ["fog"], "timeOfDay": ["night"],
          "requires": [("f6_7", 1)], "duration": [50, 80], "chance": 0.0012}],
-    10: [{"id": "l10_skull", "name": "骷髅王鲶", "weather": ["wind"],
+    10: [{"id": "l10_skull", "name": "骷髅王鲶", "weather": ["gales"],
           "requires": [("f10_7", 1)], "duration": [50, 80], "chance": 0.001}],
-    11: [{"id": "l11_glacier_sturgeon", "name": "冰川鲟", "weather": ["blizzard"],
+    11: [{"id": "l11_glacier_sturgeon", "name": "冰川鲟", "weather": ["blizzards"],
           "requires": [("f11_7", 1)], "duration": [50, 80], "chance": 0.001}],
-    12: [{"id": "l12_aurora_whale", "name": "极光鲸", "weather": ["blizzard"], "timeOfDay": ["night"],
+    12: [{"id": "l12_aurora_whale", "name": "极光鲸", "weather": ["blizzards"], "timeOfDay": ["night"],
           "requires": [("f12_7", 1)], "duration": [60, 90], "chance": 0.0008}],
-    13: [{"id": "l13_cloud_butterfly", "name": "云蝶", "weather": ["wind"], "timeOfDay": ["day"],
+    13: [{"id": "l13_cloud_butterfly", "name": "云蝶", "weather": ["gales"], "timeOfDay": ["day"],
           "requires": [("f13_7", 1)], "duration": [40, 60], "chance": 0.0008}],
-    16: [{"id": "l16_pegasus", "name": "天马", "weather": ["clear"], "timeOfDay": ["dawn"],
+    16: [{"id": "l16_pegasus", "name": "天马", "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["dawn"],
           "requires": [("f16_7", 1)], "duration": [40, 70], "chance": 0.001}],
-    19: [{"id": "l19_megalodon", "name": "巨齿鲨", "weather": ["thunder"],
+    19: [{"id": "l19_megalodon", "name": "巨齿鲨", "weather": ["thunderstorms"],
           "requires": [("f19_7", 1)], "duration": [50, 80], "chance": 0.001}],
-    20: [{"id": "l20_sail", "name": "帆", "weather": ["thunder"], "timeOfDay": ["dusk"],
+    20: [{"id": "l20_sail", "name": "帆", "weather": ["thunderstorms"], "timeOfDay": ["dusk"],
           "requires": [("f20_7", 1)], "duration": [45, 70], "chance": 0.0008}],
     21: [
         {"id": "l21_purple", "name": "紫彩鱼", "requires": [("f21_1", 1)],
@@ -151,37 +151,282 @@ LEGENDS: dict[int, list[dict[str, Any]]] = {
          "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8},
         {"id": "l21_green", "name": "绿彩鱼", "requires": [("f21_5", 1)],
          "duration": [40, 60], "chance": 0.05, "sizeMul": [0.9, 1.4], "expMul": 8},
-        {"id": "l21_hue_lord", "name": "七彩天主", "weather": ["clear"],
+        {"id": "l21_hue_lord", "name": "七彩天主", "weather": ["clearSkies", "fairSkies"],
          "requires": [("l21_blue", 3), ("l21_orange", 3), ("l21_green", 5)],
          "duration": [60, 90], "chance": 0.0004,
          "sizeMul": [3.0, 4.5], "expMul": 60},
     ],
-    25: [{"id": "l25_mirror_butterfly", "name": "镜中蝶", "weather": ["clear"], "timeOfDay": ["night"],
+    25: [{"id": "l25_mirror_butterfly", "name": "镜中蝶", "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["night"],
           "requires": [("f25_7", 2)], "duration": [30, 45], "chance": 0.0006}],
-    28: [{"id": "l28_kraken", "name": "大王乌贼", "weather": ["wind", "thunder"],
+    28: [{"id": "l28_kraken", "name": "大王乌贼", "weather": ["gales", "thunderstorms"],
           "requires": [("f28_7", 1)], "duration": [50, 80], "chance": 0.001}],
     29: [{"id": "l29_phantom_dragon", "name": "幻龙", "weather": ["rain"],
           "requires": [("f29_7", 1)], "duration": [50, 80], "chance": 0.001}],
-    31: [{"id": "l31_abyss_king", "name": "深渊王", "weather": ["thunder"], "timeOfDay": ["night"],
+    31: [{"id": "l31_abyss_king", "name": "深渊王", "weather": ["thunderstorms"], "timeOfDay": ["night"],
           "requires": [("f31_7", 1)], "duration": [60, 90], "chance": 0.0008}],
-    32: [{"id": "l32_white_whale", "name": "白鲸", "weather": ["snow", "blizzard"],
+    32: [{"id": "l32_white_whale", "name": "白鲸", "weather": ["snow", "blizzards"],
           "requires": [("f32_7", 1)], "duration": [50, 80], "chance": 0.001}],
-    33: [{"id": "l33_holy_dragon", "name": "圣龙", "weather": ["clear"], "timeOfDay": ["day"],
+    33: [{"id": "l33_holy_dragon", "name": "圣龙", "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["day"],
           "requires": [("f33_7", 1)], "duration": [50, 80], "chance": 0.0008}],
     34: [{"id": "l34_star_whale", "name": "星鲸", "weather": ["fog"], "timeOfDay": ["night"],
           "requires": [("f34_7", 1)], "duration": [45, 70], "chance": 0.0006}],
-    37: [{"id": "l37_golden_god", "name": "黄金神鱼", "weather": ["dust"], "timeOfDay": ["dusk"],
+    37: [{"id": "l37_golden_god", "name": "黄金神鱼", "weather": ["dustStorms"], "timeOfDay": ["dusk"],
           "requires": [("f37_7", 1)], "duration": [50, 80], "chance": 0.0008}],
-    38: [{"id": "l38_lava_leviathan", "name": "熔岩鲲", "weather": ["heat", "clear"],
+    38: [{"id": "l38_lava_leviathan", "name": "熔岩鲲", "weather": ["heatWaves", "clearSkies", "fairSkies"],
           "requires": [("f38_7", 1)], "duration": [50, 80], "chance": 0.0008}],
     39: [{"id": "l39_black_tortoise", "name": "玄武巨龟", "weather": ["rain"], "timeOfDay": ["night"],
           "requires": [("f39_7", 1)], "duration": [60, 90], "chance": 0.0008}],
-    40: [{"id": "l40_creator", "name": "创世神鱼", "weather": ["thunder"], "timeOfDay": ["night"],
+    40: [{"id": "l40_creator", "name": "创世神鱼", "weather": ["thunderstorms"], "timeOfDay": ["night"],
           "requires": [("f40_7", 1)], "duration": [60, 90], "chance": 0.0006}],
 }
 
 BLUE_WEIGHTS = (5, 3)
 PURPLE_WEIGHT = 2
+
+# ───────────────────────────── 新增特殊鱼（真实 FF14 鱼名） ─────────────────────────────
+# 在旧内容（legacy 鱼王 / 鱼皇 + 第一批困难鱼）之上，给每个地区再补：
+#   1 条新鱼王 + 1 条新鱼皇 + 若干条新困难鱼（真实 FF14「崽种鱼」，落到真实地图）。
+# 字段：kind(king/emperor/legend)、id、name、chance，
+#   可选 weather / timeOfDay（必须落在该区天气表内）、requires[(fishId,count)]（计数型前置，
+#   触发「捕鱼人之识」）、intuitionName（默认鱼王/鱼皇用「捕鱼人之识」，困难鱼用「{name}之识」）、
+#   sizeMul / expMul（默认按 kind）。
+# 概率刻意逐条不同（不要所有鱼王/鱼皇一个概率），且均比同区 legacy 鱼王/鱼皇更稀有——
+# 既保证「越难钓越贵」，也保证不会成为比旧鱼王更优的刷钱路线。
+_DEFAULT_SIZE_MUL: dict[str, list[float]] = {
+    "king": [1.6, 2.4],
+    "emperor": [2.0, 3.0],
+    "legend": [2.4, 3.6],
+}
+_DEFAULT_EXP_MUL: dict[str, int] = {"king": 15, "emperor": 20, "legend": 25}
+
+NEW_SPECIALS: dict[int, list[dict[str, Any]]] = {
+    # 名字取自 FF14 真实钓场之王 / 钓场之皇（灰机 wiki / eorzea-weather / 饥饿的猫），落到对应真实地图；
+    # 困难鱼的天气 / 时段门槛尽量还原该鱼在 FF14 的真实窗口。概率逐条不同。
+    1: [
+        {"kind": "king", "id": "k2_1", "name": "扎尔艾拉", "chance": 0.018, "requires": [("f1_1", 1)]},
+        {"kind": "emperor", "id": "e2_1", "name": "无赖王", "chance": 0.005, "requires": [("f1_2", 1)]},
+    ],
+    2: [
+        {"kind": "king", "id": "k2_2", "name": "拾荒鮟鱇", "chance": 0.012, "requires": [("f2_1", 1)]},
+        {"kind": "emperor", "id": "e2_2", "name": "皱鳃鲨", "chance": 0.004, "requires": [("f2_2", 1)]},
+        {"kind": "legend", "id": "l2_antipode", "name": "内角石", "chance": 0.0009,
+         "weather": ["clouds"], "timeOfDay": ["night"], "requires": [("f2_1", 1)]},
+    ],
+    3: [
+        {"kind": "king", "id": "k2_3", "name": "高声鲶鱼", "chance": 0.016, "requires": [("f3_1", 1)]},
+        {"kind": "emperor", "id": "e2_3", "name": "银君", "chance": 0.006, "requires": [("f3_2", 1)]},
+    ],
+    4: [
+        {"kind": "king", "id": "k2_4", "name": "滑溜帝王", "chance": 0.010, "requires": [("f4_1", 1)]},
+        {"kind": "emperor", "id": "e2_4", "name": "暗骑士", "chance": 0.003, "requires": [("f4_2", 1)]},
+    ],
+    5: [
+        {"kind": "king", "id": "k2_5", "name": "铜镜", "chance": 0.014, "requires": [("f5_1", 1)]},
+        {"kind": "emperor", "id": "e2_5", "name": "断指龙虾", "chance": 0.005, "requires": [("f5_2", 1)]},
+    ],
+    6: [
+        {"kind": "king", "id": "k2_6", "name": "外科医生", "chance": 0.008, "requires": [("f6_1", 1)]},
+        {"kind": "emperor", "id": "e2_6", "name": "人面鲤", "chance": 0.002, "requires": [("f6_2", 1)]},
+        {"kind": "legend", "id": "l6_otaro", "name": "波太郎", "chance": 0.0008,
+         "weather": ["fog"], "timeOfDay": ["night"], "requires": [("f6_1", 1)]},
+    ],
+    7: [
+        {"kind": "king", "id": "k2_7", "name": "暗兵鳢", "chance": 0.015, "requires": [("f7_1", 1)]},
+        {"kind": "emperor", "id": "e2_7", "name": "终结者", "chance": 0.006, "requires": [("f7_2", 1)]},
+    ],
+    8: [
+        {"kind": "king", "id": "k2_8", "name": "净髓蜗牛", "chance": 0.011, "requires": [("f8_1", 1)]},
+        {"kind": "emperor", "id": "e2_8", "name": "千年殇", "chance": 0.003, "requires": [("f8_2", 1)]},
+    ],
+    9: [
+        {"kind": "king", "id": "k2_9", "name": "虚空之眼", "chance": 0.013, "requires": [("f9_1", 1)]},
+        {"kind": "emperor", "id": "e2_9", "name": "铁饼", "chance": 0.005, "requires": [("f9_2", 1)]},
+        {"kind": "legend", "id": "l9_helicoprion", "name": "旋齿鲨", "chance": 0.0010,
+         "weather": ["heatWaves"], "timeOfDay": ["day"], "requires": [("f9_1", 1)]},
+    ],
+    10: [
+        {"kind": "king", "id": "k2_10", "name": "血红龙", "chance": 0.007, "requires": [("f10_1", 1)]},
+        {"kind": "emperor", "id": "e2_10", "name": "加诺", "chance": 0.002, "requires": [("f10_2", 1)]},
+        {"kind": "legend", "id": "l10_kuuno", "name": "杀手库诺", "chance": 0.0010,
+         "weather": ["gales"], "timeOfDay": ["day"], "requires": [("f10_1", 1)]},
+    ],
+    11: [
+        {"kind": "king", "id": "k2_11", "name": "暗星", "chance": 0.017, "requires": [("f11_1", 1)]},
+        {"kind": "emperor", "id": "e2_11", "name": "黎明少女", "chance": 0.004, "requires": [("f11_2", 1)]},
+        {"kind": "legend", "id": "l11_shoni", "name": "秀尼鱼龙", "chance": 0.0008,
+         "weather": ["blizzards"], "timeOfDay": ["day"], "requires": [("f11_1", 1)]},
+    ],
+    12: [
+        {"kind": "king", "id": "k2_12", "name": "核爆鱼", "chance": 0.009, "requires": [("f12_1", 1)]},
+        {"kind": "emperor", "id": "e2_12", "name": "冰之巫女", "chance": 0.003, "requires": [("f12_2", 1)]},
+        {"kind": "legend", "id": "l12_shariben", "name": "沙里贝涅", "chance": 0.0006,
+         "weather": ["blizzards"], "timeOfDay": ["night"], "requires": [("f12_1", 1)]},
+    ],
+    13: [
+        {"kind": "king", "id": "k2_13", "name": "熔岩帝王", "chance": 0.012, "requires": [("f13_1", 1)]},
+        {"kind": "emperor", "id": "e2_13", "name": "龙鳞撕裂者", "chance": 0.006, "requires": [("f13_2", 1)]},
+        {"kind": "legend", "id": "l13_lava", "name": "莫名熔岩鱼", "chance": 0.0008,
+         "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["day"], "requires": [("f13_1", 1)]},
+    ],
+    14: [
+        {"kind": "king", "id": "k2_14", "name": "维德弗尼尔", "chance": 0.019, "requires": [("f14_1", 1)]},
+        {"kind": "emperor", "id": "e2_14", "name": "风暴血骑士", "chance": 0.005, "requires": [("f14_2", 1)]},
+        {"kind": "legend", "id": "l14_vandrel", "name": "兰代勒翼龙", "chance": 0.0007,
+         "weather": ["gales"], "timeOfDay": ["dawn"], "requires": [("f14_1", 1)]},
+        {"kind": "legend", "id": "l14_butterfly_snail", "name": "云海蝴蝶螺", "chance": 0.0006,
+         "weather": ["gales"], "timeOfDay": ["day"], "requires": [("f14_2", 1)]},
+    ],
+    15: [
+        {"kind": "king", "id": "k2_15", "name": "水瓶王", "chance": 0.006, "requires": [("f15_1", 1)]},
+        {"kind": "emperor", "id": "e2_15", "name": "蝴蝶夫人", "chance": 0.002, "requires": [("f15_2", 1)]},
+        {"kind": "legend", "id": "l15_kai", "name": "铠鱼", "chance": 0.0009,
+         "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["night"], "requires": [("f15_1", 1)]},
+        {"kind": "legend", "id": "l15_eobabin", "name": "欧巴宾海蝎", "chance": 0.0006,
+         "weather": ["clouds"], "timeOfDay": ["night"], "requires": [("f15_2", 1)]},
+    ],
+    16: [
+        {"kind": "king", "id": "k2_16", "name": "能言者", "chance": 0.014, "requires": [("f16_1", 1)]},
+        {"kind": "emperor", "id": "e2_16", "name": "万事通鲈", "chance": 0.004, "requires": [("f16_2", 1)]},
+    ],
+    17: [
+        {"kind": "king", "id": "k2_17", "name": "教皇鱼", "chance": 0.010, "requires": [("f17_1", 1)]},
+        {"kind": "emperor", "id": "e2_17", "name": "骸鲢鱼", "chance": 0.003, "requires": [("f17_2", 1)]},
+        {"kind": "legend", "id": "l17_ishiken", "name": "异刺鲨", "chance": 0.0008,
+         "weather": ["gales"], "timeOfDay": ["dusk"], "requires": [("f17_1", 1)]},
+        {"kind": "legend", "id": "l17_thorax", "name": "胸脊鲨", "chance": 0.0006,
+         "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["day"], "requires": [("f17_2", 1)]},
+    ],
+    18: [
+        {"kind": "king", "id": "k2_18", "name": "最后一滴泪", "chance": 0.016, "requires": [("f18_1", 1)]},
+        {"kind": "emperor", "id": "e2_18", "name": "黑蒙鱼", "chance": 0.006, "requires": [("f18_2", 1)]},
+        {"kind": "legend", "id": "l18_sickle", "name": "镰甲鱼", "chance": 0.0007,
+         "weather": ["gales"], "timeOfDay": ["day"], "requires": [("f18_1", 1)]},
+    ],
+    19: [
+        {"kind": "king", "id": "k2_19", "name": "菜食王", "chance": 0.008, "requires": [("f19_1", 1)]},
+        {"kind": "emperor", "id": "e2_19", "name": "七星", "chance": 0.002, "requires": [("f19_2", 1)]},
+        {"kind": "legend", "id": "l19_red_dragon", "name": "红龙", "chance": 0.0006,
+         "weather": ["clouds"], "timeOfDay": ["dawn"], "requires": [("f19_1", 1)]},
+    ],
+    20: [
+        {"kind": "king", "id": "k2_20", "name": "鬼视", "chance": 0.013, "requires": [("f20_1", 1)]},
+        {"kind": "emperor", "id": "e2_20", "name": "水天一碧", "chance": 0.005, "requires": [("f20_2", 1)]},
+    ],
+    21: [
+        {"kind": "king", "id": "k2_21", "name": "晨曦旗鱼", "chance": 0.011, "requires": [("f21_1", 1)]},
+        {"kind": "emperor", "id": "e2_21", "name": "月神的爱宠", "chance": 0.003, "requires": [("f21_2", 1)]},
+        {"kind": "legend", "id": "l21_gods_love", "name": "众神之爱", "chance": 0.0007,
+         "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["dawn"], "requires": [("f21_1", 1)]},
+    ],
+    22: [
+        {"kind": "king", "id": "k2_22", "name": "花海龙", "chance": 0.018, "requires": [("f22_1", 1)]},
+        {"kind": "emperor", "id": "e2_22", "name": "赌命河豚", "chance": 0.004, "requires": [("f22_2", 1)]},
+    ],
+    23: [
+        {"kind": "king", "id": "k2_23", "name": "元首的军扇", "chance": 0.009, "requires": [("f23_1", 1)]},
+        {"kind": "emperor", "id": "e2_23", "name": "战盾剑齿龙鳖", "chance": 0.006, "requires": [("f23_2", 1)]},
+        {"kind": "legend", "id": "l23_automaton", "name": "自走鱼偶", "chance": 0.0007,
+         "weather": ["fog"], "timeOfDay": ["day"], "requires": [("f23_1", 1)]},
+    ],
+    24: [
+        {"kind": "king", "id": "k2_24", "name": "冠骨鱼", "chance": 0.015, "requires": [("f24_1", 1)]},
+        {"kind": "emperor", "id": "e2_24", "name": "刺钉蜥蜴", "chance": 0.002, "requires": [("f24_2", 1)]},
+        {"kind": "legend", "id": "l24_surprise_egg", "name": "惊喜蛋", "chance": 0.0005,
+         "weather": ["dustStorms"], "timeOfDay": ["night"], "requires": [("f24_1", 1)]},
+    ],
+    25: [
+        {"kind": "king", "id": "k2_25", "name": "狂怒斗鱼", "chance": 0.007, "requires": [("f25_1", 1)]},
+        {"kind": "emperor", "id": "e2_25", "name": "深泳的古书", "chance": 0.005, "requires": [("f25_2", 1)]},
+    ],
+    26: [
+        {"kind": "king", "id": "k2_26", "name": "食人鳄", "chance": 0.012, "requires": [("f26_1", 1)]},
+        {"kind": "emperor", "id": "e2_26", "name": "蟒斑盘丽鱼", "chance": 0.003, "requires": [("f26_2", 1)]},
+        {"kind": "legend", "id": "l26_listrac", "name": "利斯塔克鲨", "chance": 0.0006,
+         "weather": ["clouds"], "timeOfDay": ["dusk"], "requires": [("f26_1", 1)]},
+    ],
+    27: [
+        {"kind": "king", "id": "k2_27", "name": "珍珠皮皮拉鱼", "chance": 0.020, "requires": [("f27_1", 1)]},
+        {"kind": "emperor", "id": "e2_27", "name": "黑色喷气乱流", "chance": 0.004, "requires": [("f27_2", 1)]},
+        {"kind": "legend", "id": "l27_lonka", "name": "隆卡的大水蛇？", "chance": 0.0008,
+         "weather": ["fog"], "timeOfDay": ["day"], "requires": [("f27_1", 1)]},
+    ],
+    28: [
+        {"kind": "king", "id": "k2_28", "name": "猎星鱼", "chance": 0.010, "requires": [("f28_1", 1)]},
+        {"kind": "emperor", "id": "e2_28", "name": "头领薄饼章鱼", "chance": 0.006, "requires": [("f28_2", 1)]},
+        {"kind": "legend", "id": "l28_sailfish", "name": "长吻帆蜥鱼", "chance": 0.0007,
+         "weather": ["clouds"], "timeOfDay": ["night"], "requires": [("f28_1", 1)]},
+    ],
+    29: [
+        {"kind": "king", "id": "k2_29", "name": "杜蒂娜鱼", "chance": 0.014, "requires": [("f29_1", 1)]},
+        {"kind": "emperor", "id": "e2_29", "name": "雷云隆头鱼", "chance": 0.002, "requires": [("f29_2", 1)]},
+        {"kind": "legend", "id": "l29_gaer", "name": "嘎儿鱼", "chance": 0.0006,
+         "weather": ["rain"], "timeOfDay": ["dusk"], "requires": [("f29_1", 1)]},
+    ],
+    30: [
+        {"kind": "king", "id": "k2_30", "name": "雾凇狗鱼", "chance": 0.008, "requires": [("f30_1", 1)]},
+        {"kind": "emperor", "id": "e2_30", "name": "暗影帝冠", "chance": 0.005, "requires": [("f30_2", 1)]},
+        {"kind": "legend", "id": "l30_snowthorn", "name": "异形雪棘", "chance": 0.0006,
+         "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["dusk"], "requires": [("f30_1", 1)]},
+    ],
+    31: [
+        {"kind": "king", "id": "k2_31", "name": "荧光死亡蠕虫", "chance": 0.016, "requires": [("f31_1", 1)]},
+        {"kind": "emperor", "id": "e2_31", "name": "冰月壤龟", "chance": 0.003, "requires": [("f31_2", 1)]},
+        {"kind": "legend", "id": "l31_rabbit_ear", "name": "优雅兔耳", "chance": 0.0007,
+         "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["day"], "requires": [("f31_1", 1)]},
+    ],
+    32: [
+        {"kind": "king", "id": "k2_32", "name": "骇惊威", "chance": 0.011, "requires": [("f32_1", 1)]},
+        {"kind": "emperor", "id": "e2_32", "name": "运行星", "chance": 0.004, "requires": [("f32_2", 1)]},
+    ],
+    33: [
+        {"kind": "king", "id": "k2_33", "name": "金光皮颏鱵", "chance": 0.013, "requires": [("f33_1", 1)]},
+        {"kind": "emperor", "id": "e2_33", "name": "大丽花冠鮨", "chance": 0.006, "requires": [("f33_2", 1)]},
+        {"kind": "legend", "id": "l33_forktail", "name": "餐叉尾", "chance": 0.0007,
+         "weather": ["thunderstorms"], "timeOfDay": ["day"], "requires": [("f33_1", 1)]},
+    ],
+    34: [
+        {"kind": "king", "id": "k2_34", "name": "巨身锯盖鱼", "chance": 0.007, "requires": [("f34_1", 1)]},
+        {"kind": "emperor", "id": "e2_34", "name": "黑玛瑙刀背鱼", "chance": 0.002, "requires": [("f34_2", 1)]},
+        {"kind": "legend", "id": "l34_serpent", "name": "潜龙", "chance": 0.0005,
+         "weather": ["clearSkies", "fairSkies"], "timeOfDay": ["day"], "requires": [("f34_1", 1)]},
+    ],
+    35: [
+        {"kind": "king", "id": "k2_35", "name": "麻瘩玛塔蛇颈龟", "chance": 0.017, "requires": [("f35_1", 1)]},
+        {"kind": "emperor", "id": "e2_35", "name": "锅盖蟹", "chance": 0.005, "requires": [("f35_2", 1)]},
+        {"kind": "legend", "id": "l35_jade", "name": "水没翠玉", "chance": 0.0006,
+         "weather": ["rain"], "timeOfDay": ["day"], "requires": [("f35_1", 1)]},
+    ],
+    36: [
+        {"kind": "king", "id": "k2_36", "name": "战地巨雀鳝", "chance": 0.009, "requires": [("f36_1", 1)]},
+        {"kind": "emperor", "id": "e2_36", "name": "星尘睡鱼", "chance": 0.003, "requires": [("f36_2", 1)]},
+        {"kind": "legend", "id": "l36_heart", "name": "碧空之心", "chance": 0.0007,
+         "weather": ["rain"], "timeOfDay": ["dusk"], "requires": [("f36_1", 1)]},
+    ],
+    37: [
+        {"kind": "king", "id": "k2_37", "name": "南瓜芽太阳鱼", "chance": 0.015, "requires": [("f37_1", 1)]},
+        {"kind": "emperor", "id": "e2_37", "name": "遗产石斑鱼", "chance": 0.004, "requires": [("f37_2", 1)]},
+        {"kind": "legend", "id": "l37_ball", "name": "闪电球", "chance": 0.0005,
+         "weather": ["dustStorms"], "timeOfDay": ["night"], "requires": [("f37_1", 1)]},
+    ],
+    38: [
+        {"kind": "king", "id": "k2_38", "name": "抓月虾", "chance": 0.012, "requires": [("f38_1", 1)]},
+        {"kind": "emperor", "id": "e2_38", "name": "奥雷奥雷奥雷", "chance": 0.006, "requires": [("f38_2", 1)]},
+        {"kind": "legend", "id": "l38_nelado", "name": "内拉朵", "chance": 0.0007,
+         "weather": ["gales"], "timeOfDay": ["day"], "requires": [("f38_1", 1)]},
+    ],
+    39: [
+        {"kind": "king", "id": "k2_39", "name": "得卡特", "chance": 0.019, "requires": [("f39_1", 1)]},
+        {"kind": "emperor", "id": "e2_39", "name": "灰达尤南丽鱼", "chance": 0.005, "requires": [("f39_2", 1)]},
+        {"kind": "legend", "id": "l39_pony", "name": "犎牛多鳍鱼", "chance": 0.0006,
+         "weather": ["rain"], "timeOfDay": ["night"], "requires": [("f39_1", 1)]},
+    ],
+    40: [
+        {"kind": "king", "id": "k2_40", "name": "滑稽女王", "chance": 0.006, "requires": [("f40_1", 1)]},
+        {"kind": "emperor", "id": "e2_40", "name": "希望鲤鱼", "chance": 0.002, "requires": [("f40_2", 1)]},
+        {"kind": "legend", "id": "l40_tiger", "name": "三刃海虎", "chance": 0.0005,
+         "weather": ["clouds"], "timeOfDay": ["day"], "requires": [("f40_1", 1)]},
+    ],
+}
 
 # ───────────────────────────── 平衡调整 ─────────────────────────────
 # 所有「捕鱼人之识」BUFF 的持续时间统一为 30s（原为 30~90s 的区间）。
@@ -369,6 +614,28 @@ def build() -> dict[str, Any]:
             })
             all_ids.add(old["id"])
 
+        for spec in NEW_SPECIALS.get(rid, []):
+            kind = spec["kind"]
+            size_mul = spec.get("sizeMul", _DEFAULT_SIZE_MUL[kind])
+            exp_mul = spec.get("expMul", _DEFAULT_EXP_MUL[kind])
+            stats = _fish_stats(base_size, base_exp, base_sell, size_mul, exp_mul, 1)
+            intuition_name = spec.get("intuitionName") or (
+                insight_name if kind in ("king", "emperor") else f"{spec['name']}之识"
+            )
+            specials.append({
+                "id": spec["id"], "name": spec["name"], "kind": kind,
+                **({"weather": spec["weather"]} if spec.get("weather") else {}),
+                **({"timeOfDay": spec["timeOfDay"]} if spec.get("timeOfDay") else {}),
+                "intuition": {
+                    "name": intuition_name,
+                    "requires": [{"fishId": fid, "count": cnt} for fid, cnt in spec["requires"]],
+                    "durationSec": list(INSIGHT_DURATION_SEC),
+                    "chance": float(spec["chance"]),
+                },
+                **stats,
+            })
+            all_ids.add(spec["id"])
+
         for leg in LEGENDS.get(rid, []):
             size_mul = leg.get("sizeMul", [2.4, 3.6])
             stats = _fish_stats(
@@ -376,7 +643,7 @@ def build() -> dict[str, Any]:
                 size_mul, leg.get("expMul", 25), 1,
             )
             specials.append({
-                "id": leg["id"], "name": leg["name"], "kind": "legend",
+                "id": leg["id"], "name": leg["name"], "kind": "legend", "legacy": True,
                 **({"weather": leg["weather"]} if leg.get("weather") else {}),
                 **({"timeOfDay": leg["timeOfDay"]} if leg.get("timeOfDay") else {}),
                 "intuition": {
@@ -402,7 +669,8 @@ def build() -> dict[str, Any]:
             king["sell"], emperor["sell"], king_effort, effort[emperor["id"]]["effort"]
         )
         for special in specials:
-            if special["kind"] != "legend":
+            # legacy 鱼王 / 鱼皇沿用冻结单价；其余（新增鱼王 / 鱼皇 + 全部困难鱼）按有效概率定价。
+            if special["kind"] in ("king", "emperor") and special.get("legacy"):
                 continue
             info = effort[special["id"]]
             special["sell"] = max(1, round(int(king["sell"]) * (info["effort"] / king_effort) ** beta))
@@ -458,15 +726,44 @@ def build() -> dict[str, Any]:
                     f"前置: weather={pw} timeOfDay={pt}）"
                 )
 
+    # ── 校验：新增特殊鱼的覆盖 / 稀有度 / 概率多样性 ──
+    # 新增鱼王 / 鱼皇必须比同区 legacy 鱼王 / 鱼皇更稀有（否则会成为比旧鱼王更优的刷钱路线），
+    # 新增鱼王概率必须高于同区新增鱼皇；且同档位的概率各不相同（不要所有鱼王一个概率）。
+    new_kings: list[float] = []
+    new_emperors: list[float] = []
+    for region in regions_out:
+        legacy_king = next(s for s in region["specials"] if s["kind"] == "king" and s.get("legacy"))
+        legacy_emperor = next(s for s in region["specials"] if s["kind"] == "emperor" and s.get("legacy"))
+        kings = [s for s in region["specials"] if s["kind"] == "king" and not s.get("legacy")]
+        emperors = [s for s in region["specials"] if s["kind"] == "emperor" and not s.get("legacy")]
+        if NEW_SPECIALS:
+            assert kings and emperors, f"地区 {region['regionId']} 缺少新增鱼王 / 鱼皇"
+        for s in kings:
+            c = float(s["intuition"]["chance"])
+            assert c < float(legacy_king["intuition"]["chance"]), f"{s['id']} 新增鱼王不比旧鱼王稀有"
+            assert all(c > float(e["intuition"]["chance"]) for e in emperors), (
+                f"{s['id']} 新增鱼王概率应高于同区新增鱼皇"
+            )
+            new_kings.append(c)
+        for s in emperors:
+            c = float(s["intuition"]["chance"])
+            assert c < float(legacy_emperor["intuition"]["chance"]), f"{s['id']} 新增鱼皇不比旧鱼皇稀有"
+            new_emperors.append(c)
+    if NEW_SPECIALS:
+        assert len(set(new_kings)) > 1, "新增鱼王概率不应全部相同"
+        assert len(set(new_emperors)) > 1, "新增鱼皇概率不应全部相同"
+
     return {
         "$comment": (
             "钓场。普通鱼分白/蓝/紫三档（rarity），可带天气(weather)/时间(timeOfDay)门槛；"
-            "special: 鱼王/鱼皇(legacy)与困难鱼(legend)共用统一的 intuition 结构——"
+            "special: 鱼王/鱼皇 与 困难鱼(legend) 共用统一的 intuition 结构——"
             "每种直觉只绑定一条鱼，钓齐 requires(计数型前置) 后开启，不刷新，结束后才可再次触发。"
-            "旧 king/emperor 已迁入 specials[]，id 保持不变。"
-            "平衡调整：所有鱼识 BUFF 持续 30s；鱼王/鱼皇出现概率为原值的 200%；"
-            "困难鱼单价按其「有效概率」定价：鱼王单价 × (E/E_鱼王)^β，"
-            "E 为含「天气/时段窗口开启率 + 攒前置鱼开销 + 鱼识 BUFF 判定」的预期抛竿数，越难钓越贵。"
+            "legacy:true 标记旧内容（原 40 区鱼王/鱼皇 + 第一批困难鱼），旧称号只统计 legacy 集合，"
+            "因此新增鱼不影响已有称号；新增鱼王/鱼皇/困难鱼沿用真实 FF14 鱼名，概率逐条不同且更稀有。"
+            "平衡调整：所有鱼识 BUFF 持续 30s；旧鱼王/鱼皇出现概率为原值的 200% 且保持不变；"
+            "非 legacy 特殊鱼（新增鱼王/鱼皇 + 全部困难鱼）单价按其「有效概率」定价："
+            "鱼王单价 × (E/E_鱼王)^β，E 为含「天气/时段窗口开启率 + 攒前置鱼开销 + 鱼识 BUFF 判定」"
+            "的预期抛竿数，越难钓越贵。"
         ),
         "castSeconds": base["castSeconds"],
         "insightBuffName": insight_name,

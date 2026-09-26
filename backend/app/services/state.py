@@ -26,6 +26,7 @@ from app.services.dohdol_state import build_dohdol_state
 from app.services.drop_luck import chest_luck_max, chest_rarity_luck, cleared_region_count
 from app.services.economy import count_by_rarity
 from app.services.game_config import CONFIG
+from app.services.gathering import cleared_max_region
 from app.services.loot import drop_rate_multiplier
 from app.services.materia import socket_mods as materia_socket_mods
 from app.services.progression import exp_to_next, highest_hero_level
@@ -36,7 +37,7 @@ from app.services.serialization import hero_to_dict, item_to_dict, loadout, tag_
 from app.services.stats import compute_stats, compute_stats_with_breakdown
 from app.services.qualification import region_access
 from app.services.balance import power_audit
-from app.services.valuation import hero_power, sell_price_range
+from app.services.valuation import hero_power, raise_max_power, sell_price_range
 
 
 def _placeholder_hero(user_id: int) -> Hero:
@@ -66,6 +67,9 @@ async def build_game_state(
 
     if hero is None:
         hero = _placeholder_hero(user.id)
+        has_hero = False
+    else:
+        has_hero = True
 
     socket_mods = await materia_socket_mods(db, user.id)
     stats, stat_breakdown = compute_stats_with_breakdown(hero, items, socket_mods)
@@ -74,24 +78,31 @@ async def build_game_state(
     progress_rows = (
         await db.execute(select(RegionProgress).where(RegionProgress.user_id == user.id))
     ).scalars().all()
-    # 生活职业 / 采集钓鱼按「跨难度历史进度」解锁；战斗列表走 /region（按当前难度隔离）。
+    # 战斗：currentRegion 的准入按「当前上场英雄面板」判定（region_access 传 hero/stats）。
     # 传入已算好的 socket_mods 与 stats，避免 region_access 内部重复计算面板。
     access = await region_access(db, user.id, hero, items, None, socket_mods, stats)
+    # 采集 / 生产 / 钓鱼：地区解锁按账号「通关的最远地区」判定（与 start_gather / start_fish 的服务端
+    # 门槛 cleared_max_region + 1 同源），不随当前上场英雄等级变化——切到 1 级英雄也不会把已解锁的
+    # 采集地区重新锁上。战斗列表走 /region（按当前难度 + 英雄面板隔离），不使用本值。
+    max_cleared = await cleared_max_region(db, user.id)
     by_region: dict[int, RegionProgress] = {}
     for row in progress_rows:
         current = by_region.get(row.region_id)
         if current is None or (not current.cleared and row.cleared):
             by_region[row.region_id] = row
+    # 对全部地区都给出条目（未到达过的地区也需要明确的 unlocked 值），供采集 / 生产 / 钓鱼 / 图鉴读取。
     progress = {
         region_id: {
             "regionId": region_id,
-            "unlocked": not access[region_id],
-            "missingConditions": access[region_id],
-            "cleared": row.cleared,
-            "clearedAt": row.cleared_at.isoformat() if row.cleared_at else None,
-            "bestClearMs": row.best_clear_ms,
+            "unlocked": region_id <= max_cleared + 1,
+            "missingConditions": [] if region_id <= max_cleared + 1 else ["该地区尚未解锁"],
+            "cleared": bool(by_region[region_id].cleared) if region_id in by_region else False,
+            "clearedAt": by_region[region_id].cleared_at.isoformat()
+            if region_id in by_region and by_region[region_id].cleared_at
+            else None,
+            "bestClearMs": by_region[region_id].best_clear_ms if region_id in by_region else None,
         }
-        for region_id, row in by_region.items()
+        for region_id in sorted(int(r) for r in CONFIG.region_by_id)
     }
     # 通关地区数按「全难度去重」统计（周目制下不因切换难度回退），用于爆率与生产状态。
     cleared_count = await cleared_region_count(db, user.id)
@@ -147,6 +158,12 @@ async def build_game_state(
             ],
         }
 
+    power = hero_power(stats)
+    # 历史最高战力：战力榜按「达到过的最高战力」排行，故在玩家自己的状态热路径上顺手抬高，
+    # 避免「换下装备 / 降级前的高战力」因排行榜刷新间隔而丢失。只在真的变高时写库。
+    if has_hero and raise_max_power(user, power):
+        await db.commit()
+
     return {
         "user": {
             "id": user.id,
@@ -155,7 +172,7 @@ async def build_game_state(
             "activeTitleId": user.active_title_id,
         },
         "hero": hero_to_dict(hero, stats),
-        "power": hero_power(stats),
+        "power": power,
         "powerAudit": power_audit(stats),
         "statBreakdown": stat_breakdown,
         "expToNext": exp_to_next(hero.level),

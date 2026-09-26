@@ -742,10 +742,15 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  async function refine(itemId: number, mode: RerollMode = 'random', times = 1) {
+  async function refine(itemId: number, mode: RerollMode = 'random', times = 1, useCard = false) {
     try {
-      const res = await api.refine(itemId, mode, times)
-      toast.push(`重造完成 ${res.times} 次，消耗 ${res.cost} 金币`, 'success')
+      const res = await api.refine(itemId, mode, times, useCard)
+      toast.push(
+        useCard
+          ? `重造完成 ${res.times} 次，消耗 ${res.cardsCost ?? 0} 张重新打造卡`
+          : `重造完成 ${res.times} 次，消耗 ${res.cost} 金币`,
+        'success',
+      )
       await loadState()
       return res
     } catch (e) {
@@ -754,13 +759,21 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  async function enchant(itemId: number, autoUntilRare = false, mode: RerollMode = 'random', times = 1) {
+  async function enchant(
+    itemId: number,
+    autoUntilRare = false,
+    mode: RerollMode = 'random',
+    times = 1,
+    useCard = false,
+  ) {
     try {
-      const res = await api.enchant(itemId, autoUntilRare, 100, mode, times)
+      const res = await api.enchant(itemId, autoUntilRare, 100, mode, times, useCard)
       toast.push(
-        autoUntilRare
-          ? `自动附魔 ${res.attempts} 次，消耗 ${res.cost} 金币${res.hit ? '，出现稀有/太古词条！' : ''}`
-          : `附魔完成 ${res.times ?? res.attempts} 次，消耗 ${res.cost} 金币`,
+        useCard
+          ? `附魔完成 ${res.times ?? res.attempts} 次，消耗 ${res.cardsCost ?? 0} 张重新打造卡`
+          : autoUntilRare
+            ? `自动附魔 ${res.attempts} 次，消耗 ${res.cost} 金币${res.hit ? '，出现稀有/太古词条！' : ''}`
+            : `附魔完成 ${res.times ?? res.attempts} 次，消耗 ${res.cost} 金币`,
         res.hit ? 'loot' : 'success',
       )
       await loadState()
