@@ -22,6 +22,8 @@ const props = withDefaults(
     showSlot?: boolean
     showWeaponType?: boolean
     showRole?: boolean
+    /** 装备状态筛选（全部 / 仅未装备）；装备页选择弹窗需要。 */
+    showEquipped?: boolean
   }>(),
   {
     showSearch: true,
@@ -30,6 +32,7 @@ const props = withDefaults(
     showSlot: true,
     showWeaponType: true,
     showRole: true,
+    showEquipped: false,
   },
 )
 
@@ -128,6 +131,16 @@ function reset() {
         <option v-for="r in ['tank', 'healer', 'melee', 'physicalRanged', 'magicalRanged']" :key="r" :value="r">
           {{ { tank: '坦克', healer: '治疗', melee: '近战DPS', physicalRanged: '远程物理DPS', magicalRanged: '远程魔法DPS' }[r] }}
         </option>
+      </select>
+
+      <select
+        v-if="showEquipped"
+        :value="modelValue.equipped"
+        class="rounded border border-ink-600 bg-ink-900 px-2 py-1.5 outline-none focus:border-amber-400"
+        @change="update({ equipped: ($event.target as HTMLSelectElement).value as ItemFilterState['equipped'] })"
+      >
+        <option value="all">全部状态</option>
+        <option value="unequipped">仅未装备</option>
       </select>
 
       <label class="flex items-center gap-1 text-ink-400">

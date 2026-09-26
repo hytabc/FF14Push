@@ -96,6 +96,8 @@ export interface ItemFilterState {
   slot: string
   weaponType: string
   role: 'all' | JobRole
+  /** 装备状态：all=不限；unequipped=仅未装备（不含被任意英雄穿戴的）。 */
+  equipped: 'all' | 'unequipped'
   levelMin: number | ''
   levelMax: number | ''
   subAttrs: Set<string>
@@ -112,6 +114,7 @@ export function createItemFilters(): ItemFilterState {
     slot: 'all',
     weaponType: 'all',
     role: 'all',
+    equipped: 'all',
     levelMin: '',
     levelMax: '',
     subAttrs: new Set(),
@@ -129,6 +132,7 @@ export function hasActiveFilters(f: ItemFilterState): boolean {
     f.slot !== 'all' ||
     f.weaponType !== 'all' ||
     f.role !== 'all' ||
+    f.equipped !== 'all' ||
     f.levelMin !== '' ||
     f.levelMax !== '' ||
     f.subAttrs.size > 0 ||
@@ -193,6 +197,7 @@ export function applyItemFilters(items: Item[], f: ItemFilterState, sort: SortKe
     if (f.slot !== 'all' && (i.equipSlots?.[0] ?? i.slot) !== f.slot) return false
     if (f.weaponType !== 'all' && i.weaponType !== f.weaponType) return false
     if (f.role !== 'all' && roleOfBaseId(i.baseId) !== f.role) return false
+    if (f.equipped === 'unequipped' && i.equippedSlot) return false
     if (min !== null && i.levelReq < min) return false
     if (max !== null && i.levelReq > max) return false
     if (f.subAttrs.size && !(i.subAttrs ?? []).some((a) => f.subAttrs.has(a.attr))) return false

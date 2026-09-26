@@ -9,10 +9,11 @@ from sqlalchemy import select
 
 from app.core.deps import CurrentHero, CurrentItems, CurrentSockets, CurrentUser, DbSession
 from app.models import Item, ItemTag
-from app.schemas.game import SellRequest, SetItemTagsRequest, UnequipRequest
+from app.schemas.game import AutoEquipRequest, SellRequest, SetItemTagsRequest, UnequipRequest
+from app.services.auto_equip import hero_job_role, plan_auto_equip
 from app.services.game_config import CONFIG
 from app.services.serialization import item_to_dict
-from app.services.slots_util import SLOT_BY_ID, accepts, role_name, role_of_base
+from app.services.slots_util import SLOT_BY_ID, accepts, all_slot_ids, role_name, role_of_base
 from app.services.stats import compute_stats
 from app.services.valuation import sell_price, sell_price_range
 
@@ -136,6 +137,104 @@ async def unequip(
     await db.commit()
     stats = compute_stats(hero, items, sockets)
     return {"stats": stats.to_dict()}
+
+
+async def _all_items(db: DbSession, user_id: int) -> list[Item]:
+    """账号全部装备（不做英雄过滤）——一键最强需要看到其他英雄身上的装备。"""
+    return list((await db.execute(select(Item).where(Item.user_id == user_id))).scalars().all())
+
+
+def _worn_by_slot(items: list[Item], hero_id: int) -> dict[str, Item]:
+    return {i.equipped_slot: i for i in items if i.equipped_hero_id == hero_id and i.equipped_slot}
+
+
+def _auto_equip_changes(plan: dict, worn: dict[str, Item]) -> list[tuple[str, Item]]:
+    """计划中真正发生变化的栏位（已经是最优的栏位不计入）。"""
+    changes: list[tuple[str, Item]] = []
+    for slot, item in plan.items():
+        current = worn.get(slot)
+        if current is not None and current.id == item.id:
+            continue
+        changes.append((slot, item))
+    return changes
+
+
+@router.post("/auto-equip/preview")
+async def auto_equip_preview(payload: AutoEquipRequest, db: DbSession, user: CurrentUser, hero: CurrentHero) -> dict:
+    """一键最强预览：列出各栏位将更换的装备。主手武器为职业锚点，不参与更换。"""
+    items = await _all_items(db, user.id)
+    job_id, role = hero_job_role(items, hero.id)
+    if job_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先装备一把武器")
+
+    plan = plan_auto_equip(items, hero.id, payload.includeEquipped)
+    worn = _worn_by_slot(items, hero.id)
+    changes = _auto_equip_changes(plan, worn)
+    from_others = sum(1 for _s, it in changes if it.equipped_hero_id not in (None, hero.id))
+    weapon = worn.get("mainHand")
+    return {
+        "jobId": job_id,
+        "role": role,
+        "weapon": item_to_dict(weapon, sell_price_range(weapon)) if weapon is not None else None,
+        "changes": [
+            {
+                "slot": slot,
+                "current": item_to_dict(worn[slot], sell_price_range(worn[slot])) if slot in worn else None,
+                "next": item_to_dict(item, sell_price_range(item)),
+            }
+            for slot, item in changes
+        ],
+        "fromOthers": from_others,
+    }
+
+
+@router.post("/auto-equip")
+async def auto_equip(
+    payload: AutoEquipRequest, db: DbSession, user: CurrentUser, hero: CurrentHero, sockets: CurrentSockets
+) -> dict:
+    """一键最强：保留当前主手武器，把其余栏位换成符合职能、战力最高的装备。
+
+    默认不使用已被其他英雄装备的装备；`includeEquipped=true` 时取用之，并从原英雄卸下。
+    """
+    items = await _all_items(db, user.id)
+    job_id, _role = hero_job_role(items, hero.id)
+    if job_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请先装备一把武器")
+
+    plan = plan_auto_equip(items, hero.id, payload.includeEquipped)
+    worn = _worn_by_slot(items, hero.id)
+    changes = _auto_equip_changes(plan, worn)
+    from_others = sum(1 for _s, it in changes if it.equipped_hero_id not in (None, hero.id))
+
+    # 先把「被替换的栏位装备」与「计划中要挪用的装备」全部卸下再统一写回，
+    # 避免唯一约束 (equipped_hero_id, equipped_slot) 出现瞬时冲突（如换戒指）。
+    touched = {item.id for item in plan.values()}
+    for slot in plan:
+        current = worn.get(slot)
+        if current is not None:
+            touched.add(current.id)
+    for item in items:
+        if item.id in touched:
+            item.equipped_slot = None
+            item.equipped_hero_id = None
+    await db.flush()
+
+    for slot, item in plan.items():
+        item.equipped_slot = slot
+        item.equipped_hero_id = hero.id
+    await db.commit()
+
+    stats = compute_stats(hero, items, sockets)
+    return {
+        "stats": stats.to_dict(),
+        "equipped": [
+            {"slot": slot, "item": item_to_dict(item, sell_price_range(item))} for slot, item in plan.items()
+        ],
+        "changes": [
+            {"slot": slot, "item": item_to_dict(item, sell_price_range(item))} for slot, item in changes
+        ],
+        "fromOthers": from_others,
+    }
 
 
 @router.post("/sell")

@@ -127,6 +127,20 @@ export const useGameStore = defineStore('game', () => {
   const items = computed(() => state.value?.items ?? [])
   const tags = computed(() => state.value?.tags ?? [])
   const loadout = computed(() => state.value?.loadout ?? {})
+  const heroNames = computed(() => {
+    const map = new Map<number, string>()
+    for (const h of state.value?.heroes ?? []) {
+      if (h.id !== null && h.id !== undefined) map.set(h.id, h.name)
+    }
+    return map
+  })
+
+  /** 英雄展示名：`英雄名#ID`（英雄可重名，故附账号内唯一 id）；未知 id 回退 `#id`。 */
+  function heroLabel(heroId: number | null | undefined): string {
+    if (heroId === null || heroId === undefined) return ''
+    const name = heroNames.value.get(heroId)
+    return name ? `${name}#${heroId}` : `#${heroId}`
+  }
   const isRunning = computed(() => running.value && sim.value !== null)
   const battleLog = computed(() => {
     logVersion.value
@@ -601,6 +615,20 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /** 一键最强：保留主手武器，把其余栏位换成符合职能、战力最高的装备。 */
+  async function autoEquip(includeEquipped: boolean) {
+    try {
+      const res = await api.autoEquip(includeEquipped)
+      const extra = res.fromOthers ? `，其中 ${res.fromOthers} 件取自其他英雄` : ''
+      toast.push(`一键最强完成：更换 ${res.changes.length} 件装备${extra}`, 'success')
+      await refreshAfterGearChange()
+      return res
+    } catch (e) {
+      pushError(e)
+      return null
+    }
+  }
+
   async function sell(itemIds: number[]) {
     try {
       const res = await api.sell(itemIds)
@@ -830,6 +858,7 @@ export const useGameStore = defineStore('game', () => {
     items,
     tags,
     loadout,
+    heroLabel,
     raid,
     raidResult,
     raidBosses,
@@ -848,6 +877,7 @@ export const useGameStore = defineStore('game', () => {
     dismissRaidResult,
     equip,
     unequip,
+    autoEquip,
     sell,
     createTag,
     updateTag,

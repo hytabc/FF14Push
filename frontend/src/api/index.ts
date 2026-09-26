@@ -149,6 +149,31 @@ export const api = {
     return (await http.post('/inventory/unequip', { slot })).data
   },
 
+  /** 一键最强预览：保留主手武器，列出各栏位将更换的装备。 */
+  async autoEquipPreview(includeEquipped: boolean) {
+    return (
+      await http.post<{
+        jobId: string
+        role: string
+        weapon: Item | null
+        changes: Array<{ slot: SlotId; current: Item | null; next: Item }>
+        fromOthers: number
+      }>('/inventory/auto-equip/preview', { includeEquipped })
+    ).data
+  },
+
+  /** 一键最强：把符合职能、战力最高的装备一键装备到当前英雄（武器保持不变）。 */
+  async autoEquip(includeEquipped: boolean) {
+    return (
+      await http.post<{
+        stats: import('@/game/types').HeroStats
+        equipped: Array<{ slot: SlotId; item: Item }>
+        changes: Array<{ slot: SlotId; item: Item }>
+        fromOthers: number
+      }>('/inventory/auto-equip', { includeEquipped })
+    ).data
+  },
+
   async sell(itemIds: number[]) {
     return (await http.post<{ gold: number; goldGained: number }>('/inventory/sell', { itemIds })).data
   },

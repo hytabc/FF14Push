@@ -80,6 +80,12 @@ class SellRequest(BaseModel):
     itemIds: list[int]
 
 
+class AutoEquipRequest(BaseModel):
+    """一键最强：是否把已被其他英雄装备的装备也纳入候选。"""
+
+    includeEquipped: bool = False
+
+
 class ChestOpenRequest(BaseModel):
     chestId: str
     count: int = 1

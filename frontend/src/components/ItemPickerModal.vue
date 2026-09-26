@@ -30,8 +30,10 @@ const props = withDefaults(
     heroRole?: JobRole | null
     /** 本弹窗是否在选武器（武器栏位不受职能限制）。 */
     slotIsWeapon?: boolean
+    /** 是否显示「全部状态 / 仅未装备」筛选（装备页需要）。 */
+    showEquippedFilter?: boolean
   }>(),
-  { equipped: null, slotScoped: false, heroRole: null, slotIsWeapon: false },
+  { equipped: null, slotScoped: false, heroRole: null, slotIsWeapon: false, showEquippedFilter: false },
 )
 
 const emit = defineEmits<{ close: []; equip: [item: Item]; unequip: [] }>()
@@ -110,6 +112,7 @@ function isEquipped(item: Item): boolean {
         :pool="candidates"
         :show-slot="!slotScoped"
         :show-category="!slotScoped"
+        :show-equipped="showEquippedFilter"
       />
 
       <div class="flex flex-wrap items-center gap-2 text-xs">

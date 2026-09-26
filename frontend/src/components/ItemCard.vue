@@ -94,8 +94,9 @@ function tagStyle(colorId: string) {
       <span
         v-if="item.equippedSlot"
         class="shrink-0 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-300"
+        :title="item.equippedHeroId ? `装备者 ${game.heroLabel(item.equippedHeroId)}` : '已装备'"
       >
-        已装备
+        {{ item.equippedHeroId ? game.heroLabel(item.equippedHeroId) : '已装备' }}
       </span>
     </div>
 

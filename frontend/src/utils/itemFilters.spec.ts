@@ -139,6 +139,10 @@ describe('hasActiveFilters / createItemFilters', () => {
     expect(hasActiveFilters({ ...createItemFilters(), query: '剑' })).toBe(true)
     expect(hasActiveFilters({ ...createItemFilters(), query: '   ' })).toBe(false)
   })
+
+  it('「仅未装备」视为激活筛选', () => {
+    expect(hasActiveFilters({ ...createItemFilters(), equipped: 'unequipped' })).toBe(true)
+  })
 })
 
 describe('filterOptionSets', () => {
@@ -207,6 +211,15 @@ describe('applyItemFilters', () => {
     expect(applyItemFilters(pool, state({ query: 'hero' }), 'power').map((i) => i.id)).toEqual([3])
     expect(applyItemFilters(pool, state({ query: '  HERO  ' }), 'power').map((i) => i.id)).toEqual([3])
     expect(applyItemFilters(pool, state({ query: '不存在' }), 'power')).toEqual([])
+  })
+
+  it('按装备状态筛选（仅未装备）', () => {
+    const pool = [
+      makeItem({ id: 3, name: '已装备甲', category: 'armor', slot: 'body', equipSlots: ['body'], equippedSlot: 'body' }),
+      makeItem({ id: 4, name: '未装备甲', category: 'armor', slot: 'body', equipSlots: ['body'] }),
+    ]
+    expect(applyItemFilters(pool, state({ equipped: 'unequipped' }), 'power').map((i) => i.id)).toEqual([4])
+    expect(applyItemFilters(pool, state(), 'power').map((i) => i.id).sort()).toEqual([3, 4])
   })
 
   it('按等级区间筛选', () => {

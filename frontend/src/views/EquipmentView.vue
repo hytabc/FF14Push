@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import data from '@shared/schema'
 import { api } from '@/api'
 import ItemCard from '@/components/ItemCard.vue'
 import ItemIcon from '@/components/ItemIcon.vue'
 import ItemPickerModal from '@/components/ItemPickerModal.vue'
+import Modal from '@/components/Modal.vue'
 import TermBadges from '@/components/TermBadges.vue'
 import { useGameStore } from '@/stores/game'
 import { useToastStore } from '@/stores/toast'
 import type { Item, SlotId } from '@/game/types'
-import { rarityBg, rarityClass, rarityName, slotName, baseAttrName, attrRangeLabel } from '@/utils/format'
+import { rarityBg, rarityClass, rarityName, slotName, baseAttrName, attrRangeLabel, formatNumber, jobName } from '@/utils/format'
 import { roleOfBaseId } from '@/utils/itemFilters'
 import { dohdolSlotGroups, equipmentSlotGroups } from '@/utils/slots'
 
@@ -46,6 +47,49 @@ const loadout = computed(() => game.loadout)
 
 /** 英雄当前职能：由已装备主手武器决定；无武器时不限制防具/饰品的职能。 */
 const heroRole = computed(() => roleOfBaseId(loadout.value['mainHand']?.baseId ?? null))
+
+/** 一键最强：需要主手武器作为职业锚点。 */
+const hasWeapon = computed(() => !!loadout.value['mainHand'])
+const autoEquipOpen = ref(false)
+const includeEquipped = ref(false)
+const autoEquipBusy = ref(false)
+const autoEquipPreview = ref<Awaited<ReturnType<typeof api.autoEquipPreview>> | null>(null)
+
+async function loadAutoEquipPreview() {
+  if (!hasWeapon.value) return
+  try {
+    autoEquipPreview.value = await api.autoEquipPreview(includeEquipped.value)
+  } catch (e) {
+    autoEquipPreview.value = null
+    toast.push(e instanceof Error ? e.message : '预览失败', 'error')
+  }
+}
+
+async function openAutoBest() {
+  if (!hasWeapon.value) return
+  includeEquipped.value = false
+  autoEquipOpen.value = true
+  await loadAutoEquipPreview()
+}
+
+async function confirmAutoBest() {
+  autoEquipBusy.value = true
+  try {
+    await game.autoEquip(includeEquipped.value)
+    autoEquipOpen.value = false
+  } finally {
+    autoEquipBusy.value = false
+  }
+}
+
+watch(includeEquipped, () => {
+  void loadAutoEquipPreview()
+})
+
+/** 该候选来自其他英雄（本英雄换栏位不算「取自其他英雄」）。 */
+function fromOtherHero(item: Item): boolean {
+  return !!item.equippedHeroId && item.equippedHeroId !== game.hero?.id
+}
 
 const candidates = computed<Item[]>(() => {
   if (!pickerSlot.value) return []
@@ -94,9 +138,19 @@ async function unequipDohdol(slot: string) {
 <template>
   <div class="space-y-4">
     <section data-tutorial="equipment" class="card p-4">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-lg font-semibold text-white">英雄装备</h2>
-        <span class="text-xs text-ink-400">共 {{ slots.length }} 个栏位（含双戒指）</span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-ink-400">共 {{ slots.length }} 个栏位（含双戒指）</span>
+          <button
+            class="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+            :disabled="!hasWeapon || autoEquipBusy"
+            :title="hasWeapon ? '保留当前武器，一键装备各栏位战力最高的装备' : '请先装备一把武器'"
+            @click="openAutoBest"
+          >
+            一键最强
+          </button>
+        </div>
       </div>
 
       <div class="mt-4 grid gap-3 lg:grid-cols-2">
@@ -210,6 +264,7 @@ async function unequipDohdol(slot: string) {
       :hero-role="heroRole"
       :slot-is-weapon="pickerSlot === 'mainHand'"
       slot-scoped
+      show-equipped-filter
       @close="pickerSlot = null"
       @equip="pickerSlot && equip($event, pickerSlot)"
       @unequip="pickerSlot && unequip(pickerSlot)"
@@ -225,5 +280,64 @@ async function unequipDohdol(slot: string) {
       @equip="equipDohdol"
       @unequip="dohdolSlot && unequipDohdol(dohdolSlot)"
     />
+
+    <Modal :open="autoEquipOpen" title="一键最强" @close="autoEquipOpen = false">
+      <div class="space-y-3 text-sm">
+        <p class="text-xs text-ink-400">
+          保留当前主手武器作为职业锚点，把其余栏位换成符合「{{ jobName(autoEquipPreview?.jobId ?? '') }}」职能、战力最高的装备。
+        </p>
+
+        <div
+          v-if="autoEquipPreview?.weapon"
+          class="rounded border border-ink-700 bg-ink-900/50 px-3 py-2 text-xs"
+        >
+          <span class="text-ink-400">锚定武器：</span>
+          <span :class="rarityClass(autoEquipPreview.weapon.rarity)">{{ autoEquipPreview.weapon.name }}</span>
+          <span class="text-ink-400"> · {{ jobName(autoEquipPreview.jobId) }} · 战力 {{ formatNumber(autoEquipPreview.weapon.score) }}</span>
+        </div>
+
+        <label class="flex flex-wrap items-center gap-2 text-xs text-ink-200">
+          <input v-model="includeEquipped" type="checkbox" class="accent-amber-500" />
+          包含已被其他英雄装备的装备
+          <span class="text-ink-500">（勾选后会把它们从原英雄身上取下）</span>
+        </label>
+
+        <div v-if="autoEquipPreview?.changes.length" class="max-h-80 space-y-1.5 overflow-y-auto">
+          <div
+            v-for="change in autoEquipPreview.changes"
+            :key="change.slot"
+            class="rounded border border-ink-700 bg-ink-900/40 px-3 py-2 text-xs"
+          >
+            <span class="text-ink-400">{{ slotName(change.slot) }}：</span>
+            <span v-if="change.current" class="text-ink-400 line-through">{{ change.current.name }}</span>
+            <span v-else class="text-ink-500">空</span>
+            <span class="mx-1 text-ink-500">→</span>
+            <span :class="rarityClass(change.next.rarity)">{{ change.next.name }}</span>
+            <span class="text-amber-300"> 战力 {{ formatNumber(change.next.score) }}</span>
+            <span
+              v-if="fromOtherHero(change.next)"
+              class="ml-1 rounded bg-rose-500/20 px-1 py-0.5 text-[10px] text-rose-200"
+            >
+              取自 {{ game.heroLabel(change.next.equippedHeroId) }}
+            </span>
+          </div>
+        </div>
+        <p v-else-if="autoEquipPreview" class="py-6 text-center text-xs text-ink-400">已是最强配置，无需更换。</p>
+        <p v-else class="py-6 text-center text-xs text-ink-400">正在计算…</p>
+      </div>
+
+      <template #footer>
+        <button class="rounded bg-ink-700 px-3 py-1.5 text-xs hover:bg-ink-600" @click="autoEquipOpen = false">
+          取消
+        </button>
+        <button
+          class="rounded bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-500 disabled:opacity-40"
+          :disabled="autoEquipBusy || !autoEquipPreview?.changes.length"
+          @click="confirmAutoBest"
+        >
+          确认装备
+        </button>
+      </template>
+    </Modal>
   </div>
 </template>
