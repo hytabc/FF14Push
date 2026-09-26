@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 应用主题色，取值与前端 frontend/src/style.css 的 ink 色阶 / 精金一致。 -->
+<resources>
+    <color name="colorPrimary">#182034</color>
+    <color name="colorPrimaryDark">#0b0f18</color>
+    <color name="colorAccent">#f5c542</color>
+</resources>

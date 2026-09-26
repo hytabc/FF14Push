@@ -167,6 +167,15 @@ html {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   overflow-wrap: anywhere;
 }
+
+/* 全面屏安全区：Android 客户端（Capacitor）强制 edge-to-edge，状态栏会压在页面之上；
+   header 让出顶部高度，footer 让出手势条高度。桌面浏览器该值恒为 0，不受影响。 */
+[data-app-header] {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+[data-app-footer] {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
 .tutorial-highlight {
   outline: 2px solid #fbbf24;
   outline-offset: 4px;

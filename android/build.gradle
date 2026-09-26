@@ -1,0 +1,49 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    
+    repositories {
+        // 国内镜像优先：部分网络环境下 repo1.maven.org 会直接 403，Gradle 遇到
+        // 非 404 的响应会判定为失败而不是继续尝试下一个仓库，因此必须放在最前面。
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.google.gms:google-services:4.4.4'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        // 同上：capacitor-android / cordova-plugins 子工程各自声明了 google()+mavenCentral()，
+        // 这里由根工程先行注入镜像，使它们的依赖解析也能走通。
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        google()
+        mavenCentral()
+    }
+}
+
+// 子工程（capacitor-android、capacitor-cordova-android-plugins）自带 buildscript 块，
+// 里面只写了 google()+mavenCentral() —— 上面 allprojects 注入的是「工程依赖」的仓库，
+// 对 buildscript 类路径（AGP 的 bundletool / jetifier 等传递依赖）无效。这些依赖只在
+// Maven Central 上有，国内直连会 403 并让整个构建失败，因此必须在子工程被求值前
+// 再往它们的 buildscript 仓库里补一份镜像。
+gradle.beforeProject { project ->
+    project.buildscript.repositories {
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

@@ -13,6 +13,17 @@
     "test": "npm run test -w frontend",
     "typecheck": "npm run typecheck -w frontend",
     "gen:icons": "node scripts/gen-icons.mjs",
-    "fetch:jobs": "node scripts/fetch-job-assets.mjs"
+    "fetch:jobs": "node scripts/fetch-job-assets.mjs",
+    "app:icons": "node scripts/gen-app-icon.mjs && capacitor-assets generate --android",
+    "app:apk": "./scripts/build-apk.sh",
+    "app:open": "cap open android"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
   }
 }

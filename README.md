@@ -18,6 +18,7 @@
 | 后端 | Python 3.11+ / FastAPI + SQLAlchemy 2.0 (async) + Alembic |
 | 数据库 | 本地开发 SQLite；服务器部署 PostgreSQL 16 |
 | 部署 | 本地一键脚本 `scripts/dev.sh`；服务器 `docker compose`（nginx + API + PG） |
+| 移动端 | Capacitor 8 外壳（WebView 直接加载线上地址），仅 Android；见「Android 客户端」 |
 | 共享层 | `shared/` 单一事实来源：配置 JSON + 双端加载器 |
 
 ---
@@ -31,7 +32,12 @@ FF14Push/
 ├── .env.example                部署环境变量模板
 ├── .env.local.example          本地开发环境变量模板
 ├── .npmrc                      npm 国内镜像源（npmmirror）
+├── capacitor.config.ts         Android 外壳配置（加载哪个地址、状态栏样式等）
 ├── scripts/dev.sh              ★ 本地一键启动脚本（无需 Docker）
+├── scripts/build-apk.sh        ★ 构建 Android 安装包（自动探测 JDK / SDK）
+├── scripts/gen-app-icon.mjs    App 图标 / 启动图生成器
+├── assets/                     App 图标源图（由上面脚本生成，@capacitor/assets 的输入）
+├── android/                    Capacitor 生成的 Android 工程（发布签名不入库）
 ├── shared/                     ★ 前后端共享配置层（唯一事实来源）
 │   ├── data/*.json           品阶/栏位/职业/底材/词条/怪物/BOSS/地区/副本/箱子/合成/经济/资质/指引
 │   └── schema/
@@ -487,6 +493,46 @@ npm run gen:icons
 - 生成器与 `shared/schema` 的 `expandBaseItems()` 是两份 id 规则实现，由 `frontend/src/utils/icons.spec.ts` 一致性测试锁住（断言图标集合 == 战斗底材 ∪ 材料 / 半成品 / 鱼获 ∪ 专用装备 ∪ 消耗品 ∪ 魔晶石 ∪ 作物种子）。
 - 图标已接入**采集页 / 生产页 / 背包（含魔晶石 / 作物种子栏）/ 装备栏（含他人装备弹窗）/ 鱼获页 / 图鉴（材料、鱼获）/ 魔晶石页 / 种田页**；采集页另有「**各地区产出总览**」，展开后逐地区（含未解锁，置灰）列出采矿工 / 园艺工各自的可采材料（图标 + 名称 + 权重概率）。
 - 内容生成器 `scripts/gen-dohdol-data.py` 改完材料 / 配方 / 鱼后，需再跑一次 `npm run gen:icons` 同步图标（改 `shared/data/materia.json` / `farm.json` 的魔晶石、种子后同理）。
+
+---
+
+## Android 客户端（可选）
+
+网页版之外，仓库里带一个 Capacitor 外壳工程，可以把游戏装成手机 App，省去每次开浏览器。
+客户端**直接加载线上地址**（`capacitor.config.ts` 的 `server.url`，当前为 `https://coldrain.cn:19999`），
+因此登录态 Cookie、WebSocket、本地存档与浏览器访问完全一致，服务端更新后无需重新发包。
+
+```bash
+npm run app:icons   # 生成图标源图 → 展开成 Android 各密度资源
+npm run app:apk     # 构建前端产物 → cap sync → Gradle 产出已签名的 release APK
+npm run app:open    # 用 Android Studio 打开 android/ 工程
+```
+
+产物为 `android/app/build/outputs/apk/release/app-release.apk`，传到手机点击安装即可
+（首次需允许「安装未知来源应用」）。
+
+**JDK 要求**：需要完整的 JDK **21–24**（必须带 `jlink`）。Android Studio 自带的 JBR 两种坑都会踩：
+JBR 25 会让 Gradle 自带的 Groovy 3 报 `Unsupported class file major version 69`，而 JBR 缺 `jlink`
+又会让 AGP 的 `JdkImageTransform` 失败。`scripts/build-apk.sh` 会自动在常见位置里挑一份可用 JDK，
+都没有时提示 `brew install openjdk@21`。直接用 Android Studio 构建时，把
+*Settings → Build Tools → Gradle → Gradle JDK* 指向同一份 JDK。
+
+**签名**：`android/keystore/eorzea-release.jks` 与 `android/keystore.properties` 是本机私有的发布签名
+（都不入库）。丢失后无法覆盖安装同签名的新包，请自行备份；缺失时 `assembleRelease` 自动回退 debug 签名。
+
+**图标**：`scripts/gen-app-icon.mjs` 产出 5 张源图到 `assets/`（旧式图标 / 自适应前景 / 自适应底板
+各 1024×1024，启动图 2732×2732 与深色版），主题是艾欧泽亚「母水晶」——深空底色 + 星野 + 金色光环
++ 中央发光水晶，配色取自游戏本体。改完脚本重跑 `npm run app:icons` 即重新展开全套资源。
+
+**换地址**：改 `capacitor.config.ts` 的默认值，或临时覆盖
+`EORZEA_APP_URL=http://192.168.1.10:19999 npm run app:apk`。
+
+**安全区**：Android 15+ 强制 edge-to-edge，状态栏会压在页面之上，故前端 `style.css` 用
+`[data-app-header]` / `[data-app-footer]` 的 `env(safe-area-inset-*)` 让出上下边距
+（桌面浏览器该值恒为 0）；Capacitor 会把真实状态栏 / 手势条高度注入给 WebView。
+
+**已知限制**：客户端只是 WebView 外壳，本身不缓存游戏本体，断网时进不去；页面内的站外链接
+（如底部备案号）会在同一个 WebView 中打开，用系统返回键退回。
 
 ---
 

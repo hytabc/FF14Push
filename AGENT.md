@@ -45,10 +45,15 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 
 ## 技术栈与目录导航
 
-前端使用 Vue 3、TypeScript、Vite 6、Pinia、Vue Router、Tailwind CSS 4、Axios；根目录通过 npm workspace 管理 `frontend`。后端使用 Python 3.11+、FastAPI、Pydantic 2、SQLAlchemy 2 异步会话和 Alembic。本地默认 SQLite，部署使用 PostgreSQL 16。
+前端使用 Vue 3、TypeScript、Vite 6、Pinia、Vue Router、Tailwind CSS 4、Axios；根目录通过 npm workspace 管理 `frontend`。后端使用 Python 3.11+、FastAPI、Pydantic 2、SQLAlchemy 2 异步会话和 Alembic。本地默认 SQLite，部署使用 PostgreSQL 16。另有 Capacitor 8 的 **Android 外壳**（`android/`，纯 WebView 直接加载线上地址），与游戏逻辑无关，见下方「Android 客户端」。
 
 | 路径 | 职责 |
 | --- | --- |
+| `capacitor.config.ts` | Android 外壳配置（`server.url` 指向的线上地址、状态栏样式）；换地址改这里，或临时用 `EORZEA_APP_URL` 覆盖 |
+| `android/` | Capacitor 生成的 Android 工程；发布签名 `keystore/` 与 `keystore.properties` 为本机私有、不入库 |
+| `assets/` | App 图标源图（`scripts/gen-app-icon.mjs` 产出、`@capacitor/assets` 的输入）；`npm run app:icons` 据此重新展开到 `android/app/src/main/res/` |
+| `scripts/build-apk.sh` | 构建 Android 安装包；自动探测 JDK / Android SDK 并校验 JDK 是否可用于 Android 构建 |
+| `scripts/gen-app-icon.mjs` | App 图标 / 启动图生成器（1024² 图标、2732² 启动图，「母水晶」主题） |
 | `frontend/src/views/` | 游戏页面；`RosterView.vue`、`CoopView.vue`、`ArenaView.vue` 为联机相关入口；`GameTestView.vue` 为「游戏测试」页，用 iframe 内嵌独立单文件小游戏 |
 | `frontend/public/games/` | 独立单文件小游戏静态资源（`ff14-test-game.html`），由 Vite 直接托管，与主游戏进度无关 |
 | `frontend/src/components/` | 物品卡、弹窗、指引等公共 UI |
@@ -131,6 +136,15 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
   - 批量卡片列表（抽箱结果、图鉴、选择弹窗）统一用 CSS `gallery-cell`（`content-visibility: auto`）跳过屏外元素的布局/绘制，并配合**分批挂载**（`ChestView` 的 `rampMount`）或**渐进渲染**（`composables/useVisibleLimit.ts` 的「显示更多」）避免单帧创建上百个节点。抽箱揭晓弹窗用 `Modal` 的 `:blur="false"`（`card-flat`）避免大量动画子元素反复触发 `backdrop-filter` 重算。
   - 卡片内的弹层（`InfoTip` / `TermBadges`）一律 `Teleport to="body"`：`content-visibility` 会引入 `contain: paint`，若弹层留在卡内会被错误定位（给卡片加 `gallery-cell` 前先确认这一点）。
 
+- **Android 客户端（Capacitor 外壳）**：只做「把网页装进 App」，不改动任何游戏逻辑，但下面几条是踩过坑的约束。
+  - **是 WebView 直接加载线上地址（`capacitor.config.ts:server.url`），不是把 `frontend/dist` 打包进去当站点。** 因此 WebView 的源就是 nginx 的源：登录 Cookie、httpOnly 设备 Cookie、WebSocket、localStorage 与浏览器完全一致，服务端发版也不需要重新发包。**不要**改成「打包前端产物 + 把 `VITE_API_BASE` 指向绝对地址」——那会引入跨域、设备 Cookie 失效（`X-Device-Id` 之外的关联判定会掉）以及 WebSocket 源校验等一串问题。
+  - **构建需要完整的 JDK 21–24（必须带 `jlink`）**。Android Studio / IDEA / PyCharm 自带的 JBR 都不行：JBR 25 会让 Gradle 8.14.3 自带的 Groovy 3 报 `Unsupported class file major version 69`；JBR 本身是精简运行时、没有 `jlink`，AGP 的 `JdkImageTransform`（转换 `core-for-system-modules.jar`）会失败。`scripts/build-apk.sh` 已按「版本合适且带 jlink」挑选，报错信息也指向 `brew install openjdk@21`。用 Android Studio 直接构建要把 *Settings → Build Tools → Gradle → Gradle JDK* 指到同一份 JDK。
+  - **`android/build.gradle` 里的阿里云镜像必须保留**。`capacitor-android` / `capacitor-cordova-android-plugins` 两个子工程自带 `buildscript` 块，只声明了 `google()` + `mavenCentral()`；国内直连 `repo.maven.apache.org` 会 403，而 Gradle 遇到非 404 响应是直接判失败、不会继续尝试下一个仓库。根工程的 `allprojects` 只覆盖「工程依赖」，覆盖不到子工程的 buildscript 类路径，所以那里额外用了 `gradle.beforeProject` 注入镜像 —— 删掉任何一处都会让构建在依赖解析阶段挂掉。
+  - **`versionCode` / `versionName` 由根 `package.json` 推导**（`major*10000 + minor*100 + patch`），不要在 `android/app/build.gradle` 里手写，避免发布时多处版本号漂移。
+  - **前端 `style.css` 里 `[data-app-header]` / `[data-app-footer]` 的 `env(safe-area-inset-*)` 内边距要留着**：targetSdk 36 强制 edge-to-edge，状态栏会压在页面上；桌面浏览器该值为 0，不影响网页版。
+  - **图标只能改 `scripts/gen-app-icon.mjs` 后重跑 `npm run app:icons`**（它写 `assets/`，再由 `@capacitor/assets` 展开到 `android/app/src/main/res/`）；直接改 `res/` 里的 PNG 会在下次展开时被覆盖。生成器用「到多边形的有符号距离」做解析式抗锯齿，辉光函数**内部不加亮**（`glowPolygon` 内部距离恒为 0，用 `max(sd,0)` 会得到满强度叠加、把水晶切面冲淡）；金色光环描边在 1024 网格下不能低于约 20，否则缩到 mdpi(48px) 会被抹掉。
+  - 发布签名 `android/keystore/` 与 `android/keystore.properties` 是本机私有的，**不要提交**；密钥库是 PKCS12，`keyPassword` 必须与 `storePassword` 相同（Android 会忽略单独的 keypass）。缺失时构建回退 debug 签名。
+
 ## 本地开发
 
 以下命令默认从仓库根目录执行：
@@ -149,6 +163,16 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 - 前端通过 `VITE_API_BASE` 选择 API 地址，一键脚本自动注入；生产构建为 `/api/v1`，由 nginx 反代。
 - Python/npm/Docker 默认使用国内镜像，覆盖方法见环境模板和 README。
 - `./scripts/dev.sh --reset` 会删除本地 SQLite 数据，不作为常规启动或修复步骤。
+
+Android 客户端与上面互不影响，单独用 npm 脚本构建（约束见「必须保留的设计边界 · Android 客户端」）：
+
+```bash
+npm run app:icons            # 生成 App 图标 / 启动图，并展开到 android/app/src/main/res/
+npm run app:apk              # 构建前端产物 → cap sync → Gradle 出已签名 APK
+npm run app:open             # 用 Android Studio 打开 android/ 工程
+```
+
+`npm run app:apk` 会自行挑选可用的 JDK 并补写 `android/local.properties`，产物在 `android/app/build/outputs/apk/release/app-release.apk`。
 
 ## 测试与验证
 
