@@ -1951,6 +1951,42 @@ describe('护盾机制（上限 / 魔法盾 / 吸血盾 / BOSS barrier）', () =
     expect(sim.shield).toBe(200)
   })
 
+  it('英雄造成伤害时按吸血比例回复生命，并在伤害日志标注本次吸血量', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 200, maxHp: 2000, lifestealPct: 50, critRatePct: 0 }),
+      regionId: 1,
+      killsRequired: 3,
+      spawnInterval: 3,
+      killCount: 0,
+    })
+    sim.start()
+    sim.tick(1) // 生成小怪
+    sim.heroHp = 500
+    const engine = sim as unknown as { resolveDamage(s: unknown, isSkill: boolean): void }
+    engine.resolveDamage(ADVENTURER_SKILL, false)
+    // 造成伤害 → 回复 50%，生命增加
+    expect(sim.heroHp).toBeGreaterThan(500)
+    const line = [...sim.log].reverse().find((e) => e.text.includes('造成') && e.text.includes('吸血'))
+    expect(line).toBeTruthy()
+    expect(line!.text).toMatch(/吸血 \+\d+/)
+  })
+
+  it('英雄受到怪物伤害不触发吸血', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ attack: 1, maxHp: 2000, lifestealPct: 50, dodgePct: 0 }),
+      regionId: 1,
+      killsRequired: 3,
+      spawnInterval: 3,
+      killCount: 0,
+    })
+    sim.start()
+    sim.tick(1)
+    sim.heroHp = 1000
+    const engine = sim as unknown as { monsterAttack(): void }
+    engine.monsterAttack()
+    expect(sim.heroHp).toBeLessThan(1000)
+  })
+
   it('BOSS 释放 barrier 获得护盾，英雄伤害先被吸收', () => {
     const guarded: MonsterStats = {
       ...dummy,

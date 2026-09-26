@@ -989,14 +989,17 @@ export class BattleSimulator {
     }
     const amount = this.capBossHit(roll.amount)
     this.damageEnemy(amount)
+    // 吸血：按英雄打出的伤害回复生命（与是否暴击 / 直击无关）。
+    const drained = this.applyLifesteal(amount)
     const mark = hitMark(roll.isCrit, roll.isDirectHit)
     this.pushFloat(
       `${amount}${mark}`,
       'monster',
       mark ? hitTone(roll.isCrit, roll.isDirectHit) : 'monster',
     )
-    if (mark) this.pushLog(`${skill.name} 造成 ${amount} 伤害${mark}`, hitTone(roll.isCrit, roll.isDirectHit))
-    else this.pushLog(`${skill.name} 造成 ${amount} 伤害`, skill.priority === 1 ? 'skill' : 'damage')
+    const drainNote = drained > 0 ? `（吸血 +${drained}）` : ''
+    if (mark) this.pushLog(`${skill.name} 造成 ${amount} 伤害${mark}${drainNote}`, hitTone(roll.isCrit, roll.isDirectHit))
+    else this.pushLog(`${skill.name} 造成 ${amount} 伤害${drainNote}`, skill.priority === 1 ? 'skill' : 'damage')
     this.sfx(mark ? 'battle.crit' : 'battle.hit')
     // 动态成长「锐意」：每次命中叠加攻速层数。
     if (mods.hitStackSpeedPct) {
@@ -1323,20 +1326,32 @@ export class BattleSimulator {
 
   /**
    * 吸血：按吸血量回复生命；若装备「吸血盾」，把溢出生命上限的部分按词条比例转化为护盾。
-   * 仅影响生存，不建模进后端 DPS。
+   * 返回实际回复的生命值（供伤害日志标注本次吸血量）。仅影响生存，不建模进后端 DPS。
    */
-  private lifesteal(healAmount: number): void {
+  private lifesteal(healAmount: number): number {
     const stats = this.stats
     const before = this.heroHp
     this.heroHp = Math.min(stats.maxHp, this.heroHp + Math.max(0, healAmount))
     const restored = Math.max(0, this.heroHp - before)
     const overflow = Math.max(0, healAmount - restored)
     const convert = this.baseStats.termMods.lifestealShieldPct ?? 0
-    if (convert <= 0 || overflow <= 0) return
-    const gained = this.addShield(overflow * (convert / 100))
-    if (gained > 0) {
-      this.pushLog(`装备触发「吸血盾」，溢出 ${Math.floor(overflow)} 生命转化为 ${gained} 护盾`, 'skill')
+    if (convert > 0 && overflow > 0) {
+      const gained = this.addShield(overflow * (convert / 100))
+      if (gained > 0) {
+        this.pushLog(`装备触发「吸血盾」，溢出 ${Math.floor(overflow)} 生命转化为 ${gained} 护盾`, 'skill')
+      }
     }
+    return restored
+  }
+
+  /**
+   * 英雄造成伤害时触发吸血：按本次伤害的吸血比例回复生命，返回实际回复量。
+   * 与词条说明「造成伤害的 X% 回复生命」一致——只有英雄打出的伤害才吸血，受到伤害不吸血。
+   */
+  private applyLifesteal(damage: number): number {
+    const pct = this.stats.lifestealPct
+    if (pct <= 0 || damage <= 0) return 0
+    return this.lifesteal(Math.floor(damage * (pct / 100) * this.healMultiplier))
   }
 
   /**
@@ -1471,11 +1486,6 @@ export class BattleSimulator {
       this.heroHp -= damage
       this.pushFloat(`-${damage}`, 'hero', 'monster')
       this.logIncomingDamage(this.monster!.name, damage)
-    }
-
-    // 吸血（含「吸血盾」：溢出生命上限的部分转化为护盾）
-    if (stats.lifestealPct > 0) {
-      this.lifesteal(Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * this.healMultiplier))
     }
 
     if (this.monsterHp <= 0) {
@@ -1632,9 +1642,6 @@ export class BattleSimulator {
       this.heroHp -= damage
       this.pushFloat(`-${damage}`, 'hero', 'monster')
       this.logIncomingDamage(enemy.stats.name, damage, skill.name)
-    }
-    if (stats.lifestealPct > 0) {
-      this.lifesteal(Math.floor(Math.max(0, damage) * (stats.lifestealPct / 100) * this.healMultiplier))
     }
     if (this.heroHp <= 0) { this.mechanismFailures.push(skill.id); this.heroDies() }
   }
