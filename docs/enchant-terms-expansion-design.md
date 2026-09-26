@@ -159,7 +159,11 @@
   `physDef ×= 1 + physDefPct/100`；`magicDef ×= 1 + magicDefPct/100`；`maxMp ×= 1 + maxMpPct/100`；
   `healMultiplier ×= 1 + healPowerPct/100`；`tenacity += guardPct`；护盾获得量 `×(1 + shieldBoostPct/100)`；
   `vitToAttackPct`：`attack += 体力值 × vitToAttackPct/100`；`critToDetPct`：`detValue += critValue × critToDetPct/100`。
-- **命中/受击 proc**：`Math.random()*100 < 概率值` → 生效（参数取 `equipEffects.proc`）。
+- **攻击触发 proc**：仅由**直接伤害技能命中**判定 —— 普通攻击与持续伤害结算都不触发。
+  `Math.random()*100 < 概率值` → 生效（参数取 `equipEffects.proc`）；受击类见 `onHitTaken`。
+- **持续伤害 / 持续治疗结算频率**：统一每 `combat.json:effectTickSeconds`（当前 3）秒结算一次，
+  单次量 = 每秒量 × 窗口时长，`duration` 内总量与逐秒结算一致（到期补足不足一个窗口的尾窗）。
+  四套引擎（`battle.ts` / `worldboss.ts` / `worldboss_engine.py` / `coop_engine.py`）同源读取。
 - **条件**：`lowHp` → `heroHp/maxHp < 阈值`；`opening` → `battleElapsedSec < windowSec`；
   `boss` → 当前目标 `kind ∈ kinds`；`lowMp` → `heroMp/maxMp < 阈值`。
 - **成长**：命中/击杀/施法时 `层数 = min(层数+1, maxStacks)`，加成为 `层数 × 值`。

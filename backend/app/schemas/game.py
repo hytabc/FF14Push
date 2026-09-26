@@ -402,3 +402,22 @@ class TreasureDoorRequest(BaseModel):
 class TreasureRunRequest(BaseModel):
     runId: int
 
+
+# --------------------------------------------------------------- 生产 / 采集序列库
+class SequenceSaveRequest(BaseModel):
+    """保存当前编辑区为自定义序列；同名时覆盖已有序列。"""
+
+    name: str = Field(min_length=1, max_length=24)
+    steps: list[dict[str, Any]] = Field(min_length=1, max_length=50)
+    loopMode: Literal["once", "count", "infinite"] = "once"
+    loopTotal: int = Field(default=3, ge=1, le=10000)
+
+
+class SequenceOverwriteRequest(BaseModel):
+    """用当前编辑区覆盖指定序列槽位；可选改名。"""
+
+    steps: list[dict[str, Any]] = Field(min_length=1, max_length=50)
+    loopMode: Literal["once", "count", "infinite"] = "once"
+    loopTotal: int = Field(default=3, ge=1, le=10000)
+    name: str | None = Field(default=None, min_length=1, max_length=24)
+

@@ -5,8 +5,20 @@ import { api } from '@/api'
 import { sound } from '@/game/audio'
 import { resolveGatherAvailability } from '@/game/core/gather'
 import { ProgressClock } from '@/game/core/progress'
-import type { SequenceLoopMode, SequenceStep, StepResult, StepStatus } from '@/game/core/sequence'
-import { gatherStepIssue, seedStepIds, SEQ_STEP_LIMIT, stepKey } from '@/game/core/sequence'
+import type {
+  GatherStep,
+  SequenceLoopMode,
+  SequenceStep,
+  StepResult,
+  StepStatus,
+} from '@/game/core/sequence'
+import {
+  gatherStepIssue,
+  nextStepId,
+  seedStepIds,
+  SEQ_STEP_LIMIT,
+  stepKey,
+} from '@/game/core/sequence'
 import type { FishCatch, ActivityLogEntry, FishConditionsView, FishInsightView } from '@/game/types'
 import { activityExpLog } from '@/utils/battleLog'
 import { formatNumber } from '@/utils/format'
@@ -559,6 +571,45 @@ export const useDohDolStore = defineStore('dohdol', () => {
     if (id) clearStoredSequence(id)
   }
 
+  /** 把一条序列（读取已保存序列 / 导入蓝图）载入编辑区，替换当前队列；运行中拒绝。 */
+  function loadSequence(payload: {
+    steps: SequenceStep[]
+    loopMode: SequenceLoopMode
+    loopTotal: number
+  }): boolean {
+    if (seqActive.value) {
+      toast.push('序列运行中，请先停止再读取', 'error')
+      return false
+    }
+    // 重新分配步骤 id，避免与恢复队列的 step-N 撞车；采集步按当前等级 / 解锁重解析。
+    const steps: SequenceStep[] = payload.steps.slice(0, SEQ_STEP_LIMIT).map((step) => {
+      const id = nextStepId()
+      if (step.kind !== 'gather') return { ...step, id }
+      const next: GatherStep = { ...step, id }
+      if (state.value) {
+        const found = resolveGatherAvailability(next.materialId, isRegionUnlocked, dolLevel.value)
+        if (found) {
+          next.jobId = found.jobId
+          next.regionId = found.regionId
+          next.blocked = found.blocked
+          next.requiredLevel = found.requiredLevel
+        }
+      }
+      return next
+    })
+    sequence.value = steps
+    loopMode.value = payload.loopMode
+    loopTotal.value = Math.max(1, Math.floor(payload.loopTotal))
+    seqActive.value = false
+    seqIndex.value = -1
+    seqGained.value = 0
+    seqProducedBase.value = 0
+    seqResults.value = []
+    loopRound.value = 1
+    persist(true)
+    return true
+  }
+
   /** 开始执行序列：按顺序自动采集 / 制作，直到全部完成或用户停止。 */
   async function startSequence() {
     if (seqActive.value) return
@@ -785,6 +836,7 @@ export const useDohDolStore = defineStore('dohdol', () => {
     removeStep,
     moveStep,
     clearSequence,
+    loadSequence,
     startSequence,
     stopSequence,
     restore,

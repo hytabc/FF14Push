@@ -15,6 +15,8 @@ import { shieldCapPct } from './combat'
 export const TICK = 100
 const BASIC_CD_MS = 2000
 const GCD_MS = 1500
+/** 英雄 DOT 与 HOT 的结算间隔（ms）：每满该时长一次性结算，总量与逐 100ms 结算一致。见 combat.json:effectTickSeconds。 */
+const EFFECT_TICK_MS = Number((data.combat as Record<string, any>).effectTickSeconds ?? 3) * 1000
 export const STATUS_RUNNING = 'running'
 
 export type WorldBossConfig = typeof data.worldboss
@@ -76,8 +78,8 @@ export interface EngineHero {
   nextAttack: number
   gcdUntil: number
   nextHeal: number
-  buffs: Array<{ type: string; value: number; until: number }>
-  dots: Array<{ until: number; damage: number }>
+  buffs: Array<{ type: string; value: number; until: number; acc?: number }>
+  dots: Array<{ until: number; damage: number; acc: number }>
   slow: Array<{ value: number; until: number }>
   damage: number
   healing: number
@@ -373,10 +375,12 @@ function autoActions(state: EngineState, hero: EngineHero): void {
     } else if (typ === 'healOverTime') {
       const targets = skill.teamTarget === 'party' ? alive : [hero]
       for (const ally of targets) {
+        // 存「每秒治疗量」（不含 levelMultiplier，结算时由 healHero 施加），每 EFFECT_TICK_MS 结算一次。
         ally.buffs.push({
           type: typ,
-          value: stats.max_hp * value * hero.levelMultiplier,
+          value: stats.max_hp * value,
           until: now + duration,
+          acc: 0,
         })
       }
     } else if (
@@ -431,7 +435,7 @@ function castSkill(state: EngineState, config: WorldBossConfig, skill: BossSkill
     for (const hero of alive) hitHero(state, config, hero, potency)
   } else if (effect === 'dot') {
     const perTick = ((bossAttackPower(state, config) * potency) / 100) * (TICK / durationMs)
-    for (const hero of alive) hero.dots.push({ until: now + durationMs, damage: perTick })
+    for (const hero of alive) hero.dots.push({ until: now + durationMs, damage: perTick, acc: 0 })
   } else if (effect === 'debuff') {
     const slow = Number(skill.attackSpeedDebuff ?? 0)
     for (const hero of alive) {
@@ -462,11 +466,27 @@ export function step(state: EngineState, config: WorldBossConfig): void {
     }
     const stats = hero.snapshot.stats
     hero.mp = Math.min(stats.max_mp, hero.mp + (stats.mp_regen ?? 0) * 0.1)
+    // HOT 结算：每满 EFFECT_TICK_MS 一次性结算（到期补尾窗），总量与逐 100ms 结算一致。
+    for (const buff of hero.buffs) {
+      if (buff.type !== 'healOverTime') continue
+      buff.acc = (buff.acc ?? 0) + Math.min(TICK, Math.max(0, buff.until - (now - TICK)))
+      if (buff.acc < EFFECT_TICK_MS && buff.until > now) continue
+      const window = buff.acc
+      buff.acc = 0
+      healHero(state, hero, buff.value * (window / 1000))
+    }
     hero.buffs = hero.buffs.filter((b) => b.until > now)
+    // DOT 结算：同上，每满 EFFECT_TICK_MS 结算一次。
+    for (const dot of hero.dots) {
+      dot.acc += TICK
+      if (dot.acc < EFFECT_TICK_MS && dot.until > now) continue
+      const window = dot.acc
+      dot.acc = 0
+      damageHero(state, hero, dot.damage * (window / TICK), '持续伤害')
+    }
     hero.dots = hero.dots.filter((d) => d.until > now)
     hero.slow = hero.slow.filter((s) => s.until > now)
     healHero(state, hero, (stats.hp_regen ?? 0) * 0.1)
-    for (const dot of hero.dots) damageHero(state, hero, dot.damage, '持续伤害')
     if (hero.hp > 0) autoActions(state, hero)
   }
 

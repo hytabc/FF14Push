@@ -73,12 +73,16 @@ def damage_multiplier(stats: HeroStats) -> float:
     return max(0.0, det * crit * dh)
 
 
-def proc_dps_bonus(stats: HeroStats, base_dps: float, attack_rate: float) -> float:
+def proc_dps_bonus(stats: HeroStats, base_dps: float, proc_rate: float) -> float:
     """装备触发效果（proc）的期望每秒收益。
 
     与前端 `battle.ts` 的实际结算口径对应：
-      - 灼烧 / 中毒 / 裂伤：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
-      - 疾风：命中概率获得限时攻速，等价于按攻速加成比例提升输出。
+      - 灼烧 / 中毒 / 裂伤：技能命中概率触发，每 3 秒结算一次攻击力 × potencyPct% 的持续伤害
+        （不吃增伤，与 tickDots 一致；结算间隔变化不影响每秒量，故期望与逐秒结算相同）。
+      - 疾风：技能命中概率获得限时攻速，等价于按攻速加成比例提升输出。
+
+    `proc_rate` 为**技能出手率**（每秒技能命中次数）：onAttack proc 只由直接伤害技能触发，
+    普通攻击不计入（与 battle.ts:resolveDamage 的 `isSkill` 门控一致）。
 
     仅镜像影响期望 DPS 的部分；凋零 / 失明 / 缓速 / 眩晕 / 反震 / 复仇 / 庇护 / 坚毅等只影响
     生存与资源，不进入模型（见 docs/enchant-terms-expansion-design.md 的镜像清单）。
@@ -88,7 +92,7 @@ def proc_dps_bonus(stats: HeroStats, base_dps: float, attack_rate: float) -> flo
     power = stats.power_attack
     extra = 0.0
 
-    # 灼烧 / 中毒 / 裂伤：命中概率触发，每秒造成 `攻击力 × potencyPct%`（不吃增伤，与 tickDots 一致）。
+    # 灼烧 / 中毒 / 裂伤：技能命中概率触发，每秒造成 `攻击力 × potencyPct%`（与 tickDots 同口径）。
     for key, stat_key, dot_cfg in (
         ("burn", "burnProcPct", cfg.get("burn")),
         ("poison", "poisonProcPct", cfg.get("poison")),
@@ -98,14 +102,14 @@ def proc_dps_bonus(stats: HeroStats, base_dps: float, attack_rate: float) -> flo
             continue
         chance = max(0.0, stats.term_mods.get(stat_key, 0.0)) / 100.0
         if chance > 0:
-            uptime = min(1.0, chance * attack_rate * float(dot_cfg["durationSec"]))
+            uptime = min(1.0, chance * proc_rate * float(dot_cfg["durationSec"]))
             extra += uptime * power * float(dot_cfg["potencyPct"]) / 100.0
 
     haste = cfg.get("haste")
     if haste:
         chance = max(0.0, stats.term_mods.get("hasteProcPct", 0.0)) / 100.0
         if chance > 0:
-            uptime = min(1.0, chance * attack_rate * float(haste["durationSec"]))
+            uptime = min(1.0, chance * proc_rate * float(haste["durationSec"]))
             extra += uptime * float(haste["attackSpeedPct"]) / 100.0 * base_dps
 
     return extra
@@ -218,22 +222,24 @@ def theoretical_dps(
     extra_basic_rate = double_attack * basic_rate
 
     attack_rate = cast_rate * double_cast + basic_rate + extra_basic_rate
+    # onAttack proc 只由技能命中触发：期望按「技能出手率」估算（不含普攻 / 连击）。
+    proc_rate = cast_rate * double_cast
     gross = power * (potency_per_sec / 100.0) * mult * skill_mult
     gross += stats.attack * (BASIC_ATTACK_POTENCY / 100.0) * (basic_rate + extra_basic_rate) * mult * skill_mult
     mitigated = max(gross * 0.10, gross - target_defense * attack_rate)
-    # 「破防」：降低目标防御，等效于减少减防项（按触发期望覆盖率计入）
+    # 「破防」：降低目标防御，等效于减少减防项（按技能触发的期望覆盖率计入）
     equip_proc = (CONFIG.combat.get("equipEffects") or {}).get("proc") or {}
     def_break = equip_proc.get("defBreak")
     db_chance = max(0.0, stats.term_mods.get("defBreakProcPct", 0.0)) / 100.0
     if def_break and db_chance > 0:
-        uptime = min(1.0, db_chance * attack_rate * float(def_break["durationSec"]))
+        uptime = min(1.0, db_chance * proc_rate * float(def_break["durationSec"]))
         mitigated += uptime * float(def_break["defenseDownPct"]) / 100.0 * target_defense * attack_rate
     # 彩蛋技能增伤按平均覆盖计入，避免合法的高输出上报被击杀额度误判
     dps = max(1.0, mitigated) * dps_uplift(stats.egg_id)
     # 装备词条扩展机制的期望增伤（条件 / 资源转换 / 累计触发 / 动态成长），与前端 battle.ts 同源
     dps *= equip_dps_multiplier(stats, mob_kind)
     # 装备触发效果（灼烧 / 中毒 / 裂伤 / 疾风）的期望收益
-    dps += proc_dps_bonus(stats, dps, attack_rate)
+    dps += proc_dps_bonus(stats, dps, proc_rate)
 
     if penalty:
         dps *= hit_chance(stats, float(penalty.get("hitRatePenaltyPct", 0.0)))

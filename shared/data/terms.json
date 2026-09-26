@@ -50,8 +50,8 @@
     { "id": "critDmgBoost", "name": "暴击伤害强化", "category": "attribute", "type": "buff", "trigger": "常驻", "stat": "critDamagePct", "range": [3, 12], "slots": ["mainHand", "ring1", "ring2"], "desc": "暴击伤害倍率额外 +{v}%" },
     { "id": "dhConvert", "name": "直击转化", "category": "synergy", "type": "buff", "trigger": "常驻", "stat": "dhConvertPct", "range": [5, 15], "slots": ["earring", "bracelet"], "desc": "暴击率的 {v}% 转化为直击率" },
 
-    { "id": "burnOnHit", "name": "灼烧", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "burnProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标灼烧，持续 6 秒每秒受到攻击力 40% 的伤害" },
-    { "id": "hasteOnHit", "name": "疾风", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "hasteProcPct", "range": [5, 15], "slots": ["mainHand", "head", "body", "necklace"], "desc": "攻击命中时 {v}% 概率获得「疾风」，8 秒内攻击速度 +15%" },
+    { "id": "burnOnHit", "name": "灼烧", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "burnProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率使目标灼烧，持续 6 秒，每 3 秒结算一次（共造成攻击力 240% 的伤害）" },
+    { "id": "hasteOnHit", "name": "疾风", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "hasteProcPct", "range": [5, 15], "slots": ["mainHand", "head", "body", "necklace"], "desc": "技能命中时 {v}% 概率获得「疾风」，8 秒内攻击速度 +15%" },
 
     { "id": "weaken", "name": "虚弱", "category": "attribute", "type": "debuff", "trigger": "常驻", "stat": "attackPct", "range": [-15, -3], "desc": "攻击力 {v}%" },
     { "id": "slow", "name": "迟缓", "category": "attribute", "type": "debuff", "trigger": "常驻", "stat": "attackSpeedPct", "range": [-10, -2], "desc": "攻击速度 {v}%" },
@@ -72,12 +72,12 @@
 
     { "id": "doubleCast", "name": "双重施法", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "doubleCastPct", "range": [3, 12], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "释放技能时 {v}% 概率额外释放一次" },
 
-    { "id": "poisonOnHit", "name": "淬毒", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "poisonProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标中毒，持续 6 秒每秒受到攻击力 30% 的伤害" },
-    { "id": "witherOnHit", "name": "凋零", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "witherProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标凋零，8 秒内攻击力 -20%" },
-    { "id": "blindOnHit", "name": "致盲", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "blindProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标失明，8 秒内命中率 -25%" },
+    { "id": "poisonOnHit", "name": "淬毒", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "poisonProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率使目标中毒，持续 6 秒，每 3 秒结算一次（共造成攻击力 180% 的伤害）" },
+    { "id": "witherOnHit", "name": "凋零", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "witherProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率使目标凋零，8 秒内攻击力 -20%" },
+    { "id": "blindOnHit", "name": "致盲", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "blindProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率使目标失明，8 秒内命中率 -25%" },
 
-    { "id": "vitalityOnHit", "name": "生机", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "hpRegenProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率获得「生机」，6 秒内每秒回复 2% 最大生命" },
-    { "id": "spiritOnHit", "name": "灵息", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "mpRegenProcPct", "range": [3, 12], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率获得「灵息」，4 秒内每秒回复 1.5% 最大魔力" },
+    { "id": "vitalityOnHit", "name": "生机", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "hpRegenProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率获得「生机」，持续 6 秒，每 3 秒结算一次（共回复 12% 最大生命）" },
+    { "id": "spiritOnHit", "name": "灵息", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "mpRegenProcPct", "range": [3, 12], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率获得「灵息」，持续 4 秒，每 3 秒结算一次（共回复 6% 最大魔力）" },
 
     { "id": "magicPower", "name": "魔力增幅", "category": "attribute", "type": "buff", "trigger": "常驻", "stat": "magicAttackPct", "range": [2, 15], "desc": "魔法攻击力 +{v}%" },
     { "id": "ironWall", "name": "铁壁", "category": "attribute", "type": "buff", "trigger": "常驻", "stat": "physDefPct", "range": [3, 18], "slots": ["mainHand", "body", "legs", "feet"], "desc": "物理防御 +{v}%" },
@@ -85,11 +85,11 @@
     { "id": "manaPool", "name": "魔力上限", "category": "attribute", "type": "buff", "trigger": "常驻", "stat": "maxMpPct", "range": [3, 20], "desc": "最大魔力 +{v}%" },
     { "id": "healPower", "name": "治愈之力", "category": "attribute", "type": "buff", "trigger": "常驻", "stat": "healPowerPct", "range": [3, 15], "slots": ["mainHand", "head", "body", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "治疗效果 +{v}%" },
 
-    { "id": "bleedOnHit", "name": "裂伤", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "bleedProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标流血，持续 8 秒每秒受到攻击力 25% 的伤害" },
-    { "id": "defBreakOnHit", "name": "破防", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "defBreakProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标防御 -25%，持续 8 秒" },
+    { "id": "bleedOnHit", "name": "裂伤", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "bleedProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率使目标流血，持续 8 秒，每 3 秒结算一次（共造成攻击力 200% 的伤害）" },
+    { "id": "defBreakOnHit", "name": "破防", "category": "onAttack", "type": "buff", "trigger": "触发", "stat": "defBreakProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率使目标防御 -25%，持续 8 秒" },
 
-    { "id": "slowOnHit", "name": "缓速", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "slowProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率使目标攻击速度 -20%，持续 8 秒" },
-    { "id": "stunOnHit", "name": "眩晕", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "stunProcPct", "range": [3, 12], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "攻击命中时 {v}% 概率眩晕目标 2 秒" },
+    { "id": "slowOnHit", "name": "缓速", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "slowProcPct", "range": [5, 20], "slots": ["mainHand", "hands", "necklace", "earring", "bracelet", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率使目标攻击速度 -20%，持续 8 秒" },
+    { "id": "stunOnHit", "name": "眩晕", "category": "abnormal", "type": "buff", "trigger": "触发", "stat": "stunProcPct", "range": [3, 12], "slots": ["mainHand", "hands", "ring1", "ring2"], "desc": "技能命中时 {v}% 概率眩晕目标 2 秒" },
 
     { "id": "reflectOnHit", "name": "反震", "category": "onHitTaken", "type": "buff", "trigger": "触发", "stat": "reflectProcPct", "range": [5, 20], "slots": ["body", "legs", "feet"], "desc": "受到攻击时 {v}% 概率反弹该次伤害的 30%" },
     { "id": "vengeanceOnHit", "name": "复仇", "category": "onHitTaken", "type": "buff", "trigger": "触发", "stat": "vengeanceProcPct", "range": [5, 20], "slots": ["body", "legs", "feet", "bracelet", "earring"], "desc": "受到攻击时 {v}% 概率获得攻击 +15%，持续 6 秒" },

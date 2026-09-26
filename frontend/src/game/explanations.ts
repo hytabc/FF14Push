@@ -496,10 +496,10 @@ export function equipEffectExplain(stat: string): Explain | null {
   const charge = EQUIP_EFFECTS.charge ?? {}
   const special = EQUIP_EFFECTS.special ?? {}
   const rows: Record<string, string[]> = {
-    bleedProcPct: [`命中时按词条概率触发，${proc.bleed?.durationSec}s 内每秒造成攻击力 ${proc.bleed?.potencyPct}% 的持续伤害（不吃增伤）。`],
-    defBreakProcPct: [`命中时按词条概率使目标防御 -${proc.defBreak?.defenseDownPct}%，持续 ${proc.defBreak?.durationSec}s；破防按期望覆盖率计入后端击杀额度模型。`],
-    slowProcPct: [`命中时按词条概率使目标攻速 -${proc.slow?.attackSpeedDownPct}%（出手间隔变长），持续 ${proc.slow?.durationSec}s。`],
-    stunProcPct: [`命中时按词条概率延长目标下次出手 ${proc.stun?.durationSec}s。`],
+    bleedProcPct: [`技能命中时按词条概率触发，${proc.bleed?.durationSec}s 内共造成攻击力 ${(proc.bleed?.potencyPct ?? 0) * (proc.bleed?.durationSec ?? 0)}% 的持续伤害（每 3s 结算一次，不吃增伤）。`],
+    defBreakProcPct: [`技能命中时按词条概率使目标防御 -${proc.defBreak?.defenseDownPct}%，持续 ${proc.defBreak?.durationSec}s；破防按期望覆盖率计入后端击杀额度模型。`],
+    slowProcPct: [`技能命中时按词条概率使目标攻速 -${proc.slow?.attackSpeedDownPct}%（出手间隔变长），持续 ${proc.slow?.durationSec}s。`],
+    stunProcPct: [`技能命中时按词条概率延长目标下次出手 ${proc.stun?.durationSec}s。`],
     reflectProcPct: [`受到攻击时按词条概率反弹该次伤害的 ${proc.reflect?.damagePct}%。`],
     vengeanceProcPct: [`受到攻击时按词条概率获得攻击 +${proc.vengeance?.attackBuffPct}%，持续 ${proc.vengeance?.durationSec}s。`],
     aegisProcPct: [`受到攻击时按词条概率获得最大生命 ${pct(Number(proc.aegis?.maxHpShieldPct ?? 0), 0)} 的护盾。`],

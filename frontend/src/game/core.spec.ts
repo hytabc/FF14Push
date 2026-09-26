@@ -1597,7 +1597,8 @@ describe('装备触发效果（proc）', () => {
     // 固定随机数：未命中就不会挂上「生机 / 灵息」，后续 tick 也没有回复可断言。
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
     engine.cast(ADVENTURER_SKILL)
-    sim.tick(1)
+    // HOT 每 3 秒结算一次（EFFECT_TICK_SEC）。
+    sim.tick(3)
     randomSpy.mockRestore()
     expect(sim.heroHp).toBeGreaterThan(1000)
     expect(sim.heroMp).toBeGreaterThan(0)
@@ -1614,6 +1615,52 @@ describe('装备触发效果（proc）', () => {
     delay.start()
     ;(delay as unknown as { heroDies(): void }).heroDies()
     expect(delay.deathTimer).toBeCloseTo(15, 5)
+  })
+})
+
+describe('装备攻击触发范围与 DOT 结算频率', () => {
+  it('普攻不触发装备 proc，只有直接伤害技能命中才触发', () => {
+    const sim = new BattleSimulator({
+      stats: makeStats({ termMods: { burnProcPct: 100, poisonProcPct: 100 } }),
+      regionId: 1,
+    })
+    sim.start()
+    for (let i = 0; i < 40 && !sim.monster; i += 1) sim.tick(0.1)
+    expect(sim.monster).toBeTruthy()
+    const engine = sim as unknown as { resolveDamage(s: unknown, isSkill: boolean): void }
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    let before = sim.log.length
+    engine.resolveDamage(ADVENTURER_SKILL, false)
+    expect(sim.log.slice(before).map((l) => l.text).join(' | ')).not.toContain('灼烧')
+
+    before = sim.log.length
+    engine.resolveDamage(ADVENTURER_SKILL, true)
+    expect(sim.log.slice(before).map((l) => l.text).join(' | ')).toContain('灼烧')
+
+    randomSpy.mockRestore()
+  })
+
+  it('DOT 每 3 秒结算一次，单次量按窗口时长累计（总量不变）', () => {
+    const dummy: MonsterStats = {
+      id: 'dummy', regionId: 0, name: '木桩', templateId: 'dummy', kind: 'boss',
+      hp: 1e12, attack: 0, defense: 0, attackInterval: 999, level: 100, resistancePct: 0,
+    }
+    const sim = new BattleSimulator({ stats: makeStats({ attack: 1000 }), raid: { bosses: [dummy], enrage: null } })
+    sim.start()
+    const engine = sim as unknown as {
+      dots: Array<{ remaining: number; potency: number; acc: number }>
+      tickDots(dt: number): void
+    }
+    engine.dots.push({ remaining: 6, potency: 10, acc: 0 })
+    const hp0 = sim.monsterHp
+    // 前 3 秒（6 × 0.5s）只结算一次；后 3 秒到期时再结算一次，两次量相同。
+    for (let i = 0; i < 6; i += 1) engine.tickDots(0.5)
+    const first = hp0 - sim.monsterHp
+    expect(first).toBeGreaterThan(0)
+    for (let i = 0; i < 6; i += 1) engine.tickDots(0.5)
+    const second = hp0 - sim.monsterHp - first
+    expect(second).toBeCloseTo(first, 5)
   })
 })
 
@@ -1634,8 +1681,9 @@ describe('技能治疗日志', () => {
     sim.heroHp = 100
     const engine = sim as any
     engine.applyEffects({ name: '再生', effects: [{ type: 'healOverTime', value: .01, duration: 5 }] })
-    sim.tick(1)
-    expect(sim.log.some(e => e.text === '再生（持续治疗） 恢复 10 生命值')).toBe(true)
+    // HOT 每 3 秒结算一次：3s 窗口 = 每秒 1% × 3 = 30 点。
+    sim.tick(3)
+    expect(sim.log.some(e => e.text === '再生（持续治疗） 恢复 30 生命值')).toBe(true)
   })
 })
 

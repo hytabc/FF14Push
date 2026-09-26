@@ -1,5 +1,7 @@
 /** 后端接口返回的数据结构。 */
 
+import type { SequenceLoopMode, SequenceStep } from '@/game/core/sequence'
+
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
 export type JobRole = 'tank' | 'healer' | 'melee' | 'physicalRanged' | 'magicalRanged'
@@ -46,6 +48,23 @@ export interface ItemTag {
   name: string
   color: string
 }
+
+/** 保存的生产 / 采集序列（≤5 条/账号），带可分享的蓝图ID。 */
+export interface SavedSequence {
+  id: number
+  name: string
+  /** 蓝图ID：分享给其他玩家，凭此导入。 */
+  shareCode: string
+  steps: SequenceStep[]
+  loopMode: SequenceLoopMode
+  loopTotal: number
+  stepCount: number
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/** 凭蓝图ID导入的序列（不含行 id / 来源账号）。 */
+export type ImportedSequence = Omit<SavedSequence, 'id' | 'shareCode' | 'createdAt' | 'updatedAt'>
 
 export interface TermEntry {
   id: string

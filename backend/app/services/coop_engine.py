@@ -5,6 +5,9 @@ from app.services.game_config import CONFIG
 
 TICK = 100
 
+# 持续伤害（DOT）与持续治疗（HOT）的结算间隔（ms），与 combat.json:effectTickSeconds 同源。
+EFFECT_TICK_MS = int(float(CONFIG.combat.get("effectTickSeconds", 3)) * 1000)
+
 
 def shield_cap_pct() -> float:
     """护盾总量上限（占最大生命 %），与前端 battle.ts 同源读取 combat.json:equipEffects.shield。"""
@@ -134,7 +137,7 @@ def apply_mechanic(state,mech,dungeon):
     if action in ('stack','mitigate','swap'):
         for h in actors:damage_hero(state,h,h['snapshot']['stats']['max_hp']*.12,mech['name'])
     if action=='spread' and not good:
-        for h in alive:h['dots'].append({'until':state['elapsedMs']+6000,'damage':h['snapshot']['stats']['max_hp']*.025})
+        for h in alive:h['dots'].append({'until':state['elapsedMs']+6000,'damage':h['snapshot']['stats']['max_hp']*.025,'acc':0})
 
 def tick_trial(state,dungeon,config):
     if dungeon['seats']==2 or state['trialDone']:return
@@ -208,12 +211,12 @@ def auto_actions(state,hero):
             for ally in targets:heal_hero(state,hero,ally,stats['max_hp']*(1 if typ=='fullHeal' else value),typ=='shield')
         elif typ=='healOverTime':
             targets=alive if skill.get('teamTarget')=='party' else [target]
-            for ally in targets:ally['buffs'].append({'type':typ,'value':stats['max_hp']*value*multiplier(hero,state)*state['rules'].get('healingMultiplier',1.0),'until':now+duration})
+            for ally in targets:ally['buffs'].append({'type':typ,'value':stats['max_hp']*value*multiplier(hero,state)*state['rules'].get('healingMultiplier',1.0),'until':now+duration,'acc':0})
         elif typ in ('damageReduction','allDamageBuff','attackBuff','critRateBuff'):
             hero['buffs'].append({'type':typ,'value':value,'until':now+duration})
         elif typ=='dot':
             living=[b for b in state['bosses'] if b['hp']>0]
-            if living:living[0]['dots'].append({'until':now+duration,'potency':effect.get('potency',value),'slot':hero['slot']})
+            if living:living[0]['dots'].append({'until':now+duration,'potency':effect.get('potency',value),'slot':hero['slot'],'acc':0})
         elif typ=='stun':
             for boss in state['bosses']:boss['stunUntil']=now+min(1500,duration)
 
@@ -232,13 +235,23 @@ def step(state,dungeon,config):
         stats=h['snapshot']['stats']
         if h['hp']/stats['max_hp']<.4:h['dangerMs']+=TICK
         h['mp']=min(stats['max_mp'],h['mp']+stats['mp_regen']*.1)
+        # HOT 结算：每满 EFFECT_TICK_MS 一次性结算（到期补尾窗），总量与逐 100ms 一致。
+        for b in h['buffs']:
+            if b['type']!='healOverTime':continue
+            b['acc']=b.get('acc',0)+min(TICK,max(0,b['until']-(now-TICK)))
+            if b['acc']<EFFECT_TICK_MS and b['until']>now:continue
+            window=b['acc'];b['acc']=0
+            h['hp']=min(stats['max_hp'],h['hp']+b['value']*(window/1000))
         h['buffs']=[b for b in h['buffs'] if b['until']>now]
+        # DOT 结算（BOSS 施加给英雄）：同上，每满 EFFECT_TICK_MS 结算一次。
+        for dot in h['dots']:
+            dot['acc']=dot.get('acc',0)+TICK
+            if dot['acc']<EFFECT_TICK_MS and dot['until']>now:continue
+            window=dot['acc'];dot['acc']=0
+            damage_hero(state,h,dot['damage']*(window/1000),'持续伤害')
         h['dots']=[d for d in h['dots'] if d['until']>now]
         # Regeneration is healing and obeys mode/weakness multipliers.
         heal_hero(state,h,h,stats['hp_regen']*.1)
-        for b in h['buffs']:
-            if b['type']=='healOverTime':h['hp']=min(stats['max_hp'],h['hp']+b['value']*.1)
-        for dot in h['dots']:damage_hero(state,h,dot['damage']*.1,'持续伤害')
         if h['hp']>0:auto_actions(state,h)
     if all(b['hp']<=0 for b in state['bosses']):
         finish_phase(state,dungeon,config)
@@ -259,12 +272,16 @@ def step(state,dungeon,config):
     if state['status']!='running':return
     for boss in state['bosses']:
         if boss['hp']<=0:continue
-        boss['dots']=[d for d in boss['dots'] if d['until']>now]
+        # DOT 结算（英雄施加给 BOSS）：每满 EFFECT_TICK_MS 结算一次。
         for dot in boss['dots']:
+            dot['acc']=dot.get('acc',0)+TICK
+            if dot['acc']<EFFECT_TICK_MS and dot['until']>now:continue
+            window=dot['acc'];dot['acc']=0
             source=next(h for h in state['heroes'] if h['slot']==dot['slot'])
             if source['hp']>0:
                 stats=source['snapshot']['stats'];power=stats['magic_attack'] if stats['main_attr']=='int' else stats['attack']
-                deal_damage(state,source,power*dot['potency']/100*.1)
+                deal_damage(state,source,power*dot['potency']/100*(window/1000))
+        boss['dots']=[d for d in boss['dots'] if d['until']>now]
         if boss['hp']<=0:continue
         if now>=boss['nextAttack'] and now>=boss['stunUntil']:
             alive=[h for h in state['heroes'] if h['hp']>0]

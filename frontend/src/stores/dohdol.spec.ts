@@ -503,3 +503,55 @@ describe('序列断点续传', () => {
     expect(store.sequence.map((s) => s.id)).not.toContain(nextStepId())
   })
 })
+
+describe('序列库载入（读取 / 导入蓝图）', () => {
+  it('替换编辑区、重分配 id 并重置运行态与循环设置', () => {
+    const store = useDohDolStore()
+    store.addStep({ ...gatherStep, id: 'step-1' })
+    store.loopMode = 'infinite'
+
+    const ok = store.loadSequence({
+      steps: [
+        { kind: 'gather', id: 'step-1', materialId: 'ore9', name: '秘银矿', jobId: 'MIN', regionId: 9, target: 5 },
+        { kind: 'produce', id: 'step-2', recipeId: 'r9', name: '秘银锭', jobId: 'BSM', target: 2 },
+      ],
+      loopMode: 'count',
+      loopTotal: 7,
+    })
+
+    expect(ok).toBe(true)
+    expect(store.sequence).toHaveLength(2)
+    // id 全部重分配，绝不沿用来源序列的 id
+    expect(store.sequence.map((s) => s.id)).not.toContain('step-1')
+    expect(store.sequence.map((s) => s.id)).not.toContain('step-2')
+    expect(new Set(store.sequence.map((s) => s.id)).size).toBe(2)
+    expect(store.sequence[0]).toMatchObject({ materialId: 'ore9', target: 5 })
+    expect(store.sequence[1]).toMatchObject({ recipeId: 'r9', target: 2 })
+    expect(store.loopMode).toBe('count')
+    expect(store.loopTotal).toBe(7)
+    expect(store.seqActive).toBe(false)
+    expect(store.seqIndex).toBe(-1)
+    expect(store.seqResults).toEqual([])
+  })
+
+  it('步数超过上限时截断到 SEQ_STEP_LIMIT', () => {
+    const store = useDohDolStore()
+    const steps = Array.from({ length: 60 }, (_, i) => ({
+      kind: 'gather' as const,
+      id: `src-${i}`,
+      materialId: `ore${i}`,
+      name: `矿${i}`,
+      jobId: 'MIN',
+      regionId: 1,
+      target: 1,
+    }))
+    expect(store.loadSequence({ steps, loopMode: 'once', loopTotal: 3 })).toBe(true)
+    expect(store.sequence).toHaveLength(50)
+  })
+
+  it('运行中拒绝载入', () => {
+    const store = useDohDolStore()
+    store.seqActive = true
+    expect(store.loadSequence({ steps: [{ ...gatherStep }], loopMode: 'once', loopTotal: 3 })).toBe(false)
+  })
+})

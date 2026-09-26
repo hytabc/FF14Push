@@ -82,7 +82,7 @@ describe('chestLuckExplain', () => {
 describe('equipEffectExplain', () => {
   it('explains an implemented mechanic with its shared-config parameters', () => {
     const text = equipEffectExplain('bleedProcPct')?.lines.join('\n') ?? ''
-    expect(text).toContain('命中时按词条概率触发')
+    expect(text).toContain('技能命中时按词条概率触发')
     expect(text).toContain('equipEffects')
   })
 

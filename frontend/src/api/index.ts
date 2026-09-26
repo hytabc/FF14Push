@@ -6,15 +6,18 @@ import type {
   FriendTransferResult,
   FriendsData,
   GameState,
+  ImportedSequence,
   Item,
   ItemTag,
   PlayerProfile,
   RankingEntry,
   RegionListEntry,
   RerollMode,
+  SavedSequence,
   SlotId,
   TutorialState,
 } from '@/game/types'
+import type { SequenceLoopMode, SequenceStep } from '@/game/core/sequence'
 
 import { http } from './client'
 
@@ -163,6 +166,34 @@ export const api = {
 
   async setItemTags(itemId: number, tagIds: number[]) {
     return (await http.post<{ item: Item }>('/inventory/tags', { itemId, tagIds })).data
+  },
+
+  async sequences() {
+    return (await http.get<{ sequences: SavedSequence[] }>('/sequences')).data
+  },
+
+  async saveSequence(payload: {
+    name: string
+    steps: SequenceStep[]
+    loopMode: SequenceLoopMode
+    loopTotal: number
+  }) {
+    return (await http.post<{ sequence: SavedSequence }>('/sequences', payload)).data
+  },
+
+  async overwriteSequence(
+    id: number,
+    payload: { name?: string; steps: SequenceStep[]; loopMode: SequenceLoopMode; loopTotal: number },
+  ) {
+    return (await http.post<{ sequence: SavedSequence }>(`/sequences/${id}`, payload)).data
+  },
+
+  async deleteSequence(id: number) {
+    return (await http.delete<{ ok: boolean }>(`/sequences/${id}`)).data
+  },
+
+  async importBlueprint(code: string) {
+    return (await http.get<{ sequence: ImportedSequence }>(`/sequences/blueprint/${code}`)).data
   },
 
   async openChest(chestId: string, count: number, level?: number) {

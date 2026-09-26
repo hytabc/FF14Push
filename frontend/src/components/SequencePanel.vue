@@ -4,8 +4,10 @@ import { computed } from 'vue'
 import data from '@shared/schema'
 
 import ItemIcon from '@/components/ItemIcon.vue'
+import SequenceLibraryModal from '@/components/SequenceLibraryModal.vue'
 import type { StepStatus } from '@/game/core/sequence'
 import { useDohDolStore } from '@/stores/dohdol'
+import { useSequencesStore } from '@/stores/sequences'
 
 defineProps<{
   /** 面板标题，如「采集序列」/「制作序列」。 */
@@ -14,6 +16,7 @@ defineProps<{
 }>()
 
 const dohdol = useDohDolStore()
+const sequences = useSequencesStore()
 
 const STATUS_LABEL: Record<StepStatus, string> = {
   done: '完成',
@@ -85,6 +88,14 @@ const issueById = computed(() => new Map(dohdol.sequenceIssues.map((i) => [i.id,
           :disabled="dohdol.seqActive"
           title="总轮数"
         >
+        <button
+          v-if="!dohdol.seqActive"
+          class="rounded-md bg-ink-800 px-2 py-1 text-[10px] text-ink-300 hover:text-white"
+          title="保存 / 读取 / 分享自定义序列"
+          @click="sequences.openLib()"
+        >
+          序列库
+        </button>
         <button
           v-if="!dohdol.seqActive"
           class="rounded-md px-3 py-1 text-xs font-semibold transition"
@@ -213,5 +224,7 @@ const issueById = computed(() => new Map(dohdol.sequenceIssues.map((i) => [i.id,
         </li>
       </ul>
     </div>
+
+    <SequenceLibraryModal />
   </section>
 </template>

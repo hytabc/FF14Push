@@ -226,3 +226,31 @@ describe('worldboss engine: 与后端逐位一致', () => {
     expect(remainder.elapsedMs).toBe(100)
   })
 })
+
+/** BOSS 不出手的场景配置：只保留 hero 自身的出手，用于隔离 DOT / HOT 结算。 */
+const DOT_CFG = {
+  ...data.worldboss,
+  boss: {
+    ...data.worldboss.boss,
+    attack: 0,
+    attackIntervalSeconds: 9999,
+    skillIntervalSeconds: 9999,
+  },
+}
+
+describe('worldboss engine: DOT / HOT 每 3 秒结算（跨语言一致）', () => {
+  it('注入 DOT 与 HOT 后与 Python 引擎逐位一致', () => {
+    const state = newState(DOT_CFG, [SNAPSHOTS[0]], 20260925)
+    state.heroes[0].hp = 100000
+    state.heroes[0].dots.push({ until: 6000, damage: 50, acc: 0 })
+    state.heroes[0].buffs.push({ type: 'healOverTime', value: 100, until: 12000, acc: 0 })
+    advance(state, DOT_CFG, 12000)
+    const hero = state.heroes[0]
+    expect(state.elapsedMs).toBe(12000)
+    expect(hero.damage).toBeCloseTo(925543.5226942768, 6)
+    expect(state.damageDealt).toBeCloseTo(925543.5226942768, 6)
+    // DOT 净伤 2550（第二次结算被「铁壁」减伤 30%）＋ HOT 1200 ＋ 被动回复 600 → hp 99250 / 治疗 1800。
+    expect(hero.hp).toBe(99250)
+    expect(hero.healing).toBe(1800)
+  })
+})

@@ -98,6 +98,8 @@ interface ActiveBuff {
   value: number
   remaining: number
   name: string
+  /** 持续治疗类 buff 的累计存活秒数：每满 `EFFECT_TICK_SEC` 结算一次（见 `tickHot`）。 */
+  acc?: number
 }
 
 /** 一个敌方单位（地区战斗只有 1 个；高难副本可能有 2 个 BOSS）。 */
@@ -122,6 +124,11 @@ const MAX_FLOAT = 12
 const FLOAT_LIFE = 1
 /** 单次命中对地区关底 BOSS 的伤害上限（占其最大生命 %），见 `bosses.json:maxHitDamagePct`。 */
 const BOSS_MAX_HIT_PCT = Number(data.bosses.maxHitDamagePct ?? 100)
+/**
+ * 持续伤害（DOT）与持续治疗（HOT）的结算间隔（秒）：每满该时长一次性结算，
+ * 单次结算量 = 每秒量 × 间隔，`duration` 内的总量与逐秒结算一致（到期时补足尾窗）。
+ */
+const EFFECT_TICK_SEC = Number((data.combat as Record<string, any>).effectTickSeconds ?? 3)
 
 /** 装备词条扩展机制参数（`combat.json:equipEffects`）。概率/强度由词条值承载，此处只放效果量与阈值。 */
 const EQUIP = ((data.combat as Record<string, any>).equipEffects ?? {}) as {
@@ -263,7 +270,7 @@ export class BattleSimulator {
   /** 彩蛋被动「战斗爽」：对战普通怪物时，威力恰为 100% 的技能威力加成（0 表示无）。 */
   private readonly normalMobPotency100Bonus: number
   private buffs: ActiveBuff[] = []
-  private dots: Array<{ remaining: number; potency: number; tick: number }> = []
+  private dots: Array<{ remaining: number; potency: number; acc: number }> = []
   /** 装备命中触发的敌方减益（凋零=减攻 / 失明=降命中 / 破防=降防 / 缓速=降攻速），随目标切换清空。 */
   private enemyDebuffs: Array<{
     stat: 'attackDown' | 'hitDown' | 'defDown' | 'speedDown'
@@ -272,7 +279,7 @@ export class BattleSimulator {
     name: string
   }> = []
   /** BOSS 施加给英雄的持续伤害（高难副本）。 */
-  private heroDots: Array<{ remaining: number; potencyPerSec: number; tick: number; source: string }> = []
+  private heroDots: Array<{ remaining: number; potencyPerSec: number; acc: number; source: string }> = []
   private regenTimer = 0
   /** 越级时的等级压制惩罚（英雄等级 ≥ 地区下限则为全 0）。 */
   readonly penalty: LevelPenalty
@@ -575,8 +582,11 @@ export class BattleSimulator {
     for (const key of Object.keys(this.cooldowns)) {
       this.cooldowns[key] = Math.max(0, this.cooldowns[key] - dt)
     }
-    this.buffs = this.buffs.filter((b) => (b.remaining -= dt) > 0)
+    for (const b of this.buffs) b.remaining -= dt
     this.enemyDebuffs = this.enemyDebuffs.filter((b) => (b.remaining -= dt) > 0)
+
+    this.tickHot(dt)
+    this.buffs = this.buffs.filter((b) => b.remaining > 0)
 
     // 回复
     this.regenTimer += dt
@@ -585,19 +595,7 @@ export class BattleSimulator {
       this.regenTimer -= ticks
       const stats = this.stats
       this.heroHp = Math.min(stats.maxHp, this.heroHp + stats.hpRegen * ticks * this.healMultiplier)
-      for (const buff of this.buffs.filter((b) => b.stat === 'healOverTime')) {
-        this.restoreHealth(stats.maxHp * buff.value * ticks * this.healMultiplier, buff.name + '（持续治疗）')
-      }
-      for (const buff of this.buffs.filter((b) => b.stat === 'hpRegenBuff')) {
-        this.restoreHealth(stats.maxHp * buff.value * ticks * this.healMultiplier, buff.name + '（持续回复）')
-      }
       this.heroMp = Math.min(stats.maxMp, this.heroMp + stats.mpRegen * ticks * (this.penalty.resourceMultiplier ?? 1) * this.lowMpRegenFactor(stats))
-      for (const buff of this.buffs.filter((b) => b.stat === 'mpRegenBuff')) {
-        this.heroMp = Math.min(
-          stats.maxMp,
-          this.heroMp + stats.maxMp * buff.value * ticks * (this.penalty.resourceMultiplier ?? 1),
-        )
-      }
       // 资源转换「转魔」：魔力低于门槛才启动，恢复到目标值后停止，避免满蓝时仍持续
       // 扣血。生命不足时不生效。
       const hpToMp = this.baseStats.termMods.hpToMpPct ?? 0
@@ -649,14 +647,41 @@ export class BattleSimulator {
     this.tickBossSkills(dt)
   }
 
+  /**
+   * 持续治疗（HOT）结算：`healOverTime` / 生机（hpRegenBuff）/ 灵息（mpRegenBuff）。
+   * 每满 `EFFECT_TICK_SEC` 秒一次性结算，单次量 = 每秒量 × 累计时长；到期时补足不足一个间隔的尾窗，
+   * 故 `duration` 内的总治疗量与逐秒结算一致。被动 `hpRegen` / `mpRegen` 不在此列（仍按 1s）。
+   */
+  private tickHot(dt: number): void {
+    const stats = this.stats
+    for (const buff of this.buffs) {
+      if (buff.stat !== 'healOverTime' && buff.stat !== 'hpRegenBuff' && buff.stat !== 'mpRegenBuff') continue
+      // buff.remaining 已在本帧递减过，+dt 还原为本帧存活时长。
+      buff.acc = (buff.acc ?? 0) + Math.max(0, Math.min(dt, buff.remaining + dt))
+      if (buff.acc < EFFECT_TICK_SEC && buff.remaining > 0) continue
+      const window = buff.acc
+      buff.acc = 0
+      if (buff.stat === 'mpRegenBuff') {
+        this.heroMp = Math.min(
+          stats.maxMp,
+          this.heroMp + stats.maxMp * buff.value * window * (this.penalty.resourceMultiplier ?? 1),
+        )
+      } else {
+        const label = buff.stat === 'healOverTime' ? '（持续治疗）' : '（持续回复）'
+        this.restoreHealth(stats.maxHp * buff.value * window * this.healMultiplier, buff.name + label)
+      }
+    }
+  }
+
   private tickDots(dt: number): void {
     if (!this.monster || this.dots.length === 0) return
     for (const dot of this.dots) {
+      const before = dot.remaining
       dot.remaining -= dt
-      dot.tick -= dt
-      if (dot.tick <= 0) {
-        dot.tick = 1
-        const damage = Math.max(1, Math.floor(powerAttack(this.stats) * (dot.potency / 100)))
+      dot.acc += Math.max(0, Math.min(dt, before))
+      if (dot.acc >= EFFECT_TICK_SEC || dot.remaining <= 0) {
+        const damage = Math.max(1, Math.floor(powerAttack(this.stats) * (dot.potency / 100) * dot.acc))
+        dot.acc = 0
         this.damageEnemy(damage)
         this.pushFloat(String(damage), 'monster', 'monster')
       }
@@ -906,7 +931,8 @@ export class BattleSimulator {
 
   /**
    * 一次命中结算：伤害 + 浮动数字 + 日志 + proc。
-   * isSkill 决定是否消耗充能类彩蛋（「割草」只作用于技能，普攻不吃）。
+   * isSkill 决定是否消耗充能类彩蛋（「割草」只作用于技能，普攻不吃），并决定是否判定装备攻击触发
+   * （onAttack proc：只有直接伤害技能命中才触发，普攻不吃）。
    */
   private resolveDamage(skill: SkillLike, isSkill: boolean): void {
     const stats = this.stats
@@ -980,7 +1006,8 @@ export class BattleSimulator {
     // 累计触发「蓄势」：累计造成伤害达阈值后爆发。
     this.chargeDamage += amount
     this.maybeChargeBlast()
-    this.rollProcs(stats)
+    // 装备攻击触发（onAttack proc）：仅由「直接伤害技能」命中触发；普通攻击与持续伤害结算都不触发。
+    if (isSkill) this.rollProcs(stats)
   }
 
   /** 累计触发「蓄势」：累计造成目标一定比例最大生命的伤害后，触发一次额外爆发。 */
@@ -998,7 +1025,11 @@ export class BattleSimulator {
     if (this.monsterHp <= 0) this.killMonster()
   }
 
-  /** 命中触发效果（proc）：灼烧/中毒 DOT、疾风限时攻速、凋零减攻、失明降命中、生机/灵息持续回复。与后端 `combat_model.proc_dps_bonus` 同源。 */
+  /**
+   * 命中触发效果（proc）：灼烧/中毒/裂伤 DOT、疾风限时攻速、凋零减攻、失明降命中、生机/灵息持续回复。
+   * 触发源仅限「直接伤害技能命中」（`resolveDamage(skill, true)`）——普通攻击与持续伤害结算都不触发。
+   * 与后端 `combat_model.proc_dps_bonus` 同源（后端按技能出手率估算期望）。
+   */
   private rollProcs(stats: HeroStats): void {
     if (!this.monster) return
     const proc = (data.combat.proc ?? {}) as {
@@ -1018,7 +1049,7 @@ export class BattleSimulator {
     for (const [dot, chancePct, label] of dotProcs) {
       const chance = Math.max(0, chancePct ?? 0)
       if (dot && chance > 0 && Math.random() * 100 < chance) {
-        this.dots.push({ remaining: dot.durationSec, potency: dot.potencyPct, tick: 1 })
+        this.dots.push({ remaining: dot.durationSec, potency: dot.potencyPct, acc: 0 })
         this.pushLog(`装备触发「${label}」`, 'skill')
       }
     }
@@ -1058,7 +1089,7 @@ export class BattleSimulator {
     const equipProc = EQUIP.proc ?? {}
     const bleedChance = Math.max(0, stats.termMods.bleedProcPct ?? 0)
     if (equipProc.bleed && bleedChance > 0 && Math.random() * 100 < bleedChance) {
-      this.dots.push({ remaining: equipProc.bleed.durationSec, potency: equipProc.bleed.potencyPct, tick: 1 })
+      this.dots.push({ remaining: equipProc.bleed.durationSec, potency: equipProc.bleed.potencyPct, acc: 0 })
       this.pushLog('装备触发「裂伤」', 'skill')
     }
     const defBreakChance = Math.max(0, stats.termMods.defBreakProcPct ?? 0)
@@ -1094,6 +1125,7 @@ export class BattleSimulator {
         value: proc.hpRegenBuff.maxHpPctPerSec,
         remaining: proc.hpRegenBuff.durationSec,
         name: '生机',
+        acc: 0,
       })
       this.pushLog('装备触发「生机」', 'skill')
     }
@@ -1104,6 +1136,7 @@ export class BattleSimulator {
         value: proc.mpRegenBuff.maxMpPctPerSec,
         remaining: proc.mpRegenBuff.durationSec,
         name: '灵息',
+        acc: 0,
       })
       this.pushLog('装备触发「灵息」', 'skill')
     }
@@ -1134,7 +1167,7 @@ export class BattleSimulator {
           break
         }
         case 'healOverTime':
-          this.buffs.push({ stat: 'healOverTime', value, remaining: duration, name: skill.name })
+          this.buffs.push({ stat: 'healOverTime', value, remaining: duration, name: skill.name, acc: 0 })
           break
         case 'shield':
           this.addShield(stats.maxHp * value * this.healMultiplier)
@@ -1143,7 +1176,7 @@ export class BattleSimulator {
           this.heroMp = Math.min(stats.maxMp, this.heroMp + Math.floor(stats.maxMp * value * (this.penalty.resourceMultiplier ?? 1)))
           break
         case 'dot':
-          this.dots.push({ remaining: duration, potency: value * 100, tick: 1 })
+          this.dots.push({ remaining: duration, potency: value * 100, acc: 0 })
           break
         case 'cdReduceAll':
           for (const key of Object.keys(this.cooldowns)) {
@@ -1536,7 +1569,7 @@ export class BattleSimulator {
           this.heroDots.push({
             remaining: seconds,
             potencyPerSec: potency / seconds,
-            tick: 1,
+            acc: 0,
             source: skill.id,
           })
           this.pushLog(
@@ -1606,26 +1639,27 @@ export class BattleSimulator {
     if (this.heroHp <= 0) { this.mechanismFailures.push(skill.id); this.heroDies() }
   }
 
-  /** BOSS 持续伤害计时（作用于英雄）。 */
+  /** BOSS 持续伤害计时（作用于英雄）：每满 `EFFECT_TICK_SEC` 秒结算一次，总量与逐秒一致。 */
   private tickHeroDots(dt: number): void {
     if (this.heroDots.length === 0) return
     const enemy = this.current
     const base = enemy ? enemy.stats.attack * this.bossAttackMultiplier() : 0
     for (const dot of this.heroDots) {
+      const before = dot.remaining
       dot.remaining -= dt
-      dot.tick -= dt
-      if (dot.tick <= 0) {
-        dot.tick = 1
-        if (this.consumeImmunity()) continue
-        let damage = Math.max(1, Math.floor(base * (dot.potencyPerSec / 100) * (1 + this.penalty.damageTakenBonusPct / 100)))
-        const absorbed = Math.min(this.shield, damage)
-        this.shield -= absorbed
-        damage -= absorbed
-        this.heroHp -= damage
-        if (this.heroHp <= 0) this.mechanismFailures.push(dot.source)
-        this.pushFloat(`-${damage}`, 'hero', 'monster')
-        this.logIncomingDamage(enemy?.stats.name ?? '持续伤害', damage, '持续伤害')
-      }
+      dot.acc += Math.max(0, Math.min(dt, before))
+      if (dot.acc < EFFECT_TICK_SEC && dot.remaining > 0) continue
+      const window = dot.acc
+      dot.acc = 0
+      if (this.consumeImmunity()) continue
+      let damage = Math.max(1, Math.floor(base * (dot.potencyPerSec / 100) * window * (1 + this.penalty.damageTakenBonusPct / 100)))
+      const absorbed = Math.min(this.shield, damage)
+      this.shield -= absorbed
+      damage -= absorbed
+      this.heroHp -= damage
+      if (this.heroHp <= 0) this.mechanismFailures.push(dot.source)
+      this.pushFloat(`-${damage}`, 'hero', 'monster')
+      this.logIncomingDamage(enemy?.stats.name ?? '持续伤害', damage, '持续伤害')
     }
     this.heroDots = this.heroDots.filter((d) => d.remaining > 0)
     if (this.heroHp <= 0) this.heroDies()

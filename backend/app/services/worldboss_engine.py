@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from app.services.coop_engine import shield_cap_pct
+from app.services.coop_engine import EFFECT_TICK_MS, shield_cap_pct
 
 TICK = 100
 BASIC_CD_MS = 2000
@@ -254,8 +254,9 @@ def auto_actions(state: dict, hero: dict) -> None:
         elif typ == "healOverTime":
             targets = alive if skill.get("teamTarget") == "party" else [hero]
             for ally in targets:
+                # 存「每秒治疗量」（不含 levelMultiplier，结算时由 heal_hero 施加），每 EFFECT_TICK_MS 结算一次。
                 ally["buffs"].append(
-                    {"type": typ, "value": stats["max_hp"] * value * hero["levelMultiplier"], "until": now + duration}
+                    {"type": typ, "value": stats["max_hp"] * value, "until": now + duration, "acc": 0}
                 )
         elif typ in ("damageReduction", "allDamageBuff", "attackBuff", "critRateBuff"):
             hero["buffs"].append({"type": typ, "value": value, "until": now + duration})
@@ -302,7 +303,7 @@ def cast_skill(state: dict, config: dict, skill: dict) -> None:
     elif effect == "dot":
         per_tick = boss_attack_power(state, config) * potency / 100.0 * TICK / duration_ms
         for hero in alive:
-            hero["dots"].append({"until": now + duration_ms, "damage": per_tick})
+            hero["dots"].append({"until": now + duration_ms, "damage": per_tick, "acc": 0})
     elif effect == "debuff":
         slow = float(skill.get("attackSpeedDebuff", 0.0))
         for hero in alive:
@@ -330,12 +331,28 @@ def step(state: dict, config: dict) -> None:
                 continue
         stats = hero["snapshot"]["stats"]
         hero["mp"] = min(stats["max_mp"], hero["mp"] + stats.get("mp_regen", 0.0) * 0.1)
+        # HOT 结算：每满 EFFECT_TICK_MS 一次性结算（到期补尾窗），总量与逐 100ms 结算一致。
+        for buff in hero["buffs"]:
+            if buff["type"] != "healOverTime":
+                continue
+            buff["acc"] = buff.get("acc", 0) + min(TICK, max(0, buff["until"] - (now - TICK)))
+            if buff["acc"] < EFFECT_TICK_MS and buff["until"] > now:
+                continue
+            window = buff["acc"]
+            buff["acc"] = 0
+            heal_hero(state, hero, buff["value"] * (window / 1000.0))
         hero["buffs"] = [b for b in hero["buffs"] if b["until"] > now]
+        # DOT 结算：同上，每满 EFFECT_TICK_MS 结算一次。
+        for dot in hero["dots"]:
+            dot["acc"] = dot.get("acc", 0) + TICK
+            if dot["acc"] < EFFECT_TICK_MS and dot["until"] > now:
+                continue
+            window = dot["acc"]
+            dot["acc"] = 0
+            damage_hero(state, hero, dot["damage"] * (window / TICK), "持续伤害")
         hero["dots"] = [d for d in hero["dots"] if d["until"] > now]
         hero["slow"] = [s for s in hero["slow"] if s["until"] > now]
         heal_hero(state, hero, stats.get("hp_regen", 0.0) * 0.1)
-        for dot in hero["dots"]:
-            damage_hero(state, hero, dot["damage"], "持续伤害")
         if hero["hp"] > 0:
             auto_actions(state, hero)
 

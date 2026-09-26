@@ -222,6 +222,8 @@ export function estimateDps(
   const basicRate = 1 / basicCd
 
   const attackRate = castRate * doubleCast + basicRate
+  // 装备攻击触发（onAttack proc）只由技能命中触发：期望按「技能出手率」估算（不含普攻）。
+  const procRate = castRate * doubleCast
   // 连击：概率追加一次普攻（普攻与技能独立，附加普攻按同一普攻威力结算）
   const doubleAttack = Math.max(0, stats.termMods.doubleAttackPct ?? 0) / 100
   const extraBasicRate = doubleAttack * basicRate
@@ -229,7 +231,7 @@ export function estimateDps(
     powerAttack(stats) * (potencyPerSec / 100) * damageMult * mult +
     stats.attack * (BASIC_ATTACK_POTENCY / 100) * (basicRate + extraBasicRate) * damageMult * mult
   let dps = Math.max(1, Math.max(gross * 0.1, gross - targetDefense * (attackRate + extraBasicRate)))
-  dps += procDpsBonus(stats, dps, attackRate)
+  dps += procDpsBonus(stats, dps, procRate)
   if (!penalty) return dps
   return Math.max(
     0.01,
@@ -239,8 +241,11 @@ export function estimateDps(
   )
 }
 
-/** 装备触发效果（proc）的期望每秒收益。与后端 `combat_model.py:proc_dps_bonus` 同源。 */
-export function procDpsBonus(stats: HeroStats, baseDps: number, attackRate: number): number {
+/**
+ * 装备触发效果（proc）的期望每秒收益。与后端 `combat_model.py:proc_dps_bonus` 同源。
+ * `procRate` 为**技能出手率**（每秒技能命中次数）——onAttack proc 只由直接伤害技能触发，普攻不计。
+ */
+export function procDpsBonus(stats: HeroStats, baseDps: number, procRate: number): number {
   const proc = (data.combat.proc ?? {}) as {
     burn?: { potencyPct: number; durationSec: number; tickSec: number }
     poison?: { potencyPct: number; durationSec: number; tickSec: number }
@@ -259,14 +264,14 @@ export function procDpsBonus(stats: HeroStats, baseDps: number, attackRate: numb
   ]
   for (const [dot, chancePct] of dotProcs) {
     if (!dot || chancePct <= 0) continue
-    const uptime = Math.min(1, (chancePct / 100) * attackRate * dot.durationSec)
+    const uptime = Math.min(1, (chancePct / 100) * procRate * dot.durationSec)
     extra += uptime * power * (dot.potencyPct / 100)
   }
   const haste = proc.haste
   if (haste) {
     const chance = Math.max(0, stats.termMods.hasteProcPct ?? 0) / 100
     if (chance > 0) {
-      const uptime = Math.min(1, chance * attackRate * haste.durationSec)
+      const uptime = Math.min(1, chance * procRate * haste.durationSec)
       extra += (uptime * haste.attackSpeedPct) / 100 * baseDps
     }
   }
