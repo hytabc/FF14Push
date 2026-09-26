@@ -33,6 +33,13 @@ const stagePct = computed(() => {
   return Math.min(100, Math.round((s.stagePoints / s.stageTarget) * 100))
 })
 
+/** 当前生效的采集 / 生产加成（专用装备 + 紫色附魔 + 食物 / 秘药，与服务端结算同源）。 */
+const bonus = computed(() => state.value?.bonus ?? {})
+function pctLabel(value: number | undefined): string {
+  const v = value ?? 0
+  return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+}
+
 // 称号窗口倒计时
 const nowMs = ref(Date.now())
 let clockTimer: number | null = null
@@ -265,6 +272,10 @@ async function loadBoard(page = 1) {
     <template v-else-if="tab === 'gather'">
       <section class="card p-4 space-y-3">
         <h2 class="text-sm font-semibold text-ink-200">专属采集（第 {{ stage }} 次重建）</h2>
+        <p class="text-[11px] text-ink-400">
+          当前加成（专用装备 / 紫色附魔 / 食物 / 秘药）：产量 {{ pctLabel(bonus.gatherYieldPct) }} ·
+          速度 {{ pctLabel(bonus.gatherSpeedPct) }}
+        </p>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="node in state?.current.gather ?? []"
@@ -339,6 +350,10 @@ async function loadBoard(page = 1) {
             />
           </div>
         </div>
+        <p class="text-[11px] text-ink-400">
+          当前加成（专用装备 / 紫色附魔 / 食物 / 秘药）：速度 {{ pctLabel(bonus.craftSpeedPct) }} ·
+          材料节省 {{ pctLabel(bonus.craftMaterialSavePct) }} · 额外产出 {{ pctLabel(bonus.craftExtraOutputPct) }}
+        </p>
         <div class="grid gap-2 md:grid-cols-2">
           <div
             v-for="p in state?.current.products ?? []"

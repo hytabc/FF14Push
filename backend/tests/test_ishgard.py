@@ -111,6 +111,8 @@ async def test_state_shape_and_naming(auth_client):
     assert body["tools"]["doh"]["level"] == 0 and body["tools"]["dol"]["level"] == 0
     assert len(body["pinkEnchants"]) == 8
     assert body["bag"] == []
+    # 有效加成（专用装备 + 紫色附魔 + 食物 / 秘药）随状态下发，供页面展示
+    assert isinstance(body["bonus"], dict)
 
 
 # ------------------------------------------------------------------ 采集 / 生产 / 提交
@@ -156,6 +158,70 @@ async def test_gather_produce_submit_flow(auth_client, session_factory):
 async def test_gather_rejects_fisher(auth_client):
     resp = await auth_client.post(f"{PREFIX}/gather/session/start", json={"jobId": "FSH"})
     assert resp.status_code == 400
+
+
+async def _use(auth_client, session_factory, user_id: int, kind: str, item_id: str) -> None:
+    async with session_factory() as db:
+        db.add(StackItem(user_id=user_id, kind=kind, item_id=item_id, count=1))
+        await db.commit()
+    used = await auth_client.post("/api/v1/consumable/use", json={"itemId": item_id})
+    assert used.status_code == 200, used.text
+
+
+async def test_state_bonus_merges_gear_and_consumables(auth_client, session_factory):
+    """有效加成 = 专用装备（含紫色附魔）+ 食物 / 秘药，随状态下发。"""
+    user_id = await _user_id(session_factory)
+    await _set_points(session_factory, user_id, 50_000)
+    await _tune_state(session_factory, stage=2, stage_points=0, stage_target=3_000_000)
+    claimed = await auth_client.post(f"{PREFIX}/tool/claim", json={"kind": "dol"})
+    assert claimed.status_code == 200, claimed.text
+    equipped = await auth_client.post(
+        "/api/v1/dohdol/equip", json={"itemId": claimed.json()["itemId"], "slot": "dolTool"}
+    )
+    assert equipped.status_code == 200, equipped.text
+
+    await _use(auth_client, session_factory, user_id, "potion", "p_gatherYieldPct")
+    await _use(auth_client, session_factory, user_id, "food", "f_craftQualityPct")
+
+    body = (await auth_client.get(f"{PREFIX}/state")).json()
+    # 20 级采集主手固定加成 11.52% + 采集产量秘药 30% 合并计入（词条可能更高）
+    assert body["bonus"]["gatherYieldPct"] >= 11.52 + 30.0 - 1e-6
+    # 制造品质料理 4%（与采集加成同源，仅键不同）
+    assert body["bonus"]["craftQualityPct"] >= 4.0
+
+
+async def test_gather_applies_consumable_exp_bonus(auth_client, session_factory):
+    user_id = await _user_id(session_factory)
+    await _use(auth_client, session_factory, user_id, "potion", "p_expGainPct")
+
+    started = await auth_client.post(f"{PREFIX}/gather/session/start", json={"jobId": "MIN"})
+    assert started.status_code == 200, started.text
+    await _rewind_session(session_factory, started.json()["sessionId"])
+    report = await auth_client.post(
+        f"{PREFIX}/gather/session/report", json={"sessionId": started.json()["sessionId"]}
+    )
+    assert report.status_code == 200, report.text
+    sources = {s["label"]: s["pct"] for s in report.json()["xpBreakdown"]["sources"]}
+    assert sources["经验获取秘药"] == pytest.approx(25.0)
+
+
+async def test_produce_applies_consumable_exp_bonus(auth_client, session_factory):
+    user_id = await _user_id(session_factory)
+    await _use(auth_client, session_factory, user_id, "potion", "p_expGainPct")
+    await _add_stack(session_factory, user_id, "s1_m_spruce", 10)
+
+    started = await auth_client.post(
+        f"{PREFIX}/produce/session/start",
+        json={"jobId": "CRP", "recipeId": "s1_p_scaffold", "count": 1},
+    )
+    assert started.status_code == 200, started.text
+    await _rewind_session(session_factory, started.json()["sessionId"])
+    report = await auth_client.post(
+        f"{PREFIX}/produce/session/report", json={"sessionId": started.json()["sessionId"]}
+    )
+    assert report.status_code == 200, report.text
+    sources = {s["label"]: s["pct"] for s in report.json()["xpBreakdown"]["sources"]}
+    assert sources["经验获取秘药"] == pytest.approx(25.0)
 
 
 # ------------------------------------------------------------------ 阶段推进 / 轮次

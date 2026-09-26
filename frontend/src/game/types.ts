@@ -1312,6 +1312,8 @@ export interface IshgardState {
   stageName: string
   myPoints: number
   myRank: { rank: number; points: number }
+  /** 当前生效的采集 / 生产加成（专用装备 + 紫色附魔 + 食物 / 秘药，与结算同源）。 */
+  bonus: Record<string, number>
   titlePeriodEndsAt: number
   titleWindowSeconds: number
   saint: IshgardHolder | null

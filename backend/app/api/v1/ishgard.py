@@ -88,9 +88,11 @@ async def leaderboard(
 
 # ------------------------------------------------------------------ 采集
 @router.post("/gather/session/start")
-async def gather_start(payload: IshgardGatherStartRequest, db: DbSession, user: CurrentUser) -> dict:
+async def gather_start(
+    payload: IshgardGatherStartRequest, db: DbSession, user: CurrentUser, items: CurrentItems
+) -> dict:
     try:
-        result = await ishgard.start_gather(db, user, payload.jobId)
+        result = await ishgard.start_gather(db, user, items, payload.jobId)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()
@@ -117,9 +119,9 @@ async def gather_stop(payload: ActivityStopRequest, db: DbSession, user: Current
 
 # ------------------------------------------------------------------ 钓鱼
 @router.post("/fish/session/start")
-async def fish_start(db: DbSession, user: CurrentUser) -> dict:
+async def fish_start(db: DbSession, user: CurrentUser, items: CurrentItems) -> dict:
     try:
-        result = await ishgard.start_fish(db, user)
+        result = await ishgard.start_fish(db, user, items)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await db.commit()

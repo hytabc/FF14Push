@@ -311,6 +311,27 @@ async def bonus_with_purple(
     return bonus
 
 
+# 食物 / 秘药中对采集 / 生产有意义的效果键（其余如经验走 `effect_sources` 单列明细）。
+_CONSUMABLE_BONUS_STATS = ("gatherYieldPct", "craftQualityPct", "craftRarityPct")
+
+
+async def activity_bonus(
+    db: AsyncSession, user_id: int, items: Sequence[Item]
+) -> dict[str, float]:
+    """采集 / 生产的有效加成 = 专用装备（含紫色附魔）+ 生效中的食物 / 秘药。
+
+    与普通采集 / 生产页面同源口径：装备经 `equipped_bonus`，食物 / 秘药经
+    `consumables.active_effects`，使本页面的展示与实际结算保持一致。
+    """
+    bonus = await bonus_with_purple(db, user_id, items)
+    effects = await consumables.active_effects(db, user_id)
+    for stat in _CONSUMABLE_BONUS_STATS:
+        value = float(effects.get(stat, 0.0))
+        if value:
+            bonus[stat] = bonus.get(stat, 0.0) + value
+    return bonus
+
+
 def _gather_node(stage: int, job_id: str) -> dict[str, Any] | None:
     for entry in stage_def(stage)["gather"]:
         if entry["jobId"] == job_id:
@@ -322,7 +343,9 @@ def _stage_fish(stage: int) -> dict[str, Any]:
     return stage_def(stage)["fish"][0]
 
 
-async def start_gather(db: AsyncSession, user: User, job_id: str) -> dict[str, Any]:
+async def start_gather(
+    db: AsyncSession, user: User, items: Sequence[Item], job_id: str
+) -> dict[str, Any]:
     if job_id not in ("MIN", "BTN"):
         raise ValueError("重建采集仅支持采矿工 / 园艺工")
     state = await get_state(db)
@@ -342,7 +365,8 @@ async def start_gather(db: AsyncSession, user: User, job_id: str) -> dict[str, A
     )
     db.add(session)
     await db.flush()
-    seconds = dohdol_util.gather_seconds_per_action(0.0)
+    bonus = await activity_bonus(db, user.id, items)
+    seconds = dohdol_util.gather_seconds_per_action(bonus.get("gatherSpeedPct", 0.0))
     return {
         "sessionId": session.id,
         "jobId": job_id,
@@ -364,9 +388,8 @@ async def report_gather(
     window = dohdol_util.window_seconds(session.last_report_at, now)
     add_play_ms(user, int(window * 1000))
 
-    bonus = await bonus_with_purple(db, user.id, items)
-    potion = await consumables.gather_bonus(db, user.id)
-    yield_pct = bonus.get("gatherYieldPct", 0.0) + potion.get("gatherYieldPct", 0.0)
+    bonus = await activity_bonus(db, user.id, items)
+    yield_pct = bonus.get("gatherYieldPct", 0.0)
     seconds_per = dohdol_util.gather_seconds_per_action(bonus.get("gatherSpeedPct", 0.0))
 
     total = float(session.credit) + window
@@ -431,7 +454,13 @@ async def report_gather(
     }
 
 
-async def start_fish(db: AsyncSession, user: User) -> dict[str, Any]:
+def _fish_cast_seconds(bonus: dict[str, float]) -> float:
+    """单次抛竿耗时（受专用装备 / 紫色附魔的采集速度加成影响）。"""
+    speed = bonus.get("gatherSpeedPct", 0.0)
+    return max(0.2, float(_cfg()["fish"]["castSeconds"]) / (1.0 + max(0.0, speed) / 100.0))
+
+
+async def start_fish(db: AsyncSession, user: User, items: Sequence[Item]) -> dict[str, Any]:
     state = await get_state(db)
     fish = _stage_fish(int(state.stage))
     level = (await _dohdol_progress(db, user.id, "dol")).level
@@ -447,7 +476,8 @@ async def start_fish(db: AsyncSession, user: User) -> dict[str, Any]:
     )
     db.add(session)
     await db.flush()
-    seconds = float(_cfg()["fish"]["castSeconds"])
+    bonus = await activity_bonus(db, user.id, items)
+    seconds = _fish_cast_seconds(bonus)
     return {
         "sessionId": session.id,
         "stage": int(state.stage),
@@ -465,9 +495,8 @@ async def report_fish(
     window = dohdol_util.window_seconds(session.last_report_at, now)
     add_play_ms(user, int(window * 1000))
 
-    bonus = await bonus_with_purple(db, user.id, items)
-    speed_pct = bonus.get("gatherSpeedPct", 0.0)
-    per_cast = max(0.2, float(_cfg()["fish"]["castSeconds"]) / (1.0 + max(0.0, speed_pct) / 100.0))
+    bonus = await activity_bonus(db, user.id, items)
+    per_cast = _fish_cast_seconds(bonus)
     total = float(session.credit) + window
     casts = min(int(total // per_cast), MAX_ACTIONS_PER_REPORT)
     session.credit = total - casts * per_cast
@@ -548,7 +577,7 @@ async def start_produce(
     )
     db.add(session)
     await db.flush()
-    seconds = _craft_seconds(product, await bonus_with_purple(db, user.id, items))
+    seconds = _craft_seconds(product, await activity_bonus(db, user.id, items))
     return {
         "sessionId": session.id, "jobId": job_id, "recipeId": recipe_id,
         "targetActions": target, "stage": int(state.stage),
@@ -579,7 +608,7 @@ async def report_produce(
     window = dohdol_util.window_seconds(session.last_report_at, now)
     add_play_ms(user, int(window * 1000))
 
-    bonus = await bonus_with_purple(db, user.id, items)
+    bonus = await activity_bonus(db, user.id, items)
     seconds = _craft_seconds(product, bonus)
     target = int(session.target_actions) if session.target_actions is not None else None
     total = float(session.credit) + window
@@ -1073,6 +1102,8 @@ async def build_state(db: AsyncSession, user: User) -> dict[str, Any]:
     stage = int(state.stage)
     sdef = stage_def(stage)
     have = await dohdol_util.stack_counts(db, user.id, ISHGARD_STACK)
+    items = (await db.execute(select(Item).where(Item.user_id == user.id))).scalars().all()
+    bonus = await activity_bonus(db, user.id, items)
 
     saint = await db.get(User, int(state.saint_user_id)) if state.saint_user_id else None
     apostle = await db.get(User, int(state.apostle_user_id)) if state.apostle_user_id else None
@@ -1087,6 +1118,7 @@ async def build_state(db: AsyncSession, user: User) -> dict[str, Any]:
         "stageName": f"第 {stage} 次重建",
         "myPoints": points,
         "myRank": await my_rank(db, user.id),
+        "bonus": {stat: round(value, 2) for stat, value in bonus.items()},
         "titlePeriodEndsAt": float(state.title_period_ends_at or 0),
         "titleWindowSeconds": title_window(),
         "saint": _holder_view(saint, state.saint_since, "天穹圣人") if saint else None,

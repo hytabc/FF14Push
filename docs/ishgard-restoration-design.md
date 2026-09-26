@@ -469,3 +469,4 @@ unique `(round, user_id)`；永久保留。
 6. **词条**：主手装备（神话品阶）沿用专用装备词条池；`重新打造卡` 仅重铸紫色附魔，不动基础属性与普通词条。
 7. **数值落点（可调起始值）**：阶段阈值 `100W / 300W / 800W / 2000W / 5000W`；各阶段产物积分 `20–150`；主手解锁门槛 `5 万 / 25 万 / 80 万 / 200 万 / 500 万`，对应已完成阶段 `1–5`。
 8. **实现位置**：配置 `shared/data/ishgard.json`（双端加载 `shared/schema/{loader.py,index.ts}`）；服务 `backend/app/services/ishgard.py`；接口 `backend/app/api/v1/ishgard.py`（`/api/v1/ishgard`）；称号结算兜底在 `backend/app/ranking_worker.py`；页面 `frontend/src/views/IshgardView.vue` + `stores/ishgard.ts`；表 `ishgard_state` / `ishgard_members` / `ishgard_tools` / `ishgard_contributions`（迁移 `a4c6e8b0d2f4`）。
+9. **加成口径与普通页面一致**：本页采集 / 钓鱼 / 生产复用 `activity_bonus`（专用装备 + 紫色附魔 + 生效中的食物 / 秘药），会话起始节奏也按装备 / 附魔的采集速度计算；`GET /ishgard/state` 额外下发 `bonus`，页面展示当前生效的产量 / 速度 / 材料节省 / 额外产出。产物是固定数值的堆叠物，故「制造品质 / 品阶」不改变其产出（与普通生产中的材料 / 半成品配方一致）。

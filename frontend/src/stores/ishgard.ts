@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { api } from '@/api'
+import { toApiError } from '@/api/client'
 import { sound } from '@/game/audio'
 import { ProgressClock } from '@/game/core/progress'
 import type { ActivityLogEntry, IshgardLeaderboardEntry, IshgardState } from '@/game/types'
@@ -17,9 +18,19 @@ const HIDDEN_REPORT_MS = 5000
 /** 全量状态刷新节流。 */
 const STATE_REFRESH_MS = 5000
 const MAX_LOG = 120
+/** 上报遇到网络抖动 / 服务端临时错误时的重试间隔（按连续失败次数线性退避）。 */
+const REPORT_RETRY_MS = 3000
+/** 连续失败达到该次数仍未成功才收尾，避免一次抖动就静默停掉挂机。 */
+const MAX_REPORT_RETRY = 20
 
 function isPageHidden(): boolean {
   return typeof document !== 'undefined' && document.hidden
+}
+
+/** 网络抖动 / 服务端临时故障（可重试）：其余（会话已结束、认证失效）需要收尾。 */
+function isTransientReportError(error: unknown): boolean {
+  const { status } = toApiError(error)
+  return status === 0 || status === 409 || status === 429 || status >= 500
 }
 
 export type IshgardMode = 'idle' | 'gather' | 'fish' | 'produce'
@@ -54,6 +65,9 @@ export const useIshgardStore = defineStore('ishgard', () => {
   let nextActionAt = 0
   let logSeq = 0
   let lastStateRefreshAt = 0
+  /** 失败重试的退避间隔（毫秒）；0 表示按正常节奏上报。 */
+  let retryDelayMs = 0
+  let reportFailures = 0
 
   const isRunning = computed(() => mode.value !== 'idle')
   const progressPct = computed(() => Math.round(progress.value * 100))
@@ -106,6 +120,8 @@ export const useIshgardStore = defineStore('ishgard', () => {
 
   function startLoop() {
     stopLoop()
+    retryDelayMs = 0
+    reportFailures = 0
     scheduleReport()
     startTicker()
   }
@@ -116,10 +132,11 @@ export const useIshgardStore = defineStore('ishgard', () => {
     const interval = isPageHidden()
       ? Math.min(HIDDEN_REPORT_MS, Math.max(2000, due))
       : Math.min(REPORT_MS, due)
+    // 失败退避优先于正常节奏：网络抖动时按 retryDelayMs 重试，避免猛打接口。
     timer = window.setTimeout(() => {
       timer = null
       void reportOnce()
-    }, Math.max(50, interval))
+    }, Math.max(50, interval, retryDelayMs))
   }
 
   function stopLoop() {
@@ -204,9 +221,27 @@ export const useIshgardStore = defineStore('ishgard', () => {
           syncCycle(r.cycle, rtt)
         }
       }
+      retryDelayMs = 0
+      reportFailures = 0
       refreshStateIfDue(leveledUp)
-    } catch {
-      if (sessionId.value === id) await stop(true)
+    } catch (error) {
+      if (sessionId.value !== id) return
+      if (isTransientReportError(error) && reportFailures < MAX_REPORT_RETRY) {
+        // 网络抖动 / 服务端临时错误：保留服务端会话，退避后重试，不再一次失败就静默停摆。
+        reportFailures += 1
+        retryDelayMs = REPORT_RETRY_MS * reportFailures
+        pushLog(
+          `上报失败，${Math.round(retryDelayMs / 1000)} 秒后重试（${reportFailures}/${MAX_REPORT_RETRY}）`,
+          'system',
+        )
+        return
+      }
+      // 会话已在服务端结束 / 认证失效 / 重试耗尽：收尾并给出可感知的提示（不再静默停止）。
+      const err = toApiError(error)
+      await stop(true)
+      if (err.status !== 401 && err.status !== 403) {
+        toast.push(err.message ? `挂机已中断：${err.message}` : '挂机已中断，请重新开始', 'error')
+      }
     } finally {
       busy.value = false
       if (timer === null && isRunning.value) scheduleReport()
