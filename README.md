@@ -18,7 +18,7 @@
 | 后端 | Python 3.11+ / FastAPI + SQLAlchemy 2.0 (async) + Alembic |
 | 数据库 | 本地开发 SQLite；服务器部署 PostgreSQL 16 |
 | 部署 | 本地一键脚本 `scripts/dev.sh`；服务器 `docker compose`（nginx + API + PG） |
-| 移动端 | Capacitor 8 外壳（WebView 直接加载线上地址），支持 Android / iOS；见「Android 客户端」「iOS 客户端」 |
+| 移动端 | Android / iOS 用 Capacitor 8 外壳，HarmonyOS 用手写 ArkTS 外壳（三者均直接加载线上地址）；见「Android 客户端」「iOS 客户端」「HarmonyOS 客户端」 |
 | 共享层 | `shared/` 单一事实来源：配置 JSON + 双端加载器 |
 
 ---
@@ -36,10 +36,13 @@ FF14Push/
 ├── scripts/dev.sh              ★ 本地一键启动脚本（无需 Docker）
 ├── scripts/build-apk.sh        ★ 构建 Android 安装包（自动探测 JDK / SDK）
 ├── scripts/build-ios.sh        ★ 构建 iOS 安装包（xcodebuild archive → 导出 .ipa）
+├── scripts/build-hap.sh        ★ 构建 HarmonyOS 安装包（hvigorw assembleHap）
 ├── scripts/gen-app-icon.mjs    App 图标 / 启动图生成器
+├── scripts/gen-harmony-icons.mjs  由 assets/ 生成鸿蒙图标
 ├── assets/                     App 图标源图（由上面脚本生成，@capacitor/assets 的输入）
 ├── android/                    Capacitor 生成的 Android 工程（发布签名不入库）
 ├── ios/                        Capacitor 生成的 iOS 工程（签名材料不入库）
+├── harmony/                    HarmonyOS 工程（手写 ArkTS 外壳，签名材料不入库）
 ├── shared/                     ★ 前后端共享配置层（唯一事实来源）
 │   ├── data/*.json           品阶/栏位/职业/底材/词条/怪物/BOSS/地区/副本/箱子/合成/经济/资质/指引
 │   └── schema/
@@ -530,12 +533,13 @@ JBR 25 会让 Gradle 自带的 Groovy 3 报 `Unsupported class file major versio
 **换地址**：改 `capacitor.config.ts` 的默认值，或临时覆盖
 `EORZEA_APP_URL=http://192.168.1.10:19999 npm run app:apk`。
 
-**安全区**：Android 15+ 强制 edge-to-edge，状态栏会压在页面之上，故前端 `style.css` 用
-`[data-app-header]` / `[data-app-footer]` 的 `env(safe-area-inset-*)` 让出上下边距
-（桌面浏览器该值恒为 0）；Capacitor 会把真实状态栏 / 手势条高度注入给 WebView。
-`utils/safeArea.ts` 还会在探测到安全区时给 `<html>` 加 `safe-top` / `safe-bottom`，把页头改成
-实色，避免半透明页头透出 body 顶部渐变、导致状态栏区域与导航条出现色差（桌面端不加这两个 class，
-外观不变）。同一条机制在 iOS 上同样生效。
+**安全区**：全面屏（状态栏 / 底部手势条 / 刘海）的避让统一走 `style.css` 里的 `--app-safe-top` /
+`--app-safe-bottom` / `--app-safe-left` / `--app-safe-right`（取值优先用 Capacitor 注入的
+`--safe-area-inset-*`，没有则回退 `env(safe-area-inset-*)`）。Android 上这一点尤其重要：**WebView 小于
+140 时 `env(safe-area-inset-*)` 取不到正确值**（Chromium 已知问题），所以 `capacitor.config.ts` 显式配
+`SystemBars.insetsHandling: 'css'`，由原生把真实状态栏 / 手势条高度注入成 CSS 变量；`MainActivity` 里另有
+`EdgeToEdge.enable(...)` 让各 Android 版本表现一致。页头、页脚、导航抽屉、提示气泡、掉落气泡、弹窗、
+悬浮窗与各处浮层都已按这套变量避让；桌面浏览器这些值恒为 0，外观不受影响。
 
 **已知限制**：客户端只是 WebView 外壳，本身不缓存游戏本体，断网时进不去；页面内的站外链接
 （如底部备案号）会在同一个 WebView 中打开，用系统返回键退回。
@@ -585,6 +589,42 @@ IOS_TEAM_ID=XXXXXXXXXX IOS_EXPORT_METHOD=ad-hoc npm run app:ios
 
 **已知限制**：与 Android 相同——外壳不缓存游戏本体，断网进不去。另外，用 `server.url` 直接加载线上站点的
 壳应用在 App Store 审核时可能被按「最低功能性」质疑，上架前需自行评估。
+
+---
+
+## HarmonyOS 客户端（可选）
+
+HarmonyOS NEXT 起**不再兼容 Android APK**，所以这里是一个**独立的 HarmonyOS 工程**（`harmony/`）。
+Capacitor 没有鸿蒙支持，因此外壳是手写的 ArkTS + ArkUI `Web` 组件（Stage 模型，API 26），行为与
+Android / iOS 外壳一致：**整屏加载同一个线上地址**，服务端更新后无需重出包。
+
+```bash
+npm run app:icons       # 由 assets/ 生成三端图标（含鸿蒙的 app_icon / icon / startIcon）
+npm run app:hap         # hvigorw 构建 → harmony/entry/build/default/outputs/default/*.hap
+npm run app:open:harmony  # 在访达里打开 harmony/ 目录（用 DevEco Studio 打开该目录即可编辑 / 预览）
+```
+
+**前置条件**：
+
+1. **DevEco Studio**（脚本默认用其自带的 hvigor / SDK / Node，可用 `DEVECO_HOME`、`DEVECO_SDK_HOME` 覆盖）；
+2. **Java 运行时**：打包阶段会调用 Java 程序，脚本会自动挑 DevEco 自带的 JBR（或 `JAVA_HOME` / Homebrew `openjdk@21`）；
+3. **签名**：HAP 必须签名才能装到设备。在 DevEco 里打开 `harmony/` 工程 →
+   *File → Project Structure → Signing Configs* → 勾选 **Automatically generate signature**
+   （需登录华为开发者账号），或手填 `build-profile.json5` 的 `signingConfigs`。
+   未签名时仍会产出 `entry-default-unsigned.hap`——**只能验证编译，装不上设备**。
+
+**版本号**由 `app:hap` 从根 `package.json` 同步进 `harmony/AppScope/app.json5`（`versionName` 取版本号，
+`versionCode` = `major*10000 + minor*100 + patch`），与 Android / iOS 三端口径一致，不要在 DevEco 里手改。
+
+**改线上地址**要同时改两处：`capacitor.config.ts` 的 `server.url`（Android / iOS）与
+`harmony/entry/src/main/ets/pages/Index.ets` 的 `APP_URL`（鸿蒙）。
+
+**全面屏避让**：`Index.ets` 刻意不调 `expandSafeArea`，页面按系统默认布局自然让出顶部状态栏与底部
+手势条（小横条）；网页内部另有 Android / iOS 共用的那套 `--app-safe-*` 适配，两侧叠加不会重复留白。
+
+**已知限制**：与 Apple 相同，`server.url` 壳应用上架华为应用市场可能有「最低功能性」审核风险；
+内部分发（`hdc install` / 应用市场内测）不受影响。想覆盖更多 NEXT 机型时，在 DevEco SDK Manager 里
+补装更低版本 API，再下调 `build-profile.json5` 的 `compatibleSdkVersion`。
 
 ---
 

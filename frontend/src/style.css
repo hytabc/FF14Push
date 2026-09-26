@@ -164,17 +164,35 @@ html {
   right: 0;
   max-height: 42dvh;
   overflow-y: auto;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-bottom: max(12px, var(--app-safe-bottom));
   overflow-wrap: anywhere;
 }
 
-/* 全面屏安全区：Android 客户端（Capacitor）强制 edge-to-edge，状态栏会压在页面之上；
-   header 让出顶部高度，footer 让出手势条高度。桌面浏览器该值恒为 0，不受影响。 */
+/*
+ * 安全区（状态栏 / 手势条 / 刘海）统一来源：
+ *
+ * - Android 客户端：Capacitor 的 SystemBars 插件（insetsHandling: 'css'）会把**真实**
+ *   WindowInsets 注入成 `--safe-area-inset-*`。必须优先用它——Android WebView < 140 有
+ *   Chromium 已知 bug，`env(safe-area-inset-*)` 取不到正确值（见 @capacitor/core 的
+ *   system-bars 文档），只靠 env() 会导致内容钻到状态栏 / 手势条下面。
+ * - iOS 与桌面浏览器：没有注入变量，自动回退到 `env()`（WebKit 支持正确，桌面恒为 0）。
+ *
+ * 变量值以 px 呈现，JS 侧也能用 getComputedStyle 读出来（悬浮窗拖拽约束等）。
+ */
+:root {
+  --app-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --app-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --app-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --app-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+}
+
+/* 全面屏安全区：header 让出顶部状态栏高度，footer 让出底部手势条高度。
+   桌面浏览器该值恒为 0，不受影响。 */
 [data-app-header] {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--app-safe-top);
 }
 [data-app-footer] {
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-bottom: max(12px, var(--app-safe-bottom));
 }
 
 /*
@@ -182,14 +200,14 @@ html {
  * `safe-top` / `safe-bottom`（桌面端没有这两个 class，外观与之前完全一致）。
  * - safe-top：页头改实色 —— 半透明页头会透出 body 顶部的径向渐变，使状态栏区域与下方导航条
  *   出现可见色差；实色后两者完全一致，同时省掉一次 backdrop 模糊计算。
- * - safe-bottom：页脚 / 抽屉让出手势条高度。
+ * - safe-bottom：页脚让出手势条高度。
  */
 html.safe-top [data-app-header] {
   background-color: var(--color-ink-950);
   backdrop-filter: none;
 }
 html.safe-bottom [data-app-footer] {
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-bottom: max(16px, var(--app-safe-bottom));
 }
 
 .tutorial-highlight {

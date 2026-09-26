@@ -7,7 +7,14 @@ const loot = useLootStore()
 </script>
 
 <template>
-  <div class="pointer-events-none fixed bottom-4 right-4 z-[105] flex w-72 flex-col items-end gap-2">
+  <!-- 右下角避让：手势条 / 刘海区域不放内容（--app-safe-* 见 style.css） -->
+  <div
+    class="pointer-events-none fixed z-[105] flex w-72 flex-col items-end gap-2"
+    :style="{
+      bottom: 'calc(1rem + var(--app-safe-bottom))',
+      right: 'calc(1rem + var(--app-safe-right))',
+    }"
+  >
     <TransitionGroup name="bubble">
       <div
         v-for="bubble in loot.bubbles"

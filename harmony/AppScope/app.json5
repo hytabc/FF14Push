@@ -1,0 +1,12 @@
+{
+  "app": {
+    "bundleName": "cn.coldrain.eorzea",
+    "vendor": "coldrain",
+    // versionCode / versionName 由 scripts/build-hap.sh 从根 package.json 同步，不要手改，
+    // 以保持与 Android（versionCode）/ iOS（CURRENT_PROJECT_VERSION）三端口径一致。
+    "versionCode": 10005,
+    "versionName": "1.0.5",
+    "icon": "$media:app_icon",
+    "label": "$string:app_name"
+  }
+}

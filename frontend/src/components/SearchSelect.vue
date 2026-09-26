@@ -16,6 +16,7 @@ export interface SearchOption {
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import ItemIcon from '@/components/ItemIcon.vue'
+import { clampToViewport } from '@/utils/safeArea'
 
 const props = withDefaults(
   defineProps<{
@@ -51,15 +52,20 @@ const filtered = computed(() => {
   return list.slice(0, props.maxVisible)
 })
 
-/** 依据触发框位置计算面板坐标：水平夹进视口，下方空间不足时向上展开。 */
+/** 依据触发框位置计算面板坐标：水平夹进安全区，下方空间不足时向上展开。 */
 function updatePos() {
   const rect = root.value?.getBoundingClientRect()
   if (!rect) return
   const width = Math.max(rect.width, DROPDOWN_MIN_WIDTH)
-  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8))
   const below = rect.bottom + 4
   const flip = below + DROPDOWN_MAX_HEIGHT > window.innerHeight && rect.top - DROPDOWN_MAX_HEIGHT - 4 > 0
-  pos.value = { top: flip ? rect.top - DROPDOWN_MAX_HEIGHT - 4 : below, left, width }
+  const desiredTop = flip ? rect.top - DROPDOWN_MAX_HEIGHT - 4 : below
+  // 统一收进安全区：不让下拉面板落到手势条 / 刘海下面。
+  const { top, left } = clampToViewport(
+    { left: rect.left, top: desiredTop },
+    { width, height: DROPDOWN_MAX_HEIGHT },
+  )
+  pos.value = { top, left, width }
 }
 
 function pick(option: SearchOption) {

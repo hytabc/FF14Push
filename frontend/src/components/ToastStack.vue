@@ -12,7 +12,11 @@ const toneClass: Record<string, string> = {
 </script>
 
 <template>
-  <div class="pointer-events-none fixed inset-x-0 top-3 z-[110] flex flex-col items-center gap-2 px-3">
+  <!-- 顶部避让：全面屏下不让提示压到状态栏（--app-safe-top 见 style.css） -->
+  <div
+    class="pointer-events-none fixed inset-x-0 top-0 z-[110] flex flex-col items-center gap-2 px-3"
+    :style="{ paddingTop: 'max(12px, var(--app-safe-top))' }"
+  >
     <TransitionGroup name="toast">
       <div
         v-for="item in toast.items"

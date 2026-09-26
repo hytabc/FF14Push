@@ -53,10 +53,13 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 | `capacitor.config.ts` | Android / iOS 外壳配置（`server.url` 指向的线上地址、状态栏样式）；换地址改这里，或临时用 `EORZEA_APP_URL` 覆盖 |
 | `android/` | Capacitor 生成的 Android 工程；发布签名 `keystore/` 与 `keystore.properties` 为本机私有、不入库 |
 | `ios/` | Capacitor 生成的 iOS 工程（Xcode 工程 + SPM）；签名材料 `signing.properties` / `*.mobileprovision` / `*.p12` 为本机私有、不入库 |
-| `assets/` | App 图标源图（`scripts/gen-app-icon.mjs` 产出、`@capacitor/assets` 的输入）；`npm run app:icons` 据此重新展开到 `android/app/src/main/res/` 与 `ios/App/App/Assets.xcassets/` |
+| `harmony/` | HarmonyOS 外壳（**不是 Capacitor**，手写 ArkTS + ArkUI `Web` 组件，Stage 模型，API 26）；签名材料 `*.p12` / `*.cer` / `*.p7b` 与 `.hvigor/` 不入库 |
+| `assets/` | App 图标源图（`scripts/gen-app-icon.mjs` 产出、`@capacitor/assets` 的输入）；`npm run app:icons` 据此重新展开到 `android/app/src/main/res/`、`ios/App/App/Assets.xcassets/` 与 `harmony/**/resources/base/media/` |
 | `scripts/build-apk.sh` | 构建 Android 安装包；自动探测 JDK / Android SDK 并校验 JDK 是否可用于 Android 构建 |
 | `scripts/build-ios.sh` | 构建 iOS 安装包（`xcodebuild archive` → 导出 `.ipa`）；自检 Xcode / 团队 ID，导出方式由 `IOS_EXPORT_METHOD` 决定 |
+| `scripts/build-hap.sh` | 构建 HarmonyOS 安装包（`hvigorw assembleHap`）；自检 DevEco / SDK / Java，并把版本号同步进 `harmony/AppScope/app.json5` |
 | `scripts/gen-app-icon.mjs` | App 图标 / 启动图生成器（1024² 图标、2732² 启动图，「母水晶」主题） |
+| `scripts/gen-harmony-icons.mjs` | 由 `assets/` 生成鸿蒙图标（`app_icon` / `icon` / `startIcon`，216²） |
 | `frontend/src/views/` | 游戏页面；`RosterView.vue`、`CoopView.vue`、`ArenaView.vue` 为联机相关入口；`GameTestView.vue` 为「游戏测试」页，用 iframe 内嵌独立单文件小游戏 |
 | `frontend/public/games/` | 独立单文件小游戏静态资源（`ff14-test-game.html`），由 Vite 直接托管，与主游戏进度无关 |
 | `frontend/src/components/` | 物品卡、弹窗、指引等公共 UI |
@@ -146,13 +149,22 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
   - **构建需要完整的 JDK 21–24（必须带 `jlink`）**。Android Studio / IDEA / PyCharm 自带的 JBR 都不行：JBR 25 会让 Gradle 8.14.3 自带的 Groovy 3 报 `Unsupported class file major version 69`；JBR 本身是精简运行时、没有 `jlink`，AGP 的 `JdkImageTransform`（转换 `core-for-system-modules.jar`）会失败。`scripts/build-apk.sh` 已按「版本合适且带 jlink」挑选，报错信息也指向 `brew install openjdk@21`。用 Android Studio 直接构建要把 *Settings → Build Tools → Gradle → Gradle JDK* 指到同一份 JDK。
   - **`android/build.gradle` 里的阿里云镜像必须保留**。`capacitor-android` / `capacitor-cordova-android-plugins` 两个子工程自带 `buildscript` 块，只声明了 `google()` + `mavenCentral()`；国内直连 `repo.maven.apache.org` 会 403，而 Gradle 遇到非 404 响应是直接判失败、不会继续尝试下一个仓库。根工程的 `allprojects` 只覆盖「工程依赖」，覆盖不到子工程的 buildscript 类路径，所以那里额外用了 `gradle.beforeProject` 注入镜像 —— 删掉任何一处都会让构建在依赖解析阶段挂掉。
   - **`versionCode` / `versionName` 由根 `package.json` 推导**（`major*10000 + minor*100 + patch`），不要在 `android/app/build.gradle` 里手写，避免发布时多处版本号漂移。
-  - **前端 `style.css` 里 `[data-app-header]` / `[data-app-footer]` 的 `env(safe-area-inset-*)` 内边距要留着**：targetSdk 36 强制 edge-to-edge，状态栏会压在页面上；桌面浏览器该值为 0，不影响网页版。**全面屏的额外适配走设备级开关**：`frontend/src/utils/safeArea.ts:syncSafeAreaClasses()` 用「高度 = `env(safe-area-inset-*)` 的隐藏探针」量测，>0 时给 `<html>` 加 `safe-top` / `safe-bottom`，由 `style.css` 命中 `html.safe-top [data-app-header]`（改**实色**页头，避免半透明页头透出 body 顶部径向渐变、造成状态栏区域与导航条色差）与 `html.safe-bottom [data-app-footer]`。桌面端没有这两个 class，外观与改动前逐位一致；旋转 / 尺寸变化时重算。
+  - **全面屏（edge-to-edge）避让只有一个数据源：`--app-safe-*`**（定义在 `frontend/src/style.css`，值为 `var(--safe-area-inset-*, env(..., 0px))`）。优先级不能颠倒：**Android 必须用 Capacitor 注入的 `--safe-area-inset-*`** —— Android WebView < 140 有 Chromium 已知 bug，`env(safe-area-inset-*)` 取不到真值（见 `@capacitor/core/system-bars.md`），只靠 `env()` 会让内容钻到状态栏 / 手势条下面。`capacitor.config.ts` 的 `SystemBars.insetsHandling: 'css'` 就是打开这个注入；iOS 与桌面没有注入变量，自动回退 `env()`（WebKit 正常，桌面恒 0）。
+  - **Android 还需在原生侧开 edge-to-edge**：`android/.../MainActivity.java` 的 `onCreate` 里调 `EdgeToEdge.enable(this, SystemBarStyle.dark(...), SystemBarStyle.dark(...))`（Capacitor 8 不会替你调，9 才会）。改这里必须**重打 APK**；只改前端则只需部署（外壳是 `server.url` 加载线上站点）。
+  - **JS 侧统一走 `frontend/src/utils/safeArea.ts`**：`readSafeArea()`（先读注入变量、再退 `env` 探针）、`clampToViewport()`（把 fixed 浮层收进安全区）、`installSafeAreaSync()`（`App.vue` 挂载时安装，含 `MutationObserver` —— 原生注入是**异步**的，必须监听 `<html>` 的 inline style）。改安全区逻辑只改这一个文件。
+  - **新增贴边 UI 必须避让，不要硬编码 `bottom-4` / `top-3`**：现有已适配的是页头（`[data-app-header]` 顶部内边距）、页脚（`[data-app-footer]`）、移动抽屉、`ToastStack`（顶部）、`LootBubbles`（右下）、`Modal`（四边）、`BuffDock`（拖拽夹取）、`InfoTip` / `TermBadges` / `SearchSelect`（浮层夹取）。
   - **图标只能改 `scripts/gen-app-icon.mjs` 后重跑 `npm run app:icons`**（它写 `assets/`，再由 `@capacitor/assets` 展开到 `android/app/src/main/res/`）；直接改 `res/` 里的 PNG 会在下次展开时被覆盖。生成器用「到多边形的有符号距离」做解析式抗锯齿，辉光函数**内部不加亮**（`glowPolygon` 内部距离恒为 0，用 `max(sd,0)` 会得到满强度叠加、把水晶切面冲淡）；金色光环描边在 1024 网格下不能低于约 20，否则缩到 mdpi(48px) 会被抹掉。
   - 发布签名 `android/keystore/` 与 `android/keystore.properties` 是本机私有的，**不要提交**；密钥库是 PKCS12，`keyPassword` 必须与 `storePassword` 相同（Android 会忽略单独的 keypass）。缺失时构建回退 debug 签名。
   - **iOS 工程由 `npx cap add ios` 生成，打包走 `scripts/build-ios.sh`**（`npm run app:ios`）。与 Android 最大的不同是 **iOS 必须有 Apple 签名**：脚本先自检 `xcode-select -p` 是否指向真正的 Xcode（只有 Command Line Tools 时直接报错退出），团队 ID 取 `IOS_TEAM_ID` 或 `ios/signing.properties` 的 `teamId=`，导出方式取 `IOS_EXPORT_METHOD`（`development` / `ad-hoc` / `app-store-connect` / `enterprise`，默认 development）。`ExportOptions.plist` 在构建时生成到 `build/`，**不要把团队 ID 提交进仓库**。
   - **iOS 的版本号与 Android 同源、由脚本注入**：`MARKETING_VERSION` = 根 `package.json` 的版本号，`CURRENT_PROJECT_VERSION` = `major*10000 + minor*100 + patch`；`scripts/build-ios.sh` 通过 `xcodebuild MARKETING_VERSION=... CURRENT_PROJECT_VERSION=...` 传入。**不要在 Xcode 里手改这两个值**，否则会与 Android 端漂移。iOS 走 Swift Package Manager（无 CocoaPods），依赖由 `cap sync ios` 写进 `ios/App/CapApp-SPM/Package.swift`。
   - **图标 / 启动图两端一起展开**：`npm run app:icons` 会 `capacitor-assets generate --android --ios`，iOS 侧写到 `ios/App/App/Assets.xcassets/`。只改了 `assets/` 却没重跑时，iOS 会继续用 Capacitor 默认图标。
   - **`server.url` 壳应用在 App Store 可能被判「最低功能性」**：功能上可用（与 Android 同一套机制），但上架审核有风险，需自行评估；内部分发（ad-hoc / 企业）不受此影响。
+  - **HarmonyOS 外壳不是 Capacitor，是手写的 ArkTS 工程（`harmony/`）**：Capacitor 无鸿蒙支持，故用 ArkUI 的 `Web` 组件整屏加载同一线上地址。地址写在 `harmony/entry/src/main/ets/pages/Index.ets` 的 `APP_URL`，与 `capacitor.config.ts:server.url` **同源**——改线上地址要同时改这两处。Stage 模型 + API 26；`entry/src/main/module.json5` 只申请 `ohos.permission.INTERNET`（与 `GET_NETWORK_INFO`），不含其它权限。
+  - **鸿蒙构建走 DevEco 自带工具链**（`scripts/build-hap.sh`）：默认用 `/Applications/DevEco-Studio.app/Contents` 下的 `tools/hvigor/bin/hvigorw` + `sdk`，可用 `DEVECO_HOME` / `DEVECO_SDK_HOME` 覆盖。**PackageHap 阶段必须有 Java**（打包/签名工具是 Java 程序）——macOS 上若没装系统 JDK，`/usr/bin/java` 只是会报 `Unable to locate a Java Runtime` 的壳，脚本会自动挑 DevEco 自带的 JBR。`build-profile.json5` 里 API 26+ 的 `compatibleSdkVersion` / `targetSdkVersion` 必须是**纯版本字符串 `"26.0.0"`**（API 10–25 才是 `'5.0.0(12)'` 那种带括号形式，写错会直接报 00306042）；`modelVersion` 必须是 `6.0.0`，且 `hvigor/hvigor-config.json5` 与根 `oh-package.json5` 两处要一致。
+  - **鸿蒙版本号同样由 `build-hap.sh` 从根 `package.json` 同步**（写 `harmony/AppScope/app.json5` 的 `versionName` / `versionCode`，规则同 Android 的 `major*10000+minor*100+patch`），不要在 DevEco 里手改。
+  - **鸿蒙签名材料不入库**（`*.p12` / `*.cer` / `*.p7b`、`.hvigor/`、`oh_modules/`、`local.properties`）：在 DevEco 里「自动签名」（需华为开发者账号）或手填 `build-profile.json5` 的 `signingConfigs`；未签名时 hvigor 仍产出 `entry-default-unsigned.hap`（可编译、**装不上设备**），脚本会把这个区别打印出来。
+  - **鸿蒙的全面屏避让靠系统默认布局**：`Index.ets` 刻意不调 `expandSafeArea`，内容天然让开状态栏与底部手势条（小横条）；网页内另有 `--app-safe-*` 那一套（此时 insets 为 0）。两套叠加即可，不要给 Web 组件再加 `expandSafeArea`。
+  - **HarmonyOS NEXT（API 12+）不再兼容 Android APK**：纯血鸿蒙设备只能装 HAP，HarmonyOS 4.x 及以下继续用 APK。`server.url` 壳应用在华为应用市场与 Apple 一样存在「最低功能性」审核风险。
 
 ## 本地开发
 

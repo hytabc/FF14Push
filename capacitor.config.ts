@@ -30,8 +30,15 @@ const config: CapacitorConfig = {
   plugins: {
     // 本作只有深色皮肤，状态栏 / 手势条图标固定用浅色（默认识别系统夜间模式，
     // 白天会给出深色图标，压在深色页面上会看不见）。
+    //
+    // insetsHandling: 'css' —— Android WebView < 140 存在 Chromium 已知 bug，
+    // `env(safe-area-inset-*)` 取不到真实值；此模式由原生把真实 WindowInsets 注入成
+    // CSS 变量 `--safe-area-inset-top/right/bottom/left`，前端据此避让状态栏与手势条。
+    // initialViewportFitValueHint: 'cover' —— 首帧就按 edge-to-edge 布局，避免启动跳动。
     SystemBars: {
       style: 'DARK',
+      insetsHandling: 'css',
+      initialViewportFitValueHint: 'cover',
     },
   },
 }

@@ -1,0 +1,15 @@
+# Hvigor / ohpm 本地状态
+.hvigor/
+oh_modules/
+local.properties
+
+# 构建产物（根 .gitignore 已含 build/，此处仅作本工程内自洽说明）
+entry/build/
+
+# 签名材料（本机私有，同 android/keystore 与 ios/signing.properties）
+signing.properties
+*.p12
+*.cer
+*.p7b
+*.csr
+*.mobileprovision

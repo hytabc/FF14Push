@@ -6,6 +6,7 @@ import type { ActiveConsumable } from '@/game/types'
 import { useDohDolStore } from '@/stores/dohdol'
 import { useGameStore } from '@/stores/game'
 import { consumableBonus } from '@/utils/consumables'
+import { clampToViewport, readSafeArea } from '@/utils/safeArea'
 
 /**
  * 食物 / 秘药 BUFF 悬浮窗：全站常驻，可拖动、可最小化，位置与折叠状态记在 localStorage。
@@ -106,12 +107,9 @@ function clampPos() {
   if (!current) return
   const w = el.value?.offsetWidth ?? 190
   const h = el.value?.offsetHeight ?? 44
-  const maxX = Math.max(MARGIN, window.innerWidth - w - MARGIN)
-  const maxY = Math.max(MARGIN, window.innerHeight - h - MARGIN)
-  pos.value = {
-    x: Math.min(Math.max(MARGIN, current.x), maxX),
-    y: Math.min(Math.max(MARGIN, current.y), maxY),
-  }
+  // 收进安全区：不让悬浮窗被状态栏 / 手势条 / 刘海盖住（桌面安全区为 0，等价于原来的行为）。
+  const clamped = clampToViewport({ left: current.x, top: current.y }, { width: w, height: h }, MARGIN)
+  pos.value = { x: clamped.left, y: clamped.top }
 }
 
 let dragging = false
@@ -151,7 +149,14 @@ function toggleCollapsed() {
 let tickTimer: number | undefined
 
 onMounted(() => {
-  if (!pos.value) pos.value = { x: MARGIN + 4, y: Math.max(MARGIN, window.innerHeight - 180) }
+  if (!pos.value) {
+    // 默认落在左下角，且让出状态栏 / 手势条（安全区在全面屏上非 0）。
+    const area = readSafeArea()
+    pos.value = {
+      x: area.left + MARGIN + 4,
+      y: Math.max(area.top + MARGIN, window.innerHeight - area.bottom - 180),
+    }
+  }
   clampPos()
   window.addEventListener('resize', clampPos)
   tickTimer = window.setInterval(() => (nowMs.value = Date.now()), 1000)
@@ -196,7 +201,11 @@ watch(
     v-if="buffs.length"
     ref="el"
     class="fixed z-[60] select-none"
-    :style="pos ? { left: `${pos.x}px`, top: `${pos.y}px` } : { left: '12px', bottom: '96px' }"
+    :style="
+      pos
+        ? { left: `${pos.x}px`, top: `${pos.y}px` }
+        : { left: 'calc(12px + var(--app-safe-left))', bottom: 'calc(96px + var(--app-safe-bottom))' }
+    "
   >
     <div class="overflow-hidden rounded-lg border border-emerald-500/30 bg-ink-950/90 shadow-lg backdrop-blur">
       <div

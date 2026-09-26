@@ -29,12 +29,18 @@ watch(
     <Transition name="fade">
       <div
         v-if="open"
-        class="fixed inset-0 flex items-center justify-center bg-black/60 p-4"
-        :style="{ zIndex }"
+        class="fixed inset-0 flex items-center justify-center bg-black/60"
+        :style="{
+          zIndex,
+          paddingTop: 'max(1rem, var(--app-safe-top))',
+          paddingBottom: 'max(1rem, var(--app-safe-bottom))',
+          paddingLeft: 'max(1rem, var(--app-safe-left))',
+          paddingRight: 'max(1rem, var(--app-safe-right))',
+        }"
         @click.self="emit('close')"
       >
         <div
-          class="flex max-h-[calc(100vh-2rem)] w-full animate-rise flex-col p-5"
+          class="flex max-h-full w-full animate-rise flex-col p-5"
           :class="[blur ? 'card' : 'card-flat', maxWidth]"
         >
           <header v-if="title" class="mb-3 flex shrink-0 items-center justify-between">

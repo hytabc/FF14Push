@@ -19,7 +19,7 @@ import { useGameStore } from '@/stores/game'
 import { useSoundStore } from '@/stores/sound'
 import { useTreasureStore } from '@/stores/treasure'
 import { groupForPath, itemForPath, visibleGroups } from '@/navigation'
-import { syncSafeAreaClasses } from '@/utils/safeArea'
+import { installSafeAreaSync } from '@/utils/safeArea'
 import { APP_VERSION } from '@/version'
 
 const announcement = useAnnouncementStore()
@@ -154,6 +154,9 @@ function unlockSound() {
   window.removeEventListener('keydown', unlockSound)
 }
 
+/** 全面屏安全区同步的清理函数（见 utils/safeArea.ts）。 */
+let disposeSafeAreaSync: (() => void) | undefined
+
 onMounted(async () => {
   if (auth.isLoggedIn) {
     await auth.loadProfile()
@@ -163,22 +166,19 @@ onMounted(async () => {
   heartbeatTimer = window.setInterval(heartbeat, HEARTBEAT_MS)
   window.addEventListener('pointerdown', unlockSound)
   window.addEventListener('keydown', unlockSound)
-  // 全面屏适配：探测安全区并同步 <html> class，旋转 / 尺寸变化后重算。
-  syncSafeAreaClasses()
-  window.addEventListener('resize', syncSafeAreaClasses)
-  window.addEventListener('orientationchange', syncSafeAreaClasses)
   document.addEventListener('click', onDocumentClick)
   document.addEventListener('keydown', onKeydown)
+  // 全面屏适配：读安全区（原生注入优先）并同步 <html> class，尺寸/旋转/注入变化时重算。
+  disposeSafeAreaSync = installSafeAreaSync()
 })
 
 onUnmounted(() => {
   if (heartbeatTimer) window.clearInterval(heartbeatTimer)
   window.removeEventListener('pointerdown', unlockSound)
   window.removeEventListener('keydown', unlockSound)
-  window.removeEventListener('resize', syncSafeAreaClasses)
-  window.removeEventListener('orientationchange', syncSafeAreaClasses)
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('keydown', onKeydown)
+  disposeSafeAreaSync?.()
   document.documentElement.style.overflow = ''
 })
 
@@ -290,7 +290,7 @@ async function logout() {
         >
           <div
             class="flex items-center gap-2 border-b border-ink-700 px-3 py-3"
-            :style="{ paddingTop: 'max(12px, env(safe-area-inset-top, 0px))' }"
+            :style="{ paddingTop: 'max(12px, var(--app-safe-top))' }"
           >
             <span class="text-sm font-bold tracking-wide text-amber-200">导航</span>
             <span class="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[10px] text-ink-400">
@@ -342,7 +342,7 @@ async function logout() {
 
           <div
             class="space-y-2 border-t border-ink-700 px-3 py-3 text-xs"
-            :style="{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))' }"
+            :style="{ paddingBottom: 'max(12px, var(--app-safe-bottom))' }"
           >
             <div class="flex items-center justify-between gap-2 text-ink-300">
               <RouterLink to="/settings#profile" class="min-w-0 truncate hover:text-white" @click="closeDrawer">

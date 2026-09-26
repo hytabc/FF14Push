@@ -14,12 +14,14 @@
     "typecheck": "npm run typecheck -w frontend",
     "gen:icons": "node scripts/gen-icons.mjs",
     "fetch:jobs": "node scripts/fetch-job-assets.mjs",
-    "app:icons": "node scripts/gen-app-icon.mjs && capacitor-assets generate --android --ios",
+    "app:icons": "node scripts/gen-app-icon.mjs && capacitor-assets generate --android --ios && node scripts/gen-harmony-icons.mjs",
     "app:sync": "npm run --silent build && cap sync",
     "app:apk": "./scripts/build-apk.sh",
     "app:ios": "./scripts/build-ios.sh",
+    "app:hap": "./scripts/build-hap.sh",
     "app:open": "cap open android",
-    "app:open:ios": "cap open ios"
+    "app:open:ios": "cap open ios",
+    "app:open:harmony": "open harmony"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

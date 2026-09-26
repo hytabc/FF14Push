@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
+import { clampToViewport, readSafeArea } from '@/utils/safeArea'
+
 defineProps<{ title?: string }>()
 
 const open = ref(false)
 const btn = ref<HTMLElement | null>(null)
 const pos = ref({ top: 0, left: 0, width: 320 })
+
+/** 面板高度的估算值，仅用于「下方放不下就向上弹」与安全区夹取。 */
+const PANEL_HEIGHT = 200
 
 function toggle() {
   if (open.value) {
@@ -14,12 +19,13 @@ function toggle() {
   }
   const rect = btn.value?.getBoundingClientRect()
   if (rect) {
-    const width = Math.min(320, window.innerWidth - 16)
-    const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8))
-    const top =
-      rect.bottom + 6 + 200 > window.innerHeight
-        ? Math.max(8, rect.top - 206)
-        : rect.bottom + 6
+    const area = readSafeArea()
+    // 宽度同时避开左右刘海（横屏）。
+    const width = Math.min(320, window.innerWidth - area.left - area.right - 16)
+    const below = rect.bottom + 6
+    const desiredTop = below + PANEL_HEIGHT > window.innerHeight ? rect.top - 6 - PANEL_HEIGHT : below
+    // 统一收进安全区：不让说明卡被状态栏 / 手势条 / 刘海遮住。
+    const { top, left } = clampToViewport({ left: rect.left, top: desiredTop }, { width, height: PANEL_HEIGHT })
     pos.value = { top, left, width }
   }
   open.value = true

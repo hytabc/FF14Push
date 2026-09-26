@@ -1,0 +1,4 @@
+# 混淆规则（当前关闭混淆，release 构建走 build-profile.json5 里的 ruleOptions.enable=false）。
+# 若将来开启混淆，注意保留 Web / ArkUI 相关入口不被改写。
+-enable-property-obfuscation
+-enable-toplevel-obfuscation

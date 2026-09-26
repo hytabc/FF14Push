@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TermEntry } from '@/game/types'
 import { equipEffectExplain } from '@/game/explanations'
 import { termCategoryName, termLabel, termQualityClass, termRange } from '@/utils/format'
+import { clampToViewport, readSafeArea } from '@/utils/safeArea'
 
 const props = defineProps<{ terms: TermEntry[] }>()
 
@@ -12,6 +13,9 @@ const debuffs = computed(() => props.terms.filter((t) => t.type === 'debuff'))
 
 const active = ref<TermEntry | null>(null)
 const pos = ref({ top: 0, left: 0, width: 240 })
+
+/** 弹层高度的估算值，仅用于「下方放不下就向上弹」与安全区夹取。 */
+const PANEL_HEIGHT = 150
 
 const activeRange = computed(() => (active.value ? termRange(active.value.id) : null))
 const activeExplain = computed(() => (active.value ? equipEffectExplain(active.value.stat) : null))
@@ -23,10 +27,12 @@ function toggle(term: TermEntry, event: MouseEvent) {
     return
   }
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const width = Math.min(240, window.innerWidth - 16)
-  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8))
-  const top =
-    rect.bottom + 6 + 150 > window.innerHeight ? Math.max(8, rect.top - 156) : rect.bottom + 6
+  const area = readSafeArea()
+  const width = Math.min(240, window.innerWidth - area.left - area.right - 16)
+  const below = rect.bottom + 6
+  const desiredTop = below + PANEL_HEIGHT > window.innerHeight ? rect.top - 6 - PANEL_HEIGHT : below
+  // 统一收进安全区：不让词条弹层被状态栏 / 手势条 / 刘海遮住。
+  const { top, left } = clampToViewport({ left: rect.left, top: desiredTop }, { width, height: PANEL_HEIGHT })
   pos.value = { top, left, width }
   active.value = term
 }
