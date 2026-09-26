@@ -3,7 +3,21 @@
     // 签名配置留空：签名材料（.p12 / .cer / .p7b）是本机私有的，不入库。
     // 在 DevEco Studio 里打开本工程后点「自动签名」（需登录华为开发者账号），
     // 或手动填 signingConfigs；未签名时 hvigor 仍会产出 unsigned HAP（可编译、不可安装）。
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/hytabc/.ohos/config/default_harmony_GxCuLYzt9AtH0UG9_ifIzxftWxFrOz7sIF-DFIdcUJE=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B85ECA9DC769BFE3519A757BC029429F998D0D06C10CBE9FFDA8B885B59AF2473D89E42548DD79A",
+          "profile": "/Users/hytabc/.ohos/config/default_harmony_GxCuLYzt9AtH0UG9_ifIzxftWxFrOz7sIF-DFIdcUJE=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/hytabc/.ohos/config/default_harmony_GxCuLYzt9AtH0UG9_ifIzxftWxFrOz7sIF-DFIdcUJE=.p12",
+          "storePassword": "0000001B49EE7461D061CD7D2787750E3266BB0E2661004165F3D5CF8C9A22314370A6EAE3A0404C63A1AF"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",

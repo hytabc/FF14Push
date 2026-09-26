@@ -65,7 +65,7 @@ if [[ -z "$JAVA_HOME" ]]; then
   die "找不到完整可用的 JDK ${JDK_MIN}–${JDK_MAX}（需要自带 jlink）。安装一份即可：brew install openjdk@21"
 fi
 export JAVA_HOME
-log "JDK: $JAVA_HOME（$(jdk_major "$JAVA_HOME")）"
+log "JDK: ${JAVA_HOME}（$(jdk_major "$JAVA_HOME")）"
 
 # ── Android SDK ───────────────────────────────────────────────────────
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
@@ -98,7 +98,7 @@ log "Gradle assembleRelease…"
 
 APK="android/app/build/outputs/apk/release/app-release.apk"
 [[ -f "$APK" ]] || die "未找到产物 $APK"
-log "完成：$APK（$(du -h "$APK" | cut -f1)）"
+log "完成：${APK}（$(du -h "$APK" | cut -f1)）"
 
 # 顺带打印签名信息，方便确认用的是发布密钥而不是 debug 密钥。
 if command -v apksigner >/dev/null 2>&1; then

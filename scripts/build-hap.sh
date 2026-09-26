@@ -29,9 +29,9 @@ log() { printf '\033[36m[build-hap]\033[0m %s\n' "$*"; }
 die() { printf '\033[31m[build-hap] %s\033[0m\n' "$*" >&2; exit 1; }
 
 # ── 工具链自检 ────────────────────────────────────────────────────────
-[[ -x "$HVIGORW" ]] || die "找不到 hvigorw（$HVIGORW）。
+[[ -x "$HVIGORW" ]] || die "找不到 hvigorw（${HVIGORW}）。
      请安装 DevEco Studio，或用 DEVECO_HOME 指向其安装目录（Contents 一级）。"
-[[ -d "$SDK_HOME" ]] || die "找不到 DevEco SDK（$SDK_HOME）。可用 DEVECO_SDK_HOME 指定。"
+[[ -d "$SDK_HOME" ]] || die "找不到 DevEco SDK（${SDK_HOME}）。可用 DEVECO_SDK_HOME 指定。"
 [[ -d "$PROJECT_DIR" ]] || die "缺少鸿蒙工程 $PROJECT_DIR"
 [[ -f "$APP_JSON" ]] || die "缺少 $APP_JSON"
 log "hvigor：$HVIGORW"
@@ -43,7 +43,7 @@ log "SDK：$SDK_HOME"
 VERSION="$(node -p "require('./package.json').version")"
 IFS=. read -r V_MAJOR V_MINOR V_PATCH <<<"$VERSION"
 BUILD_NUMBER="$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))"
-log "版本：$VERSION（versionCode $BUILD_NUMBER）"
+log "版本：${VERSION}（versionCode ${BUILD_NUMBER}）"
 
 VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" python3 - "$APP_JSON" <<'PY'
 import os, re, sys
@@ -118,7 +118,7 @@ log "hvigorw $*"
 
 HAP="$(find "$PROJECT_DIR/entry/build" -name '*.hap' -type f 2>/dev/null | sort | tail -1 || true)"
 [[ -n "$HAP" ]] || die "未找到 HAP 产物，请检查上面的 hvigor 日志。"
-log "完成：$HAP（$(du -h "$HAP" | cut -f1)）"
+log "完成：${HAP}（$(du -h "$HAP" | cut -f1)）"
 
 case "$HAP" in
   *unsigned*)

@@ -77,7 +77,7 @@ while [[ $# -gt 0 ]]; do
       for p in "${requested[@]}"; do
         case "$p" in
           android|ios|hap) SELECTED+=("$p") ;;
-          *) echo2 "未知平台：$p（可选 android / ios / hap）"; exit 2 ;;
+          *) echo2 "未知平台：${p}（可选 android / ios / hap）"; exit 2 ;;
         esac
       done
       shift
@@ -157,14 +157,14 @@ preflight_android() {
   local missing=()
   local jdk sdk
   if jdk="$(pick_android_jdk)"; then
-    ok "Android" "JDK $(java_major "$jdk")（$jdk）"
+    ok "Android" "JDK $(java_major "$jdk")（${jdk}）"
   else
     bad "Android" "找不到完整可用的 JDK 21–24（需带 jlink）"
     add_gap android-jdk
     missing+=("jdk")
   fi
   if sdk="$(android_sdk)"; then
-    ok "Android" "Android SDK（$sdk）"
+    ok "Android" "Android SDK（${sdk}）"
   else
     bad "Android" "找不到 Android SDK"
     add_gap android-sdk
@@ -238,7 +238,7 @@ preflight_hap() {
   local sdk="${DEVECO_SDK_HOME:-$deveco/sdk}"
 
   if [[ -x "$hvigorw" && -d "$sdk" ]]; then
-    ok "HarmonyOS" "DevEco 工具链就绪（hvigor + SDK：$sdk）"
+    ok "HarmonyOS" "DevEco 工具链就绪（hvigor + SDK：${sdk}）"
   else
     bad "HarmonyOS" "找不到 DevEco（hvigor / SDK）。可用 DEVECO_HOME 指定安装目录"
     add_gap hap-toolchain
@@ -247,7 +247,7 @@ preflight_hap() {
 
   local java
   if java="$(pick_any_java)"; then
-    ok "HarmonyOS" "Java 运行时（$java）"
+    ok "HarmonyOS" "Java 运行时（${java}）"
   else
     bad "HarmonyOS" "找不到 Java 运行时（打包阶段需要）"
     add_gap java

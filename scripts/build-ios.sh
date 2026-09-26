@@ -46,7 +46,7 @@ esac
 command -v xcodebuild >/dev/null 2>&1 || die "找不到 xcodebuild。"
 log "Xcode：$(xcodebuild -version | head -1)"
 
-[[ -d "$PROJECT" ]] || die "缺少 iOS 工程 $PROJECT（先执行：npx cap add ios）"
+[[ -d "$PROJECT" ]] || die "缺少 iOS 工程 ${PROJECT}（先执行：npx cap add ios）"
 
 # ── 版本号：与 Android 同源，取根目录 package.json ────────────────────
 # MARKETING_VERSION 取完整版本号，CURRENT_PROJECT_VERSION 取 major*10000+minor*100+patch，
@@ -54,7 +54,7 @@ log "Xcode：$(xcodebuild -version | head -1)"
 VERSION="$(node -p "require('./package.json').version")"
 IFS=. read -r V_MAJOR V_MINOR V_PATCH <<<"$VERSION"
 BUILD_NUMBER="$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))"
-log "版本：$VERSION（build $BUILD_NUMBER）"
+log "版本：${VERSION}（build ${BUILD_NUMBER}）"
 
 # ── 签名团队 ──────────────────────────────────────────────────────────
 TEAM="${IOS_TEAM_ID:-}"
@@ -71,7 +71,7 @@ fi
 METHOD="${IOS_EXPORT_METHOD:-development}"
 case "$METHOD" in
   development | ad-hoc | app-store-connect | enterprise) ;;
-  *) die "未知的 IOS_EXPORT_METHOD：$METHOD（可选 development | ad-hoc | app-store-connect | enterprise）" ;;
+  *) die "未知的 IOS_EXPORT_METHOD：${METHOD}（可选 development | ad-hoc | app-store-connect | enterprise）" ;;
 esac
 
 # ── 前端产物 + 同步 ───────────────────────────────────────────────────
@@ -118,7 +118,7 @@ xcodebuild \
   printf '</dict>\n</plist>\n'
 } > "$EXPORT_PLIST"
 
-log "xcodebuild -exportArchive（method=$METHOD）…"
+log "xcodebuild -exportArchive（method=${METHOD}）…"
 xcodebuild -exportArchive \
   -archivePath "$ARCHIVE" \
   -exportOptionsPlist "$EXPORT_PLIST" \
@@ -130,7 +130,7 @@ if [[ -z "$IPA" ]]; then
      常见原因：Xcode 未登录 Apple ID；账号没有该导出方式所需的证书 / 描述文件；
      ad-hoc 未登记设备 UDID。可在 Xcode 打开 ios/App/App.xcodeproj 用图形界面排查。"
 fi
-log "完成：$IPA（$(du -h "$IPA" | cut -f1)）"
+log "完成：${IPA}（$(du -h "$IPA" | cut -f1)）"
 
 # 顺带打印签名信息，确认用的是发布证书而不是开发证书。
 if command -v codesign >/dev/null 2>&1; then

@@ -63,7 +63,7 @@ EOF
 # ──────────────────────────── 环境文件 ────────────────────────────
 if [ ! -f "$ENV_FILE" ]; then
   cp "$ROOT_DIR/.env.local.example" "$ENV_FILE"
-  ok "已生成 $ENV_FILE（本地默认使用 SQLite）"
+  ok "已生成 ${ENV_FILE}（本地默认使用 SQLite）"
 fi
 
 set -a
@@ -111,7 +111,7 @@ ensure_backend() {
   if [ ! -d "$BACKEND_DIR/.venv" ]; then
     local py
     py="$(pick_python)" || die "未找到 Python 3.11+，请先安装（macOS: brew install python@3.12）"
-    info "创建虚拟环境（$py）"
+    info "创建虚拟环境（${py}）"
     "$py" -m venv "$BACKEND_DIR/.venv"
   fi
 
@@ -163,7 +163,7 @@ reset_database() {
       ok "已删除本地 SQLite 数据库：$db_file"
       ;;
     *)
-      warn "DATABASE_URL 非 SQLite（$DATABASE_URL），--reset 不会清空远程数据库，已跳过"
+      warn "DATABASE_URL 非 SQLite（${DATABASE_URL}），--reset 不会清空远程数据库，已跳过"
       ;;
   esac
 }
@@ -361,6 +361,6 @@ case "$MODE" in
     usage
     ;;
   *)
-    die "未知参数：$MODE（可用：all / --reset / backend / frontend / test / help）"
+    die "未知参数：${MODE}（可用：all / --reset / backend / frontend / test / help）"
     ;;
 esac
