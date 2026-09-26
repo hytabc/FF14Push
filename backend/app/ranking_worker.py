@@ -13,6 +13,7 @@ import time
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal
+from app.services.ishgard import settle_titles
 from app.services.ranking import refresh_all_rankings
 from app.services.retention import run_retention
 
@@ -30,6 +31,15 @@ async def refresh_once() -> dict:
     return counts
 
 
+async def settle_ishgard_titles_once() -> None:
+    """兜底结算「重建伊修加德」的周期称号（窗口到点即换人，无人读状态也按时发）。"""
+    async with SessionLocal() as db:
+        result = await settle_titles(db)
+        if result.get("settled"):
+            await db.commit()
+            log.info('ishgard titles settled: %s', result)
+
+
 async def retain_once() -> dict:
     async with SessionLocal() as db:
         return await run_retention(db)
@@ -45,6 +55,11 @@ async def main() -> None:
                 log.info('rankings refreshed: %s', counts)
         except Exception:  # noqa: BLE001
             log.exception('Failed to refresh rankings')
+
+        try:
+            await settle_ishgard_titles_once()
+        except Exception:  # noqa: BLE001 - 称号结算失败不应中断刷新循环
+            log.exception('Failed to settle ishgard titles')
 
         now = time.monotonic()
         if settings.retention_enabled and now >= next_retention:

@@ -154,6 +154,34 @@ async def evaluate_coop_titles(db: AsyncSession, user_id: int) -> list[str]:
     return new
 
 
+async def evaluate_palace_titles(db: AsyncSession, user_id: int) -> list[str]:
+    """死者宫殿称号：按 `PalaceProfile.floor10_clears` 补发。
+
+    条件为 `condition.type == "palace_clear"` + `count`（通关第 10 层次数达到 count）。
+    幂等：只补发缺失的称号；`matches()` 对该类型返回 False，不干扰确定性条件。
+    """
+    from app.models import PalaceProfile
+
+    profile = await db.scalar(select(PalaceProfile).where(PalaceProfile.user_id == user_id))
+    clears = int(profile.floor10_clears or 0) if profile is not None else 0
+    if clears <= 0:
+        return []
+    existing = set(
+        (
+            await db.execute(select(UserTitle.title_id).where(UserTitle.user_id == user_id))
+        ).scalars().all()
+    )
+    new: list[str] = []
+    for title in CONFIG.titles["titles"]:
+        condition = title.get("condition", {})
+        if condition.get("type") != "palace_clear" or title["id"] in existing:
+            continue
+        if clears >= int(condition.get("count", 1)):
+            db.add(UserTitle(user_id=user_id, title_id=title["id"]))
+            new.append(title["id"])
+    return new
+
+
 def random_drop_titles(event: str) -> list[dict[str, Any]]:
     """按事件列出彩蛋称号（`condition.type == "random_drop"` 且 event 匹配）。"""
     return [

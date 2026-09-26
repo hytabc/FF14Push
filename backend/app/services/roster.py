@@ -78,12 +78,21 @@ async def end_treasure_runs(db, user_id):
         TreasureRun.user_id == user_id, TreasureRun.status != STATUS_ENDED
     ).values(status=STATUS_ENDED, ended_reason='superseded'))
 
+async def end_palace_runs(db, user_id):
+    """结束该账号进行中的死者宫殿 run（已获得的成长点 / 代币 / 兑换奖励不受影响）。"""
+    from app.models.palace import ENDED, PalaceRun
+    await db.execute(update(PalaceRun).where(
+        PalaceRun.user_id == user_id, PalaceRun.status != ENDED
+    ).values(status=ENDED, ended_reason='superseded'))
+
 async def stop_activities(db, user_id):
     now = datetime.now(timezone.utc)
     for model in (BattleSession, RaidSession, ActivitySession):
         await db.execute(update(model).where(model.user_id == user_id, model.active.is_(True)).values(active=False, ended_at=now))
     # 挖宝：开始其它活动 / 切换英雄 / 解雇时，进行中的副本一并结束。
     await end_treasure_runs(db, user_id)
+    # 死者宫殿：与其它活动互斥，进入任何其它活动即结束本次 run。
+    await end_palace_runs(db, user_id)
 
 async def owned_hero(db, user_id, hero_id):
     hero = await db.scalar(select(Hero).where(Hero.user_id == user_id, Hero.id == hero_id))

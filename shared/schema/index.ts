@@ -37,6 +37,10 @@ import materiaJson from '../data/materia.json'
 import farmJson from '../data/farm.json'
 import treasureJson from '../data/treasure.json'
 import marketReferenceJson from '../data/market-reference.json'
+import ishgardJson from '../data/ishgard.json'
+import palaceJson from '../data/palace.json'
+import palaceGrowthJson from '../data/palace-growth.json'
+import palaceEventsJson from '../data/palace-events.json'
 
 export type RarityId = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type Category = 'weapon' | 'armor' | 'accessory'
@@ -576,6 +580,43 @@ export interface SeedDef {
   yield: { type: 'gold' | 'heroLevel'; amount?: number; levels?: number }
   desc: string
   sell: number
+}
+
+/** 死者宫殿局外成长树的单个节点。 */
+export interface PalaceGrowthNode {
+  id: string
+  tier: number
+  name: string
+  cost: number
+  requires: string | null
+  effect: { stat: string; value: number; mode: 'add' | 'mul' }
+}
+
+export interface PalaceGrowthCategory {
+  id: string
+  name: string
+  desc: string
+  nodes: PalaceGrowthNode[]
+}
+
+/** 副本内持久 BUFF。 */
+export interface PalaceBuffDef {
+  id: string
+  name: string
+  stat: string
+  value: number
+  desc: string
+}
+
+export interface PalaceEventDef {
+  id: string
+  name: string
+  type: string
+  weight: number
+  floorRange: [number, number]
+  tag: string
+  desc: string
+  choices: Array<{ label: string; effects: Array<Record<string, unknown>> }>
 }
 
 const raritiesData = raritiesJson as unknown as {
@@ -1130,6 +1171,141 @@ export const gameData = {
     materiaLevelByFloor: number[][]
     minFloorFightMs: number
   },
+  /** 重建伊修加德：全服共享进度的生活玩法，内容按「阶段」划分。 */
+  ishgard: (() => {
+    const raw = ishgardJson as unknown as {
+      version: string
+      naming: { template: string }
+      titleWindowSeconds: number
+      titleIds: { saint: string; apostle: string }
+      stageTargets: number[]
+      gather: { baseSecondsPerAction: number }
+      fish: { castSeconds: number }
+      produce: { maxActionsPerReport: number }
+      stages: Array<{
+        stage: number
+        gather: Array<{ jobId: string; materialId: string; min: number; max: number; levelReq: number }>
+        materials: Array<{ id: string; name: string; jobId: string; levelReq: number; sell: number }>
+        fish: Array<{ id: string; name: string; levelReq: number; sell: number }>
+        products: Array<{
+          id: string
+          name: string
+          jobId: string
+          requiredLevel: number
+          craftSeconds: number
+          xp: number
+          points: number
+          sell: number
+          inputs: Array<{ itemId: string; count: number }>
+        }>
+      }>
+      tools: Record<'doh' | 'dol', {
+        slot: string
+        category: string
+        levels: Array<{
+          level: number
+          id: string
+          name: string
+          threshold: number
+          stage: number
+          bonus: Record<string, number>
+        }>
+      }>
+      pinkEnchants: Array<{
+        id: string
+        name: string
+        kind: 'doh' | 'dol'
+        desc: string
+        stats: Array<{ stat: string; range: [number, number] }>
+      }>
+    }
+    const materialById: Record<string, (typeof raw.stages)[number]['materials'][number] & { stage: number }> = {}
+    const fishById: Record<string, (typeof raw.stages)[number]['fish'][number] & { stage: number }> = {}
+    const productById: Record<string, (typeof raw.stages)[number]['products'][number] & { stage: number }> = {}
+    for (const stage of raw.stages) {
+      for (const m of stage.materials) materialById[m.id] = { ...m, stage: stage.stage }
+      for (const f of stage.fish) fishById[f.id] = { ...f, stage: stage.stage }
+      for (const p of stage.products) productById[p.id] = { ...p, stage: stage.stage }
+    }
+    const toolById: Record<string, { level: number; id: string; name: string; threshold: number; stage: number; bonus: Record<string, number>; kind: 'doh' | 'dol'; slot: string; category: string }> = {}
+    for (const kind of ['doh', 'dol'] as const) {
+      const spec = raw.tools[kind]
+      for (const lvl of spec.levels) {
+        toolById[lvl.id] = { ...lvl, kind, slot: spec.slot, category: spec.category }
+      }
+    }
+    return {
+      ...raw,
+      materialById,
+      fishById,
+      productById,
+      pinkById: Object.fromEntries(raw.pinkEnchants.map((p) => [p.id, p])) as Record<string, (typeof raw.pinkEnchants)[number]>,
+      toolById,
+    }
+  })(),
+  /** 死者宫殿：与账号战力完全隔离的 roguelike 深层迷宫。 */
+  palace: (() => {
+    const raw = palaceJson as unknown as {
+      version: string
+      floors: number
+      stepsPerFloor: number
+      levelCap: number
+      revives: number
+      heroCandidates: number
+      weaponCandidates: number
+      rewardChoices: number
+      nodeTypeWeights: Array<{ maxStep: number; weights: Record<string, number> }>
+      monsters: {
+        floors: Array<{ floor: number; hp: number; attack: number; defense: number; xp: number; gold: number }>
+        elite: Record<string, number>
+        boss: Record<string, number>
+      }
+      bossReward: {
+        growthPoints: number[]
+        flameCrest: number[]
+        glassPumpkin: number[]
+        clearBonusGrowthPoints: number
+      }
+      rewardWeights: Record<string, number>
+      eliteRewardBonus: { extraRolls: number; rarityLuck: number }
+      bossRewardBonus: { extraRolls: number; rarityLuck: number }
+      buffs: PalaceBuffDef[]
+      shop: {
+        offersPerShop: number
+        pool: Array<{ id: string; name: string; kind: string; value?: number; price: number; buffId?: string; desc?: string }>
+        pricePerFloor: number
+      }
+      exchange: Array<{
+        id: string
+        name: string
+        cost: { flameCrest: number; glassPumpkin: number }
+        grant: Record<string, unknown>
+      }>
+      heroGen: { baseLevel: number }
+      weaponGen: { baseLevelBand: number; boxTier: string }
+      deathEndsRun: boolean
+    }
+    const buffById = Object.fromEntries(raw.buffs.map((b) => [b.id, b])) as Record<string, PalaceBuffDef>
+    const shopById = Object.fromEntries(raw.shop.pool.map((s) => [s.id, s]))
+    const exchangeById = Object.fromEntries(raw.exchange.map((e) => [e.id, e]))
+    return { ...raw, buffById, shopById, exchangeById }
+  })(),
+  /** 死者宫殿局外成长树（类别 × 层级）。 */
+  palaceGrowth: (() => {
+    const raw = palaceGrowthJson as unknown as { version: string; categories: PalaceGrowthCategory[] }
+    const byId: Record<string, PalaceGrowthNode & { category: string; categoryName: string }> = {}
+    for (const category of raw.categories) {
+      for (const node of category.nodes) {
+        byId[node.id] = { ...node, category: category.id, categoryName: category.name }
+      }
+    }
+    return { ...raw, byId }
+  })(),
+  /** 死者宫殿事件库。 */
+  palaceEvents: (() => {
+    const raw = palaceEventsJson as unknown as { version: string; events: PalaceEventDef[] }
+    return { ...raw, byId: Object.fromEntries(raw.events.map((e) => [e.id, e])) as Record<string, PalaceEventDef> }
+  })(),
   /** 交易板参考价基准表（由 scripts/derive-market-reference.py 生成）。 */
   marketReference: marketReferenceJson as unknown as {
     equipment: Record<string, Record<string, Record<string, number>>>

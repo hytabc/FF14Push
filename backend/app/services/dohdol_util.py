@@ -78,11 +78,37 @@ def material_def(item_id: str) -> dict[str, Any] | None:
     return CONFIG.material_by_id.get(item_id)
 
 
+def ishgard_item_def(item_id: str) -> dict[str, Any] | None:
+    """重建伊修加德专属物资（材料 / 鱼 / 产物）定义，回填了其所属阶段。"""
+    return (
+        CONFIG.ishgard_material_by_id.get(item_id)
+        or CONFIG.ishgard_fish_by_id.get(item_id)
+        or CONFIG.ishgard_product_by_id.get(item_id)
+    )
+
+
+def ishgard_display_name(item_id: str) -> str | None:
+    """专属物资的显示名：按该物资自身所属阶段生成「第{stage}次重建用的{name}」。"""
+    spec = ishgard_item_def(item_id)
+    if spec is None:
+        return None
+    template = str(CONFIG.ishgard["naming"]["template"])
+    return template.format(stage=int(spec["stage"]), name=spec["name"])
+
+
+def dedicated_base_def(base_id: str) -> dict[str, Any] | None:
+    """专用装备底材：普通生产/采集专用装备，或重建伊修加德的可成长主手。"""
+    return CONFIG.dohdol_item_by_id.get(base_id) or CONFIG.ishgard_tool_by_id.get(base_id)
+
+
 def material_name(item_id: str) -> str:
     """材料 / 半成品 / 鱼 / 药水食物 / 魔晶石 / 作物种子 / 装备底材 / 专用装备 的显示名。"""
     d = material_def(item_id)
     if d:
         return d["name"]
+    ishgard_name = ishgard_display_name(item_id)
+    if ishgard_name:
+        return ishgard_name
     consumable = CONFIG.consumable_by_id.get(item_id)
     if consumable:
         return consumable["name"]
@@ -154,7 +180,7 @@ def equipped_bonus(items: Iterable[Any]) -> dict[str, float]:
     for item in items:
         if getattr(item, "equipped_slot", None) is None:
             continue
-        base = CONFIG.dohdol_item_by_id.get(item.base_id)
+        base = dedicated_base_def(item.base_id)
         if base is None:
             continue
         for stat, value in base["bonus"].items():
@@ -176,7 +202,7 @@ def equipped_bonus_sources(items: Iterable[Any], stat: str) -> list[tuple[str, f
     for item in items:
         if getattr(item, "equipped_slot", None) is None:
             continue
-        base = CONFIG.dohdol_item_by_id.get(item.base_id)
+        base = dedicated_base_def(item.base_id)
         if base is None:
             continue
         value = float(base["bonus"].get(stat, 0.0))

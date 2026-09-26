@@ -1192,3 +1192,342 @@ export interface TreasureGambleResult {
   run: TreasureRunState
 }
 
+// ------------------------------------------------------------- 重建伊修加德
+export interface IshgardMaterialView {
+  itemId: string
+  name: string
+  baseName: string
+  jobId: string
+  levelReq: number
+  sell: number
+  count: number
+}
+
+export interface IshgardFishView {
+  itemId: string
+  name: string
+  baseName: string
+  levelReq: number
+  sell: number
+  count: number
+}
+
+export interface IshgardGatherNode {
+  jobId: string
+  materialId: string
+  min: number
+  max: number
+  levelReq: number
+}
+
+export interface IshgardProductInput {
+  itemId: string
+  name: string
+  count: number
+  have: number
+}
+
+export interface IshgardProductView {
+  itemId: string
+  name: string
+  baseName: string
+  jobId: string
+  requiredLevel: number
+  craftSeconds: number
+  xp: number
+  /** 提交该产物可获得的积分。 */
+  points: number
+  sell: number
+  inputs: IshgardProductInput[]
+  count: number
+}
+
+export interface IshgardStageBrief {
+  stage: number
+  name: string
+  target: number
+  materials: string[]
+  products: string[]
+}
+
+export interface IshgardBagEntry {
+  itemId: string
+  name: string
+  stage: number
+  kind: 'material' | 'fish' | 'product'
+  count: number
+  sell: number
+}
+
+export interface IshgardPink {
+  id: string
+  name: string
+  kind: 'doh' | 'dol'
+  values: Record<string, number>
+  desc: string
+}
+
+export interface IshgardPinkDef {
+  id: string
+  name: string
+  kind: 'doh' | 'dol'
+  desc: string
+  stats: Array<{ stat: string; range: [number, number] }>
+}
+
+export interface IshgardToolStatus {
+  canClaim?: boolean
+  canUpgrade?: boolean
+  maxLevel?: boolean
+  nextLevel?: number
+  nextThreshold?: number
+  nextStage?: number
+}
+
+export interface IshgardToolView {
+  kind: 'doh' | 'dol'
+  slot: string
+  level: number
+  itemId: number | null
+  name: string | null
+  bonus: Record<string, number> | null
+  pink: IshgardPink | null
+  status: IshgardToolStatus
+}
+
+export interface IshgardHolder {
+  label: string
+  nickname: string
+  username: string | null
+  since: number
+}
+
+export interface IshgardState {
+  round: number
+  stage: number
+  stageCount: number
+  stagePoints: number
+  stageTarget: number
+  stageTargets: number[]
+  stageName: string
+  myPoints: number
+  myRank: { rank: number; points: number }
+  titlePeriodEndsAt: number
+  titleWindowSeconds: number
+  saint: IshgardHolder | null
+  apostle: IshgardHolder | null
+  current: {
+    materials: IshgardMaterialView[]
+    gather: IshgardGatherNode[]
+    fish: IshgardFishView[]
+    products: IshgardProductView[]
+  }
+  stages: IshgardStageBrief[]
+  tools: { doh: IshgardToolView; dol: IshgardToolView }
+  pinkEnchants: IshgardPinkDef[]
+  bag: IshgardBagEntry[]
+}
+
+export interface IshgardLeaderboardEntry {
+  rank: number
+  userId: number
+  nickname: string
+  username: string
+  points: number
+  activeTitleId: string | null
+}
+
+export interface IshgardSubmitResult {
+  gained: number
+  points: number
+  round: number
+  stage: number
+  stagePoints: number
+  stageTarget: number
+  completedStages: number[]
+}
+
+export interface IshgardGatherReport {
+  gained: Array<{ itemId: string; name: string; count: number }>
+  actions: number
+  xp: number
+  xpBreakdown: ActivityExpBreakdown
+  level: { levelsGained: number; level: number; exp: number }
+  cycle: ActivityCycle
+}
+
+export interface IshgardProduceReport {
+  /** 阶段推进导致配方失效，服务端已结束会话。 */
+  expired?: boolean
+  crafts: number
+  recipeId: string
+  materials: Array<{ itemId: string; name: string; count: number }>
+  produced: Array<{ itemId: string; name: string; count: number }>
+  xp: number
+  xpBreakdown: ActivityExpBreakdown
+  level: { levelsGained: number; level: number; exp: number }
+  targetActions: number | null
+  producedTotal: number
+  finished: boolean
+  cycle: ActivityCycle
+}
+
+// --------------------------------------------------------------- 死者宫殿
+export interface PalaceConfig {
+  floors: number
+  stepsPerFloor: number
+  levelCap: number
+  revives: number
+  heroCandidates: number
+  weaponCandidates: number
+  rewardChoices: number
+  bossReward: {
+    growthPoints: number[]
+    flameCrest: number[]
+    glassPumpkin: number[]
+    clearBonusGrowthPoints: number
+  }
+}
+
+export interface PalaceProfile {
+  growthPoints: number
+  totalGrowthEarned: number
+  flameCrest: number
+  glassPumpkin: number
+  floor10Clears: number
+}
+
+export interface PalaceHeroCandidate {
+  name: string
+  talent: RarityId
+  talentName: string
+  attrBias: string
+  attrBiasLabel?: string
+  strength: number
+  agility: number
+  intellect: number
+  totalPoints: number
+  recommendedJobs: string[]
+}
+
+/** 副本内英雄快照（与账号英雄无关）。 */
+export interface PalaceHero {
+  name: string
+  talent: RarityId
+  attrBias: string
+  strength: number
+  agility: number
+  intellect: number
+  level: number
+  exp: number
+}
+
+export interface PalaceBuff {
+  id: string
+  name: string
+  stat: string
+  value: number
+  desc: string
+}
+
+export interface PalaceMapNode {
+  id: string
+  type: 'battle' | 'elite' | 'event' | 'shop' | 'chest' | 'rest' | 'boss'
+}
+
+export interface PalaceMap {
+  floor: number
+  rows: Array<{ step: number; nodes: PalaceMapNode[] }>
+  edges: Array<{ from: string; to: string }>
+}
+
+export interface PalaceRewardOption {
+  kind: 'equip' | 'buff' | 'both'
+  equip?: Item
+  buff?: PalaceBuff
+}
+
+export interface PalaceShopOffer {
+  id: string
+  name: string
+  kind: string
+  value?: number
+  price: number
+  buffId?: string
+  desc?: string
+  buff?: PalaceBuff
+  sold?: boolean
+}
+
+export interface PalaceNodeContext {
+  nodeId: string
+  type: PalaceMapNode['type']
+  step: number
+  enemy?: MonsterStats
+  event?: { id: string; name: string; desc: string; choices: Array<{ label: string }> }
+  shop?: { offers: PalaceShopOffer[] }
+  result?: Record<string, unknown>
+}
+
+export interface PalaceRunState {
+  runId: number
+  status: 'choosing_hero' | 'choosing_weapon' | 'running' | 'ended'
+  endedReason: string | null
+  floor: number
+  step: number
+  floors: number
+  stepsPerFloor: number
+  levelCap: number
+  gold: number
+  reviveLeft: number
+  hero: PalaceHero | null
+  heroCandidates: PalaceHeroCandidate[] | null
+  weaponCandidates: Item[] | null
+  items: Item[]
+  equipped: Record<string, number>
+  buffs: PalaceBuff[]
+  stats: HeroStats | null
+  map: PalaceMap | null
+  currentNode: string | null
+  availableNodes: string[]
+  pendingReward: PalaceRewardOption[] | null
+  pendingNode: { nodeId: string; type: string } | null
+  nextLevelExp: number | null
+}
+
+export interface PalaceGrowthNodeView {
+  id: string
+  tier: number
+  name: string
+  cost: number
+  requires: string | null
+  effect: { stat: string; value: number; mode: 'add' | 'mul' }
+  unlocked: boolean
+  available: boolean
+  affordable: boolean
+}
+
+export interface PalaceGrowthView {
+  points: number
+  totalEarned: number
+  categories: Array<{
+    id: string
+    name: string
+    desc: string
+    nodes: PalaceGrowthNodeView[]
+  }>
+}
+
+export interface PalaceExchangeEntry {
+  id: string
+  name: string
+  cost: { flameCrest: number; glassPumpkin: number }
+  affordable: boolean
+}
+
+export interface PalaceExchangeView {
+  flameCrest: number
+  glassPumpkin: number
+  entries: PalaceExchangeEntry[]
+}
+

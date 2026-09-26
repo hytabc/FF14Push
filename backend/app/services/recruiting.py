@@ -130,11 +130,13 @@ def generate_candidate(
     *,
     ancient: bool | None = None,
     talent: str | None = None,
+    allow_egg: bool = True,
 ) -> dict[str, Any]:
     """生成候选英雄：资质决定总点数，偏向决定三维分配。
 
     ancient 显式指定是否带太古（由 `roll_ancient` 的保底结果决定）；省略时按 ancientChance 随机。
     talent 显式指定资质；省略时按资质权重随机。
+    allow_egg=False 时跳过彩蛋判定（死者宫殿等自带数值体系的玩法用）。
 
     任何带太古属性的英雄都**必定是神话（红色）资质**（无论是否保底触发），因此太古判定
     先于点数抽取，使其落在神话区间（计算前总点数 220-260）。
@@ -143,7 +145,7 @@ def generate_candidate(
     # 无论是否指定 talent 都消耗一次资质随机，避免改变后续随机序列。
     rolled_talent = talent_weights(rng)
     # 彩蛋判定：独立于资质/太古抽取，命中后固定资质与偏向，忽略太古。
-    egg = roll_egg(rng)
+    egg = roll_egg(rng) if allow_egg else None
     # 太古判定提前：太古英雄必定为神话，点数须按神话区间抽取。
     hit = rng.random() < float(CONFIG.talents["ancientChance"]) if ancient is None else ancient
     if egg is not None:

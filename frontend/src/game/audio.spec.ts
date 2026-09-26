@@ -89,6 +89,14 @@ describe('音效谱面（纯数据）', () => {
       'seq.done',
       'farm.plant',
       'farm.harvest',
+      // 死者宫殿
+      'palace.enter',
+      'palace.choose',
+      'palace.node',
+      'palace.floor',
+      'palace.clear',
+      'palace.growth',
+      'palace.exchange',
       // 通用
       'loot.drop',
     ]

@@ -41,6 +41,7 @@ export const NAV_GROUPS: NavGroup[] = [
           { to: '/region', label: '地区', icon: '🗺' },
           { to: '/raid', label: '高难', icon: '☠' },
           { to: '/treasure', label: '挖宝', icon: '🏺' },
+          { to: '/palace', label: '死者宫殿', icon: '💀' },
         ],
       },
       {
@@ -87,6 +88,12 @@ export const NAV_GROUPS: NavGroup[] = [
           { to: '/gather', label: '采集', icon: '⛏' },
           { to: '/produce', label: '生产', icon: '🔨' },
           { to: '/fish', label: '钓鱼', icon: '🎣' },
+        ],
+      },
+      {
+        title: '全服活动',
+        items: [
+          { to: '/ishgard', label: '重建伊修加德', icon: '🏗' },
         ],
       },
       {

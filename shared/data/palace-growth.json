@@ -1,0 +1,3054 @@
+{
+  "$comment": "死者宫殿局外成长树：类别 × 10 级。消耗成长点（击败层 BOSS 获得）解锁；同类别需按层级链式解锁。数值由 scripts/gen-palace-data.py 生成，标定见 backend/tests/test_shared_data.py::test_palace_config_is_consistent。",
+  "version": "1.0.0",
+  "categories": [
+    {
+      "id": "hero_talent",
+      "name": "英雄资质",
+      "desc": "提高进入副本时出现高品质英雄的概率。",
+      "nodes": [
+        {
+          "id": "hero_talent_1",
+          "tier": 1,
+          "name": "英雄资质 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.06,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_2",
+          "tier": 2,
+          "name": "英雄资质 Ⅱ",
+          "cost": 1,
+          "requires": "hero_talent_1",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.12,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_3",
+          "tier": 3,
+          "name": "英雄资质 Ⅲ",
+          "cost": 1,
+          "requires": "hero_talent_2",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.18,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_4",
+          "tier": 4,
+          "name": "英雄资质 Ⅳ",
+          "cost": 2,
+          "requires": "hero_talent_3",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.24,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_5",
+          "tier": 5,
+          "name": "英雄资质 Ⅴ",
+          "cost": 2,
+          "requires": "hero_talent_4",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.3,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_6",
+          "tier": 6,
+          "name": "英雄资质 Ⅵ",
+          "cost": 2,
+          "requires": "hero_talent_5",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.36,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_7",
+          "tier": 7,
+          "name": "英雄资质 Ⅶ",
+          "cost": 3,
+          "requires": "hero_talent_6",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.42,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_8",
+          "tier": 8,
+          "name": "英雄资质 Ⅷ",
+          "cost": 3,
+          "requires": "hero_talent_7",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.48,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_9",
+          "tier": 9,
+          "name": "英雄资质 Ⅸ",
+          "cost": 3,
+          "requires": "hero_talent_8",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.54,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "hero_talent_10",
+          "tier": 10,
+          "name": "英雄资质 Ⅹ",
+          "cost": 4,
+          "requires": "hero_talent_9",
+          "effect": {
+            "stat": "heroTalentWeight",
+            "value": 0.6,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "hero_attack",
+      "name": "英雄攻击",
+      "desc": "提高副本内英雄攻击力。",
+      "nodes": [
+        {
+          "id": "hero_attack_1",
+          "tier": 1,
+          "name": "英雄攻击 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.06,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_2",
+          "tier": 2,
+          "name": "英雄攻击 Ⅱ",
+          "cost": 1,
+          "requires": "hero_attack_1",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.12,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_3",
+          "tier": 3,
+          "name": "英雄攻击 Ⅲ",
+          "cost": 1,
+          "requires": "hero_attack_2",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.18,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_4",
+          "tier": 4,
+          "name": "英雄攻击 Ⅳ",
+          "cost": 2,
+          "requires": "hero_attack_3",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.24,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_5",
+          "tier": 5,
+          "name": "英雄攻击 Ⅴ",
+          "cost": 2,
+          "requires": "hero_attack_4",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.3,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_6",
+          "tier": 6,
+          "name": "英雄攻击 Ⅵ",
+          "cost": 2,
+          "requires": "hero_attack_5",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.36,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_7",
+          "tier": 7,
+          "name": "英雄攻击 Ⅶ",
+          "cost": 3,
+          "requires": "hero_attack_6",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.42,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_8",
+          "tier": 8,
+          "name": "英雄攻击 Ⅷ",
+          "cost": 3,
+          "requires": "hero_attack_7",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.48,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_9",
+          "tier": 9,
+          "name": "英雄攻击 Ⅸ",
+          "cost": 3,
+          "requires": "hero_attack_8",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.54,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_attack_10",
+          "tier": 10,
+          "name": "英雄攻击 Ⅹ",
+          "cost": 4,
+          "requires": "hero_attack_9",
+          "effect": {
+            "stat": "heroAttackPct",
+            "value": 0.6,
+            "mode": "mul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "hero_defense",
+      "name": "英雄防御",
+      "desc": "提高副本内英雄防御力。",
+      "nodes": [
+        {
+          "id": "hero_defense_1",
+          "tier": 1,
+          "name": "英雄防御 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.06,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_2",
+          "tier": 2,
+          "name": "英雄防御 Ⅱ",
+          "cost": 1,
+          "requires": "hero_defense_1",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.12,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_3",
+          "tier": 3,
+          "name": "英雄防御 Ⅲ",
+          "cost": 1,
+          "requires": "hero_defense_2",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.18,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_4",
+          "tier": 4,
+          "name": "英雄防御 Ⅳ",
+          "cost": 2,
+          "requires": "hero_defense_3",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.24,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_5",
+          "tier": 5,
+          "name": "英雄防御 Ⅴ",
+          "cost": 2,
+          "requires": "hero_defense_4",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.3,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_6",
+          "tier": 6,
+          "name": "英雄防御 Ⅵ",
+          "cost": 2,
+          "requires": "hero_defense_5",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.36,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_7",
+          "tier": 7,
+          "name": "英雄防御 Ⅶ",
+          "cost": 3,
+          "requires": "hero_defense_6",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.42,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_8",
+          "tier": 8,
+          "name": "英雄防御 Ⅷ",
+          "cost": 3,
+          "requires": "hero_defense_7",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.48,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_9",
+          "tier": 9,
+          "name": "英雄防御 Ⅸ",
+          "cost": 3,
+          "requires": "hero_defense_8",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.54,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_defense_10",
+          "tier": 10,
+          "name": "英雄防御 Ⅹ",
+          "cost": 4,
+          "requires": "hero_defense_9",
+          "effect": {
+            "stat": "heroDefensePct",
+            "value": 0.6,
+            "mode": "mul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "hero_hp",
+      "name": "英雄生命",
+      "desc": "提高副本内英雄生命上限。",
+      "nodes": [
+        {
+          "id": "hero_hp_1",
+          "tier": 1,
+          "name": "英雄生命 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.07,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_2",
+          "tier": 2,
+          "name": "英雄生命 Ⅱ",
+          "cost": 1,
+          "requires": "hero_hp_1",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.14,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_3",
+          "tier": 3,
+          "name": "英雄生命 Ⅲ",
+          "cost": 1,
+          "requires": "hero_hp_2",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.21,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_4",
+          "tier": 4,
+          "name": "英雄生命 Ⅳ",
+          "cost": 2,
+          "requires": "hero_hp_3",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.28,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_5",
+          "tier": 5,
+          "name": "英雄生命 Ⅴ",
+          "cost": 2,
+          "requires": "hero_hp_4",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.35,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_6",
+          "tier": 6,
+          "name": "英雄生命 Ⅵ",
+          "cost": 2,
+          "requires": "hero_hp_5",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.42,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_7",
+          "tier": 7,
+          "name": "英雄生命 Ⅶ",
+          "cost": 3,
+          "requires": "hero_hp_6",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.49,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_8",
+          "tier": 8,
+          "name": "英雄生命 Ⅷ",
+          "cost": 3,
+          "requires": "hero_hp_7",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.56,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_9",
+          "tier": 9,
+          "name": "英雄生命 Ⅸ",
+          "cost": 3,
+          "requires": "hero_hp_8",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.63,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_hp_10",
+          "tier": 10,
+          "name": "英雄生命 Ⅹ",
+          "cost": 4,
+          "requires": "hero_hp_9",
+          "effect": {
+            "stat": "heroHpPct",
+            "value": 0.7,
+            "mode": "mul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "hero_str",
+      "name": "英雄力量",
+      "desc": "提高副本内英雄力量。",
+      "nodes": [
+        {
+          "id": "hero_str_1",
+          "tier": 1,
+          "name": "英雄力量 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.05,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_2",
+          "tier": 2,
+          "name": "英雄力量 Ⅱ",
+          "cost": 1,
+          "requires": "hero_str_1",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.1,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_3",
+          "tier": 3,
+          "name": "英雄力量 Ⅲ",
+          "cost": 1,
+          "requires": "hero_str_2",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.15,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_4",
+          "tier": 4,
+          "name": "英雄力量 Ⅳ",
+          "cost": 2,
+          "requires": "hero_str_3",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.2,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_5",
+          "tier": 5,
+          "name": "英雄力量 Ⅴ",
+          "cost": 2,
+          "requires": "hero_str_4",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.25,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_6",
+          "tier": 6,
+          "name": "英雄力量 Ⅵ",
+          "cost": 2,
+          "requires": "hero_str_5",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.3,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_7",
+          "tier": 7,
+          "name": "英雄力量 Ⅶ",
+          "cost": 3,
+          "requires": "hero_str_6",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.35,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_8",
+          "tier": 8,
+          "name": "英雄力量 Ⅷ",
+          "cost": 3,
+          "requires": "hero_str_7",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.4,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_9",
+          "tier": 9,
+          "name": "英雄力量 Ⅸ",
+          "cost": 3,
+          "requires": "hero_str_8",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.45,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_str_10",
+          "tier": 10,
+          "name": "英雄力量 Ⅹ",
+          "cost": 4,
+          "requires": "hero_str_9",
+          "effect": {
+            "stat": "heroStrPct",
+            "value": 0.5,
+            "mode": "mul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "hero_dex",
+      "name": "英雄敏捷",
+      "desc": "提高副本内英雄敏捷。",
+      "nodes": [
+        {
+          "id": "hero_dex_1",
+          "tier": 1,
+          "name": "英雄敏捷 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.05,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_2",
+          "tier": 2,
+          "name": "英雄敏捷 Ⅱ",
+          "cost": 1,
+          "requires": "hero_dex_1",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.1,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_3",
+          "tier": 3,
+          "name": "英雄敏捷 Ⅲ",
+          "cost": 1,
+          "requires": "hero_dex_2",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.15,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_4",
+          "tier": 4,
+          "name": "英雄敏捷 Ⅳ",
+          "cost": 2,
+          "requires": "hero_dex_3",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.2,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_5",
+          "tier": 5,
+          "name": "英雄敏捷 Ⅴ",
+          "cost": 2,
+          "requires": "hero_dex_4",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.25,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_6",
+          "tier": 6,
+          "name": "英雄敏捷 Ⅵ",
+          "cost": 2,
+          "requires": "hero_dex_5",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.3,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_7",
+          "tier": 7,
+          "name": "英雄敏捷 Ⅶ",
+          "cost": 3,
+          "requires": "hero_dex_6",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.35,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_8",
+          "tier": 8,
+          "name": "英雄敏捷 Ⅷ",
+          "cost": 3,
+          "requires": "hero_dex_7",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.4,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_9",
+          "tier": 9,
+          "name": "英雄敏捷 Ⅸ",
+          "cost": 3,
+          "requires": "hero_dex_8",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.45,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_dex_10",
+          "tier": 10,
+          "name": "英雄敏捷 Ⅹ",
+          "cost": 4,
+          "requires": "hero_dex_9",
+          "effect": {
+            "stat": "heroDexPct",
+            "value": 0.5,
+            "mode": "mul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "hero_int",
+      "name": "英雄智力",
+      "desc": "提高副本内英雄智力。",
+      "nodes": [
+        {
+          "id": "hero_int_1",
+          "tier": 1,
+          "name": "英雄智力 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.05,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_2",
+          "tier": 2,
+          "name": "英雄智力 Ⅱ",
+          "cost": 1,
+          "requires": "hero_int_1",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.1,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_3",
+          "tier": 3,
+          "name": "英雄智力 Ⅲ",
+          "cost": 1,
+          "requires": "hero_int_2",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.15,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_4",
+          "tier": 4,
+          "name": "英雄智力 Ⅳ",
+          "cost": 2,
+          "requires": "hero_int_3",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.2,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_5",
+          "tier": 5,
+          "name": "英雄智力 Ⅴ",
+          "cost": 2,
+          "requires": "hero_int_4",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.25,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_6",
+          "tier": 6,
+          "name": "英雄智力 Ⅵ",
+          "cost": 2,
+          "requires": "hero_int_5",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.3,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_7",
+          "tier": 7,
+          "name": "英雄智力 Ⅶ",
+          "cost": 3,
+          "requires": "hero_int_6",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.35,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_8",
+          "tier": 8,
+          "name": "英雄智力 Ⅷ",
+          "cost": 3,
+          "requires": "hero_int_7",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.4,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_9",
+          "tier": 9,
+          "name": "英雄智力 Ⅸ",
+          "cost": 3,
+          "requires": "hero_int_8",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.45,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "hero_int_10",
+          "tier": 10,
+          "name": "英雄智力 Ⅹ",
+          "cost": 4,
+          "requires": "hero_int_9",
+          "effect": {
+            "stat": "heroIntPct",
+            "value": 0.5,
+            "mode": "mul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "start_level",
+      "name": "初始等级",
+      "desc": "提高副本内英雄的起始等级。",
+      "nodes": [
+        {
+          "id": "start_level_1",
+          "tier": 1,
+          "name": "初始等级 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "startLevel",
+            "value": 0.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_2",
+          "tier": 2,
+          "name": "初始等级 Ⅱ",
+          "cost": 1,
+          "requires": "start_level_1",
+          "effect": {
+            "stat": "startLevel",
+            "value": 1.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_3",
+          "tier": 3,
+          "name": "初始等级 Ⅲ",
+          "cost": 1,
+          "requires": "start_level_2",
+          "effect": {
+            "stat": "startLevel",
+            "value": 1.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_4",
+          "tier": 4,
+          "name": "初始等级 Ⅳ",
+          "cost": 2,
+          "requires": "start_level_3",
+          "effect": {
+            "stat": "startLevel",
+            "value": 2.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_5",
+          "tier": 5,
+          "name": "初始等级 Ⅴ",
+          "cost": 2,
+          "requires": "start_level_4",
+          "effect": {
+            "stat": "startLevel",
+            "value": 2.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_6",
+          "tier": 6,
+          "name": "初始等级 Ⅵ",
+          "cost": 2,
+          "requires": "start_level_5",
+          "effect": {
+            "stat": "startLevel",
+            "value": 3.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_7",
+          "tier": 7,
+          "name": "初始等级 Ⅶ",
+          "cost": 3,
+          "requires": "start_level_6",
+          "effect": {
+            "stat": "startLevel",
+            "value": 3.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_8",
+          "tier": 8,
+          "name": "初始等级 Ⅷ",
+          "cost": 3,
+          "requires": "start_level_7",
+          "effect": {
+            "stat": "startLevel",
+            "value": 4.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_9",
+          "tier": 9,
+          "name": "初始等级 Ⅸ",
+          "cost": 3,
+          "requires": "start_level_8",
+          "effect": {
+            "stat": "startLevel",
+            "value": 4.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_level_10",
+          "tier": 10,
+          "name": "初始等级 Ⅹ",
+          "cost": 4,
+          "requires": "start_level_9",
+          "effect": {
+            "stat": "startLevel",
+            "value": 5.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "start_gold",
+      "name": "初始金币",
+      "desc": "提高进入副本时的副本金币。",
+      "nodes": [
+        {
+          "id": "start_gold_1",
+          "tier": 1,
+          "name": "初始金币 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "startGold",
+            "value": 25,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_2",
+          "tier": 2,
+          "name": "初始金币 Ⅱ",
+          "cost": 1,
+          "requires": "start_gold_1",
+          "effect": {
+            "stat": "startGold",
+            "value": 50,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_3",
+          "tier": 3,
+          "name": "初始金币 Ⅲ",
+          "cost": 1,
+          "requires": "start_gold_2",
+          "effect": {
+            "stat": "startGold",
+            "value": 75,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_4",
+          "tier": 4,
+          "name": "初始金币 Ⅳ",
+          "cost": 2,
+          "requires": "start_gold_3",
+          "effect": {
+            "stat": "startGold",
+            "value": 100,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_5",
+          "tier": 5,
+          "name": "初始金币 Ⅴ",
+          "cost": 2,
+          "requires": "start_gold_4",
+          "effect": {
+            "stat": "startGold",
+            "value": 125,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_6",
+          "tier": 6,
+          "name": "初始金币 Ⅵ",
+          "cost": 2,
+          "requires": "start_gold_5",
+          "effect": {
+            "stat": "startGold",
+            "value": 150,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_7",
+          "tier": 7,
+          "name": "初始金币 Ⅶ",
+          "cost": 3,
+          "requires": "start_gold_6",
+          "effect": {
+            "stat": "startGold",
+            "value": 175,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_8",
+          "tier": 8,
+          "name": "初始金币 Ⅷ",
+          "cost": 3,
+          "requires": "start_gold_7",
+          "effect": {
+            "stat": "startGold",
+            "value": 200,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_9",
+          "tier": 9,
+          "name": "初始金币 Ⅸ",
+          "cost": 3,
+          "requires": "start_gold_8",
+          "effect": {
+            "stat": "startGold",
+            "value": 225,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_gold_10",
+          "tier": 10,
+          "name": "初始金币 Ⅹ",
+          "cost": 4,
+          "requires": "start_gold_9",
+          "effect": {
+            "stat": "startGold",
+            "value": 250,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "crit",
+      "name": "暴击",
+      "desc": "提高副本内暴击率。",
+      "nodes": [
+        {
+          "id": "crit_1",
+          "tier": 1,
+          "name": "暴击 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "critRatePct",
+            "value": 1.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_2",
+          "tier": 2,
+          "name": "暴击 Ⅱ",
+          "cost": 1,
+          "requires": "crit_1",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 2.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_3",
+          "tier": 3,
+          "name": "暴击 Ⅲ",
+          "cost": 1,
+          "requires": "crit_2",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 3.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_4",
+          "tier": 4,
+          "name": "暴击 Ⅳ",
+          "cost": 2,
+          "requires": "crit_3",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 4.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_5",
+          "tier": 5,
+          "name": "暴击 Ⅴ",
+          "cost": 2,
+          "requires": "crit_4",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 5.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_6",
+          "tier": 6,
+          "name": "暴击 Ⅵ",
+          "cost": 2,
+          "requires": "crit_5",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 6.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_7",
+          "tier": 7,
+          "name": "暴击 Ⅶ",
+          "cost": 3,
+          "requires": "crit_6",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 7.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_8",
+          "tier": 8,
+          "name": "暴击 Ⅷ",
+          "cost": 3,
+          "requires": "crit_7",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 8.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_9",
+          "tier": 9,
+          "name": "暴击 Ⅸ",
+          "cost": 3,
+          "requires": "crit_8",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 9.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "crit_10",
+          "tier": 10,
+          "name": "暴击 Ⅹ",
+          "cost": 4,
+          "requires": "crit_9",
+          "effect": {
+            "stat": "critRatePct",
+            "value": 10.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "dh",
+      "name": "直击",
+      "desc": "提高副本内直击率。",
+      "nodes": [
+        {
+          "id": "dh_1",
+          "tier": 1,
+          "name": "直击 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 1.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_2",
+          "tier": 2,
+          "name": "直击 Ⅱ",
+          "cost": 1,
+          "requires": "dh_1",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 2.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_3",
+          "tier": 3,
+          "name": "直击 Ⅲ",
+          "cost": 1,
+          "requires": "dh_2",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 3.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_4",
+          "tier": 4,
+          "name": "直击 Ⅳ",
+          "cost": 2,
+          "requires": "dh_3",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 4.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_5",
+          "tier": 5,
+          "name": "直击 Ⅴ",
+          "cost": 2,
+          "requires": "dh_4",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 5.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_6",
+          "tier": 6,
+          "name": "直击 Ⅵ",
+          "cost": 2,
+          "requires": "dh_5",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 6.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_7",
+          "tier": 7,
+          "name": "直击 Ⅶ",
+          "cost": 3,
+          "requires": "dh_6",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 7.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_8",
+          "tier": 8,
+          "name": "直击 Ⅷ",
+          "cost": 3,
+          "requires": "dh_7",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 8.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_9",
+          "tier": 9,
+          "name": "直击 Ⅸ",
+          "cost": 3,
+          "requires": "dh_8",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 9.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "dh_10",
+          "tier": 10,
+          "name": "直击 Ⅹ",
+          "cost": 4,
+          "requires": "dh_9",
+          "effect": {
+            "stat": "dhRatePct",
+            "value": 10.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "attack_speed",
+      "name": "攻击速度",
+      "desc": "提高副本内攻击速度。",
+      "nodes": [
+        {
+          "id": "attack_speed_1",
+          "tier": 1,
+          "name": "攻击速度 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 1.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_2",
+          "tier": 2,
+          "name": "攻击速度 Ⅱ",
+          "cost": 1,
+          "requires": "attack_speed_1",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 3.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_3",
+          "tier": 3,
+          "name": "攻击速度 Ⅲ",
+          "cost": 1,
+          "requires": "attack_speed_2",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 4.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_4",
+          "tier": 4,
+          "name": "攻击速度 Ⅳ",
+          "cost": 2,
+          "requires": "attack_speed_3",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 6.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_5",
+          "tier": 5,
+          "name": "攻击速度 Ⅴ",
+          "cost": 2,
+          "requires": "attack_speed_4",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 7.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_6",
+          "tier": 6,
+          "name": "攻击速度 Ⅵ",
+          "cost": 2,
+          "requires": "attack_speed_5",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 9.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_7",
+          "tier": 7,
+          "name": "攻击速度 Ⅶ",
+          "cost": 3,
+          "requires": "attack_speed_6",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 10.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_8",
+          "tier": 8,
+          "name": "攻击速度 Ⅷ",
+          "cost": 3,
+          "requires": "attack_speed_7",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 12.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_9",
+          "tier": 9,
+          "name": "攻击速度 Ⅸ",
+          "cost": 3,
+          "requires": "attack_speed_8",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 13.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "attack_speed_10",
+          "tier": 10,
+          "name": "攻击速度 Ⅹ",
+          "cost": 4,
+          "requires": "attack_speed_9",
+          "effect": {
+            "stat": "attackSpeedPct",
+            "value": 15.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "healing",
+      "name": "坚韧",
+      "desc": "提高副本内受到的伤害减免。",
+      "nodes": [
+        {
+          "id": "healing_1",
+          "tier": 1,
+          "name": "坚韧 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 0.8,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_2",
+          "tier": 2,
+          "name": "坚韧 Ⅱ",
+          "cost": 1,
+          "requires": "healing_1",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 1.6,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_3",
+          "tier": 3,
+          "name": "坚韧 Ⅲ",
+          "cost": 1,
+          "requires": "healing_2",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 2.4,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_4",
+          "tier": 4,
+          "name": "坚韧 Ⅳ",
+          "cost": 2,
+          "requires": "healing_3",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 3.2,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_5",
+          "tier": 5,
+          "name": "坚韧 Ⅴ",
+          "cost": 2,
+          "requires": "healing_4",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 4.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_6",
+          "tier": 6,
+          "name": "坚韧 Ⅵ",
+          "cost": 2,
+          "requires": "healing_5",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 4.8,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_7",
+          "tier": 7,
+          "name": "坚韧 Ⅶ",
+          "cost": 3,
+          "requires": "healing_6",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 5.6,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_8",
+          "tier": 8,
+          "name": "坚韧 Ⅷ",
+          "cost": 3,
+          "requires": "healing_7",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 6.4,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_9",
+          "tier": 9,
+          "name": "坚韧 Ⅸ",
+          "cost": 3,
+          "requires": "healing_8",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 7.2,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "healing_10",
+          "tier": 10,
+          "name": "坚韧 Ⅹ",
+          "cost": 4,
+          "requires": "healing_9",
+          "effect": {
+            "stat": "tenacityPct",
+            "value": 8.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "equip_quality",
+      "name": "装备品质",
+      "desc": "提高副本内掉落装备出现高品质的概率。",
+      "nodes": [
+        {
+          "id": "equip_quality_1",
+          "tier": 1,
+          "name": "装备品质 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.05,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_2",
+          "tier": 2,
+          "name": "装备品质 Ⅱ",
+          "cost": 1,
+          "requires": "equip_quality_1",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.1,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_3",
+          "tier": 3,
+          "name": "装备品质 Ⅲ",
+          "cost": 1,
+          "requires": "equip_quality_2",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.15,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_4",
+          "tier": 4,
+          "name": "装备品质 Ⅳ",
+          "cost": 2,
+          "requires": "equip_quality_3",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.2,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_5",
+          "tier": 5,
+          "name": "装备品质 Ⅴ",
+          "cost": 2,
+          "requires": "equip_quality_4",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.25,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_6",
+          "tier": 6,
+          "name": "装备品质 Ⅵ",
+          "cost": 2,
+          "requires": "equip_quality_5",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.3,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_7",
+          "tier": 7,
+          "name": "装备品质 Ⅶ",
+          "cost": 3,
+          "requires": "equip_quality_6",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.35,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_8",
+          "tier": 8,
+          "name": "装备品质 Ⅷ",
+          "cost": 3,
+          "requires": "equip_quality_7",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.4,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_9",
+          "tier": 9,
+          "name": "装备品质 Ⅸ",
+          "cost": 3,
+          "requires": "equip_quality_8",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.45,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_quality_10",
+          "tier": 10,
+          "name": "装备品质 Ⅹ",
+          "cost": 4,
+          "requires": "equip_quality_9",
+          "effect": {
+            "stat": "equipQualityWeight",
+            "value": 0.5,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "equip_level",
+      "name": "起手武器",
+      "desc": "提高起手武器与副本内装备的等级档位。",
+      "nodes": [
+        {
+          "id": "equip_level_1",
+          "tier": 1,
+          "name": "起手武器 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "equipLevel",
+            "value": 1.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_2",
+          "tier": 2,
+          "name": "起手武器 Ⅱ",
+          "cost": 1,
+          "requires": "equip_level_1",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 2.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_3",
+          "tier": 3,
+          "name": "起手武器 Ⅲ",
+          "cost": 1,
+          "requires": "equip_level_2",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 3.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_4",
+          "tier": 4,
+          "name": "起手武器 Ⅳ",
+          "cost": 2,
+          "requires": "equip_level_3",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 4.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_5",
+          "tier": 5,
+          "name": "起手武器 Ⅴ",
+          "cost": 2,
+          "requires": "equip_level_4",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 5.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_6",
+          "tier": 6,
+          "name": "起手武器 Ⅵ",
+          "cost": 2,
+          "requires": "equip_level_5",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 6.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_7",
+          "tier": 7,
+          "name": "起手武器 Ⅶ",
+          "cost": 3,
+          "requires": "equip_level_6",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 7.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_8",
+          "tier": 8,
+          "name": "起手武器 Ⅷ",
+          "cost": 3,
+          "requires": "equip_level_7",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 8.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_9",
+          "tier": 9,
+          "name": "起手武器 Ⅸ",
+          "cost": 3,
+          "requires": "equip_level_8",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 9.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "equip_level_10",
+          "tier": 10,
+          "name": "起手武器 Ⅹ",
+          "cost": 4,
+          "requires": "equip_level_9",
+          "effect": {
+            "stat": "equipLevel",
+            "value": 10.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "drop_count",
+      "name": "掉落数量",
+      "desc": "提高战斗奖励出现装备的概率。",
+      "nodes": [
+        {
+          "id": "drop_count_1",
+          "tier": 1,
+          "name": "掉落数量 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 5.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_2",
+          "tier": 2,
+          "name": "掉落数量 Ⅱ",
+          "cost": 1,
+          "requires": "drop_count_1",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 10.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_3",
+          "tier": 3,
+          "name": "掉落数量 Ⅲ",
+          "cost": 1,
+          "requires": "drop_count_2",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 15.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_4",
+          "tier": 4,
+          "name": "掉落数量 Ⅳ",
+          "cost": 2,
+          "requires": "drop_count_3",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 20.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_5",
+          "tier": 5,
+          "name": "掉落数量 Ⅴ",
+          "cost": 2,
+          "requires": "drop_count_4",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 25.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_6",
+          "tier": 6,
+          "name": "掉落数量 Ⅵ",
+          "cost": 2,
+          "requires": "drop_count_5",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 30.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_7",
+          "tier": 7,
+          "name": "掉落数量 Ⅶ",
+          "cost": 3,
+          "requires": "drop_count_6",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 35.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_8",
+          "tier": 8,
+          "name": "掉落数量 Ⅷ",
+          "cost": 3,
+          "requires": "drop_count_7",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 40.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_9",
+          "tier": 9,
+          "name": "掉落数量 Ⅸ",
+          "cost": 3,
+          "requires": "drop_count_8",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 45.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_count_10",
+          "tier": 10,
+          "name": "掉落数量 Ⅹ",
+          "cost": 4,
+          "requires": "drop_count_9",
+          "effect": {
+            "stat": "dropCountPct",
+            "value": 50.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "drop_quality",
+      "name": "掉落品质",
+      "desc": "提高副本内掉落装备的词条品质。",
+      "nodes": [
+        {
+          "id": "drop_quality_1",
+          "tier": 1,
+          "name": "掉落品质 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.05,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_2",
+          "tier": 2,
+          "name": "掉落品质 Ⅱ",
+          "cost": 1,
+          "requires": "drop_quality_1",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.1,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_3",
+          "tier": 3,
+          "name": "掉落品质 Ⅲ",
+          "cost": 1,
+          "requires": "drop_quality_2",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.15,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_4",
+          "tier": 4,
+          "name": "掉落品质 Ⅳ",
+          "cost": 2,
+          "requires": "drop_quality_3",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.2,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_5",
+          "tier": 5,
+          "name": "掉落品质 Ⅴ",
+          "cost": 2,
+          "requires": "drop_quality_4",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.25,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_6",
+          "tier": 6,
+          "name": "掉落品质 Ⅵ",
+          "cost": 2,
+          "requires": "drop_quality_5",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.3,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_7",
+          "tier": 7,
+          "name": "掉落品质 Ⅶ",
+          "cost": 3,
+          "requires": "drop_quality_6",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.35,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_8",
+          "tier": 8,
+          "name": "掉落品质 Ⅷ",
+          "cost": 3,
+          "requires": "drop_quality_7",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.4,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_9",
+          "tier": 9,
+          "name": "掉落品质 Ⅸ",
+          "cost": 3,
+          "requires": "drop_quality_8",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.45,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "drop_quality_10",
+          "tier": 10,
+          "name": "掉落品质 Ⅹ",
+          "cost": 4,
+          "requires": "drop_quality_9",
+          "effect": {
+            "stat": "dropQualityWeight",
+            "value": 0.5,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gold_gain",
+      "name": "副本金币",
+      "desc": "提高副本内金币获取。",
+      "nodes": [
+        {
+          "id": "gold_gain_1",
+          "tier": 1,
+          "name": "副本金币 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 5.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_2",
+          "tier": 2,
+          "name": "副本金币 Ⅱ",
+          "cost": 1,
+          "requires": "gold_gain_1",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 10.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_3",
+          "tier": 3,
+          "name": "副本金币 Ⅲ",
+          "cost": 1,
+          "requires": "gold_gain_2",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 15.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_4",
+          "tier": 4,
+          "name": "副本金币 Ⅳ",
+          "cost": 2,
+          "requires": "gold_gain_3",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 20.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_5",
+          "tier": 5,
+          "name": "副本金币 Ⅴ",
+          "cost": 2,
+          "requires": "gold_gain_4",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 25.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_6",
+          "tier": 6,
+          "name": "副本金币 Ⅵ",
+          "cost": 2,
+          "requires": "gold_gain_5",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 30.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_7",
+          "tier": 7,
+          "name": "副本金币 Ⅶ",
+          "cost": 3,
+          "requires": "gold_gain_6",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 35.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_8",
+          "tier": 8,
+          "name": "副本金币 Ⅷ",
+          "cost": 3,
+          "requires": "gold_gain_7",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 40.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_9",
+          "tier": 9,
+          "name": "副本金币 Ⅸ",
+          "cost": 3,
+          "requires": "gold_gain_8",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 45.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "gold_gain_10",
+          "tier": 10,
+          "name": "副本金币 Ⅹ",
+          "cost": 4,
+          "requires": "gold_gain_9",
+          "effect": {
+            "stat": "goldGainPct",
+            "value": 50.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "event_luck",
+      "name": "事件好运",
+      "desc": "提高事件中出现有利结果的概率。",
+      "nodes": [
+        {
+          "id": "event_luck_1",
+          "tier": 1,
+          "name": "事件好运 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.02,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_2",
+          "tier": 2,
+          "name": "事件好运 Ⅱ",
+          "cost": 1,
+          "requires": "event_luck_1",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.04,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_3",
+          "tier": 3,
+          "name": "事件好运 Ⅲ",
+          "cost": 1,
+          "requires": "event_luck_2",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.06,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_4",
+          "tier": 4,
+          "name": "事件好运 Ⅳ",
+          "cost": 2,
+          "requires": "event_luck_3",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.08,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_5",
+          "tier": 5,
+          "name": "事件好运 Ⅴ",
+          "cost": 2,
+          "requires": "event_luck_4",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.1,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_6",
+          "tier": 6,
+          "name": "事件好运 Ⅵ",
+          "cost": 2,
+          "requires": "event_luck_5",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.12,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_7",
+          "tier": 7,
+          "name": "事件好运 Ⅶ",
+          "cost": 3,
+          "requires": "event_luck_6",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.14,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_8",
+          "tier": 8,
+          "name": "事件好运 Ⅷ",
+          "cost": 3,
+          "requires": "event_luck_7",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.16,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_9",
+          "tier": 9,
+          "name": "事件好运 Ⅸ",
+          "cost": 3,
+          "requires": "event_luck_8",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.18,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "event_luck_10",
+          "tier": 10,
+          "name": "事件好运 Ⅹ",
+          "cost": 4,
+          "requires": "event_luck_9",
+          "effect": {
+            "stat": "eventLuck",
+            "value": 0.2,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "shop_discount",
+      "name": "商店折扣",
+      "desc": "降低副本商店的价格。",
+      "nodes": [
+        {
+          "id": "shop_discount_1",
+          "tier": 1,
+          "name": "商店折扣 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.02,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_2",
+          "tier": 2,
+          "name": "商店折扣 Ⅱ",
+          "cost": 1,
+          "requires": "shop_discount_1",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.04,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_3",
+          "tier": 3,
+          "name": "商店折扣 Ⅲ",
+          "cost": 1,
+          "requires": "shop_discount_2",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.06,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_4",
+          "tier": 4,
+          "name": "商店折扣 Ⅳ",
+          "cost": 2,
+          "requires": "shop_discount_3",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.08,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_5",
+          "tier": 5,
+          "name": "商店折扣 Ⅴ",
+          "cost": 2,
+          "requires": "shop_discount_4",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.1,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_6",
+          "tier": 6,
+          "name": "商店折扣 Ⅵ",
+          "cost": 2,
+          "requires": "shop_discount_5",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.12,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_7",
+          "tier": 7,
+          "name": "商店折扣 Ⅶ",
+          "cost": 3,
+          "requires": "shop_discount_6",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.14,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_8",
+          "tier": 8,
+          "name": "商店折扣 Ⅷ",
+          "cost": 3,
+          "requires": "shop_discount_7",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.16,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_9",
+          "tier": 9,
+          "name": "商店折扣 Ⅸ",
+          "cost": 3,
+          "requires": "shop_discount_8",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.18,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "shop_discount_10",
+          "tier": 10,
+          "name": "商店折扣 Ⅹ",
+          "cost": 4,
+          "requires": "shop_discount_9",
+          "effect": {
+            "stat": "shopDiscount",
+            "value": 0.2,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "start_buff",
+      "name": "起始祝福",
+      "desc": "进入副本时获得额外起始 BUFF。",
+      "nodes": [
+        {
+          "id": "start_buff_1",
+          "tier": 1,
+          "name": "起始祝福 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 0.2,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_2",
+          "tier": 2,
+          "name": "起始祝福 Ⅱ",
+          "cost": 1,
+          "requires": "start_buff_1",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 0.4,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_3",
+          "tier": 3,
+          "name": "起始祝福 Ⅲ",
+          "cost": 1,
+          "requires": "start_buff_2",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 0.6,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_4",
+          "tier": 4,
+          "name": "起始祝福 Ⅳ",
+          "cost": 2,
+          "requires": "start_buff_3",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 0.8,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_5",
+          "tier": 5,
+          "name": "起始祝福 Ⅴ",
+          "cost": 2,
+          "requires": "start_buff_4",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 1.0,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_6",
+          "tier": 6,
+          "name": "起始祝福 Ⅵ",
+          "cost": 2,
+          "requires": "start_buff_5",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 1.2,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_7",
+          "tier": 7,
+          "name": "起始祝福 Ⅶ",
+          "cost": 3,
+          "requires": "start_buff_6",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 1.4,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_8",
+          "tier": 8,
+          "name": "起始祝福 Ⅷ",
+          "cost": 3,
+          "requires": "start_buff_7",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 1.6,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_9",
+          "tier": 9,
+          "name": "起始祝福 Ⅸ",
+          "cost": 3,
+          "requires": "start_buff_8",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 1.8,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "start_buff_10",
+          "tier": 10,
+          "name": "起始祝福 Ⅹ",
+          "cost": 4,
+          "requires": "start_buff_9",
+          "effect": {
+            "stat": "startBuffCount",
+            "value": 2.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "revive_count",
+      "name": "复活次数",
+      "desc": "提高副本内可复活次数。",
+      "nodes": [
+        {
+          "id": "revive_count_1",
+          "tier": 1,
+          "name": "复活次数 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.1,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_2",
+          "tier": 2,
+          "name": "复活次数 Ⅱ",
+          "cost": 1,
+          "requires": "revive_count_1",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.2,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_3",
+          "tier": 3,
+          "name": "复活次数 Ⅲ",
+          "cost": 1,
+          "requires": "revive_count_2",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.3,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_4",
+          "tier": 4,
+          "name": "复活次数 Ⅳ",
+          "cost": 2,
+          "requires": "revive_count_3",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.4,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_5",
+          "tier": 5,
+          "name": "复活次数 Ⅴ",
+          "cost": 2,
+          "requires": "revive_count_4",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.5,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_6",
+          "tier": 6,
+          "name": "复活次数 Ⅵ",
+          "cost": 2,
+          "requires": "revive_count_5",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.6,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_7",
+          "tier": 7,
+          "name": "复活次数 Ⅶ",
+          "cost": 3,
+          "requires": "revive_count_6",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.7,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_8",
+          "tier": 8,
+          "name": "复活次数 Ⅷ",
+          "cost": 3,
+          "requires": "revive_count_7",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.8,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_9",
+          "tier": 9,
+          "name": "复活次数 Ⅸ",
+          "cost": 3,
+          "requires": "revive_count_8",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 0.9,
+            "mode": "add"
+          }
+        },
+        {
+          "id": "revive_count_10",
+          "tier": 10,
+          "name": "复活次数 Ⅹ",
+          "cost": 4,
+          "requires": "revive_count_9",
+          "effect": {
+            "stat": "reviveCount",
+            "value": 1.0,
+            "mode": "add"
+          }
+        }
+      ]
+    },
+    {
+      "id": "boss_growth",
+      "name": "讨伐者",
+      "desc": "提高击败层 BOSS 获得的成长点。",
+      "nodes": [
+        {
+          "id": "boss_growth_1",
+          "tier": 1,
+          "name": "讨伐者 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.05,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_2",
+          "tier": 2,
+          "name": "讨伐者 Ⅱ",
+          "cost": 1,
+          "requires": "boss_growth_1",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.1,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_3",
+          "tier": 3,
+          "name": "讨伐者 Ⅲ",
+          "cost": 1,
+          "requires": "boss_growth_2",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.15,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_4",
+          "tier": 4,
+          "name": "讨伐者 Ⅳ",
+          "cost": 2,
+          "requires": "boss_growth_3",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.2,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_5",
+          "tier": 5,
+          "name": "讨伐者 Ⅴ",
+          "cost": 2,
+          "requires": "boss_growth_4",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.25,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_6",
+          "tier": 6,
+          "name": "讨伐者 Ⅵ",
+          "cost": 2,
+          "requires": "boss_growth_5",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.3,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_7",
+          "tier": 7,
+          "name": "讨伐者 Ⅶ",
+          "cost": 3,
+          "requires": "boss_growth_6",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.35,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_8",
+          "tier": 8,
+          "name": "讨伐者 Ⅷ",
+          "cost": 3,
+          "requires": "boss_growth_7",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.4,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_9",
+          "tier": 9,
+          "name": "讨伐者 Ⅸ",
+          "cost": 3,
+          "requires": "boss_growth_8",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.45,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "boss_growth_10",
+          "tier": 10,
+          "name": "讨伐者 Ⅹ",
+          "cost": 4,
+          "requires": "boss_growth_9",
+          "effect": {
+            "stat": "bossGrowthPct",
+            "value": 0.5,
+            "mode": "mul"
+          }
+        }
+      ]
+    },
+    {
+      "id": "growth_gain",
+      "name": "成长增幅",
+      "desc": "提高成长点获取。",
+      "nodes": [
+        {
+          "id": "growth_gain_1",
+          "tier": 1,
+          "name": "成长增幅 Ⅰ",
+          "cost": 1,
+          "requires": null,
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.05,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_2",
+          "tier": 2,
+          "name": "成长增幅 Ⅱ",
+          "cost": 1,
+          "requires": "growth_gain_1",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.1,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_3",
+          "tier": 3,
+          "name": "成长增幅 Ⅲ",
+          "cost": 1,
+          "requires": "growth_gain_2",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.15,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_4",
+          "tier": 4,
+          "name": "成长增幅 Ⅳ",
+          "cost": 2,
+          "requires": "growth_gain_3",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.2,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_5",
+          "tier": 5,
+          "name": "成长增幅 Ⅴ",
+          "cost": 2,
+          "requires": "growth_gain_4",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.25,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_6",
+          "tier": 6,
+          "name": "成长增幅 Ⅵ",
+          "cost": 2,
+          "requires": "growth_gain_5",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.3,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_7",
+          "tier": 7,
+          "name": "成长增幅 Ⅶ",
+          "cost": 3,
+          "requires": "growth_gain_6",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.35,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_8",
+          "tier": 8,
+          "name": "成长增幅 Ⅷ",
+          "cost": 3,
+          "requires": "growth_gain_7",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.4,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_9",
+          "tier": 9,
+          "name": "成长增幅 Ⅸ",
+          "cost": 3,
+          "requires": "growth_gain_8",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.45,
+            "mode": "mul"
+          }
+        },
+        {
+          "id": "growth_gain_10",
+          "tier": 10,
+          "name": "成长增幅 Ⅹ",
+          "cost": 4,
+          "requires": "growth_gain_9",
+          "effect": {
+            "stat": "growthGainPct",
+            "value": 0.5,
+            "mode": "mul"
+          }
+        }
+      ]
+    }
+  ]
+}

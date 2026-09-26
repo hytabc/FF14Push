@@ -839,3 +839,133 @@ def test_treasure_is_not_a_gold_printer() -> None:
     expected += float(cfg["correctChance"]) ** (int(cfg["floors"]) - 1) * int(cfg["finalBonusGold"])
 
     assert expected < int(cfg["entryCost"]), f"期望金币 {expected:.0f} 已达入场成本"
+
+
+def test_ishgard_config_is_consistent() -> None:
+    """重建伊修加德：5 阶段齐全、阈值递增、紫色附魔 4+4、产物只吃本阶段物资、工具加成 = 同段 ×1.2。"""
+    cfg = CONFIG.ishgard
+    stages = cfg["stages"]
+    assert [int(s["stage"]) for s in stages] == [1, 2, 3, 4, 5]
+
+    targets = [int(t) for t in cfg["stageTargets"]]
+    assert len(targets) == 5 and targets == sorted(targets) and len(set(targets)) == 5
+    assert targets[0] == 1_000_000
+
+    # 阶段隔离：id 带阶段前缀，产物只能引用本阶段的材料 / 鱼（不可跨阶段）。
+    all_ids: set[str] = set()
+    for stage in stages:
+        stage_no = int(stage["stage"])
+        local = {m["id"] for m in stage["materials"]} | {f["id"] for f in stage["fish"]}
+        assert all(i.startswith(f"s{stage_no}_") for i in local), stage_no
+        for product in stage["products"]:
+            assert product["id"].startswith(f"s{stage_no}_"), product["id"]
+            assert product["inputs"], product["id"]
+            assert all(i["itemId"] in local for i in product["inputs"]), product["id"]
+            assert int(product["points"]) > 0 and int(product["craftSeconds"]) >= 0
+        all_ids |= local | {p["id"] for p in stage["products"]}
+    assert len(all_ids) == sum(
+        len(s["materials"]) + len(s["fish"]) + len(s["products"]) for s in stages
+    ), "阶段间物资 id 不可重复"
+
+    pinks = cfg["pinkEnchants"]
+    assert len(pinks) == 8
+    assert sum(1 for p in pinks if p["kind"] == "doh") == 4
+    assert sum(1 for p in pinks if p["kind"] == "dol") == 4
+    assert {p["id"] for p in pinks} == set(CONFIG.ishgard_pink_by_id)
+
+    tiers = {20: 2, 40: 4, 60: 6, 80: 8, 100: 10}
+    ref_id = {"doh": "dh_dohTool_%d", "dol": "dh_dolTool_%d"}
+    for kind, template in ref_id.items():
+        levels = cfg["tools"][kind]["levels"]
+        assert [int(l["level"]) for l in levels] == [20, 40, 60, 80, 100]
+        for lvl in levels:
+            assert int(lvl["stage"]) in range(1, 6)
+            base = CONFIG.dohdol_item_by_id[template % tiers[int(lvl["level"])]]
+            for stat, value in lvl["bonus"].items():
+                assert float(value) == pytest.approx(float(base["bonus"][stat]) * 1.2, rel=1e-6), (
+                    kind, lvl["level"], stat,
+                )
+
+    title_ids = {t["id"] for t in CONFIG.titles["titles"]}
+    assert {"ishgard_saint", "ishgard_apostle"} <= title_ids
+
+
+def test_palace_config_is_consistent() -> None:
+    """死者宫殿：10 层 / 10 步、节点权重和为 1、怪物数值递增、成长树规模与消耗达标、事件 >30。"""
+    cfg = CONFIG.palace
+    assert int(cfg["floors"]) == 10
+    assert int(cfg["stepsPerFloor"]) == 10
+    assert int(cfg["levelCap"]) > 1
+    assert int(cfg["heroCandidates"]) == 3 and int(cfg["weaponCandidates"]) == 3
+    assert int(cfg["rewardChoices"]) == 3
+
+    # 节点权重各行之和为 1，且覆盖 battle/event/shop/chest/rest
+    for band in cfg["nodeTypeWeights"]:
+        assert abs(sum(float(w) for w in band["weights"].values()) - 1.0) < 1e-9
+        assert {"battle", "event", "shop", "chest", "rest"} <= set(band["weights"])
+    assert [int(b["maxStep"]) for b in cfg["nodeTypeWeights"]] == sorted(
+        int(b["maxStep"]) for b in cfg["nodeTypeWeights"]
+    )
+
+    # 怪物数值递增
+    floors = cfg["monsters"]["floors"]
+    assert [int(f["floor"]) for f in floors] == list(range(1, int(cfg["floors"]) + 1))
+    for key in ("hp", "attack", "defense", "xp", "gold"):
+        values = [float(f[key]) for f in floors]
+        assert values == sorted(values) and values[0] < values[-1], key
+
+    # 层 BOSS 奖励：按层长度一致，1-5 层给纹章、6-10 层给南瓜，通关第 10 层有额外成长点
+    boss = cfg["bossReward"]
+    assert len(boss["growthPoints"]) == int(cfg["floors"])
+    assert [int(c) for c in boss["flameCrest"][:5]] == sorted(int(c) for c in boss["flameCrest"][:5])
+    assert sum(int(c) for c in boss["flameCrest"][5:]) == 0
+    assert sum(int(c) for c in boss["glassPumpkin"][:5]) == 0
+    assert sum(int(c) for c in boss["glassPumpkin"][5:]) > 0
+    assert int(boss["clearBonusGrowthPoints"]) > 0
+
+    # 战斗奖励权重之和为 1
+    rw = cfg["rewardWeights"]
+    assert abs(sum(float(w) for w in rw.values()) - 1.0) < 1e-9
+    assert {"equip", "buff", "both"} <= set(rw)
+
+    # BUFF 池非空且索引一致
+    assert cfg["buffs"] and {b["id"] for b in cfg["buffs"]} == set(CONFIG.palace_buff_by_id)
+
+    # 兑换表：引用存在的堆叠物 / 魔晶石，且至少消耗一种代币
+    stack_ids = {c["id"] for c in CONFIG.consumables["items"]}
+    seed_ids = set(CONFIG.seed_by_id)
+    for ex in cfg["exchange"]:
+        assert int(ex["cost"]["flameCrest"]) + int(ex["cost"]["glassPumpkin"]) > 0, ex["id"]
+        grant = ex["grant"]
+        if grant["kind"] == "stack":
+            assert grant["itemId"] in stack_ids | seed_ids, (ex["id"], grant["itemId"])
+    assert {e["id"] for e in cfg["exchange"]} == set(CONFIG.palace_exchange_by_id)
+
+    # 成长树：>20 类别 / >200 节点 / 总消耗 >400 / 节点 requires 指向同类别前置
+    categories = CONFIG.palace_growth["categories"]
+    assert len(categories) > 20
+    node_count = sum(len(c["nodes"]) for c in categories)
+    total_cost = sum(int(n["cost"]) for c in categories for n in c["nodes"])
+    assert node_count > 200, node_count
+    assert total_cost > 400, total_cost
+    for category in categories:
+        prev = None
+        for node in category["nodes"]:
+            assert node["requires"] == prev, (category["id"], node["id"])
+            assert int(node["cost"]) > 0
+            assert int(node["effect"]["value"]) != 0 or float(node["effect"]["value"]) > 0
+            prev = node["id"]
+    assert node_count == len(CONFIG.palace_growth_by_id)
+
+    # 事件：>30 条、每条至少一个选项、id 唯一
+    events = CONFIG.palace_events["events"]
+    assert len(events) > 30, len(events)
+    assert len({e["id"] for e in events}) == len(events)
+    for ev in events:
+        assert ev["choices"] and all(c["effects"] or c["label"] for c in ev["choices"]), ev["id"]
+    assert len(events) == len(CONFIG.palace_event_by_id)
+
+    # 称号：死灵术士
+    title_ids = {t["id"] for t in CONFIG.titles["titles"]}
+    assert "palace_necro" in title_ids
+

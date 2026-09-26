@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ActivitySession, AutoSellSetting, DohDolProgress, FishRecord, Item, User
-from app.services import consumables, dohdol_util, titles, weather
+from app.services import consumables, dohdol_util, ishgard, titles, weather
 from app.services.game_config import CONFIG
 from app.services.gathering import cleared_max_region, progress_level
 from app.services.playtime import add_play_ms
@@ -72,7 +72,7 @@ async def start_fish(db: AsyncSession, user: User, items: Sequence[Item], region
     )
     db.add(session)
     await db.flush()
-    speed = dohdol_util.equipped_bonus(items).get("gatherSpeedPct", 0.0)
+    speed = (await ishgard.bonus_with_purple(db, user.id, items)).get("gatherSpeedPct", 0.0)
     return {
         "sessionId": session.id,
         "regionId": region_id,
@@ -266,7 +266,7 @@ async def report_fish(
     # 天气/时间在一次上报窗口内视为恒定（窗口上限见 dohdol-levels.json）。
     conditions = weather.conditions_for(region["regionId"], now)
 
-    equip = dohdol_util.equipped_bonus(items)
+    equip = await ishgard.bonus_with_purple(db, user.id, items)
     potion = await consumables.fish_bonus(db, user.id)
     insight_pct = equip.get("fishInsightPct", 0.0) + potion.get("fishInsightPct", 0.0)
     chance_pct = equip.get("fishChancePct", 0.0) + potion.get("fishChancePct", 0.0)

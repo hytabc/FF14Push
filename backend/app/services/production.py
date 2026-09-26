@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ActivitySession, DohDolProgress, Hero, Item, User
-from app.services import consumables, dohdol_util, drop_luck, luck_sources
+from app.services import consumables, dohdol_util, drop_luck, ishgard, luck_sources
 from app.services.egg_heroes import craft_extra_chance
 from app.services.game_config import CONFIG
 from app.services.grants import insert_items
@@ -42,9 +42,13 @@ async def _progress(db: AsyncSession, user_id: int) -> DohDolProgress:
     return row
 
 
-def craft_seconds(recipe: dict[str, Any], items: Sequence[Item]) -> float:
-    """单次制造耗时（受专用装备制造速度加成影响）。"""
-    speed = dohdol_util.equipped_bonus(items).get("craftSpeedPct", 0.0)
+def craft_seconds(
+    recipe: dict[str, Any], items: Sequence[Item], bonus: dict[str, float] | None = None
+) -> float:
+    """单次制造耗时（受专用装备制造速度加成影响；`bonus` 已含紫色附魔时直接传入）。"""
+    speed = (bonus if bonus is not None else dohdol_util.equipped_bonus(items)).get(
+        "craftSpeedPct", 0.0
+    )
     return max(0.2, float(recipe["craftSeconds"]) * (1.0 - min(0.6, speed / 100.0)))
 
 
@@ -87,12 +91,13 @@ async def start_produce(
     )
     db.add(session)
     await db.flush()
+    bonus = await ishgard.bonus_with_purple(db, user.id, items)
     return {
         "sessionId": session.id,
         "jobId": job_id,
         "recipeId": recipe_id,
         "targetActions": target,
-        "cycle": dohdol_util.cycle_info(craft_seconds(recipe, items), 0.0, now),
+        "cycle": dohdol_util.cycle_info(craft_seconds(recipe, items, bonus), 0.0, now),
     }
 
 
@@ -118,7 +123,7 @@ async def report_produce(
     window = dohdol_util.window_seconds(session.last_report_at, now)
     add_play_ms(user, int(window * 1000))
 
-    equip = dohdol_util.equipped_bonus(items)
+    equip = await ishgard.bonus_with_purple(db, user.id, items)
     quality_bonus = await consumables.craft_quality_bonus(db, user.id) + equip.get(
         "craftQualityPct", 0.0
     ) / 100.0
@@ -144,7 +149,7 @@ async def report_produce(
     )
 
     target = int(session.target_actions) if session.target_actions is not None else None
-    craft_seconds_value = craft_seconds(recipe, items)
+    craft_seconds_value = craft_seconds(recipe, items, equip)
     total = float(session.credit) + window
     by_time = int(total // craft_seconds_value)
 

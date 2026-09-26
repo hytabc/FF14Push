@@ -279,6 +279,37 @@ class SellStackRequest(BaseModel):
     count: int = Field(default=1, ge=1)
 
 
+# --------------------------------------------------------------- 重建伊修加德
+class IshgardGatherStartRequest(BaseModel):
+    jobId: str = Field(min_length=2, max_length=8)
+
+
+class IshgardProduceStartRequest(BaseModel):
+    jobId: str = Field(min_length=2, max_length=8)
+    recipeId: str = Field(min_length=1, max_length=48)
+    count: int | None = Field(default=None, ge=1, le=100000)
+
+
+class IshgardSubmitRequest(BaseModel):
+    """提交当前阶段的重建产物换取积分。"""
+
+    itemId: str = Field(min_length=1, max_length=48)
+    count: int = Field(default=1, ge=1)
+
+
+class IshgardToolRequest(BaseModel):
+    """可成长主手装备操作（kind: doh 生产 / dol 采集）。"""
+
+    kind: Literal["doh", "dol"]
+
+
+class IshgardSellRequest(BaseModel):
+    """出售重建专属物资（材料 / 鱼 / 产物）。"""
+
+    itemId: str = Field(min_length=1, max_length=48)
+    count: int = Field(default=1, ge=1)
+
+
 # --------------------------------------------------------------- 市场交易板
 # 可上架 / 可求购的堆叠物种类（与 dohdol_util.STACK_* 对齐）。
 StackKind = Literal["material", "potion", "food", "materia", "seed"]
@@ -430,4 +461,44 @@ class SequenceOverwriteRequest(BaseModel):
     loopMode: Literal["once", "count", "infinite"] = "once"
     loopTotal: int = Field(default=3, ge=1, le=10000)
     name: str | None = Field(default=None, min_length=1, max_length=24)
+
+
+# --------------------------------------------------------------- 死者宫殿
+class PalaceChooseRequest(BaseModel):
+    """开局三选一（英雄 / 奖励）。"""
+
+    index: int = Field(ge=0, le=63)
+
+
+class PalaceNodeEnterRequest(BaseModel):
+    nodeId: str = Field(min_length=1, max_length=16)
+
+
+class PalaceNodeClearRequest(BaseModel):
+    nodeId: str = Field(min_length=1, max_length=16)
+    elapsedMs: int = Field(default=0, ge=0)
+    result: Literal["win", "lose"] = "win"
+
+
+class PalaceEventChooseRequest(BaseModel):
+    nodeId: str = Field(min_length=1, max_length=16)
+    choiceIndex: int = Field(ge=0, le=15)
+
+
+class PalaceShopBuyRequest(BaseModel):
+    nodeId: str = Field(min_length=1, max_length=16)
+    offerIndex: int = Field(ge=0, le=15)
+
+
+class PalaceEquipRequest(BaseModel):
+    index: int = Field(ge=0, le=1023)
+
+
+class PalaceGrowthUnlockRequest(BaseModel):
+    nodeId: str = Field(min_length=1, max_length=64)
+
+
+class PalaceExchangeRequest(BaseModel):
+    exchangeId: str = Field(min_length=1, max_length=64)
+    count: int = Field(default=1, ge=1, le=999)
 

@@ -34,15 +34,18 @@ def _reset_live_ranking_cache():
     必须显式清空，否则上一个用例的状态会串进下一个用例。
     """
     from app.api.v1 import game as game_module
+    from app.services import ishgard as ishgard_module
     from app.services import world_boss as world_boss_module
     from app.services.ranking import invalidate_live_rankings
 
     invalidate_live_rankings()
     world_boss_module.invalidate_contribution_rows()
+    ishgard_module.invalidate_board_cache()
     game_module._CONFIG_RESPONSE = None
     yield
     invalidate_live_rankings()
     world_boss_module.invalidate_contribution_rows()
+    ishgard_module.invalidate_board_cache()
     game_module._CONFIG_RESPONSE = None
 
 

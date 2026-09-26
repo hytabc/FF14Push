@@ -1,0 +1,1310 @@
+{
+  "$comment": "死者宫殿事件库。效果 kind 由 backend/app/services/palace.py 结算；lose_hp 不会致死（下限保留 1 点血）。数值由 scripts/gen-palace-data.py 生成。",
+  "version": "1.0.0",
+  "events": [
+    {
+      "id": "ev_forge",
+      "name": "幽灵铁匠",
+      "type": "equip_level_up",
+      "weight": 8,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "装备强化",
+      "desc": "幽灵铁匠愿为你手中的兵器再淬一次火。",
+      "choices": [
+        {
+          "label": "强化武器等级",
+          "effects": [
+            {
+              "kind": "equip_level_up",
+              "target": "weapon",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_enchanter",
+      "name": "遗落的附魔师",
+      "type": "equip_rarity_up",
+      "weight": 6,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "品质升华",
+      "desc": "附魔师端详你的装备，喃喃自语。",
+      "choices": [
+        {
+          "label": "提升一件装备品质",
+          "effects": [
+            {
+              "kind": "equip_rarity_up",
+              "target": "random",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "婉拒",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_altar_str",
+      "name": "力量祭坛",
+      "type": "hero_attr_up",
+      "weight": 7,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "力量",
+      "desc": "黑曜石祭坛上刻满了古老的符文。",
+      "choices": [
+        {
+          "label": "献上鲜血换取力量",
+          "effects": [
+            {
+              "kind": "lose_hp",
+              "value": 0.25
+            },
+            {
+              "kind": "hero_attr_up",
+              "attr": "str",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_altar_dex",
+      "name": "疾风祭坛",
+      "type": "hero_attr_up",
+      "weight": 7,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "敏捷",
+      "desc": "风在祭坛四周低语。",
+      "choices": [
+        {
+          "label": "献上鲜血换取敏捷",
+          "effects": [
+            {
+              "kind": "lose_hp",
+              "value": 0.25
+            },
+            {
+              "kind": "hero_attr_up",
+              "attr": "dex",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_altar_int",
+      "name": "智慧祭坛",
+      "type": "hero_attr_up",
+      "weight": 7,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "智力",
+      "desc": "祭坛上的水晶泛着幽光。",
+      "choices": [
+        {
+          "label": "献上鲜血换取智慧",
+          "effects": [
+            {
+              "kind": "lose_hp",
+              "value": 0.25
+            },
+            {
+              "kind": "hero_attr_up",
+              "attr": "int",
+              "value": 5
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_training",
+      "name": "训练场",
+      "type": "skill_effect_up",
+      "weight": 6,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "技艺精进",
+      "desc": "废弃的训练场里，木桩仍在等待挥砍。",
+      "choices": [
+        {
+          "label": "磨练技艺",
+          "effects": [
+            {
+              "kind": "skill_effect_up",
+              "value": 0.08
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_curse_atk",
+      "name": "枯竭诅咒",
+      "type": "curse",
+      "weight": 5,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "攻",
+      "desc": "一缕怨念缠上了你的武器。",
+      "choices": [
+        {
+          "label": "承受诅咒",
+          "effects": [
+            {
+              "kind": "curse",
+              "stat": "attackPct",
+              "value": -0.08
+            },
+            {
+              "kind": "grant_gold",
+              "value": 150
+            }
+          ]
+        },
+        {
+          "label": "抵抗（可能失败）",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.5,
+              "onWin": [
+                {
+                  "kind": "grant_gold",
+                  "value": 200
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "curse",
+                  "stat": "attackPct",
+                  "value": -0.12
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_curse_def",
+      "name": "脆弱诅咒",
+      "type": "curse",
+      "weight": 5,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "防",
+      "desc": "你的护甲仿佛在低语。",
+      "choices": [
+        {
+          "label": "承受诅咒",
+          "effects": [
+            {
+              "kind": "curse",
+              "stat": "defensePct",
+              "value": -0.08
+            },
+            {
+              "kind": "grant_gold",
+              "value": 150
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_curse_hp",
+      "name": "腐化诅咒",
+      "type": "curse",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "生命",
+      "desc": "生命的气息被缓缓抽走。",
+      "choices": [
+        {
+          "label": "承受诅咒",
+          "effects": [
+            {
+              "kind": "curse",
+              "stat": "hpPct",
+              "value": -0.1
+            },
+            {
+              "kind": "grant_equip"
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_treasure",
+      "name": "遗落的宝箱",
+      "type": "chest",
+      "weight": 9,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "宝箱",
+      "desc": "角落里静静躺着一只蒙尘的箱子。",
+      "choices": [
+        {
+          "label": "打开",
+          "effects": [
+            {
+              "kind": "grant_equip"
+            }
+          ]
+        },
+        {
+          "label": "打开（可能翻倍）",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.4,
+              "onWin": [
+                {
+                  "kind": "grant_equip"
+                },
+                {
+                  "kind": "grant_equip"
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "grant_gold",
+                  "value": 80
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_trapped",
+      "name": "陷阱宝箱",
+      "type": "trap",
+      "weight": 5,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "陷阱",
+      "desc": "箱子下方连着细细的丝线。",
+      "choices": [
+        {
+          "label": "小心打开",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.6,
+              "onWin": [
+                {
+                  "kind": "grant_equip"
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "lose_hp",
+                  "value": 0.3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "直接砸开",
+          "effects": [
+            {
+              "kind": "lose_hp",
+              "value": 0.15
+            },
+            {
+              "kind": "grant_equip"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_merchant",
+      "name": "街头商人",
+      "type": "shop",
+      "weight": 6,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "商人",
+      "desc": "戴着兜帽的商人冲你伸出三根手指。",
+      "choices": [
+        {
+          "label": "买下祝福",
+          "effects": [
+            {
+              "kind": "lose_gold",
+              "value": 120
+            },
+            {
+              "kind": "grant_buff"
+            }
+          ]
+        },
+        {
+          "label": "离开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_gambler",
+      "name": "赌徒",
+      "type": "gamble",
+      "weight": 6,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "赌博",
+      "desc": "赌徒摇晃着骰盅，笑意盈盈。",
+      "choices": [
+        {
+          "label": "押上全部",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.5,
+              "onWin": [
+                {
+                  "kind": "grant_gold",
+                  "value": 500
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "lose_gold",
+                  "value": 99999
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "不赌",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_fountain",
+      "name": "静谧之泉",
+      "type": "heal",
+      "weight": 8,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "回复",
+      "desc": "泉水清澈见底，泛起微光。",
+      "choices": [
+        {
+          "label": "饮下泉水",
+          "effects": [
+            {
+              "kind": "heal",
+              "value": 0.5
+            }
+          ]
+        },
+        {
+          "label": "灌满行囊（换金币）",
+          "effects": [
+            {
+              "kind": "heal",
+              "value": 0.2
+            },
+            {
+              "kind": "grant_gold",
+              "value": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_revive",
+      "name": "亡者之息",
+      "type": "grant_revive",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "亡者",
+      "desc": "一具骸骨的手里攥着一枚温热的徽记。",
+      "choices": [
+        {
+          "label": "拾起徽记",
+          "effects": [
+            {
+              "kind": "grant_revive",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "安葬骸骨",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 90
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_scholar",
+      "name": "古籍学者",
+      "type": "level_up",
+      "weight": 5,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "经验",
+      "desc": "学者递来一本残破的手札。",
+      "choices": [
+        {
+          "label": "研读手札",
+          "effects": [
+            {
+              "kind": "grant_exp",
+              "value": 0.5
+            }
+          ]
+        },
+        {
+          "label": "带走变卖",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_soul_pact",
+      "name": "灵魂契约",
+      "type": "soul",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "契约",
+      "desc": "一团幽蓝的灵魂之火在你面前张开了手。",
+      "choices": [
+        {
+          "label": "缔结契约",
+          "effects": [
+            {
+              "kind": "curse",
+              "stat": "hpPct",
+              "value": -0.08
+            },
+            {
+              "kind": "grant_buff"
+            },
+            {
+              "kind": "grant_buff"
+            }
+          ]
+        },
+        {
+          "label": "拒绝",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_ambush",
+      "name": "伏击",
+      "type": "ambush",
+      "weight": 7,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "伏击",
+      "desc": "黑暗中亮起数双眼睛。",
+      "choices": [
+        {
+          "label": "迎战",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 140
+            },
+            {
+              "kind": "lose_hp",
+              "value": 0.12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_vault",
+      "name": "废弃金库",
+      "type": "gold",
+      "weight": 6,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "金币",
+      "desc": "厚重的金库门虚掩着。",
+      "choices": [
+        {
+          "label": "搜刮",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 220
+            }
+          ]
+        },
+        {
+          "label": "仔细搜查（有风险）",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.55,
+              "onWin": [
+                {
+                  "kind": "grant_gold",
+                  "value": 420
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "lose_hp",
+                  "value": 0.2
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_alchemist",
+      "name": "游方炼金术士",
+      "type": "buff",
+      "weight": 6,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "炼金",
+      "desc": "术士的背包里塞满了各色小瓶。",
+      "choices": [
+        {
+          "label": "讨要一瓶",
+          "effects": [
+            {
+              "kind": "grant_buff"
+            }
+          ]
+        },
+        {
+          "label": "购买两瓶",
+          "effects": [
+            {
+              "kind": "lose_gold",
+              "value": 150
+            },
+            {
+              "kind": "grant_buff"
+            },
+            {
+              "kind": "grant_buff"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_relic",
+      "name": "远古遗物",
+      "type": "relic",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "遗物",
+      "desc": "石台上悬浮着一件不属于这个时代的器物。",
+      "choices": [
+        {
+          "label": "触碰",
+          "effects": [
+            {
+              "kind": "grant_equip"
+            },
+            {
+              "kind": "grant_equip"
+            }
+          ]
+        },
+        {
+          "label": "谨慎记录",
+          "effects": [
+            {
+              "kind": "gain_growth",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_echo",
+      "name": "回响之厅",
+      "type": "echo",
+      "weight": 3,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "回响",
+      "desc": "厅内回荡着往昔战斗的余音。",
+      "choices": [
+        {
+          "label": "凝神倾听",
+          "effects": [
+            {
+              "kind": "skill_effect_up",
+              "value": 0.05
+            },
+            {
+              "kind": "grant_exp",
+              "value": 0.3
+            }
+          ]
+        },
+        {
+          "label": "快步穿过",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_mirror",
+      "name": "魔镜",
+      "type": "mirror",
+      "weight": 3,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "魔镜",
+      "desc": "镜中映出的并非你的模样。",
+      "choices": [
+        {
+          "label": "凝视镜面",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.5,
+              "onWin": [
+                {
+                  "kind": "grant_equip"
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "curse",
+                  "stat": "attackPct",
+                  "value": -0.05
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "打碎镜子",
+          "effects": [
+            {
+              "kind": "lose_hp",
+              "value": 0.1
+            },
+            {
+              "kind": "grant_gold",
+              "value": 80
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_necropolis",
+      "name": "亡者之城",
+      "type": "growth",
+      "weight": 2,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "亡者",
+      "desc": "无数死者的低语汇成了成长的养分。",
+      "choices": [
+        {
+          "label": "汲取",
+          "effects": [
+            {
+              "kind": "gain_growth",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "label": "超度亡魂",
+          "effects": [
+            {
+              "kind": "heal",
+              "value": 0.3
+            },
+            {
+              "kind": "grant_gold",
+              "value": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_blacksmith",
+      "name": "无名锻造台",
+      "type": "equip_upgrade",
+      "weight": 5,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "锻造",
+      "desc": "锻造台上还留有余温。",
+      "choices": [
+        {
+          "label": "锻造防具",
+          "effects": [
+            {
+              "kind": "equip_level_up",
+              "target": "armor",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "锻造饰品",
+          "effects": [
+            {
+              "kind": "equip_level_up",
+              "target": "accessory",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_wishing",
+      "name": "许愿池",
+      "type": "wish",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "许愿",
+      "desc": "池底堆满了发亮的硬币。",
+      "choices": [
+        {
+          "label": "许愿（花金币）",
+          "effects": [
+            {
+              "kind": "lose_gold",
+              "value": 100
+            },
+            {
+              "kind": "chance",
+              "p": 0.5,
+              "onWin": [
+                {
+                  "kind": "grant_equip"
+                },
+                {
+                  "kind": "grant_buff"
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "grant_gold",
+                  "value": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "捞硬币",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 70
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_cursed_idol",
+      "name": "受诅咒的雕像",
+      "type": "idol",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "雕像",
+      "desc": "雕像的眼睛似乎在跟着你转动。",
+      "choices": [
+        {
+          "label": "取走宝石",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 300
+            },
+            {
+              "kind": "curse",
+              "stat": "defensePct",
+              "value": -0.06
+            }
+          ]
+        },
+        {
+          "label": "原样离开",
+          "effects": [
+            {
+              "kind": "grant_exp",
+              "value": 0.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_arena",
+      "name": "灵魂竞技场",
+      "type": "arena",
+      "weight": 5,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "竞技",
+      "desc": "看台上坐着无数沉默的灵魂。",
+      "choices": [
+        {
+          "label": "接受挑战",
+          "effects": [
+            {
+              "kind": "lose_hp",
+              "value": 0.2
+            },
+            {
+              "kind": "grant_equip"
+            },
+            {
+              "kind": "grant_gold",
+              "value": 160
+            }
+          ]
+        },
+        {
+          "label": "退场",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_library",
+      "name": "湮没的图书馆",
+      "type": "library",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "图书馆",
+      "desc": "书架高耸入黑暗，看不见顶端。",
+      "choices": [
+        {
+          "label": "研读战术",
+          "effects": [
+            {
+              "kind": "skill_effect_up",
+              "value": 0.06
+            }
+          ]
+        },
+        {
+          "label": "寻找藏宝图",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 140
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_campsite",
+      "name": "旅人营地",
+      "type": "rest",
+      "weight": 8,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "营地",
+      "desc": "一堆将熄未熄的篝火。",
+      "choices": [
+        {
+          "label": "休整",
+          "effects": [
+            {
+              "kind": "heal",
+              "value": 0.35
+            }
+          ]
+        },
+        {
+          "label": "交换情报",
+          "effects": [
+            {
+              "kind": "grant_exp",
+              "value": 0.25
+            },
+            {
+              "kind": "grant_gold",
+              "value": 40
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_rift",
+      "name": "空间裂隙",
+      "type": "rift",
+      "weight": 3,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "裂隙",
+      "desc": "空气中撕开一道不稳定的裂口。",
+      "choices": [
+        {
+          "label": "跃入",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.5,
+              "onWin": [
+                {
+                  "kind": "grant_equip"
+                },
+                {
+                  "kind": "grant_equip"
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "lose_hp",
+                  "value": 0.35
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "远离",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_grimoire",
+      "name": "禁忌魔典",
+      "type": "grimoire",
+      "weight": 3,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "魔典",
+      "desc": "书页自行翻动，停在了某一页。",
+      "choices": [
+        {
+          "label": "诵读",
+          "effects": [
+            {
+              "kind": "skill_effect_up",
+              "value": 0.1
+            },
+            {
+              "kind": "lose_hp",
+              "value": 0.15
+            }
+          ]
+        },
+        {
+          "label": "合上",
+          "effects": [
+            {
+              "kind": "grant_gold",
+              "value": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_bone_pile",
+      "name": "骸骨堆",
+      "type": "bones",
+      "weight": 6,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "骸骨",
+      "desc": "骸骨堆里似乎藏着什么。",
+      "choices": [
+        {
+          "label": "翻找",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.7,
+              "onWin": [
+                {
+                  "kind": "grant_gold",
+                  "value": 130
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "lose_hp",
+                  "value": 0.15
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "绕开",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "ev_puppet",
+      "name": "提线人偶",
+      "type": "puppet",
+      "weight": 3,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "人偶",
+      "desc": "人偶没有线，却自己动着。",
+      "choices": [
+        {
+          "label": "拆解研究",
+          "effects": [
+            {
+              "kind": "grant_exp",
+              "value": 0.35
+            }
+          ]
+        },
+        {
+          "label": "放它离开",
+          "effects": [
+            {
+              "kind": "grant_buff"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_well",
+      "name": "枯井",
+      "type": "well",
+      "weight": 5,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "枯井",
+      "desc": "井底传来回声，很深。",
+      "choices": [
+        {
+          "label": "放下绳索",
+          "effects": [
+            {
+              "kind": "chance",
+              "p": 0.6,
+              "onWin": [
+                {
+                  "kind": "grant_equip"
+                }
+              ],
+              "onLose": [
+                {
+                  "kind": "lose_hp",
+                  "value": 0.1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "投币许愿",
+          "effects": [
+            {
+              "kind": "lose_gold",
+              "value": 60
+            },
+            {
+              "kind": "gain_growth",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_hermit",
+      "name": "隐士",
+      "type": "hermit",
+      "weight": 4,
+      "floorRange": [
+        1,
+        10
+      ],
+      "tag": "隐士",
+      "desc": "隐士睁开浑浊的双眼。",
+      "choices": [
+        {
+          "label": "请教",
+          "effects": [
+            {
+              "kind": "grant_exp",
+              "value": 0.4
+            },
+            {
+              "kind": "grant_buff"
+            }
+          ]
+        },
+        {
+          "label": "留下食物",
+          "effects": [
+            {
+              "kind": "heal",
+              "value": 0.25
+            },
+            {
+              "kind": "grant_gold",
+              "value": 50
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -79,6 +79,19 @@ class GameConfig:
     farm: dict[str, Any]
     seed_by_id: dict[str, Any]
     treasure: dict[str, Any]
+    palace: dict[str, Any]
+    palace_growth: dict[str, Any]
+    palace_growth_by_id: dict[str, Any]
+    palace_buff_by_id: dict[str, Any]
+    palace_events: dict[str, Any]
+    palace_event_by_id: dict[str, Any]
+    palace_exchange_by_id: dict[str, Any]
+    ishgard: dict[str, Any]
+    ishgard_material_by_id: dict[str, Any]
+    ishgard_fish_by_id: dict[str, Any]
+    ishgard_product_by_id: dict[str, Any]
+    ishgard_pink_by_id: dict[str, Any]
+    ishgard_tool_by_id: dict[str, Any]
     base_items: list[BaseItem]
     base_item_by_id: dict[str, BaseItem]
     exclusive_items: list[BaseItem]
@@ -253,6 +266,10 @@ def load_game_data() -> GameConfig:
         "materia": _load("materia.json"),
         "farm": _load("farm.json"),
         "treasure": _load("treasure.json"),
+        "ishgard": _load("ishgard.json"),
+        "palace": _load("palace.json"),
+        "palaceGrowth": _load("palace-growth.json"),
+        "palaceEvents": _load("palace-events.json"),
     }
 
     jobs = raw["jobs"]
@@ -325,6 +342,38 @@ def load_game_data() -> GameConfig:
     # 作物种子注册表（种田）。
     seed_by_id = {s["id"]: s for s in raw["farm"]["seeds"]}
 
+    # 死者宫殿：成长树节点 / 副本 BUFF / 事件 / 兑换表的扁平索引。
+    palace_growth_by_id: dict[str, Any] = {}
+    for category in raw["palaceGrowth"]["categories"]:
+        for node in category["nodes"]:
+            palace_growth_by_id[node["id"]] = {
+                **node, "category": category["id"], "categoryName": category["name"],
+            }
+    palace_buff_by_id = {b["id"]: b for b in raw["palace"]["buffs"]}
+    palace_event_by_id = {e["id"]: e for e in raw["palaceEvents"]["events"]}
+    palace_exchange_by_id = {e["id"]: e for e in raw["palace"]["exchange"]}
+
+    # 重建伊修加德：物资按「阶段」划分，索引中回填 stage 便于阶段锁定校验。
+    ishgard = raw["ishgard"]
+    ishgard_material_by_id: dict[str, Any] = {}
+    ishgard_fish_by_id: dict[str, Any] = {}
+    ishgard_product_by_id: dict[str, Any] = {}
+    for stage_data in ishgard["stages"]:
+        stage_no = int(stage_data["stage"])
+        for m in stage_data["materials"]:
+            ishgard_material_by_id[m["id"]] = {**m, "stage": stage_no}
+        for f in stage_data["fish"]:
+            ishgard_fish_by_id[f["id"]] = {**f, "stage": stage_no}
+        for p in stage_data["products"]:
+            ishgard_product_by_id[p["id"]] = {**p, "stage": stage_no}
+    ishgard_pink_by_id = {p["id"]: p for p in ishgard["pinkEnchants"]}
+    ishgard_tool_by_id: dict[str, Any] = {}
+    for kind, tool_spec in ishgard["tools"].items():
+        for lvl in tool_spec["levels"]:
+            ishgard_tool_by_id[lvl["id"]] = {
+                **lvl, "kind": kind, "slot": tool_spec["slot"], "category": tool_spec["category"],
+            }
+
     return GameConfig(
         rarities=raw["rarities"]["rarities"],
         rarity_order=raw["rarities"]["order"],
@@ -359,6 +408,19 @@ def load_game_data() -> GameConfig:
         farm=raw["farm"],
         seed_by_id=seed_by_id,
         treasure=raw["treasure"],
+        palace=raw["palace"],
+        palace_growth=raw["palaceGrowth"],
+        palace_growth_by_id=palace_growth_by_id,
+        palace_buff_by_id=palace_buff_by_id,
+        palace_events=raw["palaceEvents"],
+        palace_event_by_id=palace_event_by_id,
+        palace_exchange_by_id=palace_exchange_by_id,
+        ishgard=ishgard,
+        ishgard_material_by_id=ishgard_material_by_id,
+        ishgard_fish_by_id=ishgard_fish_by_id,
+        ishgard_product_by_id=ishgard_product_by_id,
+        ishgard_pink_by_id=ishgard_pink_by_id,
+        ishgard_tool_by_id=ishgard_tool_by_id,
         base_items=base_items,
         base_item_by_id={b.id: b for b in (*base_items, *exclusive_items)},
         exclusive_items=exclusive_items,

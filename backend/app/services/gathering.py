@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ActivitySession, Hero, Item, RegionProgress, User
-from app.services import consumables, dohdol_util, titles
+from app.services import consumables, dohdol_util, ishgard, titles
 from app.services.egg_heroes import gather_extra_chance
 from app.services.game_config import CONFIG
 from app.services.playtime import add_play_ms
@@ -54,7 +54,7 @@ async def start_gather(
     )
     db.add(session)
     await db.flush()
-    equip = dohdol_util.equipped_bonus(items)
+    equip = await ishgard.bonus_with_purple(db, user.id, items)
     seconds = dohdol_util.gather_seconds_per_action(equip.get("gatherSpeedPct", 0.0))
     return {
         "sessionId": session.id,
@@ -100,7 +100,7 @@ async def report_gather(
     window = dohdol_util.window_seconds(session.last_report_at, now)
     add_play_ms(user, int(window * 1000))
 
-    equip = dohdol_util.equipped_bonus(items)
+    equip = await ishgard.bonus_with_purple(db, user.id, items)
     potion = await consumables.gather_bonus(db, user.id)
     yield_pct = equip.get("gatherYieldPct", 0.0) + potion.get("gatherYieldPct", 0.0)
     speed_pct = equip.get("gatherSpeedPct", 0.0)

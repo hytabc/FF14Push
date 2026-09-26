@@ -737,6 +737,100 @@ export const api = {
     return (await http.post<import('@/game/types').FishReportResponse>('/fish/session/report', { sessionId })).data
   },
 
+  // --------------------------------------------------------------- 重建伊修加德
+  async ishgardState() {
+    return (await http.get<import('@/game/types').IshgardState>('/ishgard/state')).data
+  },
+
+  async ishgardLeaderboard(page = 1, pageSize = 50) {
+    return (
+      await http.get<{
+        page: number
+        pageSize: number
+        entries: import('@/game/types').IshgardLeaderboardEntry[]
+        me: { rank: number; points: number }
+      }>('/ishgard/leaderboard', { params: { page, pageSize } })
+    ).data
+  },
+
+  async ishgardGatherStart(jobId: string) {
+    return (
+      await http.post<{
+        sessionId: number
+        jobId: string
+        stage: number
+        cycle: import('@/game/types').ActivityCycle
+      }>('/ishgard/gather/session/start', { jobId })
+    ).data
+  },
+
+  async ishgardGatherReport(sessionId: number) {
+    return (await http.post<import('@/game/types').IshgardGatherReport>('/ishgard/gather/session/report', { sessionId })).data
+  },
+
+  async ishgardGatherStop(sessionId: number) {
+    return (await http.post('/ishgard/gather/session/stop', { sessionId })).data
+  },
+
+  async ishgardFishStart() {
+    return (
+      await http.post<{
+        sessionId: number
+        stage: number
+        cycle: import('@/game/types').ActivityCycle
+      }>('/ishgard/fish/session/start', {})
+    ).data
+  },
+
+  async ishgardFishReport(sessionId: number) {
+    return (await http.post<import('@/game/types').IshgardGatherReport>('/ishgard/fish/session/report', { sessionId })).data
+  },
+
+  async ishgardFishStop(sessionId: number) {
+    return (await http.post('/ishgard/fish/session/stop', { sessionId })).data
+  },
+
+  async ishgardProduceStart(jobId: string, recipeId: string, count: number | null = null) {
+    return (
+      await http.post<{
+        sessionId: number
+        jobId: string
+        recipeId: string
+        targetActions: number
+        stage: number
+        cycle: import('@/game/types').ActivityCycle
+      }>('/ishgard/produce/session/start', { jobId, recipeId, count })
+    ).data
+  },
+
+  async ishgardProduceReport(sessionId: number) {
+    return (await http.post<import('@/game/types').IshgardProduceReport>('/ishgard/produce/session/report', { sessionId })).data
+  },
+
+  async ishgardProduceStop(sessionId: number) {
+    return (await http.post('/ishgard/produce/session/stop', { sessionId })).data
+  },
+
+  async ishgardSubmit(itemId: string, count = 1) {
+    return (await http.post<import('@/game/types').IshgardSubmitResult>('/ishgard/submit', { itemId, count })).data
+  },
+
+  async ishgardSell(itemId: string, count = 1) {
+    return (await http.post<{ gold: number; itemId: string; count: number }>('/ishgard/sell', { itemId, count })).data
+  },
+
+  async ishgardToolClaim(kind: 'doh' | 'dol') {
+    return (await http.post<import('@/game/types').IshgardToolView>('/ishgard/tool/claim', { kind })).data
+  },
+
+  async ishgardToolUpgrade(kind: 'doh' | 'dol') {
+    return (await http.post<import('@/game/types').IshgardToolView>('/ishgard/tool/upgrade', { kind })).data
+  },
+
+  async ishgardToolEnchant(kind: 'doh' | 'dol') {
+    return (await http.post<import('@/game/types').IshgardToolView>('/ishgard/tool/enchant', { kind })).data
+  },
+
   async fishStop(sessionId: number) {
     return (await http.post<{ ok: boolean; message: string }>('/fish/session/stop', { sessionId })).data
   },
@@ -968,6 +1062,137 @@ export const api = {
       await http.post<{ run: import('@/game/types').TreasureRunState }>('/treasure/abandon', {
         runId,
       })
+    ).data
+  },
+
+  // ---------------------------------------------------------------- 死者宫殿
+  async palaceState() {
+    return (
+      await http.get<{
+        config: import('@/game/types').PalaceConfig
+        profile: import('@/game/types').PalaceProfile
+        run: import('@/game/types').PalaceRunState | null
+      }>('/palace/state')
+    ).data
+  },
+
+  async palaceStart() {
+    return (
+      await http.post<{
+        profile: import('@/game/types').PalaceProfile
+        run: import('@/game/types').PalaceRunState
+      }>('/palace/start', {})
+    ).data
+  },
+
+  async palaceChooseHero(index: number) {
+    return (
+      await http.post<{ run: import('@/game/types').PalaceRunState }>('/palace/hero/choose', {
+        index,
+      })
+    ).data
+  },
+
+  async palaceChooseWeapon(index: number) {
+    return (
+      await http.post<{ run: import('@/game/types').PalaceRunState }>('/palace/weapon/choose', {
+        index,
+      })
+    ).data
+  },
+
+  async palaceEnterNode(nodeId: string) {
+    return (
+      await http.post<{
+        run: import('@/game/types').PalaceRunState
+        context: import('@/game/types').PalaceNodeContext
+      }>('/palace/node/enter', { nodeId })
+    ).data
+  },
+
+  async palaceClearNode(nodeId: string, elapsedMs: number, result: 'win' | 'lose' = 'win') {
+    return (
+      await http.post<{
+        run: import('@/game/types').PalaceRunState
+        profile: import('@/game/types').PalaceProfile
+        gold: number
+        exp: number
+        level: { levelsGained: number; level: number; exp: number } | null
+        bossReward: {
+          floor: number
+          growthPoints: number
+          flameCrest: number
+          glassPumpkin: number
+          completed: boolean
+          newTitles: string[]
+        } | null
+      }>('/palace/node/clear', { nodeId, elapsedMs, result })
+    ).data
+  },
+
+  async palaceClaimReward(index: number) {
+    return (
+      await http.post<{
+        granted: Record<string, unknown>
+        run: import('@/game/types').PalaceRunState
+      }>('/palace/reward/claim', { index })
+    ).data
+  },
+
+  async palaceEventChoose(nodeId: string, choiceIndex: number) {
+    return (
+      await http.post<{
+        results: Array<Record<string, unknown>>
+        run: import('@/game/types').PalaceRunState
+        profile: import('@/game/types').PalaceProfile
+      }>('/palace/event/choose', { nodeId, choiceIndex })
+    ).data
+  },
+
+  async palaceShopBuy(nodeId: string, offerIndex: number) {
+    return (
+      await http.post<{
+        granted: Record<string, unknown>
+        run: import('@/game/types').PalaceRunState
+      }>('/palace/shop/buy', { nodeId, offerIndex })
+    ).data
+  },
+
+  async palaceEquip(index: number) {
+    return (
+      await http.post<{ run: import('@/game/types').PalaceRunState }>('/palace/equip', { index })
+    ).data
+  },
+
+  async palaceAbandon() {
+    return (
+      await http.post<{ run: import('@/game/types').PalaceRunState }>('/palace/abandon', {})
+    ).data
+  },
+
+  async palaceGrowth() {
+    return (await http.get<import('@/game/types').PalaceGrowthView>('/palace/growth')).data
+  },
+
+  async palaceGrowthUnlock(nodeId: string) {
+    return (
+      await http.post<{
+        unlocked: string
+        view: import('@/game/types').PalaceGrowthView
+      }>('/palace/growth/unlock', { nodeId })
+    ).data
+  },
+
+  async palaceExchange() {
+    return (await http.get<import('@/game/types').PalaceExchangeView>('/palace/exchange')).data
+  },
+
+  async palaceExchangeBuy(exchangeId: string, count = 1) {
+    return (
+      await http.post<{
+        granted: Array<Record<string, unknown>>
+        view: import('@/game/types').PalaceExchangeView
+      }>('/palace/exchange', { exchangeId, count })
     ).data
   },
 

@@ -16,8 +16,10 @@ from app.api.v1 import (
     game,
     grants,
     inventory,
+    ishgard,
     market,
     materia,
+    palace,
     raid,
     ranking,
     redeem,
@@ -55,6 +57,8 @@ api_router.include_router(materia.router)
 api_router.include_router(farm.router)
 api_router.include_router(treasure.router)
 api_router.include_router(sequences.router)
+api_router.include_router(ishgard.router)
+api_router.include_router(palace.router)
 api_router.include_router(admin.router)
 
 from app.api.v1 import heroes, registrations, pvp, coop, worldboss

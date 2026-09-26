@@ -1,0 +1,140 @@
+{
+  "$comment": "重建伊修加德（Ishgardian Restoration）：全服共享进度的生活玩法。内容按「阶段」划分（第 X 次重建，X=1..5），每个阶段有专属采集材料 / 鱼 / 生产产物，阶段间不可混用（采集、生产、提交都要求阶段一致），过期物资可出售。物资命名按当前阶段生成「第{stage}次重建用的{name}」。来源：需求「重建伊修加德」。",
+  "$commentStages": "stages[] 按 stage 升序：每个阶段各自有 gather（采集点产出）、fish（钓场鱼池）、products（配方，inputs 只引用本阶段的材料 / 鱼）。产物 points 为该产物提交后获得的积分。",
+  "$commentTools": "可成长主手装备：tools.doh / tools.dol 各 5 段（20/40/60/80/100）。bonus = 同等级下专用主手（dohdol-equipment 对应 tier 基础型）固定加成 ×1.2；threshold = 个人累计积分门槛；stage = 需要的已完成阶段数。",
+  "$commentPink": "紫色附魔：独立于词条的第 3 类加成，每件主手恒 1 条（生产主手只在 kind=doh 中随机，采集主手只在 kind=dol 中随机），数值按 range 随机，可用「重新打造卡」刷新。",
+  "version": "1.0.0",
+  "naming": { "template": "第{stage}次重建用的{name}" },
+  "titleWindowSeconds": 21600,
+  "titleIds": { "saint": "ishgard_saint", "apostle": "ishgard_apostle" },
+  "stageTargets": [1000000, 3000000, 8000000, 20000000, 50000000],
+  "gather": { "baseSecondsPerAction": 2.5 },
+  "fish": { "castSeconds": 4.0 },
+  "produce": { "maxActionsPerReport": 200 },
+  "stages": [
+    {
+      "stage": 1,
+      "gather": [
+        { "jobId": "MIN", "materialId": "s1_m_limestone", "min": 1, "max": 3, "levelReq": 1 },
+        { "jobId": "BTN", "materialId": "s1_m_spruce", "min": 1, "max": 3, "levelReq": 1 }
+      ],
+      "materials": [
+        { "id": "s1_m_limestone", "name": "石灰岩", "jobId": "MIN", "levelReq": 1, "sell": 10 },
+        { "id": "s1_m_spruce", "name": "云杉原木", "jobId": "BTN", "levelReq": 1, "sell": 10 }
+      ],
+      "fish": [
+        { "id": "s1_f_rockcarp", "name": "岩鲤", "levelReq": 1, "sell": 30 }
+      ],
+      "products": [
+        { "id": "s1_p_scaffold", "name": "脚手架", "jobId": "CRP", "requiredLevel": 1, "craftSeconds": 3.0, "xp": 40, "points": 20, "sell": 5, "inputs": [ { "itemId": "s1_m_spruce", "count": 3 } ] },
+        { "id": "s1_p_coating", "name": "涂料", "jobId": "ALC", "requiredLevel": 1, "craftSeconds": 3.0, "xp": 40, "points": 25, "sell": 6, "inputs": [ { "itemId": "s1_m_limestone", "count": 3 } ] }
+      ]
+    },
+    {
+      "stage": 2,
+      "gather": [
+        { "jobId": "MIN", "materialId": "s2_m_ironore", "min": 1, "max": 3, "levelReq": 10 },
+        { "jobId": "BTN", "materialId": "s2_m_flax", "min": 1, "max": 3, "levelReq": 10 }
+      ],
+      "materials": [
+        { "id": "s2_m_ironore", "name": "铁矿石", "jobId": "MIN", "levelReq": 10, "sell": 15 },
+        { "id": "s2_m_flax", "name": "亚麻", "jobId": "BTN", "levelReq": 10, "sell": 15 }
+      ],
+      "fish": [
+        { "id": "s2_f_snowtrout", "name": "雪原鳟", "levelReq": 10, "sell": 45 }
+      ],
+      "products": [
+        { "id": "s2_p_steelbeam", "name": "钢梁", "jobId": "BSM", "requiredLevel": 10, "craftSeconds": 3.0, "xp": 60, "points": 30, "sell": 8, "inputs": [ { "itemId": "s2_m_ironore", "count": 3 } ] },
+        { "id": "s2_p_textile", "name": "重建织物", "jobId": "WVR", "requiredLevel": 10, "craftSeconds": 3.0, "xp": 60, "points": 30, "sell": 8, "inputs": [ { "itemId": "s2_m_flax", "count": 3 } ] }
+      ]
+    },
+    {
+      "stage": 3,
+      "gather": [
+        { "jobId": "MIN", "materialId": "s3_m_crystal", "min": 1, "max": 3, "levelReq": 30 },
+        { "jobId": "BTN", "materialId": "s3_m_herb", "min": 1, "max": 3, "levelReq": 30 }
+      ],
+      "materials": [
+        { "id": "s3_m_crystal", "name": "水晶原石", "jobId": "MIN", "levelReq": 30, "sell": 25 },
+        { "id": "s3_m_herb", "name": "药用草", "jobId": "BTN", "levelReq": 30, "sell": 25 }
+      ],
+      "fish": [
+        { "id": "s3_f_laketrout", "name": "冰湖鳟", "levelReq": 30, "sell": 70 }
+      ],
+      "products": [
+        { "id": "s3_p_ornament", "name": "装饰部件", "jobId": "GSM", "requiredLevel": 30, "craftSeconds": 3.5, "xp": 90, "points": 45, "sell": 12, "inputs": [ { "itemId": "s3_m_crystal", "count": 3 } ] },
+        { "id": "s3_p_leather", "name": "皮革建材", "jobId": "LTW", "requiredLevel": 30, "craftSeconds": 3.5, "xp": 90, "points": 45, "sell": 12, "inputs": [ { "itemId": "s3_m_herb", "count": 3 } ] }
+      ]
+    },
+    {
+      "stage": 4,
+      "gather": [
+        { "jobId": "MIN", "materialId": "s4_m_mithril", "min": 1, "max": 3, "levelReq": 60 },
+        { "jobId": "BTN", "materialId": "s4_m_ancientwood", "min": 1, "max": 3, "levelReq": 60 }
+      ],
+      "materials": [
+        { "id": "s4_m_mithril", "name": "秘银矿", "jobId": "MIN", "levelReq": 60, "sell": 40 },
+        { "id": "s4_m_ancientwood", "name": "古木", "jobId": "BTN", "levelReq": 60, "sell": 40 }
+      ],
+      "fish": [
+        { "id": "s4_f_bigrockfish", "name": "巨大岩鱼", "levelReq": 60, "sell": 110 }
+      ],
+      "products": [
+        { "id": "s4_p_plating", "name": "板金建材", "jobId": "ARM", "requiredLevel": 60, "craftSeconds": 4.0, "xp": 130, "points": 60, "sell": 18, "inputs": [ { "itemId": "s4_m_mithril", "count": 3 } ] },
+        { "id": "s4_p_fishoil", "name": "鱼油", "jobId": "ALC", "requiredLevel": 60, "craftSeconds": 4.0, "xp": 130, "points": 120, "sell": 30, "inputs": [ { "itemId": "s4_f_bigrockfish", "count": 2 } ] }
+      ]
+    },
+    {
+      "stage": 5,
+      "gather": [
+        { "jobId": "MIN", "materialId": "s5_m_celestite", "min": 1, "max": 3, "levelReq": 90 },
+        { "jobId": "BTN", "materialId": "s5_m_spiritwood", "min": 1, "max": 3, "levelReq": 90 }
+      ],
+      "materials": [
+        { "id": "s5_m_celestite", "name": "天青石", "jobId": "MIN", "levelReq": 90, "sell": 60 },
+        { "id": "s5_m_spiritwood", "name": "灵木", "jobId": "BTN", "levelReq": 90, "sell": 60 }
+      ],
+      "fish": [
+        { "id": "s5_f_silversalmon", "name": "银鳞鲑鱼", "levelReq": 90, "sell": 150 }
+      ],
+      "products": [
+        { "id": "s5_p_meal", "name": "慰劳餐", "jobId": "CUL", "requiredLevel": 90, "craftSeconds": 4.5, "xp": 180, "points": 150, "sell": 40, "inputs": [ { "itemId": "s5_f_silversalmon", "count": 2 } ] },
+        { "id": "s5_p_skyframe", "name": "天钢构件", "jobId": "BSM", "requiredLevel": 90, "craftSeconds": 4.5, "xp": 180, "points": 80, "sell": 25, "inputs": [ { "itemId": "s5_m_celestite", "count": 2 }, { "itemId": "s5_m_spiritwood", "count": 2 } ] }
+      ]
+    }
+  ],
+  "tools": {
+    "doh": {
+      "slot": "dohTool",
+      "category": "doh_tool",
+      "levels": [
+        { "level": 20, "id": "ish_dohTool_20", "name": "天穹巧匠主手工具", "threshold": 50000, "stage": 1, "bonus": { "craftQualityPct": 7.68, "craftRarityPct": 5.76 } },
+        { "level": 40, "id": "ish_dohTool_40", "name": "天穹巧匠主手工具", "threshold": 250000, "stage": 2, "bonus": { "craftQualityPct": 12.0, "craftRarityPct": 9.0 } },
+        { "level": 60, "id": "ish_dohTool_60", "name": "天穹巧匠主手工具", "threshold": 800000, "stage": 3, "bonus": { "craftQualityPct": 19.2, "craftRarityPct": 14.4 } },
+        { "level": 80, "id": "ish_dohTool_80", "name": "天穹巧匠主手工具", "threshold": 2000000, "stage": 4, "bonus": { "craftQualityPct": 30.72, "craftRarityPct": 23.04 } },
+        { "level": 100, "id": "ish_dohTool_100", "name": "天穹巧匠主手工具", "threshold": 5000000, "stage": 5, "bonus": { "craftQualityPct": 48.48, "craftRarityPct": 36.36 } }
+      ]
+    },
+    "dol": {
+      "slot": "dolTool",
+      "category": "dol_tool",
+      "levels": [
+        { "level": 20, "id": "ish_dolTool_20", "name": "天穹大地主手工具", "threshold": 50000, "stage": 1, "bonus": { "gatherYieldPct": 11.52, "fishChancePct": 5.76 } },
+        { "level": 40, "id": "ish_dolTool_40", "name": "天穹大地主手工具", "threshold": 250000, "stage": 2, "bonus": { "gatherYieldPct": 18.0, "fishChancePct": 9.0 } },
+        { "level": 60, "id": "ish_dolTool_60", "name": "天穹大地主手工具", "threshold": 800000, "stage": 3, "bonus": { "gatherYieldPct": 28.8, "fishChancePct": 14.4 } },
+        { "level": 80, "id": "ish_dolTool_80", "name": "天穹大地主手工具", "threshold": 2000000, "stage": 4, "bonus": { "gatherYieldPct": 46.08, "fishChancePct": 23.04 } },
+        { "level": 100, "id": "ish_dolTool_100", "name": "天穹大地主手工具", "threshold": 5000000, "stage": 5, "bonus": { "gatherYieldPct": 72.72, "fishChancePct": 36.36 } }
+      ]
+    }
+  },
+  "pinkEnchants": [
+    { "id": "ish_pink_masterwork", "name": "天穹匠心", "kind": "doh", "desc": "制造品质 +{v}%、制造品阶幸运 +{v2}%", "stats": [ { "stat": "craftQualityPct", "range": [15, 30] }, { "stat": "craftRarityPct", "range": [10, 20] } ] },
+    { "id": "ish_pink_swifthand", "name": "苍天巧手", "kind": "doh", "desc": "制造速度 +{v}%", "stats": [ { "stat": "craftSpeedPct", "range": [20, 40] } ] },
+    { "id": "ish_pink_frugal", "name": "复兴建业", "kind": "doh", "desc": "制造时 {v}% 概率不消耗材料、{v2}% 概率额外产出 1 件", "stats": [ { "stat": "craftMaterialSavePct", "range": [15, 30] }, { "stat": "craftExtraOutputPct", "range": [10, 20] } ] },
+    { "id": "ish_pink_inspiration", "name": "圣者灵感", "kind": "doh", "desc": "制造经验 +{v}%", "stats": [ { "stat": "craftXpPct", "range": [25, 50] } ] },
+    { "id": "ish_pink_harvest", "name": "天穹丰收", "kind": "dol", "desc": "采集产量 +{v}%", "stats": [ { "stat": "gatherYieldPct", "range": [15, 30] } ] },
+    { "id": "ish_pink_gale", "name": "苍天疾风", "kind": "dol", "desc": "采集速度 +{v}%", "stats": [ { "stat": "gatherSpeedPct", "range": [20, 40] } ] },
+    { "id": "ish_pink_bounty", "name": "圣地珍稀", "kind": "dol", "desc": "采集时 {v}% 概率获得双份材料、{v2}% 概率产量翻倍", "stats": [ { "stat": "gatherRareChancePct", "range": [15, 30] }, { "stat": "gatherDoublePct", "range": [10, 20] } ] },
+    { "id": "ish_pink_angler", "name": "渔王之魂", "kind": "dol", "desc": "特殊鱼概率 +{v}%、捕鱼人之识时长 +{v2}%", "stats": [ { "stat": "fishChancePct", "range": [10, 20] }, { "stat": "fishInsightPct", "range": [20, 40] } ] }
+  ]
+}

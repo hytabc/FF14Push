@@ -71,6 +71,14 @@ export type SoundCue =
   | 'seq.done'
   | 'farm.plant'
   | 'farm.harvest'
+  // 死者宫殿（roguelike 深层迷宫）
+  | 'palace.enter'
+  | 'palace.choose'
+  | 'palace.node'
+  | 'palace.floor'
+  | 'palace.clear'
+  | 'palace.growth'
+  | 'palace.exchange'
 
 type Wave = 'sine' | 'square' | 'triangle' | 'sawtooth'
 type FilterWave = 'lowpass' | 'highpass' | 'bandpass'
@@ -360,6 +368,34 @@ export const CUES: Record<SoundCue, CueSpec> = {
     sweep(300, 620, 0.16, 0.3, 'sine'),
   ]),
   'farm.harvest': cue('ambient', 200, 0.46, [...arpeggio([784, 1046, 1318], 0.08, 0.11, 0.36)]),
+
+  // ---------------- 死者宫殿 ----------------
+  'palace.enter': cue('ui', 400, 0.5, [
+    tone(146, 0.5, 0.42, 'sawtooth'),
+    tone(220, 0.46, 0.3, 'sawtooth', { delay: 0.05 }),
+    noise(0.4, 0.24, 480),
+  ]),
+  'palace.choose': cue('ui', 150, 0.44, [...arpeggio([698, 988, 1318], 0.08, 0.1, 0.34)]),
+  'palace.node': cue('ui', 120, 0.36, [
+    sweep(420, 700, 0.12, 0.28, 'square'),
+    noise(0.06, 0.2, 2600, 'bandpass'),
+  ]),
+  'palace.floor': cue('battle', 700, 0.6, [
+    ...arpeggio([440, 587, 880], 0.12, 0.14, 0.4),
+    tone(1174, 0.4, 0.42, 'square', { delay: 0.36 }),
+  ]),
+  'palace.clear': cue('battle', 1200, 0.7, [
+    ...arpeggio([523, 659, 784, 1046], 0.12, 0.14, 0.42),
+    tone(1568, 0.5, 0.44, 'triangle', { delay: 0.5 }),
+  ]),
+  'palace.growth': cue('ui', 200, 0.46, [
+    tone(880, 0.1, 0.32, 'triangle'),
+    tone(1318, 0.22, 0.34, 'triangle', { delay: 0.08 }),
+  ]),
+  'palace.exchange': cue('ui', 200, 0.46, [
+    tone(988, 0.09, 0.32, 'triangle'),
+    tone(1244, 0.2, 0.34, 'triangle', { delay: 0.07 }),
+  ]),
 }
 
 /** 节流 / 并发闸门状态（独立于音频硬件，便于测试）。 */

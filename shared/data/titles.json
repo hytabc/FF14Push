@@ -208,6 +208,24 @@
       "desc": "据说只有被大地选中的人才配得上这个名号",
       "egg": true,
       "condition": { "type": "random_drop", "event": "gather", "chance": 0.00008 }
+    },
+    {
+      "id": "ishgard_saint",
+      "name": "天穹圣人",
+      "desc": "重建伊修加德积分榜第一名（每 6 小时结算，全服唯一）",
+      "condition": { "type": "ishgard_rank", "rank": 1 }
+    },
+    {
+      "id": "ishgard_apostle",
+      "name": "天穹圣徒",
+      "desc": "重建伊修加德积分榜第二名（每 6 小时结算，全服唯一）",
+      "condition": { "type": "ishgard_rank", "rank": 2 }
+    },
+    {
+      "id": "palace_necro",
+      "name": "死灵术士",
+      "desc": "通关死者宫殿第 10 层 10 次",
+      "condition": { "type": "palace_clear", "count": 10 }
     }
   ]
 }
