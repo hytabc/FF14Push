@@ -502,6 +502,29 @@ npm run gen:icons
 
 ---
 
+## 移动端安装包（Android / iOS / HarmonyOS）
+
+三端可以一条命令一起构建，脚本会先做**预检**，缺什么（Apple ID、团队 ID、鸿蒙签名、JDK…）会直接
+列出**补充步骤**，而不是等到构建到一半才报错：
+
+```bash
+npm run app:all              # 等价 ./scripts/build-mobile.sh：预检 → 构建 → 汇总
+npm run app:all -- --check   # 只预检，先看还缺什么（不构建）
+./scripts/build-mobile.sh --only android,hap    # 只构建指定平台
+```
+
+- 缺**硬前置**（Xcode / Apple 签名 / DevEco / Java）→ 该端**跳过**并给出补充步骤，不影响其它端；
+- 缺**软前置**（Android 发布密钥、鸿蒙签名）→ 照常构建，但汇总里标 `⚠` 说明产物性质
+  （debug 签名 / 未签名）；
+- 任何一端没产出可用安装包 → 退出码 `1`，方便一眼看出“还有事没做”。
+
+单端脚本也可以单独用：`npm run app:apk` / `npm run app:ios` / `npm run app:hap`。
+
+> 三端外壳都是直接加载线上站点，所以**前端改动只需部署**（`docker compose up -d --build frontend`）就会
+> 在所有 App 里生效；只有原生配置或图标变化才需要重新出包。
+
+---
+
 ## Android 客户端（可选）
 
 网页版之外，仓库里带一个 Capacitor 外壳工程，可以把游戏装成手机 App，省去每次开浏览器。

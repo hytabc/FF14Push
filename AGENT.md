@@ -58,6 +58,7 @@ README 早期目录概览中的页面数、测试数、Compose 服务数可能�
 | `scripts/build-apk.sh` | 构建 Android 安装包；自动探测 JDK / Android SDK 并校验 JDK 是否可用于 Android 构建 |
 | `scripts/build-ios.sh` | 构建 iOS 安装包（`xcodebuild archive` → 导出 `.ipa`）；自检 Xcode / 团队 ID，导出方式由 `IOS_EXPORT_METHOD` 决定 |
 | `scripts/build-hap.sh` | 构建 HarmonyOS 安装包（`hvigorw assembleHap`）；自检 DevEco / SDK / Java，并把版本号同步进 `harmony/AppScope/app.json5` |
+| `scripts/build-mobile.sh` | 三端编排（`npm run app:all`）：预检 → 构建 → 汇总。**只做编排与缺项提示**，缺硬前置（Xcode / Apple 签名 / DevEco / Java）就跳过该端并打印补充步骤，缺软前置（发布密钥 / 鸿蒙签名）照常构建但标 ⚠；权威校验仍在上面三个单端脚本里。注意 macOS 自带 bash 3.2，脚本内**不能用 `declare -A`** |
 | `scripts/gen-app-icon.mjs` | App 图标 / 启动图生成器（1024² 图标、2732² 启动图，「母水晶」主题） |
 | `scripts/gen-harmony-icons.mjs` | 由 `assets/` 生成鸿蒙图标（`app_icon` / `icon` / `startIcon`，216²） |
 | `frontend/src/views/` | 游戏页面；`RosterView.vue`、`CoopView.vue`、`ArenaView.vue` 为联机相关入口；`GameTestView.vue` 为「游戏测试」页，用 iframe 内嵌独立单文件小游戏 |

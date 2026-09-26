@@ -19,6 +19,7 @@
     "app:apk": "./scripts/build-apk.sh",
     "app:ios": "./scripts/build-ios.sh",
     "app:hap": "./scripts/build-hap.sh",
+    "app:all": "./scripts/build-mobile.sh",
     "app:open": "cap open android",
     "app:open:ios": "cap open ios",
     "app:open:harmony": "open harmony"
