@@ -15,13 +15,17 @@ WORKDIR /app
 
 ARG NPM_REGISTRY=https://registry.npmmirror.com
 
-# 先装依赖，充分利用镜像层缓存
+# 先装依赖，充分利用镜像层缓存。
+# 只装 frontend 工作区：前端镜像不需要根目录的 Capacitor 工具链，而 @capacitor/assets 会拉入
+# sharp —— 它的安装脚本要从 GitHub 下载 libvips 预编译包，国内网络下会长时间卡住（甚至失败）。
+# 只装本工作区可把依赖从 347 个降到 137 个，并完全避开这类下载。
+# 注意：改了任何 package.json 的版本号都会让本层缓存失效、重新走一遍 npm ci，属预期行为。
 COPY package.json package-lock.json ./
 COPY frontend/package.json ./frontend/package.json
 RUN if [ -n "${NPM_REGISTRY}" ]; then \
-      npm ci --no-fund --no-audit --registry="${NPM_REGISTRY}"; \
+      npm ci --no-fund --no-audit --workspace frontend --registry="${NPM_REGISTRY}"; \
     else \
-      npm ci --no-fund --no-audit; \
+      npm ci --no-fund --no-audit --workspace frontend; \
     fi
 
 COPY shared ./shared
